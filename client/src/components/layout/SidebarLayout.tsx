@@ -14,7 +14,8 @@ import {
   Sun,
   Library,
   CreditCard,
-  QrCode
+  QrCode,
+  Scan
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -41,7 +42,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
     { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },
     { href: "/donations", label: "التبرعات", icon: CreditCard, roles: ["admin"] },
-    { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin", "supervisor"] },
+    { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin", "teacher", "supervisor"] },
+    { href: "/scan-qr", label: "مسح QR (أمني)", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
     { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
   ];
 
