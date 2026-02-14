@@ -55,10 +55,10 @@ export default function QuranTracker() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary">المصحف التفاعلي</h1>
+          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">المصحف التفاعلي</h1>
           <p className="text-muted-foreground">تتبع حفظك آية بآية مع التفسير المباشر</p>
         </div>
         
@@ -79,13 +79,13 @@ export default function QuranTracker() {
         {/* Main Quran View */}
         <Card className="lg:col-span-3 shadow-lg border-primary/20 bg-[#fffdf5]">
           <CardHeader className="bg-primary/5 border-b border-primary/10">
-            <div className="flex justify-between items-center">
-              <CardTitle className="font-serif text-2xl text-primary flex items-center gap-2">
-                <BookOpen className="w-6 h-6" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <CardTitle className="font-serif text-xl md:text-2xl text-primary flex items-center gap-2">
+                <BookOpen className="w-5 h-5 md:w-6 md:h-6" />
                 سورة الفاتحة
               </CardTitle>
               <div className="flex gap-2">
-                <div className="flex gap-2 text-xs items-center ml-4">
+                <div className="flex flex-wrap gap-2 text-xs items-center ml-4">
                   <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500"></span> تم الحفظ</span>
                   <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-500"></span> مراجعة</span>
                   <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-slate-300"></span> جديد</span>
@@ -93,8 +93,8 @@ export default function QuranTracker() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-8 min-h-[500px]">
-            <div className="space-y-6 font-serif text-3xl leading-[2.5]" dir="rtl">
+          <CardContent className="p-4 md:p-8 min-h-[300px] md:min-h-[500px]">
+            <div className="space-y-4 md:space-y-6 font-serif text-xl md:text-3xl leading-[2] md:leading-[2.5]" dir="rtl">
               {verses.map((verse) => (
                 <span 
                   key={verse.id}
@@ -202,7 +202,7 @@ export default function QuranTracker() {
                  <Bookmark className="w-4 h-4 text-primary" />
                  تحديث حالة الحفظ:
                </h4>
-               <div className="grid grid-cols-3 gap-2">
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                  <Button 
                     variant={selectedVerse?.status === "memorized" ? "default" : "outline"}
                     className={selectedVerse?.status === "memorized" ? "bg-emerald-600 hover:bg-emerald-700" : "hover:bg-emerald-50 text-emerald-700 border-emerald-200"}

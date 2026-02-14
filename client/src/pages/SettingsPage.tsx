@@ -11,16 +11,18 @@ export default function SettingsPage() {
   const { user } = useAuth();
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold font-serif text-primary">الإعدادات</h1>
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">الإعدادات</h1>
       
       <Tabs defaultValue="mosque" className="w-full">
-        <TabsList className="w-full justify-start h-12 bg-muted/50 p-1">
-          <TabsTrigger value="mosque" className="flex-1 max-w-[200px]">بيانات المسجد</TabsTrigger>
-          <TabsTrigger value="profile" className="flex-1 max-w-[200px]">الملف الشخصي</TabsTrigger>
-          <TabsTrigger value="general" className="flex-1 max-w-[200px]">إعدادات النظام</TabsTrigger>
-          <TabsTrigger value="notifications" className="flex-1 max-w-[200px]">الإشعارات</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className="w-max md:w-full justify-start h-12 bg-muted/50 p-1">
+            <TabsTrigger value="mosque" className="flex-1 max-w-[200px] whitespace-nowrap">بيانات المسجد</TabsTrigger>
+            <TabsTrigger value="profile" className="flex-1 max-w-[200px] whitespace-nowrap">الملف الشخصي</TabsTrigger>
+            <TabsTrigger value="general" className="flex-1 max-w-[200px] whitespace-nowrap">إعدادات النظام</TabsTrigger>
+            <TabsTrigger value="notifications" className="flex-1 max-w-[200px] whitespace-nowrap">الإشعارات</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="mosque" className="space-y-6 mt-6">
            <Card>

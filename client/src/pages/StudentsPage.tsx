@@ -28,10 +28,10 @@ export default function StudentsPage() {
   const filteredStudents = mockStudents.filter(s => s.name.includes(searchTerm));
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary">الطلاب</h1>
+          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">الطلاب</h1>
           <p className="text-muted-foreground">إدارة بيانات الطلاب ومتابعة تقدمهم</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -69,13 +69,14 @@ export default function StudentsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 md:p-6">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="text-right">الاسم</TableHead>
                 <TableHead className="text-right">المستوى الحالي</TableHead>
-                <TableHead className="text-right">الأستاذ المشرف</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">الأستاذ المشرف</TableHead>
                 <TableHead className="text-right">التقدم</TableHead>
                 <TableHead className="text-right">الحالة</TableHead>
                 <TableHead className="text-right">إجراءات</TableHead>
@@ -86,7 +87,7 @@ export default function StudentsPage() {
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.name}</TableCell>
                   <TableCell>{student.level}</TableCell>
-                  <TableCell>{student.teacher}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{student.teacher}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="w-full bg-secondary h-2 rounded-full overflow-hidden w-24">
@@ -110,6 +111,7 @@ export default function StudentsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

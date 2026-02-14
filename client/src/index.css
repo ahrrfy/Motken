@@ -148,3 +148,28 @@
   background-image: radial-gradient(hsl(var(--primary) / 0.05) 1px, transparent 1px);
   background-size: 20px 20px;
 }
+
+/* Responsive scrollbar utility */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.2);
+  border-radius: 999px;
+}
+
+/* Mobile table responsiveness */
+@media (max-width: 768px) {
+  .responsive-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
