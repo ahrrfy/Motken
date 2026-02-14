@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing } from "lucide-react";
+import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing, ClipboardList } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Coordinates, CalculationMethod, PrayerTimes } from 'adhan';
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 // Helper to get simulated prayer times for Baghdad
 function getBaghdadPrayerTimes() {
@@ -46,6 +47,7 @@ export default function DashboardPage() {
 
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
+  const isTeacher = user?.role === 'teacher';
   const isStudent = user?.role === 'student';
 
   const stats = [
@@ -143,6 +145,65 @@ export default function DashboardPage() {
         ))}
       </div>
       
+      {/* Teacher/Supervisor Daily Agenda */}
+      {(isTeacher || isSupervisor || isAdmin) && (
+        <Card className="shadow-sm border-l-4 border-l-primary bg-white">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-primary" />
+              <CardTitle className="font-serif text-lg">جدول أعمال اليوم</CardTitle>
+            </div>
+            <Badge variant="outline" className="bg-primary/5">5 طلاب للمتابعة</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-right">
+                <thead className="text-xs text-muted-foreground bg-muted/30 uppercase">
+                  <tr>
+                    <th className="px-4 py-3 rounded-r-lg">الوقت</th>
+                    <th className="px-4 py-3">اسم الطالب</th>
+                    <th className="px-4 py-3">المقرر (السورة)</th>
+                    <th className="px-4 py-3">النوع</th>
+                    <th className="px-4 py-3 rounded-l-lg">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {[
+                    { time: "04:00 م", name: "عمر خالد", task: "البقرة (20-30)", type: "تسميع جديد", status: "waiting" },
+                    { time: "04:30 م", name: "يوسف علي", task: "آل عمران (1-10)", type: "مراجعة", status: "waiting" },
+                    { time: "05:00 م", name: "أحمد محمد", task: "الكهف (1-15)", type: "تسميع جديد", status: "done" },
+                    { time: "05:30 م", name: "سعيد حسن", task: "الفاتحة", type: "تصحيح تلاوة", status: "waiting" },
+                    { time: "06:00 م", name: "كريم محمود", task: "يس", type: "مراجعة", status: "waiting" },
+                  ].map((item, idx) => (
+                    <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 font-medium text-primary">{item.time}</td>
+                      <td className="px-4 py-3 font-bold">{item.name}</td>
+                      <td className="px-4 py-3">{item.task}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-1 rounded-full ${item.type.includes('جديد') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {item.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {item.status === 'done' ? (
+                          <span className="flex items-center gap-1 text-green-600 font-medium text-xs">
+                            <CheckCircle className="w-3 h-3" /> تم
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-slate-500 text-xs">
+                            <Clock className="w-3 h-3" /> انتظار
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-sm border-none">
           <CardHeader>
