@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing, ClipboardList } from "lucide-react";
+import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing, ClipboardList, Loader2 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Coordinates, CalculationMethod, PrayerTimes } from 'adhan';
 import { useState, useEffect } from "react";
@@ -8,9 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
-// Helper to get simulated prayer times for Baghdad
 function getBaghdadPrayerTimes() {
-  // Baghdad Coordinates
   const coordinates = new Coordinates(33.3152, 44.3661); 
   const date = new Date();
   const params = CalculationMethod.MuslimWorldLeague(); 
@@ -33,10 +31,27 @@ function getBaghdadPrayerTimes() {
   };
 }
 
+interface Stats {
+  totalStudents: number;
+  totalTeachers: number;
+  totalSupervisors: number;
+  totalMosques?: number;
+  totalAssignments: number;
+  completedAssignments: number;
+}
+
+interface Mosque {
+  id: string;
+  name: string;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [prayerTimes, setPrayerTimes] = useState(getBaghdadPrayerTimes());
   const [showNotification, setShowNotification] = useState(true);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [mosqueName, setMosqueName] = useState<string | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -45,30 +60,47 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    fetch("/api/stats", { credentials: "include" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setStats(data); })
+      .catch(() => {})
+      .finally(() => setLoadingStats(false));
+
+    if (user?.mosqueId) {
+      fetch("/api/mosques", { credentials: "include" })
+        .then(res => res.ok ? res.json() : [])
+        .then((data: Mosque[]) => {
+          const m = data.find((m: Mosque) => m.id === user.mosqueId);
+          if (m) setMosqueName(m.name);
+        })
+        .catch(() => {});
+    }
+  }, [user?.mosqueId]);
+
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
   const isTeacher = user?.role === 'teacher';
   const isStudent = user?.role === 'student';
 
-  const stats = [
-    { title: "الطلاب النشطين", value: "124", icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
-    { title: "الحلقات القائمة", value: "12", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-100" },
-    { title: "أتموا الحفظ", value: "8", icon: CheckCircle, color: "text-amber-600", bg: "bg-amber-100" },
-    { title: "نسبة التقدم", value: "68%", icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-100" },
+  const displayStats = [
+    { title: "الطلاب النشطين", value: loadingStats ? "..." : String(stats?.totalStudents ?? 0), icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
+    { title: "الأساتذة", value: loadingStats ? "..." : String(stats?.totalTeachers ?? 0), icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-100" },
+    { title: "الواجبات المكتملة", value: loadingStats ? "..." : String(stats?.completedAssignments ?? 0), icon: CheckCircle, color: "text-amber-600", bg: "bg-amber-100" },
+    { title: "إجمالي الواجبات", value: loadingStats ? "..." : String(stats?.totalAssignments ?? 0), icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-100" },
   ];
 
-  const adminStats = [
-     { title: "إجمالي التبرعات", value: "2.5M د.ع", icon: Activity, color: "text-green-700", bg: "bg-green-50" },
-     { title: "محاولات دخول", value: "345", icon: ShieldAlert, color: "text-red-600", bg: "bg-red-50" },
-  ];
-
-  const displayStats = isAdmin ? [...stats, ...adminStats] : stats;
+  if (isAdmin && stats?.totalMosques !== undefined) {
+    displayStats.push(
+      { title: "المساجد", value: String(stats.totalMosques), icon: Activity, color: "text-green-700", bg: "bg-green-50" },
+      { title: "المشرفون", value: String(stats.totalSupervisors ?? 0), icon: ShieldAlert, color: "text-red-600", bg: "bg-red-50" },
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-      {/* Student Notification Alert */}
       {isStudent && showNotification && (
-        <Alert className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+        <Alert className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500" data-testid="alert-student-notification">
           <BellRing className="h-5 w-5 text-amber-600 animate-pulse" />
           <AlertTitle className="text-lg font-bold mb-1 mr-2">تنبيه: موعد التسميع اقترب!</AlertTitle>
           <AlertDescription className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mr-2">
@@ -76,10 +108,10 @@ export default function DashboardPage() {
               لديك موعد تسميع <strong>سورة البقرة (الآيات 20-30)</strong> مع <strong>الشيخ أحمد</strong> بعد 15 دقيقة.
             </div>
             <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-               <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white border-none" onClick={() => setShowNotification(false)}>
+               <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white border-none" onClick={() => setShowNotification(false)} data-testid="button-dismiss-notification">
                  سأكون جاهزاً
                </Button>
-               <Button size="sm" variant="outline" className="border-amber-300 hover:bg-amber-100 text-amber-800">
+               <Button size="sm" variant="outline" className="border-amber-300 hover:bg-amber-100 text-amber-800" data-testid="button-delay-notification">
                  تأجيل 5 دقائق
                </Button>
             </div>
@@ -87,17 +119,15 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      {/* Top Bar with Location & Prayer Times */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-card p-4 rounded-xl shadow-sm border">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif">لوحة التحكم</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif" data-testid="text-page-title">لوحة التحكم</h1>
           <div className="flex items-center gap-2 text-muted-foreground mt-1">
             <MapPin className="w-4 h-4" />
-            <p>جامع النور الكبير - بغداد (الوقف السني)</p>
+            <p data-testid="text-mosque-name">{mosqueName || "المسجد غير محدد"}</p>
           </div>
         </div>
 
-        {/* Prayer Times Strip */}
         <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-2 rounded-lg border border-primary/10 w-full xl:w-auto overflow-x-auto scrollbar-thin">
           <div className="flex items-center gap-2 px-3 border-l border-primary/20">
              <Clock className="w-5 h-5 text-primary" />
@@ -106,36 +136,35 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4 px-2 text-sm">
              <div className="flex flex-col items-center">
                <span className="text-xs text-muted-foreground">الفجر</span>
-               <span className="font-bold">{prayerTimes.fajr}</span>
+               <span className="font-bold" data-testid="text-prayer-fajr">{prayerTimes.fajr}</span>
              </div>
              <div className="flex flex-col items-center">
                <span className="text-xs text-muted-foreground">الظهر</span>
-               <span className="font-bold">{prayerTimes.dhuhr}</span>
+               <span className="font-bold" data-testid="text-prayer-dhuhr">{prayerTimes.dhuhr}</span>
              </div>
              <div className="flex flex-col items-center">
                <span className="text-xs text-muted-foreground">العصر</span>
-               <span className="font-bold">{prayerTimes.asr}</span>
+               <span className="font-bold" data-testid="text-prayer-asr">{prayerTimes.asr}</span>
              </div>
              <div className="flex flex-col items-center">
                <span className="text-xs text-muted-foreground">المغرب</span>
-               <span className="font-bold">{prayerTimes.maghrib}</span>
+               <span className="font-bold" data-testid="text-prayer-maghrib">{prayerTimes.maghrib}</span>
              </div>
              <div className="flex flex-col items-center">
                <span className="text-xs text-muted-foreground">العشاء</span>
-               <span className="font-bold">{prayerTimes.isha}</span>
+               <span className="font-bold" data-testid="text-prayer-isha">{prayerTimes.isha}</span>
              </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className={`grid grid-cols-2 ${isAdmin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-3 md:gap-4`}>
         {displayStats.map((stat, i) => (
-          <Card key={i} className="border-none shadow-sm hover:shadow-md transition-shadow">
+          <Card key={i} className="border-none shadow-sm hover:shadow-md transition-shadow" data-testid={`card-stat-${i}`}>
             <CardContent className="p-3 md:p-6 flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm font-medium text-muted-foreground mb-1 truncate">{stat.title}</p>
-                <h3 className="text-lg md:text-2xl font-bold">{stat.value}</h3>
+                <h3 className="text-lg md:text-2xl font-bold" data-testid={`text-stat-value-${i}`}>{stat.value}</h3>
               </div>
               <div className={`p-2 md:p-3 rounded-full ${stat.bg} shrink-0`}>
                 <stat.icon className={`w-4 h-4 md:w-6 md:h-6 ${stat.color}`} />
@@ -145,7 +174,6 @@ export default function DashboardPage() {
         ))}
       </div>
       
-      {/* Teacher/Supervisor Daily Agenda */}
       {(isTeacher || isSupervisor || isAdmin) && (
         <Card className="shadow-sm border-l-4 border-l-primary bg-white">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -175,7 +203,7 @@ export default function DashboardPage() {
                     { time: "05:30 م", name: "سعيد حسن", task: "الفاتحة", type: "تصحيح تلاوة", status: "waiting" },
                     { time: "06:00 م", name: "كريم محمود", task: "يس", type: "مراجعة", status: "waiting" },
                   ].map((item, idx) => (
-                    <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                    <tr key={idx} className="hover:bg-muted/20 transition-colors" data-testid={`row-agenda-${idx}`}>
                       <td className="px-4 py-3 font-medium text-primary">{item.time}</td>
                       <td className="px-4 py-3 font-bold">{item.name}</td>
                       <td className="px-4 py-3">{item.task}</td>
@@ -248,7 +276,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Security / Activity Feed for Admin/Supervisor */}
         {(isAdmin || isSupervisor) && (
           <Card className="shadow-sm border-none bg-slate-50 dark:bg-slate-900">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -263,7 +290,7 @@ export default function DashboardPage() {
                   { user: "عمر خالد", action: "حفظ سورة", time: "قبل 12د", ip: "192.168.1.88" },
                   { user: "مجهول", action: "محاولة فاشلة", time: "قبل 15د", ip: "10.0.0.1", alert: true },
                 ].map((log, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm pb-3 border-b last:border-0 border-slate-100">
+                  <div key={i} className="flex items-start gap-3 text-sm pb-3 border-b last:border-0 border-slate-100" data-testid={`card-security-log-${i}`}>
                     <div className={`w-2 h-2 mt-1.5 rounded-full ${log.alert ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
                     <div className="flex-1">
                       <div className="flex justify-between">
