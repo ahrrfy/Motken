@@ -221,22 +221,14 @@ export async function registerRoutes(
   });
 
   // ==================== ACTIVITY LOGS ====================
-  app.get("/api/activity-logs", requireRole("admin", "supervisor"), async (req, res) => {
-    const currentUser = req.user!;
-    if (currentUser.role === "admin") {
-      const mosqueId = req.query.mosqueId as string | undefined;
-      if (mosqueId) {
-        const logs = await storage.getActivityLogsByMosque(mosqueId);
-        return res.json(logs);
-      }
-      const logs = await storage.getActivityLogs();
+  app.get("/api/activity-logs", requireRole("admin"), async (req, res) => {
+    const mosqueId = req.query.mosqueId as string | undefined;
+    if (mosqueId) {
+      const logs = await storage.getActivityLogsByMosque(mosqueId);
       return res.json(logs);
     }
-    if (currentUser.mosqueId) {
-      const logs = await storage.getActivityLogsByMosque(currentUser.mosqueId);
-      return res.json(logs);
-    }
-    res.json([]);
+    const logs = await storage.getActivityLogs();
+    return res.json(logs);
   });
 
   app.post("/api/activity-logs", requireAuth, async (req, res) => {
