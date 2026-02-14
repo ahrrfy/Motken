@@ -8,6 +8,7 @@ export interface User {
   username: string;
   name: string;
   role: UserRole;
+  mosqueId?: string | null;
   email?: string;
   phone?: string;
   address?: string;
