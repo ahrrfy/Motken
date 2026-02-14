@@ -19,15 +19,15 @@ export default function IDCardsPage() {
   const user = mockUsers[selectedUser as keyof typeof mockUsers];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary">بطاقات الهوية</h1>
+          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">بطاقات الهوية</h1>
           <p className="text-muted-foreground">طباعة بطاقات التعريف والـ QR Code</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
           <Select value={selectedUser} onValueChange={setSelectedUser}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="اختر المستخدم" />
             </SelectTrigger>
             <SelectContent>
@@ -43,8 +43,8 @@ export default function IDCardsPage() {
         </div>
       </div>
 
-      <div className="flex justify-center py-10 bg-muted/20 rounded-xl">
-        <div ref={componentRef} className="bg-white w-[350px] h-[550px] rounded-2xl shadow-xl overflow-hidden relative border border-gray-200 print:shadow-none print:border-none">
+      <div className="flex justify-center py-6 md:py-10 bg-muted/20 rounded-xl px-4">
+        <div ref={componentRef} className="bg-white w-[300px] sm:w-[350px] h-[480px] sm:h-[550px] rounded-2xl shadow-xl overflow-hidden relative border border-gray-200 print:shadow-none print:border-none">
           {/* Header Pattern */}
           <div className="h-32 bg-primary relative overflow-hidden">
              <div className="absolute inset-0 opacity-20 bg-[url('/images/pattern-bg.png')] bg-cover"></div>

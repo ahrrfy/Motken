@@ -24,7 +24,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-islamic-pattern p-4 font-sans" dir="rtl">
+    <div className="min-h-screen w-full flex items-center justify-center bg-islamic-pattern px-3 py-6 sm:p-4 font-sans" dir="rtl">
       <div className="absolute top-4 left-4">
         {/* Placeholder for Lang toggle */}
       </div>
