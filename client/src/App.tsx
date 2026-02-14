@@ -12,6 +12,8 @@ import DonationsPage from "@/pages/DonationsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QRScannerPage from "@/pages/QRScannerPage";
 import AssignmentsPage from "@/pages/AssignmentsPage";
+import ActivityLogsPage from "@/pages/ActivityLogsPage";
+import NotificationsPage from "@/pages/NotificationsPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -41,6 +43,12 @@ function App() {
         <Route path="/scan-qr" component={QRScannerPage} />
         <Route path="/donations" component={DonationsPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/activity-logs" component={ActivityLogsPage} />
+        <Route path="/notifications" component={NotificationsPage} />
+        
+        {/* Alias routes for clearer navigation */}
+        <Route path="/users" component={StudentsPage} /> {/* For admin, points to users managment */}
+        
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">

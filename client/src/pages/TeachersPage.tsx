@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Mail, Phone } from "lucide-react";
+import { Search, Plus, Mail, Phone, Download, Printer, Upload } from "lucide-react";
 
 const teachers = [
   { id: 1, name: "الشيخ أحمد", students: 15, specialization: "تجويد", status: "active", phone: "07701234567" },
@@ -24,10 +24,24 @@ export default function TeachersPage() {
           <h1 className="text-3xl font-bold font-serif text-primary">الأساتذة</h1>
           <p className="text-muted-foreground">إدارة هيئة التدريس والمشرفين</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90 text-white">
-          <Plus className="w-4 h-4 ml-2" />
-          إضافة أستاذ جديد
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+            <Printer className="w-4 h-4" />
+            طباعة
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Upload className="w-4 h-4" />
+            استيراد
+          </Button>
+          <Button variant="outline" className="gap-2">
+             <Download className="w-4 h-4" />
+             تصدير
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
+            <Plus className="w-4 h-4" />
+            إضافة أستاذ
+          </Button>
+        </div>
       </div>
 
       <Card>
