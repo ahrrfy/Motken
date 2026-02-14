@@ -91,14 +91,22 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   if (!user) return <div className="p-4">Please log in</div>;
 
   const SidebarHeader = () => (
-    <div className="p-4 sm:p-6 flex items-center gap-3 border-b border-sidebar-border/50 shrink-0">
-      <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl border-2 border-accent shrink-0">
-        ح
+    <div className="p-4 sm:p-6 border-b border-sidebar-border/50 shrink-0">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl border-2 border-accent shrink-0">
+          ح
+        </div>
+        <div className="min-w-0">
+          <h1 className="font-bold text-lg leading-none">الحفاظ</h1>
+          <p className="text-xs text-sidebar-foreground/60 mt-1">نظام تعليمي متكامل</p>
+        </div>
       </div>
-      <div className="min-w-0">
-        <h1 className="font-bold text-lg leading-none">الحفاظ</h1>
-        <p className="text-xs text-sidebar-foreground/60 mt-1">نظام تعليمي متكامل</p>
-      </div>
+      {user?.mosqueName && (
+        <div className="mt-3 px-2 py-1.5 bg-accent/10 rounded-md border border-accent/20 flex items-center gap-2">
+          <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
+          <span className="text-xs text-sidebar-foreground/80 truncate" data-testid="text-mosque-name">{user.mosqueName}</span>
+        </div>
+      )}
     </div>
   );
 
@@ -114,7 +122,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         )}
         <div className="flex-1 overflow-hidden min-w-0">
           <p className="text-sm font-medium truncate">{user.name}</p>
-          <p className="text-xs text-sidebar-foreground/60 truncate capitalize">{user.role}</p>
+          <p className="text-xs text-sidebar-foreground/60 truncate capitalize">{
+            user.role === "admin" ? "مدير النظام" :
+            user.role === "supervisor" ? "مشرف" :
+            user.role === "teacher" ? "أستاذ" : "طالب"
+          }</p>
         </div>
       </div>
       <div className="flex gap-2">
