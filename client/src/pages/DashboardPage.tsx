@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing, ClipboardList, Loader2 } from "lucide-react";
+import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing, ClipboardList, Loader2, GraduationCap } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Coordinates, CalculationMethod, PrayerTimes } from 'adhan';
 import { useState, useEffect } from "react";
@@ -32,17 +32,12 @@ function getBaghdadPrayerTimes() {
 }
 
 interface Stats {
-  totalStudents: number;
-  totalTeachers: number;
-  totalSupervisors: number;
+  totalStudents?: number;
+  totalTeachers?: number;
+  totalSupervisors?: number;
   totalMosques?: number;
-  totalAssignments: number;
-  completedAssignments: number;
-}
-
-interface Mosque {
-  id: string;
-  name: string;
+  totalAssignments?: number;
+  completedAssignments?: number;
 }
 
 export default function DashboardPage() {
@@ -50,7 +45,6 @@ export default function DashboardPage() {
   const [prayerTimes, setPrayerTimes] = useState(getBaghdadPrayerTimes());
   const [showNotification, setShowNotification] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [mosqueName, setMosqueName] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
@@ -61,41 +55,57 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    if (user?.role === "student") {
+      setLoadingStats(false);
+      return;
+    }
     fetch("/api/stats", { credentials: "include" })
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setStats(data); })
       .catch(() => {})
       .finally(() => setLoadingStats(false));
-
-    if (user?.mosqueId) {
-      fetch("/api/mosques", { credentials: "include" })
-        .then(res => res.ok ? res.json() : [])
-        .then((data: Mosque[]) => {
-          const m = data.find((m: Mosque) => m.id === user.mosqueId);
-          if (m) setMosqueName(m.name);
-        })
-        .catch(() => {});
-    }
-  }, [user?.mosqueId]);
+  }, [user?.role]);
 
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
   const isTeacher = user?.role === 'teacher';
   const isStudent = user?.role === 'student';
 
-  const displayStats = [
-    { title: "الطلاب النشطين", value: loadingStats ? "..." : String(stats?.totalStudents ?? 0), icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
-    { title: "الأساتذة", value: loadingStats ? "..." : String(stats?.totalTeachers ?? 0), icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-100" },
-    { title: "الواجبات المكتملة", value: loadingStats ? "..." : String(stats?.completedAssignments ?? 0), icon: CheckCircle, color: "text-amber-600", bg: "bg-amber-100" },
-    { title: "إجمالي الواجبات", value: loadingStats ? "..." : String(stats?.totalAssignments ?? 0), icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-100" },
-  ];
+  const getDisplayStats = () => {
+    if (!stats || isStudent) return [];
 
-  if (isAdmin && stats?.totalMosques !== undefined) {
-    displayStats.push(
-      { title: "المساجد", value: String(stats.totalMosques), icon: Activity, color: "text-green-700", bg: "bg-green-50" },
-      { title: "المشرفون", value: String(stats.totalSupervisors ?? 0), icon: ShieldAlert, color: "text-red-600", bg: "bg-red-50" },
-    );
-  }
+    if (isAdmin) {
+      return [
+        { title: "الطلاب", value: String(stats.totalStudents ?? 0), icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
+        { title: "الأساتذة", value: String(stats.totalTeachers ?? 0), icon: GraduationCap, color: "text-emerald-600", bg: "bg-emerald-100" },
+        { title: "المشرفون", value: String(stats.totalSupervisors ?? 0), icon: ShieldAlert, color: "text-purple-600", bg: "bg-purple-100" },
+        { title: "الجوامع", value: String(stats.totalMosques ?? 0), icon: Activity, color: "text-green-700", bg: "bg-green-50" },
+        { title: "الواجبات المكتملة", value: String(stats.completedAssignments ?? 0), icon: CheckCircle, color: "text-amber-600", bg: "bg-amber-100" },
+        { title: "إجمالي الواجبات", value: String(stats.totalAssignments ?? 0), icon: TrendingUp, color: "text-red-600", bg: "bg-red-50" },
+      ];
+    }
+
+    if (isSupervisor) {
+      return [
+        { title: "الأساتذة", value: String(stats.totalTeachers ?? 0), icon: GraduationCap, color: "text-emerald-600", bg: "bg-emerald-100" },
+        { title: "الطلاب", value: String(stats.totalStudents ?? 0), icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
+        { title: "الواجبات المكتملة", value: String(stats.completedAssignments ?? 0), icon: CheckCircle, color: "text-amber-600", bg: "bg-amber-100" },
+        { title: "إجمالي الواجبات", value: String(stats.totalAssignments ?? 0), icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-100" },
+      ];
+    }
+
+    if (isTeacher) {
+      return [
+        { title: "طلابي", value: String(stats.totalStudents ?? 0), icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
+        { title: "الواجبات المكتملة", value: String(stats.completedAssignments ?? 0), icon: CheckCircle, color: "text-amber-600", bg: "bg-amber-100" },
+        { title: "إجمالي الواجبات", value: String(stats.totalAssignments ?? 0), icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-100" },
+      ];
+    }
+
+    return [];
+  };
+
+  const displayStats = getDisplayStats();
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -124,7 +134,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif" data-testid="text-page-title">لوحة التحكم</h1>
           <div className="flex items-center gap-2 text-muted-foreground mt-1">
             <MapPin className="w-4 h-4" />
-            <p data-testid="text-mosque-name">{mosqueName || "المسجد غير محدد"}</p>
+            <p data-testid="text-mosque-name">{user?.mosqueName || (isAdmin ? "إدارة النظام" : "المسجد غير محدد")}</p>
           </div>
         </div>
 
@@ -158,21 +168,23 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-2 ${isAdmin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-3 md:gap-4`}>
-        {displayStats.map((stat, i) => (
-          <Card key={i} className="border-none shadow-sm hover:shadow-md transition-shadow" data-testid={`card-stat-${i}`}>
-            <CardContent className="p-3 md:p-6 flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs md:text-sm font-medium text-muted-foreground mb-1 truncate">{stat.title}</p>
-                <h3 className="text-lg md:text-2xl font-bold" data-testid={`text-stat-value-${i}`}>{stat.value}</h3>
-              </div>
-              <div className={`p-2 md:p-3 rounded-full ${stat.bg} shrink-0`}>
-                <stat.icon className={`w-4 h-4 md:w-6 md:h-6 ${stat.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {displayStats.length > 0 && (
+        <div className={`grid grid-cols-2 ${isAdmin ? 'lg:grid-cols-3' : 'lg:grid-cols-' + Math.min(displayStats.length, 4)} gap-3 md:gap-4`}>
+          {displayStats.map((stat, i) => (
+            <Card key={i} className="border-none shadow-sm hover:shadow-md transition-shadow" data-testid={`card-stat-${i}`}>
+              <CardContent className="p-3 md:p-6 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground mb-1 truncate">{stat.title}</p>
+                  <h3 className="text-lg md:text-2xl font-bold" data-testid={`text-stat-value-${i}`}>{loadingStats ? "..." : stat.value}</h3>
+                </div>
+                <div className={`p-2 md:p-3 rounded-full ${stat.bg} shrink-0`}>
+                  <stat.icon className={`w-4 h-4 md:w-6 md:h-6 ${stat.color}`} />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
       
       {(isTeacher || isSupervisor || isAdmin) && (
         <Card className="shadow-sm border-l-4 border-l-primary bg-white">
