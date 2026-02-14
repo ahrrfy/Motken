@@ -8,12 +8,12 @@ import LibraryPage from "@/pages/LibraryPage";
 import ReportsPage from "@/pages/ReportsPage";
 import IDCardsPage from "@/pages/IDCardsPage";
 import TeachersPage from "@/pages/TeachersPage";
-import DonationsPage from "@/pages/DonationsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QRScannerPage from "@/pages/QRScannerPage";
 import AssignmentsPage from "@/pages/AssignmentsPage";
 import ActivityLogsPage from "@/pages/ActivityLogsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
+import MosquesPage from "@/pages/MosquesPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
@@ -48,6 +48,7 @@ function App() {
     <SidebarLayout>
       <Switch>
         <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/mosques" component={MosquesPage} />
         <Route path="/students" component={StudentsPage} />
         <Route path="/teachers" component={TeachersPage} />
         <Route path="/assignments" component={AssignmentsPage} />
@@ -56,7 +57,6 @@ function App() {
         <Route path="/reports" component={ReportsPage} />
         <Route path="/id-cards" component={IDCardsPage} />
         <Route path="/scan-qr" component={QRScannerPage} />
-        <Route path="/donations" component={DonationsPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/activity-logs" component={ActivityLogsPage} />
         <Route path="/notifications" component={NotificationsPage} />

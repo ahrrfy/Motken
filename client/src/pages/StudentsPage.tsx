@@ -1,56 +1,162 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Plus, FileText, QrCode, Upload, Printer } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Search, Download, Plus, Printer, Upload, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 
-const mockStudents = [
-  { id: 1, name: "أحمد محمد", level: "الجزء 5", progress: 85, status: "active", teacher: "الشيخ عبد الله" },
-  { id: 2, name: "يوسف علي", level: "الجزء 2", progress: 45, status: "active", teacher: "الشيخ عبد الله" },
-  { id: 3, name: "عمر خالد", level: "الجزء 10", progress: 92, status: "active", teacher: "الشيخ أحمد" },
-  { id: 4, name: "سعيد حسن", level: "الجزء 1", progress: 15, status: "inactive", teacher: "الشيخ أحمد" },
-  { id: 5, name: "كريم محمود", level: "الجزء 3", progress: 60, status: "active", teacher: "الشيخ عبد الله" },
-];
+interface Student {
+  id: string;
+  username: string;
+  name: string;
+  role: string;
+  mosqueId?: string | null;
+  email?: string;
+  phone?: string;
+  address?: string;
+  avatar?: string;
+  isActive: boolean;
+}
 
 export default function StudentsPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "", password: "", name: "", email: "", phone: "", address: ""
+  });
+
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch("/api/users?role=student", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setStudents(data);
+      }
+    } catch {
+      toast({ title: "خطأ", description: "فشل في تحميل بيانات الطلاب", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchStudents(); }, []);
 
   const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(mockStudents);
+    const ws = XLSX.utils.json_to_sheet(students.map(s => ({
+      الاسم: s.name, البريد: s.email || "", الهاتف: s.phone || "", الحالة: s.isActive ? "نشط" : "متوقف"
+    })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Students");
     XLSX.writeFile(wb, "students_list.xlsx");
   };
 
-  const filteredStudents = mockStudents.filter(s => s.name.includes(searchTerm));
+  const handleAddStudent = async () => {
+    if (!formData.username || !formData.password || !formData.name) {
+      toast({ title: "خطأ", description: "يرجى تعبئة الحقول المطلوبة", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...formData, role: "student" }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
+        setDialogOpen(false);
+        setFormData({ username: "", password: "", name: "", email: "", phone: "", address: "" });
+        fetchStudents();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في إضافة الطالب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filteredStudents = students.filter(s => s.name.includes(searchTerm));
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">الطلاب</h1>
+          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الطلاب</h1>
           <p className="text-muted-foreground">إدارة بيانات الطلاب ومتابعة تقدمهم</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+          <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print">
             <Printer className="w-4 h-4" />
             طباعة
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" data-testid="button-import">
             <Upload className="w-4 h-4" />
             استيراد
           </Button>
-          <Button variant="outline" onClick={handleExport} className="gap-2">
+          <Button variant="outline" onClick={handleExport} className="gap-2" data-testid="button-export">
             <Download className="w-4 h-4" />
             تصدير
           </Button>
-          <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
-            <Plus className="w-4 h-4" />
-            إضافة طالب
-          </Button>
+          {user?.role === "teacher" && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary hover:bg-primary/90 text-white gap-2" data-testid="button-add-student">
+                  <Plus className="w-4 h-4" />
+                  إضافة طالب
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>إضافة طالب جديد</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label>اسم المستخدم *</Label>
+                    <Input data-testid="input-username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>كلمة المرور *</Label>
+                    <Input data-testid="input-password" type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>الاسم الكامل *</Label>
+                    <Input data-testid="input-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>البريد الإلكتروني</Label>
+                    <Input data-testid="input-email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>الهاتف</Label>
+                    <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>العنوان</Label>
+                    <Input data-testid="input-address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                  </div>
+                  <Button onClick={handleAddStudent} disabled={submitting} className="w-full" data-testid="button-submit-student">
+                    {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                    إضافة الطالب
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -60,58 +166,58 @@ export default function StudentsPage() {
             <CardTitle className="text-lg">قائمة الطلاب</CardTitle>
             <div className="relative w-64">
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="بحث عن طالب..." 
-                className="pr-8" 
+              <Input
+                placeholder="بحث عن طالب..."
+                className="pr-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                data-testid="input-search"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-right">الاسم</TableHead>
-                <TableHead className="text-right">المستوى الحالي</TableHead>
-                <TableHead className="text-right hidden sm:table-cell">الأستاذ المشرف</TableHead>
-                <TableHead className="text-right">التقدم</TableHead>
-                <TableHead className="text-right">الحالة</TableHead>
-                <TableHead className="text-right">إجراءات</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredStudents.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell>{student.level}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{student.teacher}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden w-24">
-                        <div className="bg-primary h-full" style={{ width: `${student.progress}%` }} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{student.progress}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={student.status === "active" ? "default" : "destructive"} className={student.status === "active" ? "bg-green-100 text-green-700 hover:bg-green-200 border-none" : ""}>
-                      {student.status === "active" ? "نشط" : "متوقف"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" title="التفاصيل"><FileText className="w-4 h-4 text-blue-600" /></Button>
-                      <Button variant="ghost" size="icon" title="الهوية"><QrCode className="w-4 h-4 text-purple-600" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12" data-testid="status-loading">
+              <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
+              <span>جاري التحميل...</span>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground" data-testid="status-empty">
+              لا توجد بيانات
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">الاسم</TableHead>
+                    <TableHead className="text-right">البريد</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
+                    <TableHead className="text-right">الحالة</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStudents.map((student) => (
+                    <TableRow key={student.id} data-testid={`row-student-${student.id}`}>
+                      <TableCell className="font-medium" data-testid={`text-name-${student.id}`}>{student.name}</TableCell>
+                      <TableCell data-testid={`text-email-${student.id}`}>{student.email || "—"}</TableCell>
+                      <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>{student.phone || "—"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={student.isActive ? "default" : "destructive"}
+                          className={student.isActive ? "bg-green-100 text-green-700 hover:bg-green-200 border-none" : ""}
+                          data-testid={`status-active-${student.id}`}
+                        >
+                          {student.isActive ? "نشط" : "متوقف"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
