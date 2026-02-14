@@ -65,7 +65,7 @@ export default function DashboardPage() {
   const displayStats = isAdmin ? [...stats, ...adminStats] : stats;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Student Notification Alert */}
       {isStudent && showNotification && (
         <Alert className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
@@ -90,7 +90,7 @@ export default function DashboardPage() {
       {/* Top Bar with Location & Prayer Times */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-card p-4 rounded-xl shadow-sm border">
         <div>
-          <h1 className="text-3xl font-bold text-foreground font-serif">لوحة التحكم</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif">لوحة التحكم</h1>
           <div className="flex items-center gap-2 text-muted-foreground mt-1">
             <MapPin className="w-4 h-4" />
             <p>جامع النور الكبير - بغداد (الوقف السني)</p>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Prayer Times Strip */}
-        <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-2 rounded-lg border border-primary/10 w-full xl:w-auto overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-2 rounded-lg border border-primary/10 w-full xl:w-auto overflow-x-auto scrollbar-thin">
           <div className="flex items-center gap-2 px-3 border-l border-primary/20">
              <Clock className="w-5 h-5 text-primary" />
              <span className="font-bold text-primary text-sm whitespace-nowrap">أوقات الصلاة (بغداد):</span>
@@ -129,16 +129,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-3 xl:grid-cols-3' : 'lg:grid-cols-4'} gap-4`}>
+      <div className={`grid grid-cols-2 ${isAdmin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-3 md:gap-4`}>
         {displayStats.map((stat, i) => (
           <Card key={i} className="border-none shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</p>
-                <h3 className="text-2xl font-bold">{stat.value}</h3>
+            <CardContent className="p-3 md:p-6 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm font-medium text-muted-foreground mb-1 truncate">{stat.title}</p>
+                <h3 className="text-lg md:text-2xl font-bold">{stat.value}</h3>
               </div>
-              <div className={`p-3 rounded-full ${stat.bg}`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
+              <div className={`p-2 md:p-3 rounded-full ${stat.bg} shrink-0`}>
+                <stat.icon className={`w-4 h-4 md:w-6 md:h-6 ${stat.color}`} />
               </div>
             </CardContent>
           </Card>

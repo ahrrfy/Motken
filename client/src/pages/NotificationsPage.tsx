@@ -12,10 +12,10 @@ export default function NotificationsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary">الإشعارات والتنبيهات</h1>
+          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">الإشعارات والتنبيهات</h1>
           <p className="text-muted-foreground">مركز الرسائل والتنبيهات الخاص بك</p>
         </div>
         <Button variant="outline" className="gap-2">

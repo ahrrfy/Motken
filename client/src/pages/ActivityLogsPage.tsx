@@ -26,13 +26,13 @@ export default function ActivityLogsPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary">سجل الحركات</h1>
+          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">سجل الحركات</h1>
           <p className="text-muted-foreground">مراقبة وتتبع جميع العمليات داخل النظام</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <Button variant="outline" className="gap-2">
             <Printer className="w-4 h-4" />
             طباعة السجل
@@ -75,7 +75,8 @@ export default function ActivityLogsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 md:p-6">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -113,6 +114,7 @@ export default function ActivityLogsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
