@@ -16,7 +16,10 @@ import {
   CreditCard,
   QrCode,
   Scan,
-  CalendarCheck
+  CalendarCheck,
+  Bell,
+  Activity,
+  UserCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -36,16 +39,27 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   if (!user) return <div className="p-4">Please log in</div>;
 
   const navItems = [
-    { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
-    { href: "/students", label: "الطلاب", icon: Users, roles: ["admin", "teacher", "supervisor"] },
-    { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["admin", "supervisor"] },
+    { href: "/dashboard", label: "لوحات التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
+    { href: "/settings?tab=profile", label: "معلومات الحساب", icon: UserCircle, roles: ["admin", "teacher", "student", "supervisor"] },
+    { href: "/users", label: "حسابات المستخدمين", icon: Users, roles: ["admin"] }, 
+    { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },
+    
+    // Academic Section
+    { href: "/students", label: "الطلاب", icon: Users, roles: ["teacher", "supervisor"] },
+    { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["supervisor"] },
     { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
     { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
+    
+    // Services
     { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
-    { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },
     { href: "/donations", label: "التبرعات", icon: CreditCard, roles: ["admin"] },
     { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin", "teacher", "supervisor"] },
     { href: "/scan-qr", label: "مسح QR (أمني)", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
+    
+    // System Logs & Notifications
+    { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin", "supervisor"] },
+    { href: "/notifications", label: "الإشعارات والتنبيهات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
+    
     { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
   ];
 
@@ -54,8 +68,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir="rtl">
       {/* Sidebar */}
-      <aside className="w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col border-l border-sidebar-border shadow-xl z-10">
-        <div className="p-6 flex items-center gap-3 border-b border-sidebar-border/50">
+      <aside className="w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col border-l border-sidebar-border shadow-xl z-10 overflow-y-auto">
+        <div className="p-6 flex items-center gap-3 border-b border-sidebar-border/50 shrink-0">
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl border-2 border-accent">
             ح
           </div>
@@ -71,7 +85,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               <div
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 group cursor-pointer",
-                  location === item.href
+                  location === item.href || (location.startsWith(item.href) && item.href !== '/')
                     ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm translate-x-[-2px]"
                     : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground text-sidebar-foreground/80"
                 )}
@@ -83,7 +97,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           ))}
         </div>
 
-        <div className="p-4 border-t border-sidebar-border/50">
+        <div className="p-4 border-t border-sidebar-border/50 shrink-0">
           <div className="flex items-center gap-3 mb-4 px-2">
             <img src={user.avatar} alt="User" className="w-9 h-9 rounded-full border border-sidebar-border" />
             <div className="flex-1 overflow-hidden">

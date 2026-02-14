@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Plus, FileText, QrCode } from "lucide-react";
+import { Search, Download, Plus, FileText, QrCode, Upload, Printer } from "lucide-react";
 import * as XLSX from 'xlsx';
 
 const mockStudents = [
@@ -34,14 +34,22 @@ export default function StudentsPage() {
           <h1 className="text-3xl font-bold font-serif text-primary">الطلاب</h1>
           <p className="text-muted-foreground">إدارة بيانات الطلاب ومتابعة تقدمهم</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 ml-2" />
-            تصدير Excel
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+            <Printer className="w-4 h-4" />
+            طباعة
           </Button>
-          <Button className="bg-primary hover:bg-primary/90 text-white">
-            <Plus className="w-4 h-4 ml-2" />
-            إضافة طالب جديد
+          <Button variant="outline" className="gap-2">
+            <Upload className="w-4 h-4" />
+            استيراد
+          </Button>
+          <Button variant="outline" onClick={handleExport} className="gap-2">
+            <Download className="w-4 h-4" />
+            تصدير
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
+            <Plus className="w-4 h-4" />
+            إضافة طالب
           </Button>
         </div>
       </div>
