@@ -40,7 +40,7 @@ const navItems = [
   { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin", "teacher", "supervisor"] },
   { href: "/scan-qr", label: "مسح QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
-  { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin", "supervisor"] },
+  { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin"] },
   { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin"] },
 ];
