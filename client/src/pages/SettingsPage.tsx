@@ -64,7 +64,13 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4 mb-6">
-                <img src={user?.avatar} alt="Avatar" className="w-20 h-20 rounded-full border-2 border-primary" />
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-20 h-20 rounded-full border-2 border-primary" />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl">
+                    {user?.name?.charAt(0)}
+                  </div>
+                )}
                 <Button variant="outline">تغيير الصورة</Button>
               </div>
               
