@@ -14,6 +14,7 @@ import AssignmentsPage from "@/pages/AssignmentsPage";
 import ActivityLogsPage from "@/pages/ActivityLogsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import MosquesPage from "@/pages/MosquesPage";
+import AllUsersPage from "@/pages/AllUsersPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
@@ -60,7 +61,7 @@ function App() {
         <Route path="/settings" component={SettingsPage} />
         <Route path="/activity-logs" component={ActivityLogsPage} />
         <Route path="/notifications" component={NotificationsPage} />
-        <Route path="/users" component={StudentsPage} />
+        <Route path="/users" component={AllUsersPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">

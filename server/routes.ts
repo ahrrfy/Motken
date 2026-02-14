@@ -98,7 +98,7 @@ export async function registerRoutes(
       const targetRole = req.body.role;
 
       if (currentUser.role === "admin") {
-        if (!["supervisor", "teacher", "student"].includes(targetRole)) {
+        if (!["admin", "supervisor", "teacher", "student"].includes(targetRole)) {
           return res.status(400).json({ message: "دور المستخدم غير صحيح" });
         }
       } else if (currentUser.role === "supervisor") {
@@ -133,28 +133,27 @@ export async function registerRoutes(
       return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
     }
 
-    if (currentUser.role === "admin" || currentUser.id === req.params.id) {
-      const updated = await storage.updateUser(req.params.id, req.body);
-      if (!updated) return res.status(404).json({ message: "المستخدم غير موجود" });
-      const { password, ...safe } = updated;
-      return res.json(safe);
+    const canEdit =
+      currentUser.role === "admin" ||
+      currentUser.id === req.params.id ||
+      (currentUser.role === "supervisor" && ["teacher", "student"].includes(targetUser.role)) ||
+      (currentUser.role === "teacher" && targetUser.role === "student");
+
+    if (!canEdit) {
+      return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
     }
 
-    if (currentUser.role === "supervisor" && ["teacher", "student"].includes(targetUser.role)) {
-      const updated = await storage.updateUser(req.params.id, req.body);
-      if (!updated) return res.status(404).json({ message: "المستخدم غير موجود" });
-      const { password, ...safe } = updated;
-      return res.json(safe);
+    const updateData = { ...req.body };
+    if (updateData.password) {
+      updateData.password = await hashPassword(updateData.password);
+    } else {
+      delete updateData.password;
     }
 
-    if (currentUser.role === "teacher" && targetUser.role === "student") {
-      const updated = await storage.updateUser(req.params.id, req.body);
-      if (!updated) return res.status(404).json({ message: "المستخدم غير موجود" });
-      const { password, ...safe } = updated;
-      return res.json(safe);
-    }
-
-    return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
+    const updated = await storage.updateUser(req.params.id, updateData);
+    if (!updated) return res.status(404).json({ message: "المستخدم غير موجود" });
+    const { password, ...safe } = updated;
+    return res.json(safe);
   });
 
   app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {

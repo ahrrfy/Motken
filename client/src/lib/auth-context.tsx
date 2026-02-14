@@ -9,6 +9,7 @@ export interface User {
   name: string;
   role: UserRole;
   mosqueId?: string | null;
+  mosqueName?: string | null;
   email?: string;
   phone?: string;
   address?: string;

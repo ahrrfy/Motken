@@ -99,13 +99,18 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/auth/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: SelectUser | false, info: any) => {
+    passport.authenticate("local", async (err: any, user: SelectUser | false, info: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: info?.message || "فشل تسجيل الدخول" });
-      req.login(user, (err) => {
+      req.login(user, async (err) => {
         if (err) return next(err);
         const { password, ...safeUser } = user;
-        return res.json(safeUser);
+        let mosqueName = null;
+        if (user.mosqueId) {
+          const mosque = await storage.getMosque(user.mosqueId);
+          mosqueName = mosque?.name || null;
+        }
+        return res.json({ ...safeUser, mosqueName });
       });
     })(req, res, next);
   });
@@ -117,12 +122,17 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "غير مسجل الدخول" });
     }
     const { password, ...safeUser } = req.user!;
-    res.json(safeUser);
+    let mosqueName = null;
+    if (req.user!.mosqueId) {
+      const mosque = await storage.getMosque(req.user!.mosqueId);
+      mosqueName = mosque?.name || null;
+    }
+    res.json({ ...safeUser, mosqueName });
   });
 }
 
