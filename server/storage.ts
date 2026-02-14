@@ -1,12 +1,13 @@
 import {
   type User, type InsertUser,
+  type Mosque, type InsertMosque,
   type Assignment, type InsertAssignment,
   type ActivityLog, type InsertActivityLog,
   type Notification, type InsertNotification,
-  users, assignments, activityLogs, notifications,
+  users, mosques, assignments, activityLogs, notifications,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, ilike } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -14,10 +15,19 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUsers(): Promise<User[]>;
   getUsersByRole(role: string): Promise<User[]>;
+  getUsersByMosque(mosqueId: string): Promise<User[]>;
+  getUsersByMosqueAndRole(mosqueId: string, role: string): Promise<User[]>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
 
+  getMosque(id: string): Promise<Mosque | undefined>;
+  getMosques(): Promise<Mosque[]>;
+  createMosque(mosque: InsertMosque): Promise<Mosque>;
+  updateMosque(id: string, data: Partial<InsertMosque>): Promise<Mosque | undefined>;
+  deleteMosque(id: string): Promise<void>;
+
   getAssignments(): Promise<Assignment[]>;
+  getAssignmentsByMosque(mosqueId: string): Promise<Assignment[]>;
   getAssignmentsByStudent(studentId: string): Promise<Assignment[]>;
   getAssignmentsByTeacher(teacherId: string): Promise<Assignment[]>;
   createAssignment(a: InsertAssignment): Promise<Assignment>;
@@ -25,6 +35,7 @@ export interface IStorage {
   deleteAssignment(id: string): Promise<void>;
 
   getActivityLogs(): Promise<ActivityLog[]>;
+  getActivityLogsByMosque(mosqueId: string): Promise<ActivityLog[]>;
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
 
   getNotifications(userId: string): Promise<Notification[]>;
@@ -57,6 +68,16 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users).where(eq(users.role, role as any)).orderBy(desc(users.createdAt));
   }
 
+  async getUsersByMosque(mosqueId: string): Promise<User[]> {
+    return db.select().from(users).where(eq(users.mosqueId, mosqueId)).orderBy(desc(users.createdAt));
+  }
+
+  async getUsersByMosqueAndRole(mosqueId: string, role: string): Promise<User[]> {
+    return db.select().from(users).where(
+      and(eq(users.mosqueId, mosqueId), eq(users.role, role as any))
+    ).orderBy(desc(users.createdAt));
+  }
+
   async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
@@ -66,8 +87,35 @@ export class DatabaseStorage implements IStorage {
     await db.delete(users).where(eq(users.id, id));
   }
 
+  async getMosque(id: string): Promise<Mosque | undefined> {
+    const [mosque] = await db.select().from(mosques).where(eq(mosques.id, id));
+    return mosque;
+  }
+
+  async getMosques(): Promise<Mosque[]> {
+    return db.select().from(mosques).orderBy(desc(mosques.createdAt));
+  }
+
+  async createMosque(mosque: InsertMosque): Promise<Mosque> {
+    const [m] = await db.insert(mosques).values(mosque).returning();
+    return m;
+  }
+
+  async updateMosque(id: string, data: Partial<InsertMosque>): Promise<Mosque | undefined> {
+    const [m] = await db.update(mosques).set(data).where(eq(mosques.id, id)).returning();
+    return m;
+  }
+
+  async deleteMosque(id: string): Promise<void> {
+    await db.delete(mosques).where(eq(mosques.id, id));
+  }
+
   async getAssignments(): Promise<Assignment[]> {
     return db.select().from(assignments).orderBy(desc(assignments.createdAt));
+  }
+
+  async getAssignmentsByMosque(mosqueId: string): Promise<Assignment[]> {
+    return db.select().from(assignments).where(eq(assignments.mosqueId, mosqueId)).orderBy(desc(assignments.createdAt));
   }
 
   async getAssignmentsByStudent(studentId: string): Promise<Assignment[]> {
@@ -94,6 +142,10 @@ export class DatabaseStorage implements IStorage {
 
   async getActivityLogs(): Promise<ActivityLog[]> {
     return db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt));
+  }
+
+  async getActivityLogsByMosque(mosqueId: string): Promise<ActivityLog[]> {
+    return db.select().from(activityLogs).where(eq(activityLogs.mosqueId, mosqueId)).orderBy(desc(activityLogs.createdAt));
   }
 
   async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {

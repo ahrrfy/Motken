@@ -7,6 +7,24 @@ export const roleEnum = pgEnum("user_role", ["admin", "teacher", "student", "sup
 export const assignmentStatusEnum = pgEnum("assignment_status", ["pending", "done", "cancelled"]);
 export const verseStatusEnum = pgEnum("verse_status", ["memorized", "review", "new"]);
 
+// ==================== MOSQUES ====================
+export const mosques = pgTable("mosques", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  city: text("city"),
+  address: text("address"),
+  phone: text("phone"),
+  imam: text("imam"),
+  description: text("description"),
+  image: text("image"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertMosqueSchema = createInsertSchema(mosques).omit({ id: true, createdAt: true });
+export type InsertMosque = z.infer<typeof insertMosqueSchema>;
+export type Mosque = typeof mosques.$inferSelect;
+
 // ==================== USERS ====================
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -14,6 +32,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   role: roleEnum("role").notNull().default("student"),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
   email: text("email"),
   phone: text("phone"),
   address: text("address"),
@@ -26,26 +45,12 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-// ==================== MOSQUES ====================
-export const mosques = pgTable("mosques", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  address: text("address"),
-  phone: text("phone"),
-  imam: text("imam"),
-  description: text("description"),
-  image: text("image"),
-});
-
-export const insertMosqueSchema = createInsertSchema(mosques).omit({ id: true });
-export type InsertMosque = z.infer<typeof insertMosqueSchema>;
-export type Mosque = typeof mosques.$inferSelect;
-
 // ==================== ASSIGNMENTS ====================
 export const assignments = pgTable("assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   studentId: varchar("student_id").notNull().references(() => users.id),
   teacherId: varchar("teacher_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
   surahName: text("surah_name").notNull(),
   fromVerse: integer("from_verse").notNull(),
   toVerse: integer("to_verse").notNull(),
@@ -64,6 +69,7 @@ export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
   userName: text("user_name").notNull(),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
   action: text("action").notNull(),
   module: text("module").notNull(),
   details: text("details"),
@@ -80,6 +86,7 @@ export type ActivityLog = typeof activityLogs.$inferSelect;
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
   title: text("title").notNull(),
   message: text("message").notNull(),
   type: text("type").notNull().default("info"),
