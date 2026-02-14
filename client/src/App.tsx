@@ -10,6 +10,7 @@ import IDCardsPage from "@/pages/IDCardsPage";
 import TeachersPage from "@/pages/TeachersPage";
 import DonationsPage from "@/pages/DonationsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import QRScannerPage from "@/pages/QRScannerPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -35,6 +36,7 @@ function App() {
         <Route path="/library" component={LibraryPage} />
         <Route path="/reports" component={ReportsPage} />
         <Route path="/id-cards" component={IDCardsPage} />
+        <Route path="/scan-qr" component={QRScannerPage} />
         <Route path="/donations" component={DonationsPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/" component={DashboardPage} />
