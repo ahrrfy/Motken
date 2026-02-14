@@ -15,7 +15,8 @@ import {
   Library,
   CreditCard,
   QrCode,
-  Scan
+  Scan,
+  CalendarCheck
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -38,6 +39,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
     { href: "/students", label: "الطلاب", icon: Users, roles: ["admin", "teacher", "supervisor"] },
     { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["admin", "supervisor"] },
+    { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
     { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
     { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
     { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },

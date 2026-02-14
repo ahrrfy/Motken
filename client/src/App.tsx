@@ -11,6 +11,7 @@ import TeachersPage from "@/pages/TeachersPage";
 import DonationsPage from "@/pages/DonationsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QRScannerPage from "@/pages/QRScannerPage";
+import AssignmentsPage from "@/pages/AssignmentsPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -32,6 +33,7 @@ function App() {
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/students" component={StudentsPage} />
         <Route path="/teachers" component={TeachersPage} />
+        <Route path="/assignments" component={AssignmentsPage} />
         <Route path="/quran" component={QuranTracker} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/reports" component={ReportsPage} />
