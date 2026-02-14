@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Download, Plus, Printer, Upload, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
@@ -17,6 +18,7 @@ interface Student {
   name: string;
   role: string;
   mosqueId?: string | null;
+  teacherId?: string | null;
   email?: string;
   phone?: string;
   address?: string;
@@ -24,37 +26,55 @@ interface Student {
   isActive: boolean;
 }
 
+interface Teacher {
+  id: string;
+  name: string;
+  username: string;
+}
+
 export default function StudentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [newTeacherId, setNewTeacherId] = useState("");
   const [formData, setFormData] = useState({
     username: "", password: "", name: "", email: "", phone: "", address: ""
   });
 
-  const fetchStudents = async () => {
+  const isSupervisor = user?.role === "supervisor";
+  const isTeacher = user?.role === "teacher";
+
+  const fetchData = async () => {
     try {
-      const res = await fetch("/api/users?role=student", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setStudents(data);
-      }
+      const [studentsRes, teachersRes] = await Promise.all([
+        fetch("/api/users?role=student", { credentials: "include" }),
+        isSupervisor ? fetch("/api/users?role=teacher", { credentials: "include" }) : Promise.resolve(null),
+      ]);
+      if (studentsRes.ok) setStudents(await studentsRes.json());
+      if (teachersRes?.ok) setTeachers(await teachersRes.json());
     } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل بيانات الطلاب", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل في تحميل البيانات", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchStudents(); }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleExport = () => {
     const ws = XLSX.utils.json_to_sheet(students.map(s => ({
-      الاسم: s.name, البريد: s.email || "", الهاتف: s.phone || "", الحالة: s.isActive ? "نشط" : "متوقف"
+      الاسم: s.name,
+      البريد: s.email || "",
+      الهاتف: s.phone || "",
+      الأستاذ: getTeacherName(s.teacherId),
+      الحالة: s.isActive ? "نشط" : "متوقف"
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Students");
@@ -78,7 +98,7 @@ export default function StudentsPage() {
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
         setFormData({ username: "", password: "", name: "", email: "", phone: "", address: "" });
-        fetchStudents();
+        fetchData();
       } else {
         const err = await res.json();
         toast({ title: "خطأ", description: err.message || "فشل في إضافة الطالب", variant: "destructive" });
@@ -90,7 +110,46 @@ export default function StudentsPage() {
     }
   };
 
-  const filteredStudents = students.filter(s => s.name.includes(searchTerm));
+  const handleTransfer = async () => {
+    if (!selectedStudent || !newTeacherId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/users/${selectedStudent.id}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ newTeacherId }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: `تم نقل الطالب ${selectedStudent.name} بنجاح` });
+        setTransferDialogOpen(false);
+        setSelectedStudent(null);
+        setNewTeacherId("");
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getTeacherName = (teacherId?: string | null) => {
+    if (!teacherId) return "غير محدد";
+    const teacher = teachers.find(t => t.id === teacherId);
+    return teacher?.name || "غير محدد";
+  };
+
+  const openTransferDialog = (student: Student) => {
+    setSelectedStudent(student);
+    setNewTeacherId("");
+    setTransferDialogOpen(true);
+  };
+
+  const filteredStudents = students.filter(s => s.name.includes(searchTerm) || s.username.includes(searchTerm));
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -112,7 +171,7 @@ export default function StudentsPage() {
             <Download className="w-4 h-4" />
             تصدير
           </Button>
-          {user?.role === "teacher" && (
+          {isTeacher && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-primary hover:bg-primary/90 text-white gap-2" data-testid="button-add-student">
@@ -127,11 +186,11 @@ export default function StudentsPage() {
                 <div className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label>اسم المستخدم *</Label>
-                    <Input data-testid="input-username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+                    <Input data-testid="input-username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} dir="ltr" />
                   </div>
                   <div className="space-y-2">
                     <Label>كلمة المرور *</Label>
-                    <Input data-testid="input-password" type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                    <Input data-testid="input-password" type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} dir="ltr" />
                   </div>
                   <div className="space-y-2">
                     <Label>الاسم الكامل *</Label>
@@ -139,11 +198,11 @@ export default function StudentsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>البريد الإلكتروني</Label>
-                    <Input data-testid="input-email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    <Input data-testid="input-email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} dir="ltr" />
                   </div>
                   <div className="space-y-2">
                     <Label>الهاتف</Label>
-                    <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                    <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" />
                   </div>
                   <div className="space-y-2">
                     <Label>العنوان</Label>
@@ -163,7 +222,7 @@ export default function StudentsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">قائمة الطلاب</CardTitle>
+            <CardTitle className="text-lg">قائمة الطلاب ({filteredStudents.length})</CardTitle>
             <div className="relative w-64">
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -194,15 +253,32 @@ export default function StudentsPage() {
                     <TableHead className="text-right">الاسم</TableHead>
                     <TableHead className="text-right">البريد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
+                    {isSupervisor && <TableHead className="text-right">الأستاذ</TableHead>}
                     <TableHead className="text-right">الحالة</TableHead>
+                    {isSupervisor && <TableHead className="text-center">إجراءات</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStudents.map((student) => (
                     <TableRow key={student.id} data-testid={`row-student-${student.id}`}>
-                      <TableCell className="font-medium" data-testid={`text-name-${student.id}`}>{student.name}</TableCell>
+                      <TableCell className="font-medium" data-testid={`text-name-${student.id}`}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                            {student.name?.charAt(0)}
+                          </div>
+                          {student.name}
+                        </div>
+                      </TableCell>
                       <TableCell data-testid={`text-email-${student.id}`}>{student.email || "—"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>{student.phone || "—"}</TableCell>
+                      {isSupervisor && (
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <GraduationCap className="w-3.5 h-3.5" />
+                            {getTeacherName(student.teacherId)}
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Badge
                           variant={student.isActive ? "default" : "destructive"}
@@ -212,6 +288,20 @@ export default function StudentsPage() {
                           {student.isActive ? "نشط" : "متوقف"}
                         </Badge>
                       </TableCell>
+                      {isSupervisor && (
+                        <TableCell className="text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-xs"
+                            onClick={() => openTransferDialog(student)}
+                            data-testid={`button-transfer-${student.id}`}
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                            نقل
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -220,6 +310,46 @@ export default function StudentsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>نقل طالب إلى أستاذ آخر</DialogTitle>
+          </DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-4 mt-4">
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-sm text-muted-foreground">الطالب:</p>
+                <p className="font-bold text-lg">{selectedStudent.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  الأستاذ الحالي: <span className="font-medium text-foreground">{getTeacherName(selectedStudent.teacherId)}</span>
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>الأستاذ الجديد *</Label>
+                <Select value={newTeacherId} onValueChange={setNewTeacherId}>
+                  <SelectTrigger data-testid="select-new-teacher">
+                    <SelectValue placeholder="اختر الأستاذ الجديد" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers
+                      .filter(t => t.id !== selectedStudent.teacherId)
+                      .map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">سيتم نقل جميع واجبات الطالب إلى الأستاذ الجديد أيضاً.</p>
+              <Button onClick={handleTransfer} disabled={submitting || !newTeacherId} className="w-full" data-testid="button-confirm-transfer">
+                {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                تأكيد النقل
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
