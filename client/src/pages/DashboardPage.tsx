@@ -1,24 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck } from "lucide-react";
+import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Coordinates, CalculationMethod, PrayerTimes } from 'adhan';
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Helper to get simulated prayer times for Baghdad
 function getBaghdadPrayerTimes() {
   // Baghdad Coordinates
   const coordinates = new Coordinates(33.3152, 44.3661); 
   const date = new Date();
-  // Using Muslim World League as a proxy or custom if needed, usually local authorities in Iraq follow specific conventions
-  // CalculationMethod.MuslimWorldLeague is a standard approximation if specific Iraqi one isn't in Adhan.js presets, 
-  // but we can adjust parameters manually if needed. 
   const params = CalculationMethod.MuslimWorldLeague(); 
-  params.madhab = "shafi"; // or 'hanafi' depending on specific requirements mentioned "Sunni Endowment" usually Shafi/Hanafi mix but standard calculation.
+  params.madhab = "shafi"; 
   
   const prayerTimes = new PrayerTimes(coordinates, date, params);
   
-  // Format times
   const formatter = new Intl.DateTimeFormat('ar-IQ', {
     hour: 'numeric',
     minute: 'numeric',
@@ -37,9 +35,9 @@ function getBaghdadPrayerTimes() {
 export default function DashboardPage() {
   const { user } = useAuth();
   const [prayerTimes, setPrayerTimes] = useState(getBaghdadPrayerTimes());
+  const [showNotification, setShowNotification] = useState(true);
 
   useEffect(() => {
-    // Update prayer times every minute to keep them accurate if date changes
     const interval = setInterval(() => {
       setPrayerTimes(getBaghdadPrayerTimes());
     }, 60000);
@@ -48,6 +46,7 @@ export default function DashboardPage() {
 
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
+  const isStudent = user?.role === 'student';
 
   const stats = [
     { title: "الطلاب النشطين", value: "124", icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
@@ -65,6 +64,27 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Student Notification Alert */}
+      {isStudent && showNotification && (
+        <Alert className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+          <BellRing className="h-5 w-5 text-amber-600 animate-pulse" />
+          <AlertTitle className="text-lg font-bold mb-1 mr-2">تنبيه: موعد التسميع اقترب!</AlertTitle>
+          <AlertDescription className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mr-2">
+            <div>
+              لديك موعد تسميع <strong>سورة البقرة (الآيات 20-30)</strong> مع <strong>الشيخ أحمد</strong> بعد 15 دقيقة.
+            </div>
+            <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+               <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white border-none" onClick={() => setShowNotification(false)}>
+                 سأكون جاهزاً
+               </Button>
+               <Button size="sm" variant="outline" className="border-amber-300 hover:bg-amber-100 text-amber-800">
+                 تأجيل 5 دقائق
+               </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Top Bar with Location & Prayer Times */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-card p-4 rounded-xl shadow-sm border">
         <div>
@@ -123,11 +143,18 @@ export default function DashboardPage() {
         ))}
       </div>
       
-      {/* Charts & Monitoring Section - Only visible to relevant roles */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-sm border-none">
           <CardHeader>
-            <CardTitle className="font-serif">إحصائيات الحفظ الأسبوعي</CardTitle>
+             <div className="flex items-center justify-between">
+              <CardTitle className="font-serif">إحصائيات الحفظ الأسبوعي</CardTitle>
+              {isStudent && (
+                 <div className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full font-medium flex items-center gap-2">
+                   <Calendar className="w-4 h-4" />
+                   الواجب القادم: اليوم 04:30 م
+                 </div>
+              )}
+             </div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
