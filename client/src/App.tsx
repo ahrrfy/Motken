@@ -16,9 +16,24 @@ import ActivityLogsPage from "@/pages/ActivityLogsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
+import { Loader2 } from "lucide-react";
 
 function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-islamic-pattern" dir="rtl">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto border-2 border-primary/20">
+            <span className="text-3xl font-bold text-primary">ح</span>
+          </div>
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground text-sm">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -45,10 +60,7 @@ function App() {
         <Route path="/settings" component={SettingsPage} />
         <Route path="/activity-logs" component={ActivityLogsPage} />
         <Route path="/notifications" component={NotificationsPage} />
-        
-        {/* Alias routes for clearer navigation */}
-        <Route path="/users" component={StudentsPage} /> {/* For admin, points to users managment */}
-        
+        <Route path="/users" component={StudentsPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">

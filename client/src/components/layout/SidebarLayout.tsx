@@ -104,7 +104,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const SidebarFooter = () => (
     <div className="p-3 sm:p-4 border-t border-sidebar-border/50 shrink-0">
       <div className="flex items-center gap-3 mb-3 px-2">
-        <img src={user.avatar} alt="User" className="w-9 h-9 rounded-full border border-sidebar-border shrink-0" />
+        {user.avatar ? (
+          <img src={user.avatar} alt="User" className="w-9 h-9 rounded-full border border-sidebar-border shrink-0" />
+        ) : (
+          <div className="w-9 h-9 rounded-full border border-sidebar-border shrink-0 bg-primary/20 flex items-center justify-center text-primary-foreground font-bold text-sm">
+            {user.name?.charAt(0)}
+          </div>
+        )}
         <div className="flex-1 overflow-hidden min-w-0">
           <p className="text-sm font-medium truncate">{user.name}</p>
           <p className="text-xs text-sidebar-foreground/60 truncate capitalize">{user.role}</p>
