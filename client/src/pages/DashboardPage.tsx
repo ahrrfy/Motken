@@ -288,7 +288,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {(isAdmin || isSupervisor) && (
+        {isAdmin && (
           <Card className="shadow-sm border-none bg-slate-50 dark:bg-slate-900">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="font-serif text-base">سجل النشاط الأمني</CardTitle>
