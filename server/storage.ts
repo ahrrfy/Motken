@@ -17,6 +17,7 @@ export interface IStorage {
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByMosque(mosqueId: string): Promise<User[]>;
   getUsersByMosqueAndRole(mosqueId: string, role: string): Promise<User[]>;
+  getUsersByTeacher(teacherId: string): Promise<User[]>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
 
@@ -32,6 +33,7 @@ export interface IStorage {
   getAssignmentsByTeacher(teacherId: string): Promise<Assignment[]>;
   createAssignment(a: InsertAssignment): Promise<Assignment>;
   updateAssignment(id: string, data: Partial<InsertAssignment>): Promise<Assignment | undefined>;
+  updateAssignments(studentId: string, oldTeacherId: string | null, newTeacherId: string): Promise<void>;
   deleteAssignment(id: string): Promise<void>;
 
   getActivityLogs(): Promise<ActivityLog[]>;
@@ -75,6 +77,12 @@ export class DatabaseStorage implements IStorage {
   async getUsersByMosqueAndRole(mosqueId: string, role: string): Promise<User[]> {
     return db.select().from(users).where(
       and(eq(users.mosqueId, mosqueId), eq(users.role, role as any))
+    ).orderBy(desc(users.createdAt));
+  }
+
+  async getUsersByTeacher(teacherId: string): Promise<User[]> {
+    return db.select().from(users).where(
+      and(eq(users.teacherId, teacherId), eq(users.role, "student"))
     ).orderBy(desc(users.createdAt));
   }
 
@@ -134,6 +142,13 @@ export class DatabaseStorage implements IStorage {
   async updateAssignment(id: string, data: Partial<InsertAssignment>): Promise<Assignment | undefined> {
     const [assignment] = await db.update(assignments).set(data).where(eq(assignments.id, id)).returning();
     return assignment;
+  }
+
+  async updateAssignments(studentId: string, oldTeacherId: string | null, newTeacherId: string): Promise<void> {
+    const conditions = oldTeacherId
+      ? and(eq(assignments.studentId, studentId), eq(assignments.teacherId, oldTeacherId))
+      : eq(assignments.studentId, studentId);
+    await db.update(assignments).set({ teacherId: newTeacherId }).where(conditions);
   }
 
   async deleteAssignment(id: string): Promise<void> {

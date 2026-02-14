@@ -69,6 +69,8 @@ export async function registerRoutes(
       } else {
         result = await storage.getUsers();
       }
+    } else if (currentUser.role === "teacher") {
+      result = await storage.getUsersByTeacher(currentUser.id);
     } else if (currentUser.mosqueId) {
       if (role) {
         result = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role);
@@ -111,6 +113,7 @@ export async function registerRoutes(
           return res.status(403).json({ message: "الأستاذ يمكنه إضافة الطلاب فقط" });
         }
         req.body.mosqueId = currentUser.mosqueId;
+        req.body.teacherId = currentUser.id;
       } else {
         return res.status(403).json({ message: "غير مصرح بإنشاء حسابات" });
       }
@@ -261,12 +264,14 @@ export async function registerRoutes(
   // ==================== STATS ====================
   app.get("/api/stats", requireAuth, async (req, res) => {
     const currentUser = req.user!;
-    let usersList: User[] = [];
-    let assignmentsList: Assignment[] = [];
+
+    if (currentUser.role === "student") {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
 
     if (currentUser.role === "admin") {
-      usersList = await storage.getUsers();
-      assignmentsList = await storage.getAssignments();
+      const usersList = await storage.getUsers();
+      const assignmentsList = await storage.getAssignments();
       const mosquesList = await storage.getMosques();
       return res.json({
         totalStudents: usersList.filter(u => u.role === "student").length,
@@ -278,21 +283,71 @@ export async function registerRoutes(
       });
     }
 
-    if (currentUser.mosqueId) {
-      usersList = await storage.getUsersByMosque(currentUser.mosqueId);
-      assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
-    } else {
-      usersList = [];
-      assignmentsList = [];
+    if (currentUser.role === "teacher") {
+      const myStudents = await storage.getUsersByTeacher(currentUser.id);
+      const myAssignments = await storage.getAssignmentsByTeacher(currentUser.id);
+      return res.json({
+        totalStudents: myStudents.length,
+        totalAssignments: myAssignments.length,
+        completedAssignments: myAssignments.filter(a => a.status === "done").length,
+      });
     }
 
-    res.json({
-      totalStudents: usersList.filter(u => u.role === "student").length,
-      totalTeachers: usersList.filter(u => u.role === "teacher").length,
-      totalSupervisors: usersList.filter(u => u.role === "supervisor").length,
-      totalAssignments: assignmentsList.length,
-      completedAssignments: assignmentsList.filter(a => a.status === "done").length,
+    if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+      const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+      const assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+      return res.json({
+        totalTeachers: mosqueUsers.filter(u => u.role === "teacher").length,
+        totalStudents: mosqueUsers.filter(u => u.role === "student").length,
+        totalAssignments: assignmentsList.length,
+        completedAssignments: assignmentsList.filter(a => a.status === "done").length,
+      });
+    }
+
+    res.json({});
+  });
+
+  // ==================== TRANSFER STUDENT ====================
+  app.post("/api/users/:id/transfer", requireRole("supervisor"), async (req, res) => {
+    const currentUser = req.user!;
+    const { newTeacherId } = req.body;
+
+    if (!newTeacherId) {
+      return res.status(400).json({ message: "يرجى تحديد الأستاذ الجديد" });
+    }
+
+    const student = await storage.getUser(req.params.id);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ message: "الطالب غير موجود" });
+    }
+
+    if (student.mosqueId !== currentUser.mosqueId) {
+      return res.status(403).json({ message: "غير مصرح بنقل طالب من جامع آخر" });
+    }
+
+    const newTeacher = await storage.getUser(newTeacherId);
+    if (!newTeacher || newTeacher.role !== "teacher" || newTeacher.mosqueId !== currentUser.mosqueId) {
+      return res.status(400).json({ message: "الأستاذ الجديد غير صالح أو من جامع آخر" });
+    }
+
+    const oldTeacherId = student.teacherId;
+    const updated = await storage.updateUser(req.params.id, { teacherId: newTeacherId });
+    if (!updated) return res.status(500).json({ message: "فشل في نقل الطالب" });
+
+    await storage.updateAssignments(req.params.id, oldTeacherId, newTeacherId);
+
+    await storage.createActivityLog({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      mosqueId: currentUser.mosqueId,
+      action: `نقل الطالب ${student.name} إلى الأستاذ ${newTeacher.name}`,
+      module: "students",
+      details: `من الأستاذ ${oldTeacherId || "غير محدد"} إلى ${newTeacher.name}`,
+      status: "success",
     });
+
+    const { password, ...safe } = updated;
+    res.json(safe);
   });
 
   // ==================== SEED DATA ====================
@@ -397,11 +452,11 @@ export async function registerRoutes(
         isActive: true,
       });
 
-      const s1 = await storage.createUser({ username: "student1", password: await hashPassword("student123"), name: "عمر خالد", role: "student", mosqueId: mosque1.id, email: "omar@huffaz.iq", phone: "07901234567", isActive: true });
-      const s2 = await storage.createUser({ username: "student2", password: await hashPassword("student123"), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, email: "ahmad@huffaz.iq", phone: "07911234567", isActive: true });
-      const s3 = await storage.createUser({ username: "student3", password: await hashPassword("student123"), name: "يوسف علي", role: "student", mosqueId: mosque1.id, email: "yusuf@huffaz.iq", phone: "07921234567", isActive: true });
-      const s4 = await storage.createUser({ username: "student4", password: await hashPassword("student123"), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, email: "saeed@huffaz.iq", phone: "07931234567", isActive: true });
-      const s5 = await storage.createUser({ username: "student5", password: await hashPassword("student123"), name: "كريم محمود", role: "student", mosqueId: mosque2.id, email: "kareem@huffaz.iq", phone: "07941234567", isActive: true });
+      const s1 = await storage.createUser({ username: "student1", password: await hashPassword("student123"), name: "عمر خالد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, email: "omar@huffaz.iq", phone: "07901234567", isActive: true });
+      const s2 = await storage.createUser({ username: "student2", password: await hashPassword("student123"), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, email: "ahmad@huffaz.iq", phone: "07911234567", isActive: true });
+      const s3 = await storage.createUser({ username: "student3", password: await hashPassword("student123"), name: "يوسف علي", role: "student", mosqueId: mosque1.id, teacherId: teacher2.id, email: "yusuf@huffaz.iq", phone: "07921234567", isActive: true });
+      const s4 = await storage.createUser({ username: "student4", password: await hashPassword("student123"), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, email: "saeed@huffaz.iq", phone: "07931234567", isActive: true });
+      const s5 = await storage.createUser({ username: "student5", password: await hashPassword("student123"), name: "كريم محمود", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, email: "kareem@huffaz.iq", phone: "07941234567", isActive: true });
 
       await storage.createAssignment({
         studentId: s1.id, teacherId: teacher1.id, mosqueId: mosque1.id,

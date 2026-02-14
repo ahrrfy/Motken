@@ -33,6 +33,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   role: roleEnum("role").notNull().default("student"),
   mosqueId: varchar("mosque_id").references(() => mosques.id),
+  teacherId: varchar("teacher_id"),
   email: text("email"),
   phone: text("phone"),
   address: text("address"),
