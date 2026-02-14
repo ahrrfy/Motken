@@ -22,26 +22,27 @@ import {
   Activity,
   UserCircle,
   Menu,
-  X
+  X,
+  Building2
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", label: "لوحات التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/settings?tab=profile", label: "معلومات الحساب", icon: UserCircle, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/users", label: "حسابات المستخدمين", icon: Users, roles: ["admin"] },
+  { href: "/mosques", label: "إدارة الجوامع", icon: Building2, roles: ["admin"] },
+  { href: "/users", label: "جميع المستخدمين", icon: Users, roles: ["admin"] },
   { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },
   { href: "/students", label: "الطلاب", icon: Users, roles: ["teacher", "supervisor"] },
-  { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["supervisor"] },
-  { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
+  { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["admin", "supervisor"] },
+  { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["teacher", "supervisor"] },
   { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/donations", label: "التبرعات", icon: CreditCard, roles: ["admin"] },
   { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/scan-qr", label: "مسح QR (أمني)", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
+  { href: "/scan-qr", label: "مسح QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
   { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin", "supervisor"] },
-  { href: "/notifications", label: "الإشعارات والتنبيهات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin"] },
 ];
 
 function NavContent({ user, location, onNavigate }: { user: any; location: string; onNavigate?: () => void }) {
