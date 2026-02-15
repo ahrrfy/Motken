@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Bell, BellRing, CheckCheck, Clock, Info, Loader2, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bell, BellRing, CheckCheck, Clock, Info, Loader2, Trash2, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 
@@ -18,13 +22,37 @@ interface Notification {
   createdAt: string;
 }
 
+interface UserOption {
+  id: string;
+  name: string;
+  role: string;
+  mosqueId?: string | null;
+}
+
+interface MosqueOption {
+  id: string;
+  name: string;
+}
+
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const canDelete = user?.role === "admin" || user?.role === "supervisor";
+  const canSend = user?.role === "admin" || user?.role === "supervisor";
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const [showSendForm, setShowSendForm] = useState(false);
+  const [sendTitle, setSendTitle] = useState("");
+  const [sendMessage, setSendMessage] = useState("");
+  const [sendType, setSendType] = useState("info");
+  const [targetType, setTargetType] = useState("all");
+  const [targetUserId, setTargetUserId] = useState("");
+  const [targetMosqueId, setTargetMosqueId] = useState("");
+  const [sending, setSending] = useState(false);
+  const [usersList, setUsersList] = useState<UserOption[]>([]);
+  const [mosquesList, setMosquesList] = useState<MosqueOption[]>([]);
 
   useEffect(() => {
     fetch("/api/notifications", { credentials: "include" })
@@ -38,6 +66,56 @@ export default function NotificationsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!canSend) return;
+    fetch("/api/users", { credentials: "include" })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setUsersList(data))
+      .catch(() => {});
+    if (user?.role === "admin") {
+      fetch("/api/mosques", { credentials: "include" })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setMosquesList(data))
+        .catch(() => {});
+    }
+  }, [canSend, user?.role]);
+
+  const handleSendNotification = async () => {
+    if (!sendTitle.trim() || !sendMessage.trim()) {
+      toast({ title: "خطأ", description: "العنوان والرسالة مطلوبان", variant: "destructive" });
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch("/api/notifications/send", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: sendTitle,
+          message: sendMessage,
+          type: sendType,
+          targetType,
+          targetUserId: targetType === "user" ? targetUserId : undefined,
+          targetMosqueId: targetType === "mosque" ? targetMosqueId : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({ title: "تم", description: data.message, className: "bg-green-50 border-green-200 text-green-800" });
+      setSendTitle("");
+      setSendMessage("");
+      setSendType("info");
+      setTargetType("all");
+      setTargetUserId("");
+      setTargetMosqueId("");
+    } catch (err: any) {
+      toast({ title: "خطأ", description: err.message || "فشل في إرسال الإشعار", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
 
   const formatTime = (dateStr: string) => {
     try {
@@ -182,6 +260,115 @@ export default function NotificationsPage() {
           <p className="text-muted-foreground">مركز الرسائل والتنبيهات الخاص بك</p>
         </div>
       </div>
+
+      {canSend && (
+        <Card className="border-primary/20">
+          <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowSendForm(!showSendForm)}>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Send className="w-5 h-5 text-primary" />
+                إرسال إشعار جديد
+              </CardTitle>
+              {showSendForm ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </div>
+          </CardHeader>
+          {showSendForm && (
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>عنوان الإشعار</Label>
+                <Input
+                  placeholder="عنوان الإشعار"
+                  value={sendTitle}
+                  onChange={e => setSendTitle(e.target.value)}
+                  data-testid="input-send-title"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>نص الرسالة</Label>
+                <Textarea
+                  placeholder="نص الرسالة"
+                  value={sendMessage}
+                  onChange={e => setSendMessage(e.target.value)}
+                  rows={3}
+                  data-testid="input-send-message"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>نوع الإشعار</Label>
+                <Select value={sendType} onValueChange={setSendType}>
+                  <SelectTrigger data-testid="select-send-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="info">معلومة</SelectItem>
+                    <SelectItem value="warning">تحذير</SelectItem>
+                    <SelectItem value="urgent">عاجل</SelectItem>
+                    <SelectItem value="success">نجاح</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>الهدف</Label>
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="targetType" value="all" checked={targetType === "all"} onChange={() => setTargetType("all")} data-testid="radio-target-all" />
+                    <span className="text-sm">{user?.role === "admin" ? "جميع المستخدمين" : "جميع مستخدمي الجامع"}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="targetType" value="user" checked={targetType === "user"} onChange={() => setTargetType("user")} data-testid="radio-target-user" />
+                    <span className="text-sm">مستخدم محدد</span>
+                  </label>
+                  {user?.role === "admin" && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="targetType" value="mosque" checked={targetType === "mosque"} onChange={() => setTargetType("mosque")} data-testid="radio-target-mosque" />
+                      <span className="text-sm">جامع محدد</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+              {targetType === "user" && (
+                <div className="space-y-2">
+                  <Label>اختر المستخدم</Label>
+                  <Select value={targetUserId} onValueChange={setTargetUserId}>
+                    <SelectTrigger data-testid="select-target-user">
+                      <SelectValue placeholder="اختر مستخدم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usersList.filter(u => u.id !== user?.id).map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.role})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {targetType === "mosque" && user?.role === "admin" && (
+                <div className="space-y-2">
+                  <Label>اختر الجامع</Label>
+                  <Select value={targetMosqueId} onValueChange={setTargetMosqueId}>
+                    <SelectTrigger data-testid="select-target-mosque">
+                      <SelectValue placeholder="اختر جامع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mosquesList.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <Button
+                onClick={handleSendNotification}
+                disabled={sending || !sendTitle.trim() || !sendMessage.trim()}
+                className="w-full gap-2"
+                data-testid="button-send-notification"
+              >
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {sending ? "جاري الإرسال..." : "إرسال الإشعار"}
+              </Button>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {!loading && notifications.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border" data-testid="toolbar-notifications">

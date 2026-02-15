@@ -831,6 +831,68 @@ export async function registerRoutes(
 
 
   // ==================== NOTIFICATIONS ====================
+  app.post("/api/notifications/send", requireAuth, requireRole("admin", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { title, message, type, targetType, targetUserId, targetMosqueId } = req.body;
+      
+      if (!title || !message) {
+        return res.status(400).json({ message: "العنوان والرسالة مطلوبان" });
+      }
+      
+      const notifType = type || "info";
+      let targetUsers: any[] = [];
+      
+      if (currentUser.role === "admin") {
+        if (targetType === "all") {
+          targetUsers = await storage.getUsers();
+        } else if (targetType === "user" && targetUserId) {
+          const u = await storage.getUser(targetUserId);
+          if (u) targetUsers = [u];
+        } else if (targetType === "mosque" && targetMosqueId) {
+          targetUsers = await storage.getUsersByMosque(targetMosqueId);
+        } else {
+          return res.status(400).json({ message: "يرجى تحديد الهدف" });
+        }
+      } else if (currentUser.role === "supervisor") {
+        if (!currentUser.mosqueId) {
+          return res.status(400).json({ message: "المشرف غير مرتبط بجامع" });
+        }
+        if (targetType === "all") {
+          targetUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+        } else if (targetType === "user" && targetUserId) {
+          const u = await storage.getUser(targetUserId);
+          if (u && u.mosqueId === currentUser.mosqueId) {
+            targetUsers = [u];
+          } else {
+            return res.status(403).json({ message: "المستخدم ليس من نفس الجامع" });
+          }
+        } else {
+          return res.status(400).json({ message: "يرجى تحديد الهدف" });
+        }
+      }
+      
+      let count = 0;
+      for (const u of targetUsers) {
+        if (u.id === currentUser.id) continue;
+        await storage.createNotification({
+          userId: u.id,
+          mosqueId: u.mosqueId || currentUser.mosqueId,
+          title,
+          message,
+          type: notifType,
+          isRead: false,
+        });
+        count++;
+      }
+      
+      await logActivity(currentUser, `إرسال إشعار: ${title}`, "notifications", `${count} مستخدم`);
+      res.json({ message: `تم إرسال الإشعار إلى ${count} مستخدم` });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إرسال الإشعار" });
+    }
+  });
+
   app.get("/api/notifications", requireAuth, async (req, res) => {
     try {
       const notifs = await storage.getNotifications(req.user!.id);
