@@ -1413,7 +1413,10 @@ export async function registerRoutes(
         if (!req.isAuthenticated() || req.user!.role !== "admin") {
           return res.status(403).json({ message: "غير مصرح بالوصول" });
         }
-        return res.status(403).json({ message: "البيانات موجودة مسبقًا" });
+        const sup1Check = await storage.getUserByUsername("supervisor1");
+        if (sup1Check) {
+          return res.status(403).json({ message: "البيانات موجودة مسبقًا" });
+        }
       }
 
       const mosque1 = await storage.createMosque({
@@ -1446,7 +1449,8 @@ export async function registerRoutes(
         isActive: true,
       });
 
-      const adminUser = await storage.createUser({
+      const existingAdmin = await storage.getUserByUsername("admin");
+      const adminUser = existingAdmin || await storage.createUser({
         username: "admin",
         password: await hashPassword("admin123"),
         name: "د. عبد الله المدير",
