@@ -11,7 +11,7 @@ import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, Gradu
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from 'xlsx';
+import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
 
 interface Student {
   id: string;
@@ -74,53 +74,46 @@ export default function StudentsPage() {
   const isTeacher = user?.role === "teacher";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const data = evt.target?.result;
-        const workbook = XLSX.read(data, { type: "binary" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
-        let success = 0;
-        let failed = 0;
-        for (const row of rows) {
-          try {
-            const res = await fetch("/api/users", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({
-                name: row["الاسم"] || "",
-                username: row["اسم المستخدم"] || "",
-                password: row["كلمة المرور"] || "",
-                email: row["البريد"] || "",
-                phone: row["الهاتف"] || "",
-                address: row["العنوان"] || "",
-                role: "student",
-              }),
-            });
-            if (res.ok) success++;
-            else failed++;
-          } catch {
-            failed++;
-          }
+    try {
+      const rows = await readExcelFile(file);
+      let success = 0;
+      let failed = 0;
+      for (const row of rows) {
+        try {
+          const res = await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              name: row["الاسم"] || "",
+              username: row["اسم المستخدم"] || "",
+              password: row["كلمة المرور"] || "",
+              email: row["البريد"] || "",
+              phone: row["الهاتف"] || "",
+              address: row["العنوان"] || "",
+              role: "student",
+            }),
+          });
+          if (res.ok) success++;
+          else failed++;
+        } catch {
+          failed++;
         }
-        toast({
-          title: "نتيجة الاستيراد",
-          description: `تم استيراد ${success} طالب بنجاح${failed > 0 ? `، فشل ${failed}` : ""}`,
-          className: failed === 0 ? "bg-green-50 border-green-200 text-green-800" : undefined,
-          variant: failed > 0 && success === 0 ? "destructive" : undefined,
-        });
-        if (success > 0) fetchData();
-      } catch {
-        toast({ title: "خطأ", description: "فشل في قراءة الملف", variant: "destructive" });
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    };
-    reader.readAsBinaryString(file);
+      toast({
+        title: "نتيجة الاستيراد",
+        description: `تم استيراد ${success} طالب بنجاح${failed > 0 ? `، فشل ${failed}` : ""}`,
+        className: failed === 0 ? "bg-green-50 border-green-200 text-green-800" : undefined,
+        variant: failed > 0 && success === 0 ? "destructive" : undefined,
+      });
+      if (success > 0) fetchData();
+    } catch {
+      toast({ title: "خطأ", description: "فشل في قراءة الملف", variant: "destructive" });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const fetchData = async () => {
@@ -141,16 +134,17 @@ export default function StudentsPage() {
   useEffect(() => { fetchData(); }, []);
 
   const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(students.map(s => ({
-      الاسم: s.name,
-      البريد: s.email || "",
-      الهاتف: s.phone || "",
-      الأستاذ: getTeacherName(s.teacherId),
-      الحالة: s.isActive ? "نشط" : "متوقف"
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Students");
-    XLSX.writeFile(wb, "students_list.xlsx");
+    exportJsonToExcel(
+      students.map(s => ({
+        الاسم: s.name,
+        البريد: s.email || "",
+        الهاتف: s.phone || "",
+        الأستاذ: getTeacherName(s.teacherId),
+        الحالة: s.isActive ? "نشط" : "متوقف"
+      })),
+      "Students",
+      "students_list.xlsx",
+    );
   };
 
   const handleAddStudent = async () => {
