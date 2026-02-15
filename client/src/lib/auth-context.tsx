@@ -15,6 +15,7 @@ export interface User {
   address?: string;
   avatar?: string;
   isActive?: boolean;
+  canPrintIds?: boolean;
 }
 
 interface AuthContextType {
