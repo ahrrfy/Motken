@@ -257,7 +257,7 @@ export default function AssignmentsExamsPage() {
   };
 
   const handleCreateExam = async () => {
-    if (!examTitle || !examSelectedSurah || !examFromVerse || !examToVerse || !examDate || !examTime) {
+    if (!examTitle || !examSelectedSurah || !examFromVerse || !examToVerse || !examDate) {
       toast({ title: "خطأ", description: "يرجى تعبئة جميع الحقول المطلوبة", variant: "destructive" });
       return;
     }
@@ -294,7 +294,7 @@ export default function AssignmentsExamsPage() {
           fromVerse: fv,
           toVerse: tv,
           examDate,
-          examTime,
+          examTime: examTime || null,
           description: examDescription || null,
           isForAll,
           studentIds: isForAll ? [] : selectedStudentIds,
@@ -678,6 +678,7 @@ export default function AssignmentsExamsPage() {
                 </CardContent>
               </Card>
 
+              {!isStudent && (
               <Card className="bg-blue-50/50 border-blue-100">
                 <CardContent className="p-4 flex gap-3">
                   <div className="p-2 bg-blue-100 rounded-full h-fit text-blue-600">
@@ -691,6 +692,7 @@ export default function AssignmentsExamsPage() {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -781,25 +783,14 @@ export default function AssignmentsExamsPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>تاريخ الامتحان *</Label>
-                          <Input
-                            data-testid="input-exam-date"
-                            type="date"
-                            value={examDate}
-                            onChange={e => setExamDate(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>وقت الامتحان *</Label>
-                          <Input
-                            data-testid="input-exam-time"
-                            type="time"
-                            value={examTime}
-                            onChange={e => setExamTime(e.target.value)}
-                          />
-                        </div>
+                      <div className="space-y-2">
+                        <Label>تاريخ الامتحان (يوم) *</Label>
+                        <Input
+                          data-testid="input-exam-date"
+                          type="date"
+                          value={examDate}
+                          onChange={e => setExamDate(e.target.value)}
+                        />
                       </div>
 
                       <div className="space-y-2">
@@ -808,7 +799,7 @@ export default function AssignmentsExamsPage() {
                           data-testid="input-description"
                           value={examDescription}
                           onChange={e => setExamDescription(e.target.value)}
-                          placeholder="ملاحظات إضافية (اختياري)"
+                          placeholder="مثال: الامتحان سيكون الساعة 10:00 صباحاً بعد صلاة الضحى في قاعة المسجد"
                           rows={3}
                         />
                       </div>
@@ -913,10 +904,12 @@ export default function AssignmentsExamsPage() {
                         <CalendarLucide className="w-4 h-4 text-primary shrink-0" />
                         <span data-testid={`text-exam-date-${exam.id}`}>{formatDate(exam.examDate)}</span>
                       </div>
+                      {exam.examTime && (
                       <div className="flex items-center gap-2 text-sm">
                         <Clock className="w-4 h-4 text-primary shrink-0" />
                         <span data-testid={`text-exam-time-${exam.id}`}>{exam.examTime}</span>
                       </div>
+                      )}
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="gap-1">
                           <Users className="w-3 h-3" />
