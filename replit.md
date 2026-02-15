@@ -1,7 +1,7 @@
 # متقن (Mutqin) - Quran Memorization Management System
 
 ## Overview
-A comprehensive multi-tenant online Quran memorization management system for Islamic centers across Iraq. Features mosque-based data isolation, hierarchical role-based access control, and full Arabic RTL interface. System branded as "متقن" with logo "م".
+A comprehensive multi-tenant online Quran memorization management system for Islamic centers across Iraq. Features mosque-based data isolation, hierarchical role-based access control, and full Arabic RTL interface. System branded as "مُتْقِن" with logo "م". Supports both male and female students.
 
 ## Architecture
 - **Frontend**: React + Vite + TypeScript, Tailwind CSS, shadcn/ui components
@@ -26,29 +26,45 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - `server/routes.ts` - API routes with hierarchical permissions
 - `server/auth.ts` - Authentication setup (passport, sessions)
 - `client/src/App.tsx` - Frontend routing
-- `client/src/lib/auth-context.tsx` - Auth context with mosqueName, canPrintIds
+- `client/src/lib/auth-context.tsx` - Auth context with mosqueName, canPrintIds, gender
+- `client/src/lib/theme-context.tsx` - Theme (dark/light) and language (ar/en) context
+- `client/src/lib/translations.ts` - Arabic/English translations
+- `client/src/lib/print-utils.ts` - HTML-based print utility with Arabic/RTL support
 - `client/src/components/layout/SidebarLayout.tsx` - Main layout with sidebar
 
 ## Pages
 - DashboardPage, MosquesPage (admin), AllUsersPage (admin), StudentsPage, TeachersPage
-- AssignmentsPage (with Quran surah selector), ExamsPage, RatingsPage
-- CoursesPage (courses & certificates with graduation system)
-- QuranTracker, LibraryPage, ReportsPage, IDCardsPage (permission-based)
-- QRScannerPage, SettingsPage, ActivityLogsPage (admin), TeacherActivitiesPage (supervisor)
-- NotificationsPage
+- AssignmentsExamsPage (unified assignments + exams with tabs), RatingsPage
+- CoursesPage (courses & certificates with graduation system, Islamic certificate design)
+- QuranTracker, LibraryPage (internal reader, no external links), ReportsPage
+- IDCardsPage (permission-based), QRScannerPage, SettingsPage
+- ActivityLogsPage (admin), TeacherActivitiesPage (supervisor)
+- NotificationsPage (with bulk actions), TeacherDailyPage
 
 ## Database Tables
-- mosques, users, assignments, ratings, exams, exam_students, activity_logs, notifications
-- courses, course_students, course_teachers, certificates
+- mosques, users (with gender field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
+- activity_logs, notifications, courses, course_students, course_teachers, certificates
 
 ## Key Features
-- **Courses & Certificates**: Teachers/supervisors create courses, enroll students (specific/all teacher's/all mosque), add participating teachers, graduate students with 👨‍🎓 button, auto-generate certificates with MTQ-CERT numbers, printable certificate view
+- **Unified Assignments & Exams**: Single page with tabs for managing assignments and exams
+- **Gender Support**: Male/female selection for all users, displayed in tables and profiles
+- **Assignment Seen Status**: WhatsApp-style blue double checkmarks showing if student has seen their assignment
+- **Auto Notifications**: System automatically sends notifications when assignments, exams, or course enrollments are created
+- **Courses & Certificates**: Teachers/supervisors create courses, enroll students, graduate with professional Islamic certificate (﷽, corner decorations, gold accents, printable A4)
+- **Internal Islamic Library**: 50 books with internal reader, chapters, bookmarking, reading progress - no external links
 - **Ratings**: Supervisor rates teachers, teacher rates students (1-5 stars + honor badges)
 - **Exams**: Teachers create exams with Quran surah/verse selection, target all or specific students
 - **Print Permission**: Admin toggles `canPrintIds` for supervisors/teachers via AllUsersPage
 - **Teacher Activities**: Supervisors see only teacher-role activity logs in their mosque
+- **Teacher Daily View**: "واجبات اليوم" page showing today's assignments grouped by student
+- **Theme & Language**: Dark/light mode toggle, Arabic/English language switcher with localStorage persistence
+- **Photo Upload**: Base64 avatar upload for all users, displayed in ID cards and profiles
+- **PDF/Print**: HTML-based print with Tajawal font, Arabic RTL support, formatted print preview
 - **Quran Surah Selector**: Full 114 surahs with automatic verse count validation
 - **Student Transfer**: Supervisors can transfer students between teachers
+- **Notification Management**: Mark as read (individual/selected/all), delete (individual/selected/all)
+- **Font Size Controls**: Adjustable 12-28px with localStorage persistence
+- **Web Push Notifications**: Service Worker polling for browser notifications
 - **Footer**: "النظام وقف لله تعالى" + "برمجة وتطوير أحمد خالد الزبيدي"
 
 ## Test Credentials
@@ -67,53 +83,17 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Open Registration Removed**: No public registration endpoint; user creation only via POST /api/users with role checks
 - **Seed Endpoint**: Protected with requireRole("admin")
 - **IDOR Prevention**: All data access enforces mosque scoping and ownership checks
-  - Students: always see only their own data, query params ignored
-  - Teachers: can only access their own students and assignments
-  - Supervisors: scoped to their mosque only
-  - Admin: unrestricted
 - **Ownership Checks**: PATCH/DELETE on assignments, exams, notifications verify ownership
 - **Role Escalation Prevention**: Non-admin users cannot change role, mosqueId, isActive, canPrintIds via PATCH
 - **Input Validation**: Stars rating validated 1-5, verse numbers validated, type conversion enforced
 - **Activity Logs**: POST endpoint removed; logging only internal via logActivity()
 - **Cross-Mosque Isolation**: Supervisors/teachers cannot access data from other mosques
 
-## Recent Changes (Feb 15, 2026)
-- **SECURITY AUDIT**: Comprehensive security audit fixing 18 vulnerabilities
-  - Removed open /api/auth/register endpoint (critical)
-  - Added auth to /api/seed endpoint (critical)
-  - Fixed IDOR in assignments, ratings, exams, notifications
-  - Added ownership checks on PATCH/DELETE for assignments and exams
-  - Prevented role escalation via user PATCH
-  - Added login rate limiting (5 attempts/15min)
-  - Blocked inactive user login
-  - Secured session cookies (secure, sameSite)
-  - Auto-generated session secret
-  - Validated rating stars (1-5)
-  - Removed public activity-logs POST endpoint
-  - Added getNotification() to storage for ownership verification
-- System rebranded to "مُتْقِن" (Mutqin) with proper tashkeel
-- Added DateTimePrayerBar component (client/src/components/DateTimePrayerBar.tsx)
-  - Shows Hijri and Gregorian date with current time (live clock)
-  - Prayer times calculated via adhan library (Baghdad coordinates)
-  - Highlights next prayer with countdown timer
-  - Shows alert notification when prayer time arrives
-  - Integrated into SidebarLayout as a persistent bar above content
-- Admin settings page hides "mosque data" tab (admin has no mosque)
-- Sheet component includes hidden DialogTitle/Description for accessibility
-- Fixed unused imports across pages
-- Added ratings system (supervisor→teacher, teacher→student) with honor badges
-- Added exams management with Quran surah selector
-- Added teacher activities page for supervisors
-- Added print permission system (admin toggles canPrintIds)
-- Updated assignments page with full 114 Quran surah selector and verse validation
-- Added footer across all pages
-- Created complete Quran surahs dataset (114 surahs)
-- Removed all mock/placeholder data from Dashboard (daily schedule, weekly stats chart, security log)
-- Added font size adjustment controls (14-24px) with localStorage persistence
-- Added Web Push Notifications (Service Worker + Notification API)
-  - client/public/sw.js - Service Worker for push notifications
-  - client/src/lib/notifications.ts - Notification permission, polling, and display logic
-  - Toggle button in sidebar footer to enable/disable
-  - Polls /api/notifications every 30 seconds and shows browser notification for new unread items
-  - Clicking notification navigates to notifications page
-- Cascade delete for users (notifications, activity_logs, ratings, exam_students, assignments, exams)
+## Design Choices
+- Avatar upload uses base64 encoding (limit 500KB), stored in user.avatar field
+- Print utility uses HTML with Tajawal font, opens formatted window with Print/Save as PDF/Close buttons
+- Certificate design: Islamic frame with ﷽, gold (#c9a84c) accents, navy (#16213e) theme, corner decorations
+- Theme stored in localStorage "mutqin_theme" (dark/light), language in "mutqin_language" (ar/en)
+- Library books have internal reader with generated chapters and content per category
+- Assignment "seen" auto-triggered when student views assignments page
+- Notifications auto-created for assignments, exams, course enrollments
