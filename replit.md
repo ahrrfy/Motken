@@ -15,7 +15,7 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - `mosqueId` foreign key on users, assignments, activity_logs, notifications, ratings, exams
 - Hierarchical access: Admin → Supervisor → Teacher → Student
 - Admin: system-wide access, creates mosques and supervisors
-- Supervisor: mosque-scoped, creates teachers, rates teachers, views teacher activities
+- Supervisor: mosque-scoped, creates teachers and students, rates teachers, views teacher activities
 - Teacher: mosque-scoped, adds students, rates students, creates exams
 - Student: sees only their own data
 
@@ -55,11 +55,12 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Ratings**: Supervisor rates teachers, teacher rates students (1-5 stars + honor badges)
 - **Exams**: Teachers create exams with Quran surah/verse selection, target all or specific students
 - **Print Permission**: Admin toggles `canPrintIds` for supervisors/teachers via AllUsersPage
-- **Teacher Activities**: Supervisors see only teacher-role activity logs in their mosque
+- **Teacher Activities**: Admin and supervisors see teacher-role activity logs (admin sees all, supervisor sees own mosque)
 - **Teacher Daily View**: "واجبات اليوم" page showing today's assignments grouped by student
 - **Theme & Language**: Dark/light mode toggle, Arabic/English language switcher with localStorage persistence
 - **Photo Upload**: Base64 avatar upload for all users, displayed in ID cards and profiles
 - **PDF/Print**: HTML-based print with Tajawal font, Arabic RTL support, formatted print preview
+- **ID Card PDF Export**: Individual (separate PDFs per card) or batch (all cards in one PDF) export via dropdown
 - **Quran Surah Selector**: Full 114 surahs with automatic verse count validation
 - **Student Transfer**: Supervisors can transfer students between teachers
 - **Notification Management**: Mark as read (individual/selected/all), delete (individual/selected/all)
