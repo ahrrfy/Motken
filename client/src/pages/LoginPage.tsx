@@ -47,8 +47,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl border-primary/10 overflow-hidden backdrop-blur-sm bg-card/95">
         <div className="h-2 bg-gradient-to-r from-primary via-accent to-primary w-full" />
         <CardHeader className="text-center space-y-2 pb-2">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 border-2 border-primary/20">
-             <span className="text-3xl font-bold text-primary">م</span>
+          <div className="mx-auto w-20 h-20 mb-2">
+             <img src="/favicon.svg" alt="مُتْقِن" className="w-full h-full rounded-full shadow-lg" />
           </div>
           <CardTitle className="text-3xl font-bold text-primary font-serif">نظام مُتْقِن</CardTitle>
           <CardDescription>نظام إدارة حلقات التحفيظ</CardDescription>
