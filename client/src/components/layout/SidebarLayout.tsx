@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
+import { t } from "@/lib/translations";
 import DateTimePrayerBar from "@/components/DateTimePrayerBar";
 import HadithTicker from "@/components/HadithTicker";
 import {
@@ -46,28 +47,29 @@ import {
 } from "@/lib/notifications";
 
 const navItems = [
-  { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/daily", label: "واجبات اليوم", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/mosques", label: "إدارة الجوامع", icon: Building2, roles: ["admin"] },
-  { href: "/users", label: "جميع المستخدمين", icon: Users, roles: ["admin"] },
-  { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },
-  { href: "/students", label: "الطلاب", icon: Users, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["admin", "supervisor"] },
-  { href: "/assignments", label: "الواجبات والامتحانات", icon: ClipboardList, roles: ["admin", "teacher", "supervisor", "student"] },
-  { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["admin", "teacher", "supervisor", "student"] },
-  { href: "/courses", label: "الدورات والشهادات", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
-  { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
-  { href: "/scan-qr", label: "مسح QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
-  { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["admin", "supervisor"] },
-  { href: "/online-users", label: "المتصلون الآن", icon: Wifi, roles: ["admin"] },
-  { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin"] },
-  { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/dashboard", label: "لوحة التحكم", labelEn: "Dashboard", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/daily", label: "واجبات اليوم", labelEn: "Daily Tasks", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
+  { href: "/mosques", label: "إدارة الجوامع", labelEn: "Mosque Management", icon: Building2, roles: ["admin"] },
+  { href: "/users", label: "جميع المستخدمين", labelEn: "All Users", icon: Users, roles: ["admin"] },
+  { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Statistics", icon: BarChart3, roles: ["admin", "supervisor"] },
+  { href: "/students", label: "الطلاب", labelEn: "Students", icon: Users, roles: ["admin", "teacher", "supervisor"] },
+  { href: "/teachers", label: "الأساتذة", labelEn: "Teachers", icon: GraduationCap, roles: ["admin", "supervisor"] },
+  { href: "/assignments", label: "الواجبات والامتحانات", labelEn: "Assignments & Exams", icon: ClipboardList, roles: ["admin", "teacher", "supervisor", "student"] },
+  { href: "/ratings", label: "التقييمات والأوسمة", labelEn: "Ratings & Badges", icon: Star, roles: ["admin", "teacher", "supervisor", "student"] },
+  { href: "/courses", label: "الدورات والشهادات", labelEn: "Courses & Certificates", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
+  { href: "/quran", label: "المصحف والحفظ", labelEn: "Quran Tracker", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/library", label: "المكتبة الإسلامية", labelEn: "Islamic Library", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/id-cards", label: "الهويات (QR)", labelEn: "ID Cards (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
+  { href: "/scan-qr", label: "مسح QR", labelEn: "Scan QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
+  { href: "/teacher-activities", label: "أنشطة الأساتذة", labelEn: "Teacher Activities", icon: ClipboardList, roles: ["admin", "supervisor"] },
+  { href: "/online-users", label: "المتصلون الآن", labelEn: "Online Users", icon: Wifi, roles: ["admin"] },
+  { href: "/activity-logs", label: "سجّل الحركات", labelEn: "Activity Logs", icon: Activity, roles: ["admin"] },
+  { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
 ];
 
 function NavContent({ user, location, onNavigate }: { user: any; location: string; onNavigate?: () => void }) {
+  const { language } = useTheme();
   const filteredNav = navItems.filter((item) => {
     if (!item.roles.includes(user.role)) {
       if (item.permission === "canPrintIds" && user.canPrintIds) {
@@ -92,7 +94,7 @@ function NavContent({ user, location, onNavigate }: { user: any; location: strin
             )}
           >
             <item.icon className={cn("w-5 h-5 shrink-0", location === item.href ? "text-accent" : "text-sidebar-foreground/60 group-hover:text-accent")} />
-            <span className="truncate">{item.label}</span>
+            <span className="truncate">{language === "en" ? item.labelEn : item.label}</span>
           </div>
         </Link>
       ))}
@@ -103,7 +105,7 @@ function NavContent({ user, location, onNavigate }: { user: any; location: strin
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchRole } = useAuth();
-  const { isDark, toggleDark } = useTheme();
+  const { isDark, toggleDark, language } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
 
@@ -134,13 +136,16 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   if (!user) return <div className="p-4">Please log in</div>;
 
+  const isEn = language === "en";
+  const dir = isEn ? "ltr" : "rtl";
+
   const SidebarHeader = () => (
     <div className="p-4 sm:p-6 border-b border-sidebar-border/50 shrink-0">
       <div className="flex items-center gap-3">
         <img src="/favicon.svg" alt="مُتْقِن" className="w-11 h-11 rounded-full shrink-0" />
         <div className="min-w-0 flex-1">
           <h1 className="font-bold text-2xl leading-none">مُتْقِن</h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-1">نظام إدارة حلقات التحفيظ</p>
+          <p className="text-xs text-sidebar-foreground/60 mt-1">{isEn ? "Quran Memorization System" : "نظام إدارة حلقات التحفيظ"}</p>
         </div>
       </div>
       {user?.mosqueName && (
@@ -161,9 +166,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{user.name}</p>
             <p className="text-xs text-sidebar-foreground/60 truncate">{
-              user.role === "admin" ? "مدير النظام" :
-              user.role === "supervisor" ? "مشرف" :
-              user.role === "teacher" ? (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ") : "طالب"
+              user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
+              user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
+              user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
             }</p>
           </div>
         </div>
@@ -172,7 +177,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           size="icon"
           onClick={logout}
           className="shrink-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
-          title="تسجيل الخروج"
+          title={isEn ? "Logout" : "تسجيل الخروج"}
           data-testid="button-logout-top"
         >
           <LogOut className="w-4 h-4" />
@@ -192,7 +197,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           data-testid="button-switch-role"
         >
           <ArrowLeftRight className="w-4 h-4 ml-2" />
-          {user?.role === "supervisor" ? "التبديل إلى وضع الأستاذ" : "التبديل إلى وضع المشرف"}
+          {user?.role === "supervisor"
+            ? (isEn ? "Switch to Teacher Mode" : "التبديل إلى وضع الأستاذ")
+            : (isEn ? "Switch to Supervisor Mode" : "التبديل إلى وضع المشرف")}
         </Button>
       )}
       <Button
@@ -203,7 +210,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         data-testid="button-toggle-push"
       >
         {pushEnabled ? <Bell className="w-4 h-4 ml-2" /> : <Bell className="w-4 h-4 ml-2 opacity-50" />}
-        {pushEnabled ? "الإشعارات الخارجية: مفعّلة" : "تفعيل الإشعارات الخارجية"}
+        {pushEnabled
+          ? (isEn ? "Push Notifications: On" : "الإشعارات الخارجية: مفعّلة")
+          : (isEn ? "Enable Push Notifications" : "تفعيل الإشعارات الخارجية")}
       </Button>
       <Button
         variant="outline"
@@ -212,13 +221,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         className="w-full bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
         {isDark ? <Sun className="w-4 h-4 ml-2" /> : <Moon className="w-4 h-4 ml-2" />}
-        {isDark ? "الوضع الفاتح" : "الوضع الداكن"}
+        {isDark ? (isEn ? "Light Mode" : "الوضع الفاتح") : (isEn ? "Dark Mode" : "الوضع الداكن")}
       </Button>
     </div>
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir="rtl">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir={dir}>
       <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg">
         <div className="flex items-center gap-2">
           <img src="/favicon.svg" alt="مُتْقِن" className="w-8 h-8 rounded-full" />
@@ -231,7 +240,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               <Menu className="w-6 h-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72 p-0 bg-sidebar text-sidebar-foreground border-l-sidebar-border" dir="rtl">
+          <SheetContent side={isEn ? "left" : "right"} className="w-72 p-0 bg-sidebar text-sidebar-foreground border-l-sidebar-border" dir={dir}>
             <SidebarHeader />
             <NavContent user={user} location={location} onNavigate={() => setMobileOpen(false)} />
             <SidebarFooter />
@@ -239,7 +248,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </Sheet>
       </div>
 
-      <aside className="w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col border-l border-sidebar-border shadow-xl z-10 overflow-y-auto sticky top-0 h-screen">
+      <aside className={`w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col ${isEn ? "border-r" : "border-l"} border-sidebar-border shadow-xl z-10 overflow-y-auto sticky top-0 h-screen`}>
         <SidebarHeader />
         <NavContent user={user} location={location} />
         <SidebarFooter />
@@ -252,8 +261,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
         <HadithTicker />
         <footer className="text-center py-4 border-t bg-muted/30 text-xs text-muted-foreground space-y-1">
-          <p className="font-semibold">النظام وقف لله تعالى</p>
-          <p>برمجة وتطوير أحمد خالد الزبيدي</p>
+          <p className="font-semibold">{isEn ? "This system is a Waqf for Allah" : "النظام وقف لله تعالى"}</p>
+          <p>{isEn ? "Developed by Ahmed Khaled Al-Zubaidi" : "برمجة وتطوير أحمد خالد الزبيدي"}</p>
         </footer>
       </main>
     </div>
