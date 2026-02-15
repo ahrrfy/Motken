@@ -208,6 +208,8 @@ export function generateStatsHtml(stats: Record<string, any>, isAdmin: boolean):
     { label: "المعلقة", value: stats.pendingAssignments || 0 },
     { label: "طلاب نشطين", value: stats.activeStudents || 0 },
     { label: "طلاب غير نشطين", value: stats.inactiveStudents || 0 },
+    { label: "ذوي الاحتياجات الخاصة", value: stats.specialNeedsStudents || 0 },
+    { label: "الأيتام", value: stats.orphanStudents || 0 },
   ];
 
   return `
