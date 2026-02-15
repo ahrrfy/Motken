@@ -10,7 +10,6 @@ export interface User {
   role: UserRole;
   mosqueId?: string | null;
   mosqueName?: string | null;
-  email?: string;
   phone?: string;
   address?: string;
   avatar?: string;

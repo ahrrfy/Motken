@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Mail, Phone, Download, Printer, Upload, Loader2, Camera } from "lucide-react";
+import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,6 @@ interface Teacher {
   name: string;
   role: string;
   mosqueId?: string | null;
-  email?: string;
   phone?: string;
   address?: string;
   avatar?: string;
@@ -36,7 +35,7 @@ export default function TeachersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    username: "", password: "", name: "", email: "", phone: "", avatar: "", gender: "male"
+    username: "", password: "", name: "", phone: "", avatar: "", gender: "male"
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,7 +65,6 @@ export default function TeachersPage() {
       teachers.map(t => ({
         الاسم: t.name,
         "اسم المستخدم": t.username,
-        البريد: t.email || "",
         الهاتف: t.phone || "",
         الحالة: t.isActive ? "نشط" : "متوقف"
       })),
@@ -92,7 +90,6 @@ export default function TeachersPage() {
               name: row["الاسم"] || "",
               username: row["اسم المستخدم"] || "",
               password: row["كلمة المرور"] || "",
-              email: row["البريد"] || "",
               phone: row["الهاتف"] || "",
               role: "teacher",
             }),
@@ -148,7 +145,7 @@ export default function TeachersPage() {
       if (res.ok) {
         toast({ title: "تم بنجاح", description: "تمت إضافة الأستاذ بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ username: "", password: "", name: "", email: "", phone: "", avatar: "", gender: "male" });
+        setFormData({ username: "", password: "", name: "", phone: "", avatar: "", gender: "male" });
         fetchTeachers();
       } else {
         const err = await res.json();
@@ -186,7 +183,7 @@ export default function TeachersPage() {
                   <h3 class="section-title">قائمة الأساتذة (${filteredTeachers.length})</h3>
                   <table>
                     <thead>
-                      <tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>البريد</th><th>الهاتف</th><th>الحالة</th></tr>
+                      <tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الهاتف</th><th>الحالة</th></tr>
                     </thead>
                     <tbody>
                       ${filteredTeachers.map((t, i) => `
@@ -194,7 +191,6 @@ export default function TeachersPage() {
                           <td>${i + 1}</td>
                           <td>${t.name}</td>
                           <td>${t.username}</td>
-                          <td>${t.email || "—"}</td>
                           <td>${t.phone || "—"}</td>
                           <td>${t.isActive ? "نشط" : "متوقف"}</td>
                         </tr>
@@ -271,10 +267,6 @@ export default function TeachersPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>البريد الإلكتروني</Label>
-                    <Input data-testid="input-email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
                     <Label>الهاتف</Label>
                     <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
                   </div>
@@ -322,7 +314,6 @@ export default function TeachersPage() {
                   <TableRow>
                     <TableHead className="text-right">الاسم</TableHead>
                     <TableHead className="text-right">الجنس</TableHead>
-                    <TableHead className="text-right">البريد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
                     <TableHead className="text-right">تواصل</TableHead>
@@ -333,7 +324,6 @@ export default function TeachersPage() {
                     <TableRow key={teacher.id} data-testid={`row-teacher-${teacher.id}`}>
                       <TableCell className="font-medium" data-testid={`text-name-${teacher.id}`}>{teacher.name}</TableCell>
                       <TableCell data-testid={`text-gender-${teacher.id}`}>{teacher.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
-                      <TableCell data-testid={`text-email-${teacher.id}`}>{teacher.email || "—"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${teacher.id}`}>{teacher.phone || "—"}</TableCell>
                       <TableCell>
                         <Badge
@@ -346,11 +336,6 @@ export default function TeachersPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2 justify-end">
-                          {teacher.email && (
-                            <Button variant="ghost" size="icon" data-testid={`button-email-${teacher.id}`}>
-                              <Mail className="w-4 h-4 text-gray-500" />
-                            </Button>
-                          )}
                           {teacher.phone && (
                             <Button variant="ghost" size="icon" data-testid={`button-phone-${teacher.id}`}>
                               <Phone className="w-4 h-4 text-gray-500" />

@@ -99,6 +99,10 @@ export default function AssignmentsExamsPage() {
   const [gradeValues, setGradeValues] = useState<Record<string, string>>({});
   const [deletingExam, setDeletingExam] = useState<string | null>(null);
 
+  const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
+  const [verseText, setVerseText] = useState<Record<string, any[]>>({});
+  const [loadingVerses, setLoadingVerses] = useState<string | null>(null);
+
   const [examTitle, setExamTitle] = useState("");
   const [examSelectedSurah, setExamSelectedSurah] = useState("");
   const [examFromVerse, setExamFromVerse] = useState("");
@@ -394,6 +398,43 @@ export default function AssignmentsExamsPage() {
     }
   };
 
+  const fetchQuranVerses = async (assignmentId: string, surahName: string, fromVerse: number, toVerse: number) => {
+    if (verseText[assignmentId]) {
+      setExpandedAssignmentId(expandedAssignmentId === assignmentId ? null : assignmentId);
+      return;
+    }
+
+    const surah = surahs.find(s => s.name === surahName);
+    if (!surah) return;
+
+    setLoadingVerses(assignmentId);
+    setExpandedAssignmentId(assignmentId);
+
+    try {
+      const res = await fetch(`https://api.alquran.cloud/v1/surah/${surah.number}`);
+      const data = await res.json();
+      if (data.code === 200 && data.data?.ayahs) {
+        const verses = data.data.ayahs
+          .filter((a: any) => a.numberInSurah >= fromVerse && a.numberInSurah <= toVerse)
+          .map((a: any) => ({ number: a.numberInSurah, text: a.text }));
+        setVerseText(prev => ({ ...prev, [assignmentId]: verses }));
+      }
+    } catch {
+    } finally {
+      setLoadingVerses(null);
+    }
+  };
+
+  useEffect(() => {
+    if (isStudent) {
+      const link = document.createElement('link');
+      link.href = 'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap';
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+      return () => { document.head.removeChild(link); };
+    }
+  }, [isStudent]);
+
   const toggleStudentSelection = (studentId: string) => {
     setSelectedStudentIds(prev =>
       prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]
@@ -426,8 +467,8 @@ export default function AssignmentsExamsPage() {
         </TabsList>
 
         <TabsContent value="assignments" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="border-t-4 border-t-primary shadow-md">
+          <div className={`grid grid-cols-1 ${isTeacher ? 'lg:grid-cols-2' : ''} gap-8`}>
+            {isTeacher && (<Card className="border-t-4 border-t-primary shadow-md">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-primary" />
@@ -548,7 +589,7 @@ export default function AssignmentsExamsPage() {
                   تأكيد وإرسال للطالب
                 </Button>
               </CardContent>
-            </Card>
+            </Card>)}
 
             <div className="space-y-6">
               <Card className="bg-muted/30 border-none">
@@ -566,8 +607,9 @@ export default function AssignmentsExamsPage() {
                       لا توجد واجبات
                     </div>
                   ) : (
-                    assignments.slice(0, 5).map((task) => (
-                      <div key={task.id} className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-slate-100" data-testid={`card-assignment-${task.id}`}>
+                    (isStudent ? assignments : assignments.slice(0, 5)).map((task) => (
+                      <div key={task.id} className={`p-4 bg-white rounded-lg shadow-sm border border-slate-100 ${isStudent ? 'cursor-pointer hover:border-primary/30 transition-colors' : ''}`} data-testid={`card-assignment-${task.id}`} onClick={() => isStudent && fetchQuranVerses(task.id, task.surahName, task.fromVerse, task.toVerse)}>
+                        <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                             <User className="w-5 h-5" />
@@ -605,6 +647,31 @@ export default function AssignmentsExamsPage() {
                             )}
                           </div>
                         </div>
+                        </div>
+                        {isStudent && expandedAssignmentId === task.id && (
+                          <div className="mt-3 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-200/50" data-testid={`verses-display-${task.id}`}>
+                            <div className="text-center mb-3">
+                              <h4 className="text-sm font-bold text-primary flex items-center justify-center gap-2">
+                                <BookOpen className="w-4 h-4" />
+                                {task.surahName} - الآيات {task.fromVerse} إلى {task.toVerse}
+                              </h4>
+                            </div>
+                            {loadingVerses === task.id ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                              </div>
+                            ) : verseText[task.id] ? (
+                              <div className="text-right leading-loose" style={{ fontFamily: "'Amiri', 'Traditional Arabic', serif", fontSize: "20px" }} dir="rtl">
+                                {verseText[task.id].map((v: any) => (
+                                  <span key={v.number}>
+                                    <span className="text-gray-800 dark:text-gray-200">{v.text}</span>
+                                    <span className="text-amber-600 text-sm mx-1">﴿{v.number}﴾</span>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

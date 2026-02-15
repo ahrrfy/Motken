@@ -55,6 +55,7 @@ function getCurrentTime() {
     minute: "2-digit",
     second: "2-digit",
     hour12: true,
+    timeZone: "Asia/Baghdad",
   }).format(new Date());
 }
 
@@ -63,6 +64,7 @@ function formatPrayerTime(date: Date) {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Baghdad",
   }).format(date);
 }
 
@@ -73,8 +75,8 @@ interface PrayerInfo {
   formatted: string;
 }
 
-function getAllPrayerTimes(): PrayerInfo[] {
-  const coordinates = new Coordinates(33.3152, 44.3661);
+function getAllPrayerTimes(lat: number, lng: number): PrayerInfo[] {
+  const coordinates = new Coordinates(lat, lng);
   const now = new Date();
   const params = CalculationMethod.MuslimWorldLeague();
   const pt = new PrayerTimes(coordinates, now, params);
@@ -109,10 +111,31 @@ export default function DateTimePrayerBar() {
   const [currentTime, setCurrentTime] = useState(getCurrentTime());
   const [hijriDate] = useState(getHijriDate());
   const [gregorianDate] = useState(getGregorianDate());
-  const [prayers] = useState(getAllPrayerTimes());
-  const [nextPrayer, setNextPrayer] = useState(getNextPrayer(getAllPrayerTimes()));
+  const [coords, setCoords] = useState<{lat: number; lng: number}>({ lat: 33.3152, lng: 44.3661 });
+  const [prayers, setPrayers] = useState<PrayerInfo[]>([]);
+  const [nextPrayer, setNextPrayer] = useState<{ prayer: PrayerInfo; remaining: string } | null>(null);
   const [prayerAlert, setPrayerAlert] = useState<string | null>(null);
   const [alertedPrayers, setAlertedPrayers] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {}
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    const updatePrayers = () => {
+      const newPrayers = getAllPrayerTimes(coords.lat, coords.lng);
+      setPrayers(newPrayers);
+      setNextPrayer(getNextPrayer(newPrayers));
+    };
+    updatePrayers();
+    const interval = setInterval(updatePrayers, 60000);
+    return () => clearInterval(interval);
+  }, [coords]);
 
   const checkPrayerAlert = useCallback(() => {
     const now = new Date();

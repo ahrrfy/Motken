@@ -10,7 +10,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Printer, Users, CreditCard, Loader2, FileDown, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
-import { openPrintWindow } from "@/lib/print-utils";
 
 interface UserData {
   id: string;
@@ -18,7 +17,6 @@ interface UserData {
   name: string;
   role: string;
   mosqueId?: string | null;
-  email?: string;
   phone?: string;
   address?: string;
   avatar?: string;
@@ -114,7 +112,7 @@ function generateIDCardHtml(user: UserData, mosqueName: string): string {
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;padding-bottom:16px;margin-top:auto;">
         <div style="padding:6px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-          <div style="width:70px;height:70px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:9px;color:#9ca3af;">QR Code</div>
+          <img src="https://chart.googleapis.com/chart?cht=qr&chs=70x70&chl=${encodeURIComponent(JSON.stringify({ id: user.id, name: user.name, role: user.role }))}" style="width:70px;height:70px;" alt="QR" />
         </div>
         <p style="font-size:9px;color:#9ca3af;margin-top:4px;">امسح الرمز للتحقق من الهوية</p>
       </div>
@@ -284,15 +282,52 @@ export default function IDCardsPage() {
 
   const handleIndividualExport = () => {
     selectedUsers.forEach((u) => {
-      const html = `<div style="display:flex;justify-content:center;padding:20px;">${generateIDCardHtml(u, getMosqueName(u.mosqueId))}</div>`;
-      openPrintWindow(`بطاقة هوية - ${u.name}`, html);
+      const cardHtml = generateIDCardHtml(u, getMosqueName(u.mosqueId));
+      const win = window.open("", "_blank");
+      if (!win) return;
+      win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>هوية - ${u.name}</title><style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Tajawal', sans-serif; display: flex; justify-content: center; align-items: flex-start; padding: 10px; background: white; }
+        .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: #16213e; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .actions-bar button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; }
+        .btn-print { background: #e94560; color: white; }
+        .btn-close { background: #555; color: white; }
+        .card-area { margin-top: 60px; }
+        @media print { .actions-bar { display: none !important; } .card-area { margin-top: 0; } @page { size: 86mm 54mm; margin: 0; } body { padding: 0; } }
+      </style></head><body>
+      <div class="actions-bar">
+        <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
+        <button class="btn-print" onclick="window.print()">📥 حفظ PDF</button>
+        <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+      </div>
+      <div class="card-area">${cardHtml}</div></body></html>`);
+      win.document.close();
     });
   };
 
   const handleBatchExport = () => {
     const cardsHtml = selectedUsers.map((u) => generateIDCardHtml(u, getMosqueName(u.mosqueId))).join("");
-    const html = `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;padding:20px;">${cardsHtml}</div>`;
-    openPrintWindow(`بطاقات الهوية (${selectedUsers.length})`, html);
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>بطاقات الهوية (${selectedUsers.length})</title><style>
+      @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: 'Tajawal', sans-serif; background: white; padding: 10px; }
+      .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: #16213e; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+      .actions-bar button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; }
+      .btn-print { background: #e94560; color: white; }
+      .btn-close { background: #555; color: white; }
+      .cards-area { margin-top: 60px; display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; padding: 20px; }
+      @media print { .actions-bar { display: none !important; } .cards-area { margin-top: 0; } @page { size: A4 portrait; margin: 10mm; } body { padding: 0; } }
+    </style></head><body>
+    <div class="actions-bar">
+      <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
+      <button class="btn-print" onclick="window.print()">📥 حفظ PDF</button>
+      <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+    </div>
+    <div class="cards-area">${cardsHtml}</div></body></html>`);
+    win.document.close();
   };
 
   if (loading) {

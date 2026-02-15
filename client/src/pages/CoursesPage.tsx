@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
 import { GraduationCap, Plus, Trash2, Award, Loader2, Users, CalendarDays, Printer, BookOpen, CheckCircle } from "lucide-react";
-import { openPrintWindow } from "@/lib/print-utils";
 
 interface StudentUser {
   id: string;
@@ -303,181 +302,6 @@ export default function CoursesPage() {
 
   const printCertificate = (cert: CertificateData, courseName: string, studentName: string) => {
     const certHtml = `
-      <style>
-        .cert-container {
-          width: 100%;
-          max-width: 800px;
-          margin: 0 auto;
-          position: relative;
-          padding: 0;
-          background: white;
-        }
-        .cert-frame {
-          border: 3px solid #16213e;
-          padding: 40px;
-          position: relative;
-          background: linear-gradient(135deg, #fefefe 0%, #f8f4e8 100%);
-        }
-        .cert-frame::before {
-          content: '';
-          position: absolute;
-          top: 8px; left: 8px; right: 8px; bottom: 8px;
-          border: 2px solid #c9a84c;
-          pointer-events: none;
-        }
-        .cert-frame::after {
-          content: '';
-          position: absolute;
-          top: 14px; left: 14px; right: 14px; bottom: 14px;
-          border: 1px solid #16213e;
-          pointer-events: none;
-        }
-        .corner-decoration {
-          position: absolute;
-          width: 60px;
-          height: 60px;
-          border: 2px solid #c9a84c;
-        }
-        .corner-tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
-        .corner-tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
-        .corner-bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
-        .corner-br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
-        .cert-header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        .bismillah {
-          font-size: 24px;
-          color: #c9a84c;
-          margin-bottom: 15px;
-          font-family: 'Tajawal', serif;
-        }
-        .cert-logo {
-          width: 70px;
-          height: 70px;
-          margin: 0 auto 10px;
-          background: #16213e;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 32px;
-          font-weight: 700;
-        }
-        .cert-system-name {
-          font-size: 22px;
-          font-weight: 700;
-          color: #16213e;
-        }
-        .cert-subtitle {
-          font-size: 13px;
-          color: #666;
-          margin-top: 3px;
-        }
-        .cert-title {
-          text-align: center;
-          margin: 25px 0;
-        }
-        .cert-title h1 {
-          font-size: 36px;
-          font-weight: 700;
-          color: #c9a84c;
-          margin: 0;
-          letter-spacing: 3px;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        }
-        .cert-title .underline-decoration {
-          width: 200px;
-          height: 3px;
-          background: linear-gradient(to right, transparent, #c9a84c, transparent);
-          margin: 10px auto;
-        }
-        .cert-body {
-          text-align: center;
-          margin: 30px 0;
-          font-size: 18px;
-          line-height: 2.2;
-          color: #333;
-        }
-        .cert-body .student-name {
-          font-size: 28px;
-          font-weight: 700;
-          color: #16213e;
-          border-bottom: 2px solid #c9a84c;
-          padding-bottom: 5px;
-          display: inline-block;
-          margin: 5px 0;
-        }
-        .cert-body .course-name {
-          font-size: 22px;
-          font-weight: 700;
-          color: #0f3460;
-          display: inline-block;
-          margin: 5px 0;
-        }
-        .cert-details {
-          display: flex;
-          justify-content: space-between;
-          margin: 30px 0;
-          padding: 15px;
-          background: #f8f4e8;
-          border-radius: 8px;
-          border: 1px solid #e0d5b8;
-        }
-        .cert-detail-item {
-          text-align: center;
-        }
-        .cert-detail-label {
-          font-size: 11px;
-          color: #888;
-          margin-bottom: 3px;
-        }
-        .cert-detail-value {
-          font-size: 14px;
-          font-weight: 700;
-          color: #16213e;
-        }
-        .cert-signatures {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 40px;
-          padding-top: 20px;
-        }
-        .cert-signature {
-          text-align: center;
-          width: 200px;
-        }
-        .cert-signature .line {
-          width: 150px;
-          border-top: 1px solid #333;
-          margin: 0 auto 5px;
-        }
-        .cert-signature .label {
-          font-size: 12px;
-          color: #666;
-        }
-        .cert-footer {
-          text-align: center;
-          margin-top: 30px;
-          padding-top: 15px;
-          border-top: 1px solid #e0d5b8;
-        }
-        .cert-number {
-          font-size: 11px;
-          color: #999;
-          font-family: monospace;
-        }
-        .cert-qr-note {
-          font-size: 10px;
-          color: #aaa;
-          margin-top: 5px;
-        }
-        @media print {
-          body { margin: 0; padding: 0; }
-          .cert-container { max-width: none; }
-        }
-      </style>
       <div class="cert-container">
         <div class="cert-frame">
           <div class="corner-decoration corner-tl"></div>
@@ -536,7 +360,59 @@ export default function CoursesPage() {
         </div>
       </div>
     `;
-    openPrintWindow("شهادة إتمام - " + studentName, certHtml);
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة إتمام - ${studentName}</title><style>
+      @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; direction: rtl; background: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+      .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: #16213e; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+      .actions-bar button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; }
+      .btn-print { background: #e94560; color: white; }
+      .btn-save { background: #0f3460; color: white; }
+      .btn-close { background: #555; color: white; }
+      .cert-area { margin-top: 60px; }
+      .cert-container { width: 100%; max-width: 800px; margin: 0 auto; position: relative; padding: 0; background: white; }
+      .cert-frame { border: 3px solid #16213e; padding: 40px; position: relative; background: linear-gradient(135deg, #fefefe 0%, #f8f4e8 100%); }
+      .cert-frame::before { content: ''; position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 2px solid #c9a84c; pointer-events: none; }
+      .cert-frame::after { content: ''; position: absolute; top: 14px; left: 14px; right: 14px; bottom: 14px; border: 1px solid #16213e; pointer-events: none; }
+      .corner-decoration { position: absolute; width: 60px; height: 60px; border: 2px solid #c9a84c; }
+      .corner-tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+      .corner-tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+      .corner-bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+      .corner-br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+      .cert-header { text-align: center; margin-bottom: 30px; }
+      .bismillah { font-size: 24px; color: #c9a84c; margin-bottom: 15px; font-family: 'Tajawal', serif; }
+      .cert-logo { width: 70px; height: 70px; margin: 0 auto 10px; background: #16213e; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 32px; font-weight: 700; }
+      .cert-system-name { font-size: 22px; font-weight: 700; color: #16213e; }
+      .cert-subtitle { font-size: 13px; color: #666; margin-top: 3px; }
+      .cert-title { text-align: center; margin: 25px 0; }
+      .cert-title h1 { font-size: 36px; font-weight: 700; color: #c9a84c; margin: 0; letter-spacing: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+      .cert-title .underline-decoration { width: 200px; height: 3px; background: linear-gradient(to right, transparent, #c9a84c, transparent); margin: 10px auto; }
+      .cert-body { text-align: center; margin: 30px 0; font-size: 18px; line-height: 2.2; color: #333; }
+      .cert-body .student-name { font-size: 28px; font-weight: 700; color: #16213e; border-bottom: 2px solid #c9a84c; padding-bottom: 5px; display: inline-block; margin: 5px 0; }
+      .cert-body .course-name { font-size: 22px; font-weight: 700; color: #0f3460; display: inline-block; margin: 5px 0; }
+      .cert-details { display: flex; justify-content: space-between; margin: 30px 0; padding: 15px; background: #f8f4e8; border-radius: 8px; border: 1px solid #e0d5b8; }
+      .cert-detail-item { text-align: center; }
+      .cert-detail-label { font-size: 11px; color: #888; margin-bottom: 3px; }
+      .cert-detail-value { font-size: 14px; font-weight: 700; color: #16213e; }
+      .cert-signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; }
+      .cert-signature { text-align: center; width: 200px; }
+      .cert-signature .line { width: 150px; border-top: 1px solid #333; margin: 0 auto 5px; }
+      .cert-signature .label { font-size: 12px; color: #666; }
+      .cert-footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0d5b8; }
+      .cert-number { font-size: 11px; color: #999; font-family: monospace; }
+      .cert-qr-note { font-size: 10px; color: #aaa; margin-top: 5px; }
+      @media print { .actions-bar { display: none !important; } .cert-area { margin-top: 0; } body { padding: 0; } .cert-container { max-width: none; } @page { size: landscape; margin: 10mm; } }
+    </style></head><body>
+    <div class="actions-bar">
+      <button class="btn-print" onclick="window.print()">🖨️ طباعة مباشرة</button>
+      <button class="btn-save" onclick="window.print()">📥 حفظ كـ PDF</button>
+      <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+    </div>
+    <div class="cert-area">${certHtml}</div></body></html>`);
+    win.document.close();
   };
 
   const handlePrint = (cert: CertificateData) => {
