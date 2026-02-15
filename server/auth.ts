@@ -186,4 +186,4 @@ export function requireRole(...roles: string[]) {
   };
 }
 
-export { hashPassword };
+export { hashPassword, comparePasswords };

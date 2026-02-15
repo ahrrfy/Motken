@@ -432,6 +432,23 @@ export class DatabaseStorage implements IStorage {
   async getCoursesByTeacher(teacherId: string): Promise<CourseTeacher[]> {
     return db.select().from(courseTeachers).where(eq(courseTeachers.teacherId, teacherId));
   }
+
+  async resetSystemData(): Promise<void> {
+    await db.delete(certificates);
+    await db.delete(courseStudents);
+    await db.delete(courseTeachers);
+    await db.delete(courses);
+    await db.delete(examStudents);
+    await db.delete(exams);
+    await db.delete(ratings);
+    await db.delete(assignments);
+    await db.delete(notifications);
+    await db.delete(activityLogs);
+    await db.delete(users).where(
+      inArray(users.role, ["teacher", "student", "supervisor"])
+    );
+    await db.delete(mosques);
+  }
 }
 
 export const storage = new DatabaseStorage();
