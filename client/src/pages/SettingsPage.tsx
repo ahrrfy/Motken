@@ -11,8 +11,27 @@ import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus } from "lucid
 import { Slider } from "@/components/ui/slider";
 
 const FONT_SIZE_KEY = "mutqin_font_size";
-const FONT_SIZES = [14, 16, 18, 20, 22, 24];
 const DEFAULT_FONT_SIZE = 16;
+const MIN_FONT_SIZE = 12;
+const MAX_FONT_SIZE = 28;
+
+const FONT_PRESETS = [
+  { label: "صغير جداً", size: 12 },
+  { label: "صغير", size: 14 },
+  { label: "متوسط", size: 16 },
+  { label: "كبير", size: 18 },
+  { label: "كبير جداً", size: 22 },
+  { label: "ضخم", size: 28 },
+];
+
+function getFontCategory(size: number): string {
+  if (size <= 12) return "صغير جداً";
+  if (size <= 14) return "صغير";
+  if (size <= 16) return "متوسط";
+  if (size <= 18) return "كبير";
+  if (size <= 22) return "كبير جداً";
+  return "ضخم";
+}
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -39,17 +58,11 @@ export default function SettingsPage() {
   }, [fontSize]);
 
   const increaseFontSize = useCallback(() => {
-    setFontSize(prev => {
-      const idx = FONT_SIZES.indexOf(prev);
-      return idx < FONT_SIZES.length - 1 ? FONT_SIZES[idx + 1] : prev;
-    });
+    setFontSize(prev => Math.min(prev + 1, MAX_FONT_SIZE));
   }, []);
 
   const decreaseFontSize = useCallback(() => {
-    setFontSize(prev => {
-      const idx = FONT_SIZES.indexOf(prev);
-      return idx > 0 ? FONT_SIZES[idx - 1] : prev;
-    });
+    setFontSize(prev => Math.max(prev - 1, MIN_FONT_SIZE));
   }, []);
 
   const resetFontSize = useCallback(() => {
@@ -357,8 +370,11 @@ export default function SettingsPage() {
                     <Label className="text-base">حجم خط الواجهة</Label>
                     <p className="text-sm text-muted-foreground">تكبير أو تصغير حجم النصوص في التطبيق</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-bold text-primary min-w-[40px] text-center">{fontSize}px</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium" data-testid="text-font-category">
+                      {getFontCategory(fontSize)}
+                    </span>
+                    <span className="text-sm font-bold text-primary min-w-[40px] text-center" data-testid="text-font-size">{fontSize}px</span>
                     {fontSize !== DEFAULT_FONT_SIZE && (
                       <Button
                         variant="ghost"
@@ -379,7 +395,7 @@ export default function SettingsPage() {
                     variant="outline"
                     size="icon"
                     onClick={decreaseFontSize}
-                    disabled={fontSize <= FONT_SIZES[0]}
+                    disabled={fontSize <= MIN_FONT_SIZE}
                     className="h-9 w-9 shrink-0"
                     data-testid="button-font-decrease"
                   >
@@ -388,11 +404,11 @@ export default function SettingsPage() {
 
                   <div className="flex-1 relative">
                     <Slider
-                      value={[FONT_SIZES.indexOf(fontSize)]}
-                      min={0}
-                      max={FONT_SIZES.length - 1}
+                      value={[fontSize]}
+                      min={MIN_FONT_SIZE}
+                      max={MAX_FONT_SIZE}
                       step={1}
-                      onValueChange={([val]) => setFontSize(FONT_SIZES[val])}
+                      onValueChange={([val]) => setFontSize(val)}
                       className="w-full"
                       data-testid="slider-font-size"
                     />
@@ -406,7 +422,7 @@ export default function SettingsPage() {
                     variant="outline"
                     size="icon"
                     onClick={increaseFontSize}
-                    disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                    disabled={fontSize >= MAX_FONT_SIZE}
                     className="h-9 w-9 shrink-0"
                     data-testid="button-font-increase"
                   >
@@ -414,9 +430,24 @@ export default function SettingsPage() {
                   </Button>
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                  {FONT_PRESETS.map((preset) => (
+                    <Button
+                      key={preset.size}
+                      variant={fontSize === preset.size ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFontSize(preset.size)}
+                      className="text-xs"
+                      data-testid={`button-font-preset-${preset.size}`}
+                    >
+                      {preset.label} ({preset.size})
+                    </Button>
+                  ))}
+                </div>
+
                 <div className="p-4 rounded-lg border bg-muted/30">
                   <p className="text-sm text-muted-foreground mb-2">معاينة:</p>
-                  <p style={{ fontSize: `${fontSize}px` }}>بسم الله الرحمن الرحيم - هذا نص تجريبي لمعاينة حجم الخط</p>
+                  <p style={{ fontSize: `${fontSize}px` }} data-testid="text-font-preview">بسم الله الرحمن الرحيم - هذا نص تجريبي لمعاينة حجم الخط</p>
                 </div>
               </div>
             </CardContent>
