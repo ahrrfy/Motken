@@ -20,6 +20,7 @@ import AllUsersPage from "@/pages/AllUsersPage";
 import RatingsPage from "@/pages/RatingsPage";
 import ExamsPage from "@/pages/ExamsPage";
 import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
+import CoursesPage from "@/pages/CoursesPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
@@ -73,6 +74,7 @@ function App() {
         <Route path="/assignments" component={AssignmentsPage} />
         <Route path="/exams" component={ExamsPage} />
         <Route path="/ratings" component={RatingsPage} />
+        <Route path="/courses" component={CoursesPage} />
         <Route path="/quran" component={QuranTracker} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/reports" component={ReportsPage} />

@@ -7,7 +7,12 @@ import {
   type Rating, type InsertRating,
   type Exam, type InsertExam,
   type ExamStudent, type InsertExamStudent,
+  type Course, type InsertCourse,
+  type CourseStudent, type InsertCourseStudent,
+  type CourseTeacher, type InsertCourseTeacher,
+  type Certificate, type InsertCertificate,
   users, mosques, assignments, activityLogs, notifications, ratings, exams, examStudents,
+  courses, courseStudents, courseTeachers, certificates,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, inArray } from "drizzle-orm";
@@ -68,6 +73,27 @@ export interface IStorage {
   markAllNotificationsRead(userId: string): Promise<void>;
   deleteNotification(id: string): Promise<void>;
   deleteNotifications(ids: string[], userId: string): Promise<void>;
+
+  getCourse(id: string): Promise<Course | undefined>;
+  getCourses(): Promise<Course[]>;
+  getCoursesByMosque(mosqueId: string): Promise<Course[]>;
+  getCoursesByCreator(createdBy: string): Promise<Course[]>;
+  createCourse(c: InsertCourse): Promise<Course>;
+  updateCourse(id: string, data: Partial<InsertCourse>): Promise<Course | undefined>;
+  deleteCourse(id: string): Promise<void>;
+  getCourseStudents(courseId: string): Promise<CourseStudent[]>;
+  createCourseStudent(cs: InsertCourseStudent): Promise<CourseStudent>;
+  updateCourseStudent(id: string, data: Partial<InsertCourseStudent>): Promise<CourseStudent | undefined>;
+  deleteCourseStudent(id: string): Promise<void>;
+  getCourseTeachers(courseId: string): Promise<CourseTeacher[]>;
+  createCourseTeacher(ct: InsertCourseTeacher): Promise<CourseTeacher>;
+  deleteCourseTeacher(id: string): Promise<void>;
+  getCertificatesByCourse(courseId: string): Promise<Certificate[]>;
+  getCertificatesByStudent(studentId: string): Promise<Certificate[]>;
+  getCertificatesByMosque(mosqueId: string): Promise<Certificate[]>;
+  createCertificate(c: InsertCertificate): Promise<Certificate>;
+  getCoursesByStudent(studentId: string): Promise<CourseStudent[]>;
+  getCoursesByTeacher(teacherId: string): Promise<CourseTeacher[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -116,6 +142,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
+    await db.delete(courseStudents).where(eq(courseStudents.studentId, id));
+    await db.delete(courseTeachers).where(eq(courseTeachers.teacherId, id));
+    await db.delete(certificates).where(eq(certificates.studentId, id));
+    await db.delete(certificates).where(eq(certificates.issuedBy, id));
     await db.delete(notifications).where(eq(notifications.userId, id));
     await db.delete(activityLogs).where(eq(activityLogs.userId, id));
     await db.delete(ratings).where(eq(ratings.fromUserId, id));
@@ -299,6 +329,96 @@ export class DatabaseStorage implements IStorage {
     for (const id of ids) {
       await db.delete(notifications).where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
     }
+  }
+
+  async getCourse(id: string): Promise<Course | undefined> {
+    const [course] = await db.select().from(courses).where(eq(courses.id, id));
+    return course;
+  }
+
+  async getCourses(): Promise<Course[]> {
+    return db.select().from(courses).orderBy(desc(courses.createdAt));
+  }
+
+  async getCoursesByMosque(mosqueId: string): Promise<Course[]> {
+    return db.select().from(courses).where(eq(courses.mosqueId, mosqueId)).orderBy(desc(courses.createdAt));
+  }
+
+  async getCoursesByCreator(createdBy: string): Promise<Course[]> {
+    return db.select().from(courses).where(eq(courses.createdBy, createdBy)).orderBy(desc(courses.createdAt));
+  }
+
+  async createCourse(c: InsertCourse): Promise<Course> {
+    const [course] = await db.insert(courses).values(c).returning();
+    return course;
+  }
+
+  async updateCourse(id: string, data: Partial<InsertCourse>): Promise<Course | undefined> {
+    const [course] = await db.update(courses).set(data).where(eq(courses.id, id)).returning();
+    return course;
+  }
+
+  async deleteCourse(id: string): Promise<void> {
+    await db.delete(courseStudents).where(eq(courseStudents.courseId, id));
+    await db.delete(courseTeachers).where(eq(courseTeachers.courseId, id));
+    await db.delete(certificates).where(eq(certificates.courseId, id));
+    await db.delete(courses).where(eq(courses.id, id));
+  }
+
+  async getCourseStudents(courseId: string): Promise<CourseStudent[]> {
+    return db.select().from(courseStudents).where(eq(courseStudents.courseId, courseId));
+  }
+
+  async createCourseStudent(cs: InsertCourseStudent): Promise<CourseStudent> {
+    const [entry] = await db.insert(courseStudents).values(cs).returning();
+    return entry;
+  }
+
+  async updateCourseStudent(id: string, data: Partial<InsertCourseStudent>): Promise<CourseStudent | undefined> {
+    const [entry] = await db.update(courseStudents).set(data).where(eq(courseStudents.id, id)).returning();
+    return entry;
+  }
+
+  async deleteCourseStudent(id: string): Promise<void> {
+    await db.delete(courseStudents).where(eq(courseStudents.id, id));
+  }
+
+  async getCourseTeachers(courseId: string): Promise<CourseTeacher[]> {
+    return db.select().from(courseTeachers).where(eq(courseTeachers.courseId, courseId));
+  }
+
+  async createCourseTeacher(ct: InsertCourseTeacher): Promise<CourseTeacher> {
+    const [entry] = await db.insert(courseTeachers).values(ct).returning();
+    return entry;
+  }
+
+  async deleteCourseTeacher(id: string): Promise<void> {
+    await db.delete(courseTeachers).where(eq(courseTeachers.id, id));
+  }
+
+  async getCertificatesByCourse(courseId: string): Promise<Certificate[]> {
+    return db.select().from(certificates).where(eq(certificates.courseId, courseId)).orderBy(desc(certificates.createdAt));
+  }
+
+  async getCertificatesByStudent(studentId: string): Promise<Certificate[]> {
+    return db.select().from(certificates).where(eq(certificates.studentId, studentId)).orderBy(desc(certificates.createdAt));
+  }
+
+  async getCertificatesByMosque(mosqueId: string): Promise<Certificate[]> {
+    return db.select().from(certificates).where(eq(certificates.mosqueId, mosqueId)).orderBy(desc(certificates.createdAt));
+  }
+
+  async createCertificate(c: InsertCertificate): Promise<Certificate> {
+    const [cert] = await db.insert(certificates).values(c).returning();
+    return cert;
+  }
+
+  async getCoursesByStudent(studentId: string): Promise<CourseStudent[]> {
+    return db.select().from(courseStudents).where(eq(courseStudents.studentId, studentId));
+  }
+
+  async getCoursesByTeacher(teacherId: string): Promise<CourseTeacher[]> {
+    return db.select().from(courseTeachers).where(eq(courseTeachers.teacherId, teacherId));
   }
 }
 

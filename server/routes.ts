@@ -619,6 +619,254 @@ export async function registerRoutes(
     res.json({ message: "تم حذف الإشعارات المحددة" });
   });
 
+  // ==================== COURSES & CERTIFICATES ====================
+  app.get("/api/courses", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      let courseList: any[] = [];
+
+      if (currentUser.role === "admin") {
+        courseList = await storage.getCourses();
+      } else if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+        courseList = await storage.getCoursesByMosque(currentUser.mosqueId);
+      } else if (currentUser.role === "teacher") {
+        courseList = await storage.getCoursesByCreator(currentUser.id);
+      } else if (currentUser.role === "student") {
+        const courseStudentEntries = await storage.getCoursesByStudent(currentUser.id);
+        for (const cs of courseStudentEntries) {
+          const course = await storage.getCourse(cs.courseId);
+          if (course) courseList.push(course);
+        }
+      }
+
+      const enriched = [];
+      for (const course of courseList) {
+        const students = await storage.getCourseStudents(course.id);
+        const teachers = await storage.getCourseTeachers(course.id);
+        const certs = await storage.getCertificatesByCourse(course.id);
+        enriched.push({ ...course, students, teachers, certificates: certs });
+      }
+
+      res.json(enriched);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/courses", requireRole("teacher", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { title, description, startDate, endDate, targetType, studentIds, teacherIds } = req.body;
+
+      const course = await storage.createCourse({
+        title,
+        description,
+        startDate: new Date(startDate),
+        endDate: endDate ? new Date(endDate) : undefined,
+        targetType: targetType || "specific",
+        createdBy: currentUser.id,
+        mosqueId: currentUser.mosqueId,
+      });
+
+      if (studentIds && Array.isArray(studentIds)) {
+        for (const sid of studentIds) {
+          await storage.createCourseStudent({ courseId: course.id, studentId: sid });
+        }
+      }
+
+      const allTeacherIds = Array.from(new Set<string>([...(teacherIds || []), currentUser.id]));
+      for (const tid of allTeacherIds) {
+        await storage.createCourseTeacher({ courseId: course.id, teacherId: tid });
+      }
+
+      await logActivity(currentUser, `إنشاء دورة: ${title}`, "courses");
+      res.status(201).json(course);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/courses/:id", requireRole("teacher", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const course = await storage.getCourse(req.params.id);
+      if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
+
+      const isOwner = course.createdBy === currentUser.id;
+      const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
+      if (!isOwner && !isSameMosqueSupervisor) {
+        return res.status(403).json({ message: "غير مصرح بتعديل هذه الدورة" });
+      }
+
+      const updateData: any = {};
+      if (req.body.title !== undefined) updateData.title = req.body.title;
+      if (req.body.description !== undefined) updateData.description = req.body.description;
+      if (req.body.startDate !== undefined) updateData.startDate = new Date(req.body.startDate);
+      if (req.body.endDate !== undefined) updateData.endDate = new Date(req.body.endDate);
+      if (req.body.status !== undefined) updateData.status = req.body.status;
+
+      const updated = await storage.updateCourse(req.params.id, updateData);
+      if (!updated) return res.status(404).json({ message: "الدورة غير موجودة" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/courses/:id", requireRole("teacher", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const course = await storage.getCourse(req.params.id);
+      if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
+
+      const isOwner = course.createdBy === currentUser.id;
+      const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
+      if (!isOwner && !isSameMosqueSupervisor) {
+        return res.status(403).json({ message: "غير مصرح بحذف هذه الدورة" });
+      }
+
+      await storage.deleteCourse(req.params.id);
+      await logActivity(currentUser, `حذف دورة: ${course.title}`, "courses");
+      res.json({ message: "تم حذف الدورة بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/courses/:id/students", requireRole("teacher", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const course = await storage.getCourse(req.params.id);
+      if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
+
+      const isOwner = course.createdBy === currentUser.id;
+      const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
+      if (!isOwner && !isSameMosqueSupervisor) {
+        return res.status(403).json({ message: "غير مصرح بتعديل هذه الدورة" });
+      }
+
+      const { studentIds } = req.body;
+      if (!studentIds || !Array.isArray(studentIds)) {
+        return res.status(400).json({ message: "يرجى تحديد الطلاب" });
+      }
+
+      const existing = await storage.getCourseStudents(req.params.id);
+      const existingIds = new Set(existing.map(e => e.studentId));
+
+      const created = [];
+      for (const sid of studentIds) {
+        if (!existingIds.has(sid)) {
+          const entry = await storage.createCourseStudent({ courseId: req.params.id, studentId: sid });
+          created.push(entry);
+        }
+      }
+
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/courses/:id/graduate", requireRole("teacher", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const course = await storage.getCourse(req.params.id);
+      if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
+
+      const isOwner = course.createdBy === currentUser.id;
+      const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
+      if (!isOwner && !isSameMosqueSupervisor) {
+        return res.status(403).json({ message: "غير مصرح بتخريج طلاب هذه الدورة" });
+      }
+
+      const { studentIds } = req.body;
+      if (!studentIds || !Array.isArray(studentIds)) {
+        return res.status(400).json({ message: "يرجى تحديد الطلاب" });
+      }
+
+      const courseStudentsList = await storage.getCourseStudents(req.params.id);
+      const createdCertificates = [];
+
+      for (const sid of studentIds) {
+        const csEntry = courseStudentsList.find(cs => cs.studentId === sid);
+        if (csEntry) {
+          await storage.updateCourseStudent(csEntry.id, { graduated: true, graduatedAt: new Date() });
+          const cert = await storage.createCertificate({
+            courseId: req.params.id,
+            studentId: sid,
+            issuedBy: currentUser.id,
+            mosqueId: currentUser.mosqueId,
+            certificateNumber: `MTQ-CERT-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+          });
+          createdCertificates.push(cert);
+        }
+      }
+
+      const updatedStudents = await storage.getCourseStudents(req.params.id);
+      const allGraduated = updatedStudents.length > 0 && updatedStudents.every(s => s.graduated);
+      if (allGraduated) {
+        await storage.updateCourse(req.params.id, { status: "completed" });
+      }
+
+      await logActivity(currentUser, `تخريج ${studentIds.length} طالب من دورة: ${course.title}`, "courses");
+      res.json({ message: "تم تخريج الطلاب ومنح الشهادات بنجاح", certificates: createdCertificates });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/certificates", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      let certs: any[] = [];
+
+      if (currentUser.role === "admin") {
+        const allCourses = await storage.getCourses();
+        for (const course of allCourses) {
+          const courseCerts = await storage.getCertificatesByCourse(course.id);
+          certs.push(...courseCerts);
+        }
+      } else if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+        certs = await storage.getCertificatesByMosque(currentUser.mosqueId);
+      } else if (currentUser.role === "teacher") {
+        const teacherCourses = await storage.getCoursesByCreator(currentUser.id);
+        for (const course of teacherCourses) {
+          const courseCerts = await storage.getCertificatesByCourse(course.id);
+          certs.push(...courseCerts);
+        }
+      } else if (currentUser.role === "student") {
+        certs = await storage.getCertificatesByStudent(currentUser.id);
+      }
+
+      res.json(certs);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/courses/:id/students/:studentId", requireRole("teacher", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const course = await storage.getCourse(req.params.id);
+      if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
+
+      const isOwner = course.createdBy === currentUser.id;
+      const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
+      if (!isOwner && !isSameMosqueSupervisor) {
+        return res.status(403).json({ message: "غير مصرح بتعديل هذه الدورة" });
+      }
+
+      const students = await storage.getCourseStudents(req.params.id);
+      const entry = students.find(s => s.studentId === req.params.studentId);
+      if (!entry) return res.status(404).json({ message: "الطالب غير مسجل في هذه الدورة" });
+
+      await storage.deleteCourseStudent(entry.id);
+      res.json({ message: "تم إزالة الطالب من الدورة" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ==================== STATS ====================
   app.get("/api/stats", requireAuth, async (req, res) => {
     const currentUser = req.user!;

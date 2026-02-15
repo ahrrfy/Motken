@@ -27,6 +27,7 @@ import {
   Star,
   FileText,
   ClipboardList,
+  Award,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import DateTimePrayerBar from "@/components/DateTimePrayerBar";
@@ -51,6 +52,7 @@ const navItems = [
   { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["teacher", "supervisor"] },
   { href: "/exams", label: "الامتحانات", icon: FileText, roles: ["teacher", "supervisor", "student"] },
   { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["teacher", "supervisor", "student"] },
+  { href: "/courses", label: "الدورات والشهادات", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
   { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
