@@ -30,11 +30,47 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+if (!process.env.SESSION_SECRET) {
+  process.env.SESSION_SECRET = randomBytes(32).toString("hex");
+}
+
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
+function checkLoginRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry) return true;
+  if (now - entry.lastAttempt > LOGIN_WINDOW_MS) {
+    loginAttempts.delete(key);
+    return true;
+  }
+  return entry.count < LOGIN_MAX_ATTEMPTS;
+}
+
+function recordLoginAttempt(key: string, success: boolean): void {
+  if (success) {
+    loginAttempts.delete(key);
+    return;
+  }
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry || now - entry.lastAttempt > LOGIN_WINDOW_MS) {
+    loginAttempts.set(key, { count: 1, lastAttempt: now });
+  } else {
+    entry.count++;
+    entry.lastAttempt = now;
+  }
+}
+
 export function setupAuth(app: Express) {
   const PgStore = connectPg(session);
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "huffaz-session-secret-key-2026",
+    secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     store: new PgStore({
@@ -44,6 +80,8 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
     },
   };
 
@@ -58,6 +96,9 @@ export function setupAuth(app: Express) {
         const user = await storage.getUserByUsername(username);
         if (!user || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "اسم المستخدم أو كلمة المرور غير صحيحة" });
+        }
+        if (!user.isActive) {
+          return done(null, false, { message: "هذا الحساب غير مفعّل. يرجى التواصل مع المسؤول" });
         }
         return done(null, user);
       } catch (err) {
@@ -76,32 +117,22 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/register", async (req, res, next) => {
-    try {
-      const existing = await storage.getUserByUsername(req.body.username);
-      if (existing) {
-        return res.status(400).json({ message: "اسم المستخدم مستخدم بالفعل" });
-      }
-
-      const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
-      });
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        const { password, ...safeUser } = user;
-        return res.status(201).json(safeUser);
-      });
-    } catch (err) {
-      next(err);
-    }
-  });
-
   app.post("/api/auth/login", (req, res, next) => {
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+    const username = req.body.username || "";
+    const rateLimitKey = `${clientIp}:${username}`;
+
+    if (!checkLoginRateLimit(rateLimitKey)) {
+      return res.status(429).json({ message: "تم تجاوز عدد محاولات تسجيل الدخول. يرجى المحاولة لاحقاً" });
+    }
+
     passport.authenticate("local", async (err: any, user: SelectUser | false, info: any) => {
       if (err) return next(err);
-      if (!user) return res.status(401).json({ message: info?.message || "فشل تسجيل الدخول" });
+      if (!user) {
+        recordLoginAttempt(rateLimitKey, false);
+        return res.status(401).json({ message: info?.message || "فشل تسجيل الدخول" });
+      }
+      recordLoginAttempt(rateLimitKey, true);
       req.login(user, async (err) => {
         if (err) return next(err);
         const { password, ...safeUser } = user;
