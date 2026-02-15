@@ -16,12 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
-  let language: "ar" | "en" = "ar";
-  try {
-    const theme = useTheme();
-    language = theme.language;
-  } catch {}
+  const { language } = useTheme();
 
   const isEn = language === "en";
   const dir = isEn ? "ltr" : "rtl";
