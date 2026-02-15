@@ -218,3 +218,18 @@ export const certificates = pgTable("certificates", {
 export const insertCertificateSchema = createInsertSchema(certificates).omit({ id: true, createdAt: true });
 export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
 export type Certificate = typeof certificates.$inferSelect;
+
+// ==================== BANNED DEVICES ====================
+export const bannedDevices = pgTable("banned_devices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  deviceFingerprint: text("device_fingerprint"),
+  reason: text("reason"),
+  bannedBy: varchar("banned_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertBannedDeviceSchema = createInsertSchema(bannedDevices).omit({ id: true, createdAt: true });
+export type InsertBannedDevice = z.infer<typeof insertBannedDeviceSchema>;
+export type BannedDevice = typeof bannedDevices.$inferSelect;

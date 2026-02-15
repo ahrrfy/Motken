@@ -117,13 +117,19 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/login", (req, res, next) => {
+  app.post("/api/auth/login", async (req, res, next) => {
     const clientIp = req.ip || req.socket.remoteAddress || "unknown";
     const username = req.body.username || "";
     const rateLimitKey = `${clientIp}:${username}`;
 
     if (!checkLoginRateLimit(rateLimitKey)) {
       return res.status(429).json({ message: "تم تجاوز عدد محاولات تسجيل الدخول. يرجى المحاولة لاحقاً" });
+    }
+
+    const { storage: storageCheck } = await import("./storage");
+    const isBanned = await storageCheck.isBannedIP(clientIp);
+    if (isBanned) {
+      return res.status(403).json({ message: "تم حظر هذا الجهاز من استخدام النظام. تواصل مع المدير" });
     }
 
     passport.authenticate("local", async (err: any, user: SelectUser | false, info: any) => {
