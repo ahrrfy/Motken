@@ -11,8 +11,9 @@ import {
   type CourseStudent, type InsertCourseStudent,
   type CourseTeacher, type InsertCourseTeacher,
   type Certificate, type InsertCertificate,
+  type BannedDevice, type InsertBannedDevice,
   users, mosques, assignments, activityLogs, notifications, ratings, exams, examStudents,
-  courses, courseStudents, courseTeachers, certificates,
+  courses, courseStudents, courseTeachers, certificates, bannedDevices,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, inArray } from "drizzle-orm";
@@ -96,6 +97,12 @@ export interface IStorage {
   createCertificate(c: InsertCertificate): Promise<Certificate>;
   getCoursesByStudent(studentId: string): Promise<CourseStudent[]>;
   getCoursesByTeacher(teacherId: string): Promise<CourseTeacher[]>;
+
+  getBannedDevices(): Promise<BannedDevice[]>;
+  createBannedDevice(bd: InsertBannedDevice): Promise<BannedDevice>;
+  deleteBannedDevice(id: string): Promise<void>;
+  isBannedIP(ip: string): Promise<boolean>;
+  isBannedFingerprint(fingerprint: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -433,7 +440,31 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(courseTeachers).where(eq(courseTeachers.teacherId, teacherId));
   }
 
+  async getBannedDevices(): Promise<BannedDevice[]> {
+    return db.select().from(bannedDevices).orderBy(desc(bannedDevices.createdAt));
+  }
+
+  async createBannedDevice(bd: InsertBannedDevice): Promise<BannedDevice> {
+    const [entry] = await db.insert(bannedDevices).values(bd).returning();
+    return entry;
+  }
+
+  async deleteBannedDevice(id: string): Promise<void> {
+    await db.delete(bannedDevices).where(eq(bannedDevices.id, id));
+  }
+
+  async isBannedIP(ip: string): Promise<boolean> {
+    const [result] = await db.select().from(bannedDevices).where(eq(bannedDevices.ipAddress, ip)).limit(1);
+    return !!result;
+  }
+
+  async isBannedFingerprint(fingerprint: string): Promise<boolean> {
+    const [result] = await db.select().from(bannedDevices).where(eq(bannedDevices.deviceFingerprint, fingerprint)).limit(1);
+    return !!result;
+  }
+
   async resetSystemData(): Promise<void> {
+    await db.delete(bannedDevices);
     await db.delete(certificates);
     await db.delete(courseStudents);
     await db.delete(courseTeachers);

@@ -61,6 +61,9 @@ export async function createIndexes() {
 
       CREATE INDEX IF NOT EXISTS idx_certificates_course_id ON certificates(course_id);
       CREATE INDEX IF NOT EXISTS idx_certificates_student_id ON certificates(student_id);
+
+      CREATE INDEX IF NOT EXISTS idx_banned_devices_ip ON banned_devices(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_banned_devices_fingerprint ON banned_devices(device_fingerprint);
     `);
     console.log("Database indexes created successfully");
   } catch (err: any) {
