@@ -105,3 +105,12 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - Updated assignments page with full 114 Quran surah selector and verse validation
 - Added footer across all pages
 - Created complete Quran surahs dataset (114 surahs)
+- Removed all mock/placeholder data from Dashboard (daily schedule, weekly stats chart, security log)
+- Added font size adjustment controls (14-24px) with localStorage persistence
+- Added Web Push Notifications (Service Worker + Notification API)
+  - client/public/sw.js - Service Worker for push notifications
+  - client/src/lib/notifications.ts - Notification permission, polling, and display logic
+  - Toggle button in sidebar footer to enable/disable
+  - Polls /api/notifications every 30 seconds and shows browser notification for new unread items
+  - Clicking notification navigates to notifications page
+- Cascade delete for users (notifications, activity_logs, ratings, exam_students, assignments, exams)
