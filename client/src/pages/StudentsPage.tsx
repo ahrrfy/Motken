@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -20,11 +21,16 @@ interface Student {
   role: string;
   mosqueId?: string | null;
   teacherId?: string | null;
-  email?: string;
   phone?: string;
   address?: string;
   avatar?: string;
   gender?: string | null;
+  age?: number | null;
+  telegramId?: string | null;
+  parentPhone?: string | null;
+  educationLevel?: string | null;
+  isSpecialNeeds?: boolean;
+  isOrphan?: boolean;
   isActive: boolean;
 }
 
@@ -47,7 +53,8 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [newTeacherId, setNewTeacherId] = useState("");
   const [formData, setFormData] = useState({
-    username: "", password: "", name: "", email: "", phone: "", address: "", avatar: "", gender: "male"
+    name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male",
+    age: "", telegramId: "", parentPhone: "", educationLevel: "", isSpecialNeeds: false, isOrphan: false
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,9 +98,12 @@ export default function StudentsPage() {
               name: row["الاسم"] || "",
               username: row["اسم المستخدم"] || "",
               password: row["كلمة المرور"] || "",
-              email: row["البريد"] || "",
               phone: row["الهاتف"] || "",
               address: row["العنوان"] || "",
+              age: row["العمر"] ? parseInt(row["العمر"]) : null,
+              parentPhone: row["هاتف ولي الأمر"] || "",
+              telegramId: row["التلغرام"] || "",
+              educationLevel: row["المستوى الدراسي"] || "",
               role: "student",
             }),
           });
@@ -137,8 +147,13 @@ export default function StudentsPage() {
     exportJsonToExcel(
       students.map(s => ({
         الاسم: s.name,
-        البريد: s.email || "",
         الهاتف: s.phone || "",
+        العمر: s.age || "",
+        "هاتف ولي الأمر": s.parentPhone || "",
+        التلغرام: s.telegramId || "",
+        "المستوى الدراسي": s.educationLevel || "",
+        "ذوي الاحتياجات": s.isSpecialNeeds ? "نعم" : "لا",
+        يتيم: s.isOrphan ? "نعم" : "لا",
         الأستاذ: getTeacherName(s.teacherId),
         الحالة: s.isActive ? "نشط" : "متوقف"
       })),
@@ -158,12 +173,19 @@ export default function StudentsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...formData, role: "student" }),
+        body: JSON.stringify({
+          ...formData,
+          role: "student",
+          age: formData.age ? parseInt(formData.age) : null,
+          educationLevel: formData.educationLevel || null,
+          telegramId: formData.telegramId || null,
+          parentPhone: formData.parentPhone || null,
+        }),
       });
       if (res.ok) {
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ username: "", password: "", name: "", email: "", phone: "", address: "", avatar: "", gender: "male" });
+        setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", isSpecialNeeds: false, isOrphan: false });
         fetchData();
       } else {
         const err = await res.json();
@@ -240,15 +262,16 @@ export default function StudentsPage() {
                   <h3 class="section-title">قائمة الطلاب (${filteredStudents.length})</h3>
                   <table>
                     <thead>
-                      <tr><th>#</th><th>الاسم</th><th>البريد</th><th>الهاتف</th><th>الحالة</th></tr>
+                      <tr><th>#</th><th>الاسم</th><th>الهاتف</th><th>العمر</th><th>المستوى الدراسي</th><th>الحالة</th></tr>
                     </thead>
                     <tbody>
                       ${filteredStudents.map((s, i) => `
                         <tr>
                           <td>${i + 1}</td>
                           <td>${s.name}</td>
-                          <td>${s.email || "—"}</td>
                           <td>${s.phone || "—"}</td>
+                          <td>${s.age || "—"}</td>
+                          <td>${s.educationLevel || "—"}</td>
                           <td>${s.isActive ? "نشط" : "متوقف"}</td>
                         </tr>
                       `).join("")}
@@ -300,16 +323,16 @@ export default function StudentsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
+                    <Label>الاسم الكامل *</Label>
+                    <Input data-testid="input-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
                     <Label>اسم المستخدم *</Label>
                     <Input data-testid="input-username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} dir="ltr" />
                   </div>
                   <div className="space-y-2">
                     <Label>كلمة المرور *</Label>
                     <Input data-testid="input-password" type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} dir="ltr" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>الاسم الكامل *</Label>
-                    <Input data-testid="input-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <Label>الجنس</Label>
@@ -324,16 +347,55 @@ export default function StudentsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>البريد الإلكتروني</Label>
-                    <Input data-testid="input-email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} dir="ltr" />
+                    <Label>العمر</Label>
+                    <Input data-testid="input-age" type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <Label>الهاتف</Label>
                     <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" />
                   </div>
                   <div className="space-y-2">
+                    <Label>هاتف ولي الأمر</Label>
+                    <Input data-testid="input-parent-phone" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} dir="ltr" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>معرف التلغرام</Label>
+                    <Input data-testid="input-telegram-id" value={formData.telegramId} onChange={e => setFormData({...formData, telegramId: e.target.value})} dir="ltr" />
+                  </div>
+                  <div className="space-y-2">
                     <Label>العنوان</Label>
                     <Input data-testid="input-address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>المستوى الدراسي</Label>
+                    <Select value={formData.educationLevel} onValueChange={(v) => setFormData(prev => ({...prev, educationLevel: v}))}>
+                      <SelectTrigger data-testid="select-education-level">
+                        <SelectValue placeholder="اختر المستوى الدراسي" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="school">مدرسة</SelectItem>
+                        <SelectItem value="university">جامعة</SelectItem>
+                        <SelectItem value="postgraduate">دراسات عليا</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="special-needs"
+                      checked={formData.isSpecialNeeds}
+                      onCheckedChange={(v) => setFormData(prev => ({...prev, isSpecialNeeds: !!v}))}
+                      data-testid="checkbox-special-needs"
+                    />
+                    <Label htmlFor="special-needs">من ذوي الاحتياجات الخاصة</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="orphan"
+                      checked={formData.isOrphan}
+                      onCheckedChange={(v) => setFormData(prev => ({...prev, isOrphan: !!v}))}
+                      data-testid="checkbox-orphan"
+                    />
+                    <Label htmlFor="orphan">يتيم</Label>
                   </div>
                   <Button onClick={handleAddStudent} disabled={submitting} className="w-full" data-testid="button-submit-student">
                     {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
@@ -379,7 +441,6 @@ export default function StudentsPage() {
                   <TableRow>
                     <TableHead className="text-right">الاسم</TableHead>
                     <TableHead className="text-right">الجنس</TableHead>
-                    <TableHead className="text-right">البريد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
                     {isSupervisor && <TableHead className="text-right">الأستاذ</TableHead>}
                     <TableHead className="text-right">الحالة</TableHead>
@@ -398,7 +459,6 @@ export default function StudentsPage() {
                         </div>
                       </TableCell>
                       <TableCell data-testid={`text-gender-${student.id}`}>{student.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
-                      <TableCell data-testid={`text-email-${student.id}`}>{student.email || "—"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>{student.phone || "—"}</TableCell>
                       {isSupervisor && (
                         <TableCell>

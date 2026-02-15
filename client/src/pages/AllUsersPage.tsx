@@ -24,7 +24,6 @@ interface UserRecord {
   name: string;
   role: string;
   mosqueId?: string | null;
-  email?: string;
   phone?: string;
   gender?: string | null;
   isActive?: boolean;
@@ -70,7 +69,6 @@ export default function AllUsersPage() {
     name: "",
     role: "supervisor",
     mosqueId: "",
-    email: "",
     phone: "",
   });
 
@@ -94,7 +92,7 @@ export default function AllUsersPage() {
   }, []);
 
   const resetForm = () => {
-    setForm({ username: "", password: "", name: "", role: "supervisor", mosqueId: "", email: "", phone: "" });
+    setForm({ username: "", password: "", name: "", role: "supervisor", mosqueId: "", phone: "" });
     setEditingUser(null);
   };
 
@@ -180,7 +178,6 @@ export default function AllUsersPage() {
       name: u.name,
       role: u.role,
       mosqueId: u.mosqueId || "",
-      email: u.email || "",
       phone: u.phone || "",
     });
     setDialogOpen(true);
@@ -196,7 +193,7 @@ export default function AllUsersPage() {
   };
 
   const filteredUsers = users.filter((u) => {
-    const matchesSearch = u.name.includes(search) || u.username.includes(search) || (u.email || "").includes(search);
+    const matchesSearch = u.name.includes(search) || u.username.includes(search);
     const matchesRole = filterRole === "all" || u.role === filterRole;
     const matchesMosque = filterMosque === "all" || u.mosqueId === filterMosque;
     return matchesSearch && matchesRole && matchesMosque;
@@ -300,15 +297,9 @@ export default function AllUsersPage() {
                   </Select>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>البريد الإلكتروني</Label>
-                  <Input data-testid="input-user-email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" dir="ltr" />
-                </div>
-                <div>
-                  <Label>رقم الهاتف</Label>
-                  <Input data-testid="input-user-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xxxxxxxxx" dir="ltr" />
-                </div>
+              <div>
+                <Label>رقم الهاتف</Label>
+                <Input data-testid="input-user-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xxxxxxxxx" dir="ltr" />
               </div>
               <Button className="w-full" onClick={handleSubmit} data-testid="button-submit-user">
                 {editingUser ? "تحديث" : "إضافة"}
