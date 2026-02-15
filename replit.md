@@ -57,7 +57,16 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - student1-5/student123 (distributed across mosques)
 
 ## Recent Changes (Feb 15, 2026)
-- System rebranded to "متقن" (Mutqin)
+- System rebranded to "مُتْقِن" (Mutqin) with proper tashkeel
+- Added DateTimePrayerBar component (client/src/components/DateTimePrayerBar.tsx)
+  - Shows Hijri and Gregorian date with current time (live clock)
+  - Prayer times calculated via adhan library (Baghdad coordinates)
+  - Highlights next prayer with countdown timer
+  - Shows alert notification when prayer time arrives
+  - Integrated into SidebarLayout as a persistent bar above content
+- Admin settings page hides "mosque data" tab (admin has no mosque)
+- Sheet component includes hidden DialogTitle/Description for accessibility
+- Fixed unused imports across pages
 - Added ratings system (supervisor→teacher, teacher→student) with honor badges
 - Added exams management with Quran surah selector
 - Added teacher activities page for supervisors
