@@ -47,7 +47,11 @@ export async function registerRoutes(
 
   app.post("/api/mosques", requireRole("admin"), async (req, res) => {
     try {
-      const mosque = await storage.createMosque(req.body);
+      const { name, city, address, phone, imam, description, image, isActive } = req.body;
+      if (!name || typeof name !== "string" || name.length > 200) {
+        return res.status(400).json({ message: "اسم الجامع مطلوب ويجب ألا يتجاوز 200 حرف" });
+      }
+      const mosque = await storage.createMosque({ name, city, address, phone, imam, description, image, isActive });
       await logActivity(req.user!, `إنشاء جامع: ${mosque.name}`, "mosques");
       res.status(201).json(mosque);
     } catch (err: any) {
@@ -56,7 +60,17 @@ export async function registerRoutes(
   });
 
   app.patch("/api/mosques/:id", requireRole("admin"), async (req, res) => {
-    const updated = await storage.updateMosque(req.params.id, req.body);
+    const { name, city, address, phone, imam, description, image, isActive } = req.body;
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (city !== undefined) updateData.city = city;
+    if (address !== undefined) updateData.address = address;
+    if (phone !== undefined) updateData.phone = phone;
+    if (imam !== undefined) updateData.imam = imam;
+    if (description !== undefined) updateData.description = description;
+    if (image !== undefined) updateData.image = image;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    const updated = await storage.updateMosque(req.params.id, updateData);
     if (!updated) return res.status(404).json({ message: "الجامع غير موجود" });
     res.json(updated);
   });
@@ -135,7 +149,12 @@ export async function registerRoutes(
         return res.status(403).json({ message: "غير مصرح بإنشاء حسابات" });
       }
 
-      const data = { ...req.body, password: await hashPassword(req.body.password || "123456") };
+      const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, email, phone, address, gender, avatar, isActive, canPrintIds } = req.body;
+      const data: any = {
+        username, name, password: await hashPassword(req.body.password || "123456"),
+        role: req.body.role, mosqueId: req.body.mosqueId, teacherId,
+        email, phone, address, gender, avatar, isActive, canPrintIds,
+      };
       const user = await storage.createUser(data);
       const { password, ...safe } = user;
       await logActivity(currentUser, `إنشاء حساب: ${user.name} (${targetRole})`, "users");
@@ -164,18 +183,26 @@ export async function registerRoutes(
       return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
     }
 
-    const updateData = { ...req.body };
-    if (updateData.password) {
-      updateData.password = await hashPassword(updateData.password);
-    } else {
-      delete updateData.password;
+    const updateData: any = {};
+    const { name, email, phone, address, gender, avatar, teacherId } = req.body;
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (gender !== undefined) updateData.gender = gender;
+    if (avatar !== undefined) updateData.avatar = avatar;
+    if (teacherId !== undefined) updateData.teacherId = teacherId;
+
+    if (req.body.password) {
+      updateData.password = await hashPassword(req.body.password);
     }
 
-    if (currentUser.role !== "admin") {
-      delete updateData.role;
-      delete updateData.mosqueId;
-      delete updateData.isActive;
-      delete updateData.canPrintIds;
+    if (currentUser.role === "admin") {
+      if (req.body.role !== undefined) updateData.role = req.body.role;
+      if (req.body.mosqueId !== undefined) updateData.mosqueId = req.body.mosqueId;
+      if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive;
+      if (req.body.canPrintIds !== undefined) updateData.canPrintIds = req.body.canPrintIds;
+      if (req.body.username !== undefined) updateData.username = req.body.username;
     }
 
     const updated = await storage.updateUser(req.params.id, updateData);
@@ -259,12 +286,41 @@ export async function registerRoutes(
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بإنشاء واجبات" });
       }
+
+      const { studentId, surahName, fromVerse, toVerse, type, scheduledDate, status, notes } = req.body;
+      if (!studentId || !surahName || fromVerse === undefined || toVerse === undefined || !scheduledDate) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+
+      const fromVerseNum = Number(fromVerse);
+      const toVerseNum = Number(toVerse);
+      if (!Number.isInteger(fromVerseNum) || !Number.isInteger(toVerseNum) || fromVerseNum < 1 || toVerseNum < 1 || toVerseNum < fromVerseNum) {
+        return res.status(400).json({ message: "أرقام الآيات غير صحيحة" });
+      }
+
+      const student = await storage.getUser(studentId);
+      if (!student || student.role !== "student") {
+        return res.status(400).json({ message: "الطالب غير موجود" });
+      }
+
+      if (currentUser.role === "teacher" && student.teacherId !== currentUser.id) {
+        return res.status(403).json({ message: "غير مصرح بإنشاء واجبات لهذا الطالب" });
+      }
+      if (currentUser.role === "supervisor" && student.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بإنشاء واجبات لطالب من جامع آخر" });
+      }
+
       const data = {
-        ...req.body,
-        mosqueId: currentUser.mosqueId,
-        scheduledDate: new Date(req.body.scheduledDate),
-        fromVerse: Number(req.body.fromVerse),
-        toVerse: Number(req.body.toVerse),
+        studentId,
+        teacherId: currentUser.role === "teacher" ? currentUser.id : (req.body.teacherId || currentUser.id),
+        mosqueId: currentUser.role === "admin" ? (req.body.mosqueId || currentUser.mosqueId) : currentUser.mosqueId,
+        surahName,
+        fromVerse: fromVerseNum,
+        toVerse: toVerseNum,
+        type: type || "new",
+        scheduledDate: new Date(scheduledDate),
+        status: status || "pending",
+        notes,
       };
       const assignment = await storage.createAssignment(data);
       await storage.createNotification({
@@ -285,7 +341,14 @@ export async function registerRoutes(
   app.patch("/api/assignments/:id/seen", requireAuth, async (req, res) => {
     const assignment = await storage.getAssignment(req.params.id);
     if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
-    if (req.user!.role === "student" && assignment.studentId !== req.user!.id) {
+    const currentUser = req.user!;
+    if (currentUser.role === "student" && assignment.studentId !== currentUser.id) {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
+    if (currentUser.role === "teacher" && assignment.teacherId !== currentUser.id) {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
+    if (currentUser.role === "supervisor" && assignment.mosqueId !== currentUser.mosqueId) {
       return res.status(403).json({ message: "غير مصرح" });
     }
     const updated = await storage.updateAssignment(req.params.id, { 
@@ -311,11 +374,29 @@ export async function registerRoutes(
       return res.status(403).json({ message: "غير مصرح بتعديل هذا الواجب" });
     }
 
-    const updateData = { ...req.body };
-    if (updateData.scheduledDate) updateData.scheduledDate = new Date(updateData.scheduledDate);
-    if (updateData.fromVerse !== undefined) updateData.fromVerse = Number(updateData.fromVerse);
-    if (updateData.toVerse !== undefined) updateData.toVerse = Number(updateData.toVerse);
-    if (updateData.grade !== undefined) updateData.grade = Number(updateData.grade);
+    const updateData: any = {};
+    if (req.body.surahName !== undefined) updateData.surahName = req.body.surahName;
+    if (req.body.type !== undefined) updateData.type = req.body.type;
+    if (req.body.status !== undefined) updateData.status = req.body.status;
+    if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+    if (req.body.seenByStudent !== undefined) updateData.seenByStudent = req.body.seenByStudent;
+    if (req.body.seenAt !== undefined) updateData.seenAt = new Date(req.body.seenAt);
+    if (req.body.scheduledDate !== undefined) updateData.scheduledDate = new Date(req.body.scheduledDate);
+    if (req.body.fromVerse !== undefined) {
+      const v = Number(req.body.fromVerse);
+      if (!Number.isInteger(v) || v < 1) return res.status(400).json({ message: "رقم الآية غير صحيح" });
+      updateData.fromVerse = v;
+    }
+    if (req.body.toVerse !== undefined) {
+      const v = Number(req.body.toVerse);
+      if (!Number.isInteger(v) || v < 1) return res.status(400).json({ message: "رقم الآية غير صحيح" });
+      updateData.toVerse = v;
+    }
+    if (req.body.grade !== undefined) {
+      const g = Number(req.body.grade);
+      if (!Number.isInteger(g) || g < 0 || g > 100) return res.status(400).json({ message: "الدرجة يجب أن تكون بين 0 و 100" });
+      updateData.grade = g;
+    }
     const updated = await storage.updateAssignment(req.params.id, updateData);
     if (!updated) return res.status(404).json({ message: "الواجب غير موجود" });
     if (req.body.grade !== undefined) {
@@ -397,14 +478,19 @@ export async function registerRoutes(
       const targetUser = await storage.getUser(toUserId);
       if (!targetUser) return res.status(404).json({ message: "المستخدم غير موجود" });
 
+      if (!["supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالتقييم" });
+      }
+
+      if (currentUser.mosqueId && targetUser.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بتقييم مستخدم من جامع آخر" });
+      }
+
       if (currentUser.role === "supervisor" && targetUser.role !== "teacher") {
         return res.status(403).json({ message: "المشرف يمكنه تقييم الأساتذة فقط" });
       }
       if (currentUser.role === "teacher" && targetUser.role !== "student") {
         return res.status(403).json({ message: "الأستاذ يمكنه تقييم الطلاب فقط" });
-      }
-      if (!["supervisor", "teacher"].includes(currentUser.role)) {
-        return res.status(403).json({ message: "غير مصرح بالتقييم" });
       }
 
       const rating = await storage.createRating({
@@ -492,25 +578,39 @@ export async function registerRoutes(
       const currentUser = req.user!;
       const { title, surahName, fromVerse, toVerse, examDate, examTime, description, isForAll, studentIds } = req.body;
 
+      if (!title || typeof title !== "string" || title.length > 200) {
+        return res.status(400).json({ message: "عنوان الامتحان مطلوب ويجب ألا يتجاوز 200 حرف" });
+      }
+      if (!surahName || !examDate || !examTime) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const fromVerseNum = Number(fromVerse);
+      const toVerseNum = Number(toVerse);
+      if (!Number.isInteger(fromVerseNum) || !Number.isInteger(toVerseNum) || fromVerseNum < 1 || toVerseNum < 1) {
+        return res.status(400).json({ message: "أرقام الآيات غير صحيحة" });
+      }
+
       const exam = await storage.createExam({
         teacherId: currentUser.id,
         mosqueId: currentUser.mosqueId,
         title,
         surahName,
-        fromVerse: Number(fromVerse),
-        toVerse: Number(toVerse),
+        fromVerse: fromVerseNum,
+        toVerse: toVerseNum,
         examDate: new Date(examDate),
         examTime,
         description,
         isForAll: isForAll !== false,
       });
 
+      const myStudents = await storage.getUsersByTeacher(currentUser.id);
+      const myStudentIds = new Set(myStudents.map(s => s.id));
+
       let targetStudents: string[] = [];
       if (isForAll !== false) {
-        const myStudents = await storage.getUsersByTeacher(currentUser.id);
         targetStudents = myStudents.map(s => s.id);
       } else if (studentIds && studentIds.length > 0) {
-        targetStudents = studentIds;
+        targetStudents = studentIds.filter((sid: string) => myStudentIds.has(sid));
       }
 
       for (const sid of targetStudents) {
@@ -548,7 +648,14 @@ export async function registerRoutes(
     const students = await storage.getExamStudents(req.params.examId);
     const entry = students.find(s => s.studentId === req.params.studentId);
     if (!entry) return res.status(404).json({ message: "الطالب غير مسجل في هذا الامتحان" });
-    const updated = await storage.updateExamStudent(entry.id, req.body);
+    const examUpdateData: any = {};
+    if (req.body.grade !== undefined) {
+      const g = Number(req.body.grade);
+      if (!Number.isInteger(g) || g < 0 || g > 100) return res.status(400).json({ message: "الدرجة يجب أن تكون بين 0 و 100" });
+      examUpdateData.grade = g;
+    }
+    if (req.body.status !== undefined) examUpdateData.status = req.body.status;
+    const updated = await storage.updateExamStudent(entry.id, examUpdateData);
     res.json(updated);
   });
 
@@ -1074,10 +1181,7 @@ export async function registerRoutes(
     try {
       const existing = await storage.getUserByUsername("admin");
       if (existing) {
-        if (!req.isAuthenticated() || req.user!.role !== "admin") {
-          return res.status(403).json({ message: "غير مصرح بالوصول" });
-        }
-        return res.json({ message: "البيانات موجودة مسبقًا" });
+        return res.status(403).json({ message: "البيانات موجودة مسبقًا" });
       }
 
       const mosque1 = await storage.createMosque({
