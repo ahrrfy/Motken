@@ -22,15 +22,20 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 ## Key Files
 - `shared/schema.ts` - Database schema (Drizzle) with all tables
 - `shared/quran-surahs.ts` - Complete 114 Quran surahs with verse counts
+- `shared/hadiths.ts` - 60 authentic hadiths from Bukhari/Muslim for ticker
 - `server/storage.ts` - Storage layer with mosque-scoped queries
 - `server/routes.ts` - API routes with hierarchical permissions
 - `server/auth.ts` - Authentication setup (passport, sessions)
+- `server/session-tracker.ts` - In-memory session tracking (IP, device, user agent)
 - `client/src/App.tsx` - Frontend routing
 - `client/src/lib/auth-context.tsx` - Auth context with mosqueName, canPrintIds, gender
+- `client/src/lib/api.ts` - Resilient API fetch with retries & timeout
 - `client/src/lib/theme-context.tsx` - Theme (dark/light) and language (ar/en) context
 - `client/src/lib/translations.ts` - Arabic/English translations
 - `client/src/lib/print-utils.ts` - HTML-based print utility with Arabic/RTL support
 - `client/src/components/layout/SidebarLayout.tsx` - Main layout with sidebar
+- `client/src/components/HadithTicker.tsx` - Rotating hadith ticker bar
+- `client/src/components/DevicePermissions.tsx` - Camera/location/notification permissions
 
 ## Pages
 - DashboardPage, MosquesPage (admin), AllUsersPage (admin), StudentsPage, TeachersPage
@@ -39,11 +44,13 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - QuranTracker, LibraryPage (internal reader, no external links), ReportsPage
 - IDCardsPage (permission-based), QRScannerPage, SettingsPage
 - ActivityLogsPage (admin), TeacherActivitiesPage (supervisor)
+- OnlineUsersPage (admin - session monitoring, kick/suspend/ban)
 - NotificationsPage (with bulk actions), TeacherDailyPage
 
 ## Database Tables
 - mosques, users (with gender field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
 - activity_logs, notifications, courses, course_students, course_teachers, certificates
+- banned_devices (permanent IP bans with indexes on ip_address and device_fingerprint)
 
 ## Key Features
 - **Unified Assignments & Exams**: Single page with tabs for managing assignments and exams
@@ -66,6 +73,15 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Notification Management**: Mark as read (individual/selected/all), delete (individual/selected/all)
 - **Font Size Controls**: Adjustable 12-28px with localStorage persistence
 - **Web Push Notifications**: Service Worker polling for browser notifications
+- **Online User Monitoring**: In-memory session tracking with IP/device/browser/OS info, green/orange status indicators, 10-second auto-refresh
+- **Admin Controls**: Kick session, kick all user sessions, suspend/activate accounts, permanent IP ban
+- **Permanent Banning**: IP-based bans stored in bannedDevices table, blocks login from banned IPs
+- **Hadith Ticker**: 60 authentic hadiths (Bukhari/Muslim) with fade animation, 15-second rotation, emerald gradient bar
+- **Device Permissions**: Camera (QR), geolocation (prayer times), notifications with visual status indicators in Settings
+- **Resilient API**: Automatic retries (3x exponential backoff) for GET requests, 15s timeout, Arabic error messages
+- **Response Compression**: gzip/brotli compression middleware for all responses
+- **Static Asset Caching**: 24h max-age + 7-day stale-while-revalidate for js/css/images/fonts
+- **Service Worker Caching**: Stale-while-revalidate for static assets, offline capability
 - **Footer**: "النظام وقف لله تعالى" + "برمجة وتطوير أحمد خالد الزبيدي"
 
 ## Test Credentials
@@ -89,6 +105,10 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Input Validation**: Stars rating validated 1-5, verse numbers validated, type conversion enforced
 - **Activity Logs**: POST endpoint removed; logging only internal via logActivity()
 - **Cross-Mosque Isolation**: Supervisors/teachers cannot access data from other mosques
+- **IP Banning**: Permanent IP bans block login even with new accounts, validated to 45 chars max
+- **Cascade Deletes**: Mosque deletion cascades to all child records (users, logs, notifications)
+- **Notification Array Limits**: Bulk operations limited to 100 items to prevent abuse
+- **Comprehensive Error Handling**: All async routes wrapped in try/catch
 
 ## Design Choices
 - Avatar upload uses base64 encoding (limit 500KB), stored in user.avatar field
@@ -98,3 +118,6 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - Library books have internal reader with generated chapters and content per category
 - Assignment "seen" auto-triggered when student views assignments page
 - Notifications auto-created for assignments, exams, course enrollments
+- Session tracking uses in-memory Map with 5-minute online timeout and 30-minute auto-cleanup
+- API retry logic only retries GET requests to avoid duplicate mutations
+- Hadith ticker starts at random index, rotates every 15 seconds with 500ms fade transition
