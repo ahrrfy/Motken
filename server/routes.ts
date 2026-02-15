@@ -118,16 +118,15 @@ export async function registerRoutes(
           return res.status(400).json({ message: "دور المستخدم غير صحيح" });
         }
       } else if (currentUser.role === "supervisor") {
-        if (targetRole !== "teacher") {
-          return res.status(403).json({ message: "المشرف يمكنه إنشاء حسابات الأساتذة فقط" });
+        if (targetRole !== "teacher" && targetRole !== "student") {
+          return res.status(403).json({ message: "المشرف يمكنه إنشاء حسابات الأساتذة والطلاب فقط" });
         }
+        req.body.role = targetRole;
         req.body.mosqueId = currentUser.mosqueId;
         req.body.isActive = true;
         delete req.body.canPrintIds;
       } else if (currentUser.role === "teacher") {
-        if (targetRole !== "student") {
-          return res.status(403).json({ message: "الأستاذ يمكنه إضافة الطلاب فقط" });
-        }
+        req.body.role = "student";
         req.body.mosqueId = currentUser.mosqueId;
         req.body.teacherId = currentUser.id;
         req.body.isActive = true;
@@ -584,8 +583,13 @@ export async function registerRoutes(
   });
 
   // Supervisor sees teacher activities in their mosque
-  app.get("/api/teacher-activities", requireRole("supervisor"), async (req, res) => {
+  app.get("/api/teacher-activities", requireRole("admin", "supervisor"), async (req, res) => {
     const currentUser = req.user!;
+    if (currentUser.role === "admin") {
+      const logs = await storage.getActivityLogs();
+      const teacherLogs = logs.filter((l: any) => l.userRole === "teacher");
+      return res.json(teacherLogs);
+    }
     if (!currentUser.mosqueId) return res.json([]);
     const logs = await storage.getActivityLogsByMosqueAndRole(currentUser.mosqueId, "teacher");
     res.json(logs);
