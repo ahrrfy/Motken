@@ -26,6 +26,7 @@ interface UserRecord {
   mosqueId?: string | null;
   email?: string;
   phone?: string;
+  gender?: string | null;
   isActive?: boolean;
   canPrintIds?: boolean;
 }
@@ -401,6 +402,7 @@ export default function AllUsersPage() {
                   <tr className="border-b text-muted-foreground">
                     <th className="text-right py-3 px-2 font-medium">الاسم</th>
                     <th className="text-right py-3 px-2 font-medium">اسم المستخدم</th>
+                    <th className="text-right py-3 px-2 font-medium">الجنس</th>
                     <th className="text-right py-3 px-2 font-medium">الدور</th>
                     <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجامع</th>
                     <th className="text-right py-3 px-2 font-medium hidden lg:table-cell">الهاتف</th>
@@ -421,6 +423,7 @@ export default function AllUsersPage() {
                           </div>
                         </td>
                         <td className="py-3 px-2 text-muted-foreground" dir="ltr">{u.username}</td>
+                        <td className="py-3 px-2" data-testid={`text-gender-${u.id}`}>{u.gender === "female" ? "أنثى" : "ذكر"}</td>
                         <td className="py-3 px-2">
                           <Badge variant="secondary" className={`${roleColors[u.role]} text-xs gap-1`}>
                             <RoleIcon className="w-3 h-3" />

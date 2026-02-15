@@ -120,6 +120,39 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleMarkSelectedRead = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const res = await fetch("/api/notifications/read-selected", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNotifications(prev => prev.map(n => selectedIds.has(n.id) ? { ...n, isRead: true } : n));
+      setSelectedIds(new Set());
+      toast({ title: "تم", description: "تم تحديد الإشعارات المحددة كمقروءة", className: "bg-green-50 border-green-200 text-green-800" });
+    } catch {
+      toast({ title: "خطأ", description: "فشل في تحديد الإشعارات كمقروءة", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    try {
+      const res = await fetch("/api/notifications/delete-all", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNotifications([]);
+      setSelectedIds(new Set());
+      toast({ title: "تم", description: "تم حذف جميع الإشعارات", className: "bg-green-50 border-green-200 text-green-800" });
+    } catch {
+      toast({ title: "خطأ", description: "فشل في حذف الإشعارات", variant: "destructive" });
+    }
+  };
+
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     try {
@@ -175,11 +208,34 @@ export default function NotificationsPage() {
             variant="outline"
             size="sm"
             className="gap-2"
+            onClick={handleMarkSelectedRead}
+            disabled={selectedIds.size === 0}
+            data-testid="button-mark-selected-read"
+          >
+            <CheckCheck className="w-4 h-4" />
+            تحديد المحدد كمقروء
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
             onClick={handleMarkAllRead}
             data-testid="button-mark-all-read"
           >
             <CheckCheck className="w-4 h-4" />
             تحديد الكل كمقروء
+          </Button>
+
+          <Button
+            variant="destructive"
+            size="sm"
+            className="gap-2"
+            onClick={handleDeleteAll}
+            data-testid="button-delete-all"
+          >
+            <Trash2 className="w-4 h-4" />
+            حذف الكل
           </Button>
 
           {selectedIds.size > 0 && (

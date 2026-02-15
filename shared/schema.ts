@@ -37,6 +37,7 @@ export const users = pgTable("users", {
   email: text("email"),
   phone: text("phone"),
   address: text("address"),
+  gender: text("gender"),
   avatar: text("avatar"),
   isActive: boolean("is_active").notNull().default(true),
   canPrintIds: boolean("can_print_ids").notNull().default(false),
@@ -61,6 +62,8 @@ export const assignments = pgTable("assignments", {
   status: assignmentStatusEnum("status").notNull().default("pending"),
   grade: integer("grade"),
   notes: text("notes"),
+  seenByStudent: boolean("seen_by_student").notNull().default(false),
+  seenAt: timestamp("seen_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

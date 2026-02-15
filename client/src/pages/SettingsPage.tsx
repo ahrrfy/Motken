@@ -50,6 +50,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [address, setAddress] = useState(user?.address || "");
+  const [gender, setGender] = useState(user?.gender || "male");
   const [username, setUsername] = useState(user?.username || "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -132,7 +133,7 @@ export default function SettingsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name, email, phone, address }),
+        body: JSON.stringify({ name, email, phone, address, gender }),
       });
       if (res.ok) {
         setMessage("تم حفظ التغييرات بنجاح. ستظهر التغييرات بعد تسجيل الخروج وإعادة الدخول");
@@ -324,6 +325,18 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>العنوان</Label>
                   <Input value={address} onChange={(e) => setAddress(e.target.value)} data-testid="input-settings-address" />
+                </div>
+                <div className="space-y-2">
+                  <Label>الجنس</Label>
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger data-testid="select-settings-gender">
+                      <SelectValue placeholder="اختر الجنس" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">ذكر</SelectItem>
+                      <SelectItem value="female">أنثى</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <Button className="bg-primary text-white" onClick={handleSaveProfile} disabled={saving} data-testid="button-save-profile">

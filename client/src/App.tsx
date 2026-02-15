@@ -12,13 +12,12 @@ import IDCardsPage from "@/pages/IDCardsPage";
 import TeachersPage from "@/pages/TeachersPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QRScannerPage from "@/pages/QRScannerPage";
-import AssignmentsPage from "@/pages/AssignmentsPage";
+import AssignmentsExamsPage from "@/pages/AssignmentsExamsPage";
 import ActivityLogsPage from "@/pages/ActivityLogsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import MosquesPage from "@/pages/MosquesPage";
 import AllUsersPage from "@/pages/AllUsersPage";
 import RatingsPage from "@/pages/RatingsPage";
-import ExamsPage from "@/pages/ExamsPage";
 import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
 import CoursesPage from "@/pages/CoursesPage";
 import TeacherDailyPage from "@/pages/TeacherDailyPage";
@@ -73,8 +72,7 @@ function App() {
         <Route path="/mosques" component={MosquesPage} />
         <Route path="/students" component={StudentsPage} />
         <Route path="/teachers" component={TeachersPage} />
-        <Route path="/assignments" component={AssignmentsPage} />
-        <Route path="/exams" component={ExamsPage} />
+        <Route path="/assignments" component={AssignmentsExamsPage} />
         <Route path="/ratings" component={RatingsPage} />
         <Route path="/courses" component={CoursesPage} />
         <Route path="/quran" component={QuranTracker} />

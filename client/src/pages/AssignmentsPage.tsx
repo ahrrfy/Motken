@@ -27,6 +27,8 @@ interface Assignment {
   scheduledDate: string;
   status: string;
   type: string;
+  seenByStudent: boolean;
+  seenAt: string | null;
 }
 
 interface QuranSurah {

@@ -283,6 +283,19 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/assignments/:id/seen", requireAuth, async (req, res) => {
+    const assignment = await storage.getAssignment(req.params.id);
+    if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+    if (req.user!.role === "student" && assignment.studentId !== req.user!.id) {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
+    const updated = await storage.updateAssignment(req.params.id, { 
+      seenByStudent: true, 
+      seenAt: new Date() 
+    });
+    res.json(updated);
+  });
+
   app.patch("/api/assignments/:id", requireAuth, async (req, res) => {
     const currentUser = req.user!;
     if (currentUser.role === "student") {
@@ -585,6 +598,26 @@ export async function registerRoutes(
     res.json(notifs);
   });
 
+  app.post("/api/notifications/read-selected", requireAuth, async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ message: "ids مطلوب" });
+    for (const id of ids) {
+      const notif = await storage.getNotification(id);
+      if (notif && notif.userId === req.user!.id) {
+        await storage.updateNotification(id, { isRead: true });
+      }
+    }
+    res.json({ message: "تم" });
+  });
+
+  app.post("/api/notifications/delete-all", requireAuth, async (req, res) => {
+    const notifs = await storage.getNotifications(req.user!.id);
+    for (const notif of notifs) {
+      await storage.deleteNotification(notif.id);
+    }
+    res.json({ message: "تم حذف جميع الإشعارات" });
+  });
+
   app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
     const notification = await storage.getNotification(req.params.id);
     if (!notification) return res.status(404).json({ message: "الإشعار غير موجود" });
@@ -758,6 +791,14 @@ export async function registerRoutes(
         if (!existingIds.has(sid)) {
           const entry = await storage.createCourseStudent({ courseId: req.params.id, studentId: sid });
           created.push(entry);
+          await storage.createNotification({
+            userId: sid,
+            mosqueId: req.user!.mosqueId || null,
+            title: "تم تسجيلك في دورة جديدة",
+            message: `تم تسجيلك في الدورة: ${course.title}`,
+            type: "info",
+            isRead: false,
+          });
         }
       }
 

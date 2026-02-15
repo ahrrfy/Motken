@@ -35,6 +35,7 @@ export interface IStorage {
   updateMosque(id: string, data: Partial<InsertMosque>): Promise<Mosque | undefined>;
   deleteMosque(id: string): Promise<void>;
 
+  getAssignment(id: string): Promise<Assignment | undefined>;
   getAssignments(): Promise<Assignment[]>;
   getAssignmentsByMosque(mosqueId: string): Promise<Assignment[]>;
   getAssignmentsByStudent(studentId: string): Promise<Assignment[]>;
@@ -69,6 +70,7 @@ export interface IStorage {
   getNotification(id: string): Promise<Notification | undefined>;
   getNotifications(userId: string): Promise<Notification[]>;
   createNotification(n: InsertNotification): Promise<Notification>;
+  updateNotification(id: string, data: Partial<InsertNotification>): Promise<Notification | undefined>;
   markNotificationRead(id: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
   deleteNotification(id: string): Promise<void>;
@@ -178,6 +180,11 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMosque(id: string): Promise<void> {
     await db.delete(mosques).where(eq(mosques.id, id));
+  }
+
+  async getAssignment(id: string): Promise<Assignment | undefined> {
+    const [assignment] = await db.select().from(assignments).where(eq(assignments.id, id));
+    return assignment;
   }
 
   async getAssignments(): Promise<Assignment[]> {
@@ -310,6 +317,11 @@ export class DatabaseStorage implements IStorage {
 
   async createNotification(n: InsertNotification): Promise<Notification> {
     const [notif] = await db.insert(notifications).values(n).returning();
+    return notif;
+  }
+
+  async updateNotification(id: string, data: Partial<InsertNotification>): Promise<Notification | undefined> {
+    const [notif] = await db.update(notifications).set(data).where(eq(notifications.id, id)).returning();
     return notif;
   }
 

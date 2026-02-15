@@ -301,31 +301,248 @@ export default function CoursesPage() {
     return isSupervisor || isAdmin || course.createdBy === user?.id;
   };
 
-  const handlePrint = (cert: CertificateData) => {
-    const studentName = getStudentName(cert.studentId);
-    const courseName = getCourseName(cert.courseId);
+  const printCertificate = (cert: CertificateData, courseName: string, studentName: string) => {
     const certHtml = `
-      <div style="text-align:center; padding: 40px 20px; border: 3px double #16213e; margin: 20px; border-radius: 12px;">
-        <div style="font-size: 28px; font-weight: 700; color: #16213e; margin-bottom: 20px;">شهادة إتمام دورة</div>
-        <div style="font-size: 16px; color: #666; margin-bottom: 30px;">يُشهد بأن الطالب / الطالبة</div>
-        <div style="font-size: 32px; font-weight: 700; color: #0f3460; margin: 20px 0; padding: 10px; border-bottom: 2px solid #e0e0e0;">${studentName}</div>
-        <div style="font-size: 16px; color: #444; margin: 20px 0;">قد أتمّ بنجاح دورة</div>
-        <div style="font-size: 24px; font-weight: 700; color: #16213e; margin: 15px 0;">${courseName}</div>
-        <div style="margin-top: 30px; font-size: 14px; color: #888;">
-          <div>رقم الشهادة: ${cert.certificateNumber}</div>
-          <div style="margin-top: 5px;">تاريخ الإصدار: ${new Date(cert.issuedAt).toLocaleDateString("ar-IQ", { year: "numeric", month: "long", day: "numeric" })}</div>
-        </div>
-        <div style="margin-top: 40px; display: flex; justify-content: space-around;">
-          <div style="text-align: center;">
-            <div style="border-top: 1px solid #333; width: 150px; margin: 0 auto; padding-top: 5px; font-size: 12px;">توقيع المسؤول</div>
+      <style>
+        .cert-container {
+          width: 100%;
+          max-width: 800px;
+          margin: 0 auto;
+          position: relative;
+          padding: 0;
+          background: white;
+        }
+        .cert-frame {
+          border: 3px solid #16213e;
+          padding: 40px;
+          position: relative;
+          background: linear-gradient(135deg, #fefefe 0%, #f8f4e8 100%);
+        }
+        .cert-frame::before {
+          content: '';
+          position: absolute;
+          top: 8px; left: 8px; right: 8px; bottom: 8px;
+          border: 2px solid #c9a84c;
+          pointer-events: none;
+        }
+        .cert-frame::after {
+          content: '';
+          position: absolute;
+          top: 14px; left: 14px; right: 14px; bottom: 14px;
+          border: 1px solid #16213e;
+          pointer-events: none;
+        }
+        .corner-decoration {
+          position: absolute;
+          width: 60px;
+          height: 60px;
+          border: 2px solid #c9a84c;
+        }
+        .corner-tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+        .corner-tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+        .corner-bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+        .corner-br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+        .cert-header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .bismillah {
+          font-size: 24px;
+          color: #c9a84c;
+          margin-bottom: 15px;
+          font-family: 'Tajawal', serif;
+        }
+        .cert-logo {
+          width: 70px;
+          height: 70px;
+          margin: 0 auto 10px;
+          background: #16213e;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 32px;
+          font-weight: 700;
+        }
+        .cert-system-name {
+          font-size: 22px;
+          font-weight: 700;
+          color: #16213e;
+        }
+        .cert-subtitle {
+          font-size: 13px;
+          color: #666;
+          margin-top: 3px;
+        }
+        .cert-title {
+          text-align: center;
+          margin: 25px 0;
+        }
+        .cert-title h1 {
+          font-size: 36px;
+          font-weight: 700;
+          color: #c9a84c;
+          margin: 0;
+          letter-spacing: 3px;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .cert-title .underline-decoration {
+          width: 200px;
+          height: 3px;
+          background: linear-gradient(to right, transparent, #c9a84c, transparent);
+          margin: 10px auto;
+        }
+        .cert-body {
+          text-align: center;
+          margin: 30px 0;
+          font-size: 18px;
+          line-height: 2.2;
+          color: #333;
+        }
+        .cert-body .student-name {
+          font-size: 28px;
+          font-weight: 700;
+          color: #16213e;
+          border-bottom: 2px solid #c9a84c;
+          padding-bottom: 5px;
+          display: inline-block;
+          margin: 5px 0;
+        }
+        .cert-body .course-name {
+          font-size: 22px;
+          font-weight: 700;
+          color: #0f3460;
+          display: inline-block;
+          margin: 5px 0;
+        }
+        .cert-details {
+          display: flex;
+          justify-content: space-between;
+          margin: 30px 0;
+          padding: 15px;
+          background: #f8f4e8;
+          border-radius: 8px;
+          border: 1px solid #e0d5b8;
+        }
+        .cert-detail-item {
+          text-align: center;
+        }
+        .cert-detail-label {
+          font-size: 11px;
+          color: #888;
+          margin-bottom: 3px;
+        }
+        .cert-detail-value {
+          font-size: 14px;
+          font-weight: 700;
+          color: #16213e;
+        }
+        .cert-signatures {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 40px;
+          padding-top: 20px;
+        }
+        .cert-signature {
+          text-align: center;
+          width: 200px;
+        }
+        .cert-signature .line {
+          width: 150px;
+          border-top: 1px solid #333;
+          margin: 0 auto 5px;
+        }
+        .cert-signature .label {
+          font-size: 12px;
+          color: #666;
+        }
+        .cert-footer {
+          text-align: center;
+          margin-top: 30px;
+          padding-top: 15px;
+          border-top: 1px solid #e0d5b8;
+        }
+        .cert-number {
+          font-size: 11px;
+          color: #999;
+          font-family: monospace;
+        }
+        .cert-qr-note {
+          font-size: 10px;
+          color: #aaa;
+          margin-top: 5px;
+        }
+        @media print {
+          body { margin: 0; padding: 0; }
+          .cert-container { max-width: none; }
+        }
+      </style>
+      <div class="cert-container">
+        <div class="cert-frame">
+          <div class="corner-decoration corner-tl"></div>
+          <div class="corner-decoration corner-tr"></div>
+          <div class="corner-decoration corner-bl"></div>
+          <div class="corner-decoration corner-br"></div>
+          <div class="cert-header">
+            <div class="bismillah">﷽</div>
+            <div class="cert-logo">م</div>
+            <div class="cert-system-name">مُتْقِن</div>
+            <div class="cert-subtitle">نظام إدارة حلقات القرآن الكريم</div>
           </div>
-          <div style="text-align: center;">
-            <div style="border-top: 1px solid #333; width: 150px; margin: 0 auto; padding-top: 5px; font-size: 12px;">الختم</div>
+          <div class="cert-title">
+            <h1>شهادة إتمام</h1>
+            <div class="underline-decoration"></div>
+          </div>
+          <div class="cert-body">
+            يشهد نظام مُتْقِن لإدارة حلقات القرآن الكريم بأن
+            <br />
+            <span class="student-name">${studentName}</span>
+            <br />
+            قد أتمّ بنجاح وتفوّق الدورة التعليمية
+            <br />
+            <span class="course-name">${courseName}</span>
+            <br />
+            وقد استوفى جميع المتطلبات والشروط المقررة
+          </div>
+          <div class="cert-details">
+            <div class="cert-detail-item">
+              <div class="cert-detail-label">رقم الشهادة</div>
+              <div class="cert-detail-value">${cert.certificateNumber}</div>
+            </div>
+            <div class="cert-detail-item">
+              <div class="cert-detail-label">تاريخ الإصدار</div>
+              <div class="cert-detail-value">${new Date(cert.issuedAt).toLocaleDateString("ar-IQ", { year: "numeric", month: "long", day: "numeric" })}</div>
+            </div>
+          </div>
+          <div class="cert-signatures">
+            <div class="cert-signature">
+              <div class="line"></div>
+              <div class="label">توقيع المشرف</div>
+            </div>
+            <div class="cert-signature">
+              <div class="line"></div>
+              <div class="label">ختم المؤسسة</div>
+            </div>
+            <div class="cert-signature">
+              <div class="line"></div>
+              <div class="label">توقيع الأستاذ</div>
+            </div>
+          </div>
+          <div class="cert-footer">
+            <div class="cert-number">${cert.certificateNumber}</div>
+            <div class="cert-qr-note">النظام وقف لله تعالى • برمجة وتطوير أحمد خالد الزبيدي</div>
           </div>
         </div>
       </div>
     `;
-    openPrintWindow("شهادة إتمام دورة - " + studentName, certHtml);
+    openPrintWindow("شهادة إتمام - " + studentName, certHtml);
+  };
+
+  const handlePrint = (cert: CertificateData) => {
+    const studentName = getStudentName(cert.studentId);
+    const courseName = getCourseName(cert.courseId);
+    printCertificate(cert, courseName, studentName);
   };
 
   return (
@@ -583,10 +800,30 @@ export default function CoursesPage() {
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     {cs.graduated ? (
-                                      <Badge className="bg-green-100 text-green-700 border-none gap-1" data-testid={`status-graduated-${cs.studentId}`}>
-                                        <CheckCircle className="w-3 h-3" />
-                                        متخرج
-                                      </Badge>
+                                      <>
+                                        <Badge className="bg-green-100 text-green-700 border-none gap-1" data-testid={`status-graduated-${cs.studentId}`}>
+                                          <CheckCircle className="w-3 h-3" />
+                                          متخرج
+                                        </Badge>
+                                        {(() => {
+                                          const cert = course.certificates?.find(c => c.studentId === cs.studentId);
+                                          if (cert) {
+                                            return (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-xs gap-1 h-7"
+                                                data-testid={`button-print-grad-cert-${cs.studentId}`}
+                                                onClick={() => printCertificate(cert, course.title, cs.studentName || getStudentName(cs.studentId))}
+                                              >
+                                                <Printer className="w-3 h-3" />
+                                                الشهادة
+                                              </Button>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </>
                                     ) : (canCreate || isAdmin) ? (
                                       <Button
                                         size="sm"
