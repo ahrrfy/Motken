@@ -186,6 +186,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteMosque(id: string): Promise<void> {
+    const mosqueUsers = await this.getUsersByMosque(id);
+    for (const user of mosqueUsers) {
+      await this.deleteUser(user.id);
+    }
+    await db.delete(activityLogs).where(eq(activityLogs.mosqueId, id));
+    await db.delete(notifications).where(eq(notifications.mosqueId, id));
     await db.delete(mosques).where(eq(mosques.id, id));
   }
 
