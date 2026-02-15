@@ -15,6 +15,9 @@ import ActivityLogsPage from "@/pages/ActivityLogsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import MosquesPage from "@/pages/MosquesPage";
 import AllUsersPage from "@/pages/AllUsersPage";
+import RatingsPage from "@/pages/RatingsPage";
+import ExamsPage from "@/pages/ExamsPage";
+import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
@@ -27,7 +30,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-islamic-pattern" dir="rtl">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto border-2 border-primary/20">
-            <span className="text-3xl font-bold text-primary">ح</span>
+            <span className="text-3xl font-bold text-primary">م</span>
           </div>
           <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground text-sm">جاري التحميل...</p>
@@ -53,6 +56,8 @@ function App() {
         <Route path="/students" component={StudentsPage} />
         <Route path="/teachers" component={TeachersPage} />
         <Route path="/assignments" component={AssignmentsPage} />
+        <Route path="/exams" component={ExamsPage} />
+        <Route path="/ratings" component={RatingsPage} />
         <Route path="/quran" component={QuranTracker} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/reports" component={ReportsPage} />
@@ -60,6 +65,7 @@ function App() {
         <Route path="/scan-qr" component={QRScannerPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/activity-logs" component={ActivityLogsPage} />
+        <Route path="/teacher-activities" component={TeacherActivitiesPage} />
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/users" component={AllUsersPage} />
         <Route path="/" component={DashboardPage} />

@@ -29,11 +29,11 @@ interface Assignment {
   type: string;
 }
 
-const surahs = [
-  { id: "1", name: "الفاتحة", verses: 7 },
-  { id: "2", name: "البقرة", verses: 286 },
-  { id: "3", name: "آل عمران", verses: 200 },
-];
+interface QuranSurah {
+  number: number;
+  name: string;
+  versesCount: number;
+}
 
 export default function AssignmentsPage() {
   const { user } = useAuth();
@@ -46,9 +46,12 @@ export default function AssignmentsPage() {
   const [time, setTime] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [surahs, setSurahs] = useState<QuranSurah[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const currentSurah = surahs.find(s => String(s.number) === selectedSurah);
 
   useEffect(() => {
     fetch("/api/users?role=student", { credentials: "include" })
@@ -62,19 +65,43 @@ export default function AssignmentsPage() {
       .then(data => setAssignments(data))
       .catch(() => {})
       .finally(() => setLoadingAssignments(false));
+
+    fetch("/api/quran-surahs", { credentials: "include" })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setSurahs(data))
+      .catch(() => {});
   }, []);
+
+  const handleSurahChange = (val: string) => {
+    setSelectedSurah(val);
+    setFromVerse("");
+    setToVerse("");
+  };
+
+  const handleFromVerseChange = (val: string) => {
+    const num = parseInt(val);
+    if (!currentSurah) { setFromVerse(val); return; }
+    if (num > currentSurah.versesCount) { setFromVerse(String(currentSurah.versesCount)); return; }
+    if (num < 1 && val !== "") { setFromVerse("1"); return; }
+    setFromVerse(val);
+  };
+
+  const handleToVerseChange = (val: string) => {
+    const num = parseInt(val);
+    if (!currentSurah) { setToVerse(val); return; }
+    if (num > currentSurah.versesCount) { setToVerse(String(currentSurah.versesCount)); return; }
+    const from = parseInt(fromVerse) || 1;
+    if (num < from && val !== "") { setToVerse(String(from)); return; }
+    setToVerse(val);
+  };
 
   const handleAssign = async () => {
     if (!selectedStudent || !date || !time || !selectedSurah) {
-      toast({
-        title: "خطأ في البيانات",
-        description: "يرجى تعبئة جميع الحقول المطلوبة",
-        variant: "destructive"
-      });
+      toast({ title: "خطأ في البيانات", description: "يرجى تعبئة جميع الحقول المطلوبة", variant: "destructive" });
       return;
     }
 
-    const surah = surahs.find(s => s.id === selectedSurah);
+    const surah = surahs.find(s => String(s.number) === selectedSurah);
     const scheduledDate = new Date(date);
     const [hours, minutes] = time.split(":");
     scheduledDate.setHours(parseInt(hours), parseInt(minutes));
@@ -167,25 +194,43 @@ export default function AssignmentsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2 md:col-span-2">
                 <Label>السورة</Label>
-                <Select value={selectedSurah} onValueChange={setSelectedSurah}>
+                <Select value={selectedSurah} onValueChange={handleSurahChange}>
                   <SelectTrigger className="bg-white" data-testid="select-surah">
                     <SelectValue placeholder="اختر السورة" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60">
                     {surahs.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      <SelectItem key={s.number} value={String(s.number)}>
+                        {s.number}. {s.name} ({s.versesCount} آية)
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
-                <Label>من الآية</Label>
-                <Input type="number" placeholder="1" value={fromVerse} onChange={e => setFromVerse(e.target.value)} data-testid="input-from-verse" />
+                <Label>من الآية {currentSurah && <span className="text-xs text-muted-foreground">(1 - {currentSurah.versesCount})</span>}</Label>
+                <Input
+                  type="number"
+                  placeholder="1"
+                  min={1}
+                  max={currentSurah?.versesCount}
+                  value={fromVerse}
+                  onChange={e => handleFromVerseChange(e.target.value)}
+                  data-testid="input-from-verse"
+                />
               </div>
               <div className="space-y-2">
-                <Label>إلى الآية</Label>
-                <Input type="number" placeholder="10" value={toVerse} onChange={e => setToVerse(e.target.value)} data-testid="input-to-verse" />
+                <Label>إلى الآية {currentSurah && <span className="text-xs text-muted-foreground">(حتى {currentSurah.versesCount})</span>}</Label>
+                <Input
+                  type="number"
+                  placeholder="10"
+                  min={parseInt(fromVerse) || 1}
+                  max={currentSurah?.versesCount}
+                  value={toVerse}
+                  onChange={e => handleToVerseChange(e.target.value)}
+                  data-testid="input-to-verse"
+                />
               </div>
             </div>
 
