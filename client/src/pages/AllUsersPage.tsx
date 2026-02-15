@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit } from "lucide-react";
+import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Mosque {
@@ -26,6 +26,7 @@ interface UserRecord {
   email?: string;
   phone?: string;
   isActive?: boolean;
+  canPrintIds?: boolean;
 }
 
 const roleLabels: Record<string, string> = {
@@ -141,6 +142,24 @@ export default function AllUsersPage() {
       });
       if (res.ok) {
         toast({ title: "تم حذف المستخدم بنجاح" });
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast({ title: data.message || "حدث خطأ", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    }
+  };
+
+  const handleTogglePrint = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/toggle-print`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast({ title: "تم تحديث صلاحية الطباعة" });
         fetchData();
       } else {
         const data = await res.json();
@@ -387,6 +406,18 @@ export default function AllUsersPage() {
                         <td className="py-3 px-2 hidden lg:table-cell text-muted-foreground" dir="ltr">{u.phone || "—"}</td>
                         <td className="py-3 px-2 text-center">
                           <div className="flex items-center justify-center gap-1">
+                            {(u.role === "supervisor" || u.role === "teacher") && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 ${u.canPrintIds ? "text-green-600" : "text-muted-foreground"}`}
+                                onClick={() => handleTogglePrint(u.id)}
+                                title={u.canPrintIds ? "إلغاء صلاحية الطباعة" : "منح صلاحية الطباعة"}
+                                data-testid={`button-toggle-print-${u.id}`}
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)} data-testid={`button-edit-user-${u.id}`}>
                               <Edit className="w-3.5 h-3.5" />
                             </Button>

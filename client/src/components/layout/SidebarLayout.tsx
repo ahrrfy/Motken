@@ -23,7 +23,10 @@ import {
   UserCircle,
   Menu,
   X,
-  Building2
+  Building2,
+  Star,
+  FileText,
+  ClipboardList
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -36,17 +39,28 @@ const navItems = [
   { href: "/students", label: "الطلاب", icon: Users, roles: ["teacher", "supervisor"] },
   { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["admin", "supervisor"] },
   { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["teacher", "supervisor"] },
+  { href: "/exams", label: "الامتحانات", icon: FileText, roles: ["teacher", "supervisor", "student"] },
+  { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["teacher", "supervisor", "student"] },
   { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin", "teacher", "supervisor"] },
+  { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
   { href: "/scan-qr", label: "مسح QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
+  { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["supervisor"] },
   { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin"] },
   { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin"] },
 ];
 
 function NavContent({ user, location, onNavigate }: { user: any; location: string; onNavigate?: () => void }) {
-  const filteredNav = navItems.filter((item) => item.roles.includes(user.role));
+  const filteredNav = navItems.filter((item) => {
+    if (!item.roles.includes(user.role)) {
+      if (item.permission === "canPrintIds" && user.canPrintIds) {
+        return true;
+      }
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
@@ -94,11 +108,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     <div className="p-4 sm:p-6 border-b border-sidebar-border/50 shrink-0">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl border-2 border-accent shrink-0">
-          ح
+          م
         </div>
         <div className="min-w-0">
-          <h1 className="font-bold text-lg leading-none">الحفاظ</h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-1">نظام تعليمي متكامل</p>
+          <h1 className="font-bold text-lg leading-none">متقن</h1>
+          <p className="text-xs text-sidebar-foreground/60 mt-1">نظام إدارة حلقات التحفيظ</p>
         </div>
       </div>
       {user?.mosqueName && (
@@ -152,13 +166,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir="rtl">
-      {/* Mobile Top Bar */}
       <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm border border-accent">
-            ح
+            م
           </div>
-          <span className="font-bold text-sm">الحفاظ</span>
+          <span className="font-bold text-sm">متقن</span>
         </div>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -175,16 +188,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </Sheet>
       </div>
 
-      {/* Desktop Sidebar */}
       <aside className="w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col border-l border-sidebar-border shadow-xl z-10 overflow-y-auto sticky top-0 h-screen">
         <SidebarHeader />
         <NavContent user={user} location={location} />
         <SidebarFooter />
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0">
-        {children}
+      <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0 flex flex-col min-h-screen">
+        <div className="flex-1">
+          {children}
+        </div>
+        <footer className="text-center py-4 border-t bg-muted/30 text-xs text-muted-foreground space-y-1">
+          <p className="font-semibold">النظام وقف لله تعالى</p>
+          <p>برمجة وتطوير أحمد خالد الزبيدي</p>
+        </footer>
       </main>
     </div>
   );

@@ -48,10 +48,10 @@ export default function LoginPage() {
         <div className="h-2 bg-gradient-to-r from-primary via-accent to-primary w-full" />
         <CardHeader className="text-center space-y-2 pb-2">
           <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 border-2 border-primary/20">
-             <span className="text-3xl font-bold text-primary">ح</span>
+             <span className="text-3xl font-bold text-primary">م</span>
           </div>
-          <CardTitle className="text-2xl font-bold text-primary font-serif">منصة الحفاظ</CardTitle>
-          <CardDescription>نظام تعليمي متكامل لحلقات التحفيظ</CardDescription>
+          <CardTitle className="text-2xl font-bold text-primary font-serif">نظام متقن</CardTitle>
+          <CardDescription>نظام إدارة حلقات التحفيظ</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -108,10 +108,9 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-center border-t bg-muted/20 py-4">
-          <p className="text-xs text-muted-foreground text-center">
-            جميع الحقوق محفوظة © 2026 منصة الحفاظ
-            <br />
-            نظام آمن ومحمي بأحدث التقنيات
+          <p className="text-xs text-muted-foreground text-center space-y-1">
+            <span className="block font-semibold">النظام وقف لله تعالى</span>
+            <span className="block">برمجة وتطوير أحمد خالد الزبيدي</span>
           </p>
         </CardFooter>
       </Card>
