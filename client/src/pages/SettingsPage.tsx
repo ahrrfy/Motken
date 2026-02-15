@@ -9,53 +9,59 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const defaultTab = isAdmin ? "profile" : "mosque";
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
       <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary">الإعدادات</h1>
       
-      <Tabs defaultValue="mosque" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <TabsList className="w-max md:w-full justify-start h-12 bg-muted/50 p-1">
-            <TabsTrigger value="mosque" className="flex-1 max-w-[200px] whitespace-nowrap">بيانات المسجد</TabsTrigger>
+            {!isAdmin && (
+              <TabsTrigger value="mosque" className="flex-1 max-w-[200px] whitespace-nowrap">بيانات المسجد</TabsTrigger>
+            )}
             <TabsTrigger value="profile" className="flex-1 max-w-[200px] whitespace-nowrap">الملف الشخصي</TabsTrigger>
             <TabsTrigger value="general" className="flex-1 max-w-[200px] whitespace-nowrap">إعدادات النظام</TabsTrigger>
             <TabsTrigger value="notifications" className="flex-1 max-w-[200px] whitespace-nowrap">الإشعارات</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="mosque" className="space-y-6 mt-6">
-           <Card>
-            <CardHeader>
-              <CardTitle>الملف التعريفي للمسجد</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>اسم المسجد</Label>
-                  <Input defaultValue="جامع النور الكبير" />
+        {!isAdmin && (
+          <TabsContent value="mosque" className="space-y-6 mt-6">
+             <Card>
+              <CardHeader>
+                <CardTitle>الملف التعريفي للمسجد</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>اسم المسجد</Label>
+                    <Input defaultValue={user?.mosqueName || ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>العنوان</Label>
+                    <Input defaultValue="بغداد، الكرخ، حي الجامعة" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>الإمام والخطيب</Label>
+                    <Input defaultValue="الشيخ د. محمد أحمد" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>رقم الهاتف</Label>
+                    <Input defaultValue="07901234567" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>نبذة تعريفية</Label>
+                    <Textarea placeholder="اكتب نبذة عن نشاطات المسجد..." className="min-h-[100px]" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>العنوان</Label>
-                  <Input defaultValue="بغداد، الكرخ، حي الجامعة" />
-                </div>
-                <div className="space-y-2">
-                  <Label>الإمام والخطيب</Label>
-                  <Input defaultValue="الشيخ د. محمد أحمد" />
-                </div>
-                <div className="space-y-2">
-                  <Label>رقم الهاتف</Label>
-                  <Input defaultValue="07901234567" />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>نبذة تعريفية</Label>
-                  <Textarea placeholder="اكتب نبذة عن نشاطات المسجد..." className="min-h-[100px]" defaultValue="يُعد جامع النور من أبرز المعالم الدينية، ويضم مركزاً لتحفيظ القرآن الكريم يستقبل مئات الطلاب سنوياً." />
-                </div>
-              </div>
-              <Button className="bg-primary text-white">حفظ بيانات المسجد</Button>
-            </CardContent>
-           </Card>
-        </TabsContent>
+                <Button className="bg-primary text-white">حفظ بيانات المسجد</Button>
+              </CardContent>
+             </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="profile" className="space-y-6 mt-6">
           <Card>
@@ -81,15 +87,15 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>البريد الإلكتروني</Label>
-                  <Input defaultValue="user@example.com" />
+                  <Input defaultValue={user?.email || ""} />
                 </div>
                 <div className="space-y-2">
                   <Label>رقم الهاتف</Label>
-                  <Input defaultValue="07700000000" />
+                  <Input defaultValue={user?.phone || ""} />
                 </div>
                 <div className="space-y-2">
                   <Label>العنوان</Label>
-                  <Input defaultValue="بغداد، العراق" />
+                  <Input defaultValue={user?.address || ""} />
                 </div>
               </div>
               <Button className="bg-primary text-white">حفظ التغييرات</Button>
