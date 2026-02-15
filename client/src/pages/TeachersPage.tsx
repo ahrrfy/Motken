@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Search, Plus, Mail, Phone, Download, Printer, Upload, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 interface Teacher {
   id: string;
@@ -34,6 +35,69 @@ export default function TeachersPage() {
   const [formData, setFormData] = useState({
     username: "", password: "", name: "", email: "", phone: ""
   });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const ws = XLSX.utils.json_to_sheet(teachers.map(t => ({
+      الاسم: t.name,
+      "اسم المستخدم": t.username,
+      البريد: t.email || "",
+      الهاتف: t.phone || "",
+      الحالة: t.isActive ? "نشط" : "متوقف"
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Teachers");
+    XLSX.writeFile(wb, "teachers_list.xlsx");
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
+        let success = 0;
+        let failed = 0;
+        for (const row of rows) {
+          try {
+            const res = await fetch("/api/users", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                name: row["الاسم"] || "",
+                username: row["اسم المستخدم"] || "",
+                password: row["كلمة المرور"] || "",
+                email: row["البريد"] || "",
+                phone: row["الهاتف"] || "",
+                role: "teacher",
+              }),
+            });
+            if (res.ok) success++;
+            else failed++;
+          } catch {
+            failed++;
+          }
+        }
+        toast({
+          title: "نتيجة الاستيراد",
+          description: `تم استيراد ${success} أستاذ بنجاح${failed > 0 ? `، فشل ${failed}` : ""}`,
+          className: failed === 0 ? "bg-green-50 border-green-200 text-green-800" : undefined,
+          variant: failed > 0 && success === 0 ? "destructive" : undefined,
+        });
+        if (success > 0) fetchTeachers();
+      } catch {
+        toast({ title: "خطأ", description: "فشل في قراءة الملف", variant: "destructive" });
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsBinaryString(file);
+  };
 
   const fetchTeachers = async () => {
     try {
@@ -90,18 +154,30 @@ export default function TeachersPage() {
           <p className="text-muted-foreground">إدارة هيئة التدريس والمشرفين</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print">
-            <Printer className="w-4 h-4" />
-            طباعة
-          </Button>
-          <Button variant="outline" className="gap-2" data-testid="button-import">
-            <Upload className="w-4 h-4" />
-            استيراد
-          </Button>
-          <Button variant="outline" className="gap-2" data-testid="button-export">
-            <Download className="w-4 h-4" />
-            تصدير
-          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImport}
+            data-testid="input-file-import"
+          />
+          {user?.role !== "student" && (
+            <>
+              <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print">
+                <Printer className="w-4 h-4" />
+                طباعة
+              </Button>
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" data-testid="button-import">
+                <Upload className="w-4 h-4" />
+                استيراد
+              </Button>
+              <Button variant="outline" onClick={handleExport} className="gap-2" data-testid="button-export">
+                <Download className="w-4 h-4" />
+                تصدير
+              </Button>
+            </>
+          )}
           {user?.role === "supervisor" && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>

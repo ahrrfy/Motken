@@ -600,6 +600,25 @@ export async function registerRoutes(
     res.json({ message: "تم تحديد الكل كمقروء" });
   });
 
+  app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+    const notification = await storage.getNotification(req.params.id);
+    if (!notification) return res.status(404).json({ message: "الإشعار غير موجود" });
+    if (notification.userId !== req.user!.id) {
+      return res.status(403).json({ message: "غير مصرح بحذف هذا الإشعار" });
+    }
+    await storage.deleteNotification(req.params.id);
+    res.json({ message: "تم حذف الإشعار" });
+  });
+
+  app.post("/api/notifications/delete-selected", requireAuth, async (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "يرجى تحديد الإشعارات" });
+    }
+    await storage.deleteNotifications(ids, req.user!.id);
+    res.json({ message: "تم حذف الإشعارات المحددة" });
+  });
+
   // ==================== STATS ====================
   app.get("/api/stats", requireAuth, async (req, res) => {
     const currentUser = req.user!;
@@ -608,10 +627,23 @@ export async function registerRoutes(
       return res.status(403).json({ message: "غير مصرح" });
     }
 
+    const filterMosqueId = req.query.mosqueId as string | undefined;
+    const filterTeacherId = req.query.teacherId as string | undefined;
+
     if (currentUser.role === "admin") {
-      const usersList = await storage.getUsers();
-      const assignmentsList = await storage.getAssignments();
+      let usersList = await storage.getUsers();
+      let assignmentsList = await storage.getAssignments();
       const mosquesList = await storage.getMosques();
+
+      if (filterMosqueId) {
+        usersList = usersList.filter(u => u.mosqueId === filterMosqueId);
+        assignmentsList = assignmentsList.filter(a => a.mosqueId === filterMosqueId);
+      }
+      if (filterTeacherId) {
+        usersList = usersList.filter(u => u.teacherId === filterTeacherId || u.id === filterTeacherId);
+        assignmentsList = assignmentsList.filter(a => a.teacherId === filterTeacherId);
+      }
+
       return res.json({
         totalStudents: usersList.filter(u => u.role === "student").length,
         totalTeachers: usersList.filter(u => u.role === "teacher").length,
@@ -619,6 +651,11 @@ export async function registerRoutes(
         totalMosques: mosquesList.length,
         totalAssignments: assignmentsList.length,
         completedAssignments: assignmentsList.filter(a => a.status === "done").length,
+        pendingAssignments: assignmentsList.filter(a => a.status === "pending").length,
+        activeStudents: usersList.filter(u => u.role === "student" && u.isActive).length,
+        inactiveStudents: usersList.filter(u => u.role === "student" && !u.isActive).length,
+        users: usersList.map(({ password, ...u }) => u),
+        assignments: assignmentsList,
       });
     }
 
@@ -629,17 +666,33 @@ export async function registerRoutes(
         totalStudents: myStudents.length,
         totalAssignments: myAssignments.length,
         completedAssignments: myAssignments.filter(a => a.status === "done").length,
+        pendingAssignments: myAssignments.filter(a => a.status === "pending").length,
+        activeStudents: myStudents.filter(s => s.isActive).length,
+        inactiveStudents: myStudents.filter(s => !s.isActive).length,
+        users: myStudents.map(({ password, ...u }) => u),
+        assignments: myAssignments,
       });
     }
 
     if (currentUser.role === "supervisor" && currentUser.mosqueId) {
-      const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
-      const assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+      let mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+      let assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+
+      if (filterTeacherId) {
+        mosqueUsers = mosqueUsers.filter(u => u.teacherId === filterTeacherId || u.id === filterTeacherId);
+        assignmentsList = assignmentsList.filter(a => a.teacherId === filterTeacherId);
+      }
+
       return res.json({
         totalTeachers: mosqueUsers.filter(u => u.role === "teacher").length,
         totalStudents: mosqueUsers.filter(u => u.role === "student").length,
         totalAssignments: assignmentsList.length,
         completedAssignments: assignmentsList.filter(a => a.status === "done").length,
+        pendingAssignments: assignmentsList.filter(a => a.status === "pending").length,
+        activeStudents: mosqueUsers.filter(u => u.role === "student" && u.isActive).length,
+        inactiveStudents: mosqueUsers.filter(u => u.role === "student" && !u.isActive).length,
+        users: mosqueUsers.map(({ password, ...u }) => u),
+        assignments: assignmentsList,
       });
     }
 
