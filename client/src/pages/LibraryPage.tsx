@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Book, Search, Filter, BookOpen, ArrowRight, Heart, ChevronLeft, ChevronRight } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 interface BookItem {
   id: number;
@@ -261,6 +262,7 @@ function getBookChapters(book: BookItem): Chapter[] {
 }
 
 export default function LibraryPage() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("الكل");
   const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
@@ -511,7 +513,7 @@ export default function LibraryPage() {
       <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="books-count">
         <Book className="h-4 w-4" />
         <span>عرض {filteredBooks.length} من أصل {books.length} كتاب</span>
-        {readBooks.length > 0 && (
+        {readBooks.length > 0 && user?.role === "admin" && (
           <span className="mr-4">• تمت قراءة {readBooks.length} كتاب</span>
         )}
       </div>
