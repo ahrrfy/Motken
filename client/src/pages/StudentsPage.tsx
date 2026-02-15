@@ -24,6 +24,7 @@ interface Student {
   phone?: string;
   address?: string;
   avatar?: string;
+  gender?: string | null;
   isActive: boolean;
 }
 
@@ -46,7 +47,7 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [newTeacherId, setNewTeacherId] = useState("");
   const [formData, setFormData] = useState({
-    username: "", password: "", name: "", email: "", phone: "", address: "", avatar: ""
+    username: "", password: "", name: "", email: "", phone: "", address: "", avatar: "", gender: "male"
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -168,7 +169,7 @@ export default function StudentsPage() {
       if (res.ok) {
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ username: "", password: "", name: "", email: "", phone: "", address: "", avatar: "" });
+        setFormData({ username: "", password: "", name: "", email: "", phone: "", address: "", avatar: "", gender: "male" });
         fetchData();
       } else {
         const err = await res.json();
@@ -317,6 +318,18 @@ export default function StudentsPage() {
                     <Input data-testid="input-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   <div className="space-y-2">
+                    <Label>الجنس</Label>
+                    <Select value={formData.gender} onValueChange={(v) => setFormData(prev => ({...prev, gender: v}))}>
+                      <SelectTrigger data-testid="select-gender">
+                        <SelectValue placeholder="اختر الجنس" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">ذكر</SelectItem>
+                        <SelectItem value="female">أنثى</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>البريد الإلكتروني</Label>
                     <Input data-testid="input-email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} dir="ltr" />
                   </div>
@@ -371,6 +384,7 @@ export default function StudentsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">الاسم</TableHead>
+                    <TableHead className="text-right">الجنس</TableHead>
                     <TableHead className="text-right">البريد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
                     {isSupervisor && <TableHead className="text-right">الأستاذ</TableHead>}
@@ -389,6 +403,7 @@ export default function StudentsPage() {
                           {student.name}
                         </div>
                       </TableCell>
+                      <TableCell data-testid={`text-gender-${student.id}`}>{student.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
                       <TableCell data-testid={`text-email-${student.id}`}>{student.email || "—"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>{student.phone || "—"}</TableCell>
                       {isSupervisor && (
