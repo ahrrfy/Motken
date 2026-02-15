@@ -823,5 +823,25 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/verify-user/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin" && user.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      let mosqueName = "";
+      if (user.mosqueId) {
+        const mosque = await storage.getMosque(user.mosqueId);
+        mosqueName = mosque?.name || "";
+      }
+      const { password, ...safe } = user;
+      res.json({ ...safe, mosqueName });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }
