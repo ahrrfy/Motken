@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,19 +30,6 @@ export default function LoginPage() {
     setLoading(false);
   };
 
-  const quickLogin = async (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setLoading(true);
-    setError("");
-    const result = await login(user, pass);
-    if (result.ok) {
-      setLocation("/dashboard");
-    } else {
-      setError(result.message || "فشل تسجيل الدخول");
-    }
-    setLoading(false);
-  };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-islamic-pattern px-3 py-6 sm:p-4 font-sans" dir="rtl">
@@ -73,15 +62,26 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">كلمة المرور</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-white/50"
-                data-testid="input-password"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-white/50 pl-10"
+                  data-testid="input-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-toggle-password"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-11" disabled={loading} data-testid="button-login">
@@ -89,23 +89,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 space-y-2">
-            <p className="text-xs text-muted-foreground text-center mb-2">دخول سريع (للتجربة):</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" onClick={() => quickLogin("admin", "admin123")} disabled={loading} className="text-xs" data-testid="button-quick-admin">
-                مدير النظام
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => quickLogin("teacher1", "teacher123")} disabled={loading} className="text-xs" data-testid="button-quick-teacher">
-                أستاذ
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => quickLogin("student1", "student123")} disabled={loading} className="text-xs" data-testid="button-quick-student">
-                طالب
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => quickLogin("supervisor1", "super123")} disabled={loading} className="text-xs" data-testid="button-quick-supervisor">
-                مشرف
-              </Button>
-            </div>
-          </div>
         </CardContent>
         <CardFooter className="flex justify-center border-t bg-muted/20 py-4">
           <p className="text-xs text-muted-foreground text-center space-y-1">
