@@ -685,7 +685,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/exams", requireRole("teacher"), async (req, res) => {
+  app.post("/api/exams", requireRole("teacher", "supervisor"), async (req, res) => {
     try {
       const currentUser = req.user!;
       const { title, surahName, fromVerse, toVerse, examDate, examTime, description, isForAll, studentIds } = req.body;
@@ -693,7 +693,7 @@ export async function registerRoutes(
       if (!title || typeof title !== "string" || title.length > 200) {
         return res.status(400).json({ message: "عنوان الامتحان مطلوب ويجب ألا يتجاوز 200 حرف" });
       }
-      if (!surahName || !examDate || !examTime) {
+      if (!surahName || !examDate) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
       }
       const fromVerseNum = Number(fromVerse);
@@ -715,7 +715,13 @@ export async function registerRoutes(
         isForAll: isForAll !== false,
       });
 
-      const myStudents = await storage.getUsersByTeacher(currentUser.id);
+      let myStudents: any[];
+      if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+        const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+        myStudents = mosqueUsers.filter(u => u.role === "student");
+      } else {
+        myStudents = await storage.getUsersByTeacher(currentUser.id);
+      }
       const myStudentIds = new Set(myStudents.map(s => s.id));
 
       let targetStudents: string[] = [];
@@ -735,7 +741,7 @@ export async function registerRoutes(
           userId: sid,
           mosqueId: currentUser.mosqueId,
           title: "امتحان جديد",
-          message: `تم تحديد امتحان: ${title} - ${surahName} (${fromVerse}-${toVerse}) في ${examTime}`,
+          message: `تم تحديد امتحان: ${title} - ${surahName} (${fromVerse}-${toVerse})${examTime ? ` في ${examTime}` : ''}`,
           type: "warning",
           isRead: false,
         });
@@ -748,12 +754,14 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/exams/:examId/students/:studentId", requireRole("teacher"), async (req, res) => {
+  app.patch("/api/exams/:examId/students/:studentId", requireRole("teacher", "supervisor"), async (req, res) => {
     const currentUser = req.user!;
     const exam = await storage.getExam(req.params.examId);
     if (!exam) return res.status(404).json({ message: "الامتحان غير موجود" });
 
-    if (exam.teacherId !== currentUser.id) {
+    const isOwner = exam.teacherId === currentUser.id;
+    const isMosqueSupervisor = currentUser.role === "supervisor" && exam.mosqueId === currentUser.mosqueId;
+    if (!isOwner && !isMosqueSupervisor) {
       return res.status(403).json({ message: "غير مصرح بتعديل درجات هذا الامتحان" });
     }
 

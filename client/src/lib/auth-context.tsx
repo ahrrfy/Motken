@@ -8,6 +8,7 @@ export interface User {
   username: string;
   name: string;
   role: UserRole;
+  actualRole?: UserRole;
   mosqueId?: string | null;
   mosqueName?: string | null;
   phone?: string;
@@ -23,6 +24,7 @@ interface AuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => Promise<void>;
+  switchRole: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,8 +74,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLocation("/");
   };
 
+  const switchRole = () => {
+    if (!user) return;
+    const actualRole = user.actualRole || user.role;
+    if (actualRole !== "supervisor") return;
+
+    if (user.role === "supervisor") {
+      setUser({ ...user, role: "teacher", actualRole: "supervisor" });
+    } else {
+      setUser({ ...user, role: "supervisor", actualRole: "supervisor" });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );

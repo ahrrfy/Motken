@@ -29,6 +29,7 @@ import {
   ClipboardList,
   Award,
   Wifi,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -101,7 +102,7 @@ function NavContent({ user, location, onNavigate }: { user: any; location: strin
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, switchRole } = useAuth();
   const { isDark, toggleDark } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
@@ -162,7 +163,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <p className="text-xs text-sidebar-foreground/60 truncate">{
               user.role === "admin" ? "مدير النظام" :
               user.role === "supervisor" ? "مشرف" :
-              user.role === "teacher" ? "أستاذ" : "طالب"
+              user.role === "teacher" ? (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ") : "طالب"
             }</p>
           </div>
         </div>
@@ -182,6 +183,18 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const SidebarFooter = () => (
     <div className="p-3 sm:p-4 border-t border-sidebar-border/50 shrink-0 space-y-2">
+      {(user?.actualRole === "supervisor" || user?.role === "supervisor") && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={switchRole}
+          className="w-full bg-amber-900/30 border-amber-700/50 text-amber-400 hover:bg-amber-800/40 hover:text-amber-300"
+          data-testid="button-switch-role"
+        >
+          <ArrowLeftRight className="w-4 h-4 ml-2" />
+          {user?.role === "supervisor" ? "التبديل إلى وضع الأستاذ" : "التبديل إلى وضع المشرف"}
+        </Button>
+      )}
       <Button
         variant="outline"
         size="sm"
