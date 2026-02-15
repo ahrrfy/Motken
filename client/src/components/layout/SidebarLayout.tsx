@@ -33,6 +33,15 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import DateTimePrayerBar from "@/components/DateTimePrayerBar";
+import {
+  requestNotificationPermission,
+  getNotificationPermission,
+  isNotificationsEnabled,
+  setNotificationsEnabled,
+  startNotificationPolling,
+  stopNotificationPolling,
+  showLocalNotification,
+} from "@/lib/notifications";
 
 const FONT_SIZE_KEY = "mutqin_font_size";
 const FONT_SIZES = [14, 16, 18, 20, 22, 24];
@@ -97,6 +106,29 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
+
+  const togglePushNotifications = useCallback(async () => {
+    if (pushEnabled) {
+      setNotificationsEnabled(false);
+      stopNotificationPolling();
+      setPushEnabled(false);
+    } else {
+      const permission = getNotificationPermission();
+      if (permission === "unsupported") return;
+      
+      if (permission !== "granted") {
+        const granted = await requestNotificationPermission();
+        if (!granted) return;
+      }
+      
+      setNotificationsEnabled(true);
+      startNotificationPolling();
+      setPushEnabled(true);
+      showLocalNotification("مُتْقِن", "تم تفعيل الإشعارات الخارجية بنجاح", "mutqin-enabled");
+    }
+  }, [pushEnabled]);
+
   const [fontSize, setFontSize] = useState(() => {
     const saved = localStorage.getItem(FONT_SIZE_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_FONT_SIZE;
@@ -229,6 +261,16 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <AArrowUp className="w-4 h-4" />
         </Button>
       </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={togglePushNotifications}
+        className={`w-full border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${pushEnabled ? 'bg-green-900/30 border-green-700/50 text-green-400' : 'bg-sidebar-accent/20'}`}
+        data-testid="button-toggle-push"
+      >
+        {pushEnabled ? <Bell className="w-4 h-4 ml-2" /> : <Bell className="w-4 h-4 ml-2 opacity-50" />}
+        {pushEnabled ? "الإشعارات الخارجية: مفعّلة" : "تفعيل الإشعارات الخارجية"}
+      </Button>
       <Button
         variant="outline"
         size="sm"
