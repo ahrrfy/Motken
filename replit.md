@@ -48,7 +48,7 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - NotificationsPage (with bulk actions), TeacherDailyPage
 
 ## Database Tables
-- mosques, users (with gender field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
+- mosques, users (with gender, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan fields; NO email field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
 - activity_logs, notifications, courses, course_students, course_teachers, certificates
 - banned_devices (permanent IP bans with indexes on ip_address and device_fingerprint)
 
@@ -67,8 +67,11 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Theme & Language**: Dark/light mode toggle, Arabic/English language switcher with localStorage persistence
 - **Photo Upload**: Base64 avatar upload for all users, displayed in ID cards and profiles
 - **PDF/Print**: HTML-based print with Tajawal font, Arabic RTL support, formatted print preview
-- **ID Card PDF Export**: Individual (separate PDFs per card) or batch (all cards in one PDF) export via dropdown
+- **ID Card PDF Export**: Individual (86mm x 54mm per card) or batch (A4 all cards) export with actual QR codes (Google Charts API)
+- **Quran Verse Display**: Students see actual Quran text (Amiri font, api.alquran.cloud API) when clicking assignments
 - **Quran Surah Selector**: Full 114 surahs with automatic verse count validation
+- **Enhanced Student Fields**: Age, Telegram ID, parent phone, education level (school/university/postgraduate), special needs status, orphan status
+- **Special Needs/Orphan Stats**: Tracked in reports, printed stats, and Excel exports
 - **Student Transfer**: Supervisors can transfer students between teachers
 - **Notification Management**: Mark as read (individual/selected/all), delete (individual/selected/all)
 - **Font Size Controls**: Adjustable 12-28px with localStorage persistence
@@ -113,7 +116,12 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 ## Design Choices
 - Avatar upload uses base64 encoding (limit 500KB), stored in user.avatar field
 - Print utility uses HTML with Tajawal font, opens formatted window with Print/Save as PDF/Close buttons
+- Certificate printing uses direct window.open() without openPrintWindow header/footer, only certificate design
 - Certificate design: Islamic frame with ﷽, gold (#c9a84c) accents, navy (#16213e) theme, corner decorations
+- Email field completely removed from entire system (schema, all pages, API routes, seed data)
+- Prayer times use geolocation with fallback to Baghdad coordinates (33.3152, 44.3661), all times in Asia/Baghdad timezone, recalculate every 60 seconds
+- Student form field order: name → username → password → gender → age → phone → parentPhone → telegramId → address → educationLevel → isSpecialNeeds → isOrphan
+- Quran verses fetched from api.alquran.cloud and cached per assignment, displayed with Amiri font at 20px
 - Theme stored in localStorage "mutqin_theme" (dark/light), language in "mutqin_language" (ar/en)
 - Library books have internal reader with generated chapters and content per category
 - Assignment "seen" auto-triggered when student views assignments page
