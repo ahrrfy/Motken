@@ -27,9 +27,6 @@ import {
   Star,
   FileText,
   ClipboardList,
-  AArrowUp,
-  AArrowDown,
-  RotateCcw
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import DateTimePrayerBar from "@/components/DateTimePrayerBar";
@@ -42,10 +39,6 @@ import {
   stopNotificationPolling,
   showLocalNotification,
 } from "@/lib/notifications";
-
-const FONT_SIZE_KEY = "mutqin_font_size";
-const FONT_SIZES = [14, 16, 18, 20, 22, 24];
-const DEFAULT_FONT_SIZE = 16;
 
 const navItems = [
   { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
@@ -65,7 +58,7 @@ const navItems = [
   { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["supervisor"] },
   { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin"] },
   { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin"] },
+  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
 ];
 
 function NavContent({ user, location, onNavigate }: { user: any; location: string; onNavigate?: () => void }) {
@@ -129,11 +122,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     }
   }, [pushEnabled]);
 
-  const [fontSize, setFontSize] = useState(() => {
-    const saved = localStorage.getItem(FONT_SIZE_KEY);
-    return saved ? parseInt(saved, 10) : DEFAULT_FONT_SIZE;
-  });
-
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add("dark");
@@ -141,29 +129,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       document.documentElement.classList.remove("dark");
     }
   }, [isDark]);
-
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${fontSize}px`;
-    localStorage.setItem(FONT_SIZE_KEY, String(fontSize));
-  }, [fontSize]);
-
-  const increaseFontSize = useCallback(() => {
-    setFontSize(prev => {
-      const idx = FONT_SIZES.indexOf(prev);
-      return idx < FONT_SIZES.length - 1 ? FONT_SIZES[idx + 1] : prev;
-    });
-  }, []);
-
-  const decreaseFontSize = useCallback(() => {
-    setFontSize(prev => {
-      const idx = FONT_SIZES.indexOf(prev);
-      return idx > 0 ? FONT_SIZES[idx - 1] : prev;
-    });
-  }, []);
-
-  const resetFontSize = useCallback(() => {
-    setFontSize(DEFAULT_FONT_SIZE);
-  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -220,47 +185,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const SidebarFooter = () => (
     <div className="p-3 sm:p-4 border-t border-sidebar-border/50 shrink-0 space-y-2">
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={decreaseFontSize}
-          disabled={fontSize <= FONT_SIZES[0]}
-          className="flex-1 h-8 bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-30"
-          title="تصغير الخط"
-          data-testid="button-font-decrease"
-        >
-          <AArrowDown className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={resetFontSize}
-          className="flex-1 h-8 bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-xs font-medium"
-          title="إعادة تعيين حجم الخط"
-          data-testid="button-font-reset"
-        >
-          {fontSize === DEFAULT_FONT_SIZE ? (
-            <span className="text-[11px]">حجم الخط</span>
-          ) : (
-            <div className="flex items-center gap-1">
-              <RotateCcw className="w-3 h-3" />
-              <span className="text-[11px]">{fontSize}</span>
-            </div>
-          )}
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={increaseFontSize}
-          disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
-          className="flex-1 h-8 bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-30"
-          title="تكبير الخط"
-          data-testid="button-font-increase"
-        >
-          <AArrowUp className="w-4 h-4" />
-        </Button>
-      </div>
       <Button
         variant="outline"
         size="sm"

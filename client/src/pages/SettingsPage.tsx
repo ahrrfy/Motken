@@ -6,8 +6,13 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-context";
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+
+const FONT_SIZE_KEY = "mutqin_font_size";
+const FONT_SIZES = [14, 16, 18, 20, 22, 24];
+const DEFAULT_FONT_SIZE = 16;
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -23,6 +28,34 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = localStorage.getItem(FONT_SIZE_KEY);
+    return saved ? parseInt(saved, 10) : DEFAULT_FONT_SIZE;
+  });
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${fontSize}px`;
+    localStorage.setItem(FONT_SIZE_KEY, String(fontSize));
+  }, [fontSize]);
+
+  const increaseFontSize = useCallback(() => {
+    setFontSize(prev => {
+      const idx = FONT_SIZES.indexOf(prev);
+      return idx < FONT_SIZES.length - 1 ? FONT_SIZES[idx + 1] : prev;
+    });
+  }, []);
+
+  const decreaseFontSize = useCallback(() => {
+    setFontSize(prev => {
+      const idx = FONT_SIZES.indexOf(prev);
+      return idx > 0 ? FONT_SIZES[idx - 1] : prev;
+    });
+  }, []);
+
+  const resetFontSize = useCallback(() => {
+    setFontSize(DEFAULT_FONT_SIZE);
+  }, []);
+
   const [saving, setSaving] = useState(false);
   const [savingAccount, setSavingAccount] = useState(false);
   const [message, setMessage] = useState("");
@@ -309,6 +342,82 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">لغة واجهة المستخدم</p>
                 </div>
                  <Button variant="outline" className="w-[150px]">العربية</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>حجم الخط</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">حجم خط الواجهة</Label>
+                    <p className="text-sm text-muted-foreground">تكبير أو تصغير حجم النصوص في التطبيق</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-primary min-w-[40px] text-center">{fontSize}px</span>
+                    {fontSize !== DEFAULT_FONT_SIZE && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={resetFontSize}
+                        className="h-8 w-8"
+                        title="إعادة تعيين"
+                        data-testid="button-font-reset"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={decreaseFontSize}
+                    disabled={fontSize <= FONT_SIZES[0]}
+                    className="h-9 w-9 shrink-0"
+                    data-testid="button-font-decrease"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+
+                  <div className="flex-1 relative">
+                    <Slider
+                      value={[FONT_SIZES.indexOf(fontSize)]}
+                      min={0}
+                      max={FONT_SIZES.length - 1}
+                      step={1}
+                      onValueChange={([val]) => setFontSize(FONT_SIZES[val])}
+                      className="w-full"
+                      data-testid="slider-font-size"
+                    />
+                    <div className="flex justify-between mt-1 px-1">
+                      <span className="text-[10px] text-muted-foreground">صغير</span>
+                      <span className="text-[10px] text-muted-foreground">كبير</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={increaseFontSize}
+                    disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                    className="h-9 w-9 shrink-0"
+                    data-testid="button-font-increase"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="p-4 rounded-lg border bg-muted/30">
+                  <p className="text-sm text-muted-foreground mb-2">معاينة:</p>
+                  <p style={{ fontSize: `${fontSize}px` }}>بسم الله الرحمن الرحيم - هذا نص تجريبي لمعاينة حجم الخط</p>
+                </div>
               </div>
             </CardContent>
           </Card>
