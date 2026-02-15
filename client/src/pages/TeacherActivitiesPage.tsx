@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, ClipboardList, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateAr } from "@/lib/utils";
 
 interface ActivityLog {
   id: string;
@@ -44,7 +45,9 @@ export default function TeacherActivitiesPage() {
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString("ar-IQ");
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString("ar-IQ", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
     } catch {
       return dateStr;
     }

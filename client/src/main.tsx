@@ -7,13 +7,16 @@ if (savedFontSize) {
   document.documentElement.style.fontSize = `${savedFontSize}px`;
 }
 import { AuthProvider } from "./lib/auth-context";
+import { ThemeProvider } from "./lib/theme-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

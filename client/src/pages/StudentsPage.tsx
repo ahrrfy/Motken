@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 
@@ -45,8 +46,28 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [newTeacherId, setNewTeacherId] = useState("");
   const [formData, setFormData] = useState({
-    username: "", password: "", name: "", email: "", phone: "", address: ""
+    username: "", password: "", name: "", email: "", phone: "", address: "", avatar: ""
   });
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "خطأ", description: "يرجى اختيار ملف صورة", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result as string;
+      if (base64.length > 500000) {
+        toast({ title: "خطأ", description: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)", variant: "destructive" });
+        return;
+      }
+      setFormData(prev => ({ ...prev, avatar: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const isSupervisor = user?.role === "supervisor";
   const isTeacher = user?.role === "teacher";
@@ -147,7 +168,7 @@ export default function StudentsPage() {
       if (res.ok) {
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ username: "", password: "", name: "", email: "", phone: "", address: "" });
+        setFormData({ username: "", password: "", name: "", email: "", phone: "", address: "", avatar: "" });
         fetchData();
       } else {
         const err = await res.json();
@@ -219,7 +240,28 @@ export default function StudentsPage() {
           />
           {user?.role !== "student" && (
             <>
-              <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print">
+              <Button variant="outline" onClick={() => {
+                const tableHtml = `
+                  <h3 class="section-title">قائمة الطلاب (${filteredStudents.length})</h3>
+                  <table>
+                    <thead>
+                      <tr><th>#</th><th>الاسم</th><th>البريد</th><th>الهاتف</th><th>الحالة</th></tr>
+                    </thead>
+                    <tbody>
+                      ${filteredStudents.map((s, i) => `
+                        <tr>
+                          <td>${i + 1}</td>
+                          <td>${s.name}</td>
+                          <td>${s.email || "—"}</td>
+                          <td>${s.phone || "—"}</td>
+                          <td>${s.isActive ? "نشط" : "متوقف"}</td>
+                        </tr>
+                      `).join("")}
+                    </tbody>
+                  </table>
+                `;
+                openPrintWindow("قائمة الطلاب", tableHtml);
+              }} className="gap-2" data-testid="button-print">
                 <Printer className="w-4 h-4" />
                 طباعة
               </Button>
@@ -246,6 +288,22 @@ export default function StudentsPage() {
                   <DialogTitle>إضافة طالب جديد</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden shrink-0">
+                      {formData.avatar ? (
+                        <img src={formData.avatar} alt="صورة" className="w-full h-full object-cover" data-testid="img-student-avatar-preview" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <div>
+                      <input type="file" ref={avatarInputRef} accept="image/*" className="hidden" onChange={handleAvatarSelect} data-testid="input-student-avatar" />
+                      <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} className="gap-1" data-testid="button-student-avatar">
+                        <Camera className="w-3.5 h-3.5" />
+                        صورة شخصية
+                      </Button>
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label>اسم المستخدم *</Label>
                     <Input data-testid="input-username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} dir="ltr" />

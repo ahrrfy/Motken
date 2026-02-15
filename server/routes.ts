@@ -867,6 +867,42 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== AVATAR UPLOAD ====================
+  app.post("/api/users/:id/avatar", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const targetId = req.params.id;
+      const targetUser = await storage.getUser(targetId);
+      if (!targetUser) return res.status(404).json({ message: "المستخدم غير موجود" });
+
+      const canUpload =
+        currentUser.id === targetId ||
+        currentUser.role === "admin" ||
+        (currentUser.role === "supervisor" && targetUser.mosqueId === currentUser.mosqueId);
+
+      if (!canUpload) {
+        return res.status(403).json({ message: "غير مصرح بتعديل صورة هذا المستخدم" });
+      }
+
+      const { avatar } = req.body;
+      if (!avatar || typeof avatar !== "string" || !avatar.startsWith("data:image/")) {
+        return res.status(400).json({ message: "صيغة الصورة غير صحيحة" });
+      }
+
+      if (avatar.length > 500000) {
+        return res.status(400).json({ message: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)" });
+      }
+
+      const updated = await storage.updateUser(targetId, { avatar });
+      if (!updated) return res.status(500).json({ message: "فشل في تحديث الصورة" });
+
+      const { password, ...safe } = updated;
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ==================== STATS ====================
   app.get("/api/stats", requireAuth, async (req, res) => {
     const currentUser = req.user!;

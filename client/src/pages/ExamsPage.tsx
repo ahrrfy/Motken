@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Plus, BookOpen, Calendar, Clock, Users, FileText, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateAr } from "@/lib/utils";
 
 interface QuranSurah {
   number: number;
@@ -276,13 +277,7 @@ export default function ExamsPage() {
     return students.find(s => s.id === studentId)?.name || studentId;
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString("ar-SA");
-    } catch {
-      return dateStr;
-    }
-  };
+  const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">

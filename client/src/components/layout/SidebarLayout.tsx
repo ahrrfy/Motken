@@ -30,6 +30,7 @@ import {
   Award,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
+import { useTheme } from "@/lib/theme-context";
 import DateTimePrayerBar from "@/components/DateTimePrayerBar";
 import {
   requestNotificationPermission,
@@ -43,21 +44,22 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
+  { href: "/daily", label: "واجبات اليوم", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
   { href: "/settings?tab=profile", label: "معلومات الحساب", icon: UserCircle, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/mosques", label: "إدارة الجوامع", icon: Building2, roles: ["admin"] },
   { href: "/users", label: "جميع المستخدمين", icon: Users, roles: ["admin"] },
   { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },
-  { href: "/students", label: "الطلاب", icon: Users, roles: ["teacher", "supervisor"] },
+  { href: "/students", label: "الطلاب", icon: Users, roles: ["admin", "teacher", "supervisor"] },
   { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["admin", "supervisor"] },
-  { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["teacher", "supervisor"] },
-  { href: "/exams", label: "الامتحانات", icon: FileText, roles: ["teacher", "supervisor", "student"] },
-  { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["teacher", "supervisor", "student"] },
+  { href: "/assignments", label: "تحديد الواجبات", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
+  { href: "/exams", label: "الامتحانات", icon: FileText, roles: ["admin", "teacher", "supervisor", "student"] },
+  { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["admin", "teacher", "supervisor", "student"] },
   { href: "/courses", label: "الدورات والشهادات", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
   { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
   { href: "/scan-qr", label: "مسح QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
-  { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["supervisor"] },
+  { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["admin", "supervisor"] },
   { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin"] },
   { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
@@ -99,7 +101,7 @@ function NavContent({ user, location, onNavigate }: { user: any; location: strin
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const [isDark, setIsDark] = useState(false);
+  const { isDark, toggleDark } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
 
@@ -123,14 +125,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       showLocalNotification("مُتْقِن", "تم تفعيل الإشعارات الخارجية بنجاح", "mutqin-enabled");
     }
   }, [pushEnabled]);
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [isDark]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -200,7 +194,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       <Button
         variant="outline"
         size="sm"
-        onClick={() => setIsDark(!isDark)}
+        onClick={toggleDark}
         className="w-full bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
         {isDark ? <Sun className="w-4 h-4 ml-2" /> : <Moon className="w-4 h-4 ml-2" />}
