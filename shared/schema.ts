@@ -39,6 +39,7 @@ export const users = pgTable("users", {
   address: text("address"),
   avatar: text("avatar"),
   isActive: boolean("is_active").notNull().default(true),
+  canPrintIds: boolean("can_print_ids").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -58,6 +59,8 @@ export const assignments = pgTable("assignments", {
   type: text("type").notNull().default("new"),
   scheduledDate: timestamp("scheduled_date").notNull(),
   status: assignmentStatusEnum("status").notNull().default("pending"),
+  grade: integer("grade"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -65,11 +68,63 @@ export const insertAssignmentSchema = createInsertSchema(assignments).omit({ id:
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignments.$inferSelect;
 
+// ==================== RATINGS ====================
+export const ratings = pgTable("ratings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fromUserId: varchar("from_user_id").notNull().references(() => users.id),
+  toUserId: varchar("to_user_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  stars: integer("stars").notNull(),
+  honorBadge: boolean("honor_badge").notNull().default(false),
+  comment: text("comment"),
+  type: text("type").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertRatingSchema = createInsertSchema(ratings).omit({ id: true, createdAt: true });
+export type InsertRating = z.infer<typeof insertRatingSchema>;
+export type Rating = typeof ratings.$inferSelect;
+
+// ==================== EXAMS ====================
+export const exams = pgTable("exams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teacherId: varchar("teacher_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  title: text("title").notNull(),
+  surahName: text("surah_name").notNull(),
+  fromVerse: integer("from_verse").notNull(),
+  toVerse: integer("to_verse").notNull(),
+  examDate: timestamp("exam_date").notNull(),
+  examTime: text("exam_time").notNull(),
+  description: text("description"),
+  isForAll: boolean("is_for_all").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true });
+export type InsertExam = z.infer<typeof insertExamSchema>;
+export type Exam = typeof exams.$inferSelect;
+
+// ==================== EXAM STUDENTS ====================
+export const examStudents = pgTable("exam_students", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  examId: varchar("exam_id").notNull().references(() => exams.id),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  grade: integer("grade"),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertExamStudentSchema = createInsertSchema(examStudents).omit({ id: true, createdAt: true });
+export type InsertExamStudent = z.infer<typeof insertExamStudentSchema>;
+export type ExamStudent = typeof examStudents.$inferSelect;
+
 // ==================== ACTIVITY LOGS ====================
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
   userName: text("user_name").notNull(),
+  userRole: text("user_role"),
   mosqueId: varchar("mosque_id").references(() => mosques.id),
   action: text("action").notNull(),
   module: text("module").notNull(),
