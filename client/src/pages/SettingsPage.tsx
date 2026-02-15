@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
+import DevicePermissions from "@/components/DevicePermissions";
 
 const FONT_SIZE_KEY = "mutqin_font_size";
 const DEFAULT_FONT_SIZE = 16;
@@ -560,6 +561,7 @@ export default function SettingsPage() {
         </TabsContent>
         
         <TabsContent value="notifications" className="space-y-6 mt-6">
+           <DevicePermissions />
            <Card>
             <CardHeader>
               <CardTitle>تفضيلات الإشعارات</CardTitle>
