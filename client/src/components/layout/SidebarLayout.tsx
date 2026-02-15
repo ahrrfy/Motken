@@ -107,10 +107,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const SidebarHeader = () => (
     <div className="p-4 sm:p-6 border-b border-sidebar-border/50 shrink-0">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl border-2 border-accent shrink-0">
-          م
-        </div>
-        <div className="min-w-0">
+        <img src="/favicon.svg" alt="مُتْقِن" className="w-11 h-11 rounded-full shrink-0" />
+        <div className="min-w-0 flex-1">
           <h1 className="font-bold text-2xl leading-none">مُتْقِن</h1>
           <p className="text-xs text-sidebar-foreground/60 mt-1">نظام إدارة حلقات التحفيظ</p>
         </div>
@@ -121,42 +119,31 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <span className="text-xs text-sidebar-foreground/80 truncate" data-testid="text-mosque-name">{user.mosqueName}</span>
         </div>
       )}
-    </div>
-  );
-
-  const SidebarFooter = () => (
-    <div className="p-3 sm:p-4 border-t border-sidebar-border/50 shrink-0">
-      <div className="flex items-center gap-3 mb-3 px-2">
-        {user.avatar ? (
-          <img src={user.avatar} alt="User" className="w-9 h-9 rounded-full border border-sidebar-border shrink-0" />
-        ) : (
-          <div className="w-9 h-9 rounded-full border border-sidebar-border shrink-0 bg-primary/20 flex items-center justify-center text-primary-foreground font-bold text-sm">
-            {user.name?.charAt(0)}
+      <div className="mt-3 flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {user.avatar ? (
+            <img src={user.avatar} alt="User" className="w-8 h-8 rounded-full border border-sidebar-border shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-full border border-sidebar-border shrink-0 bg-primary/20 flex items-center justify-center text-primary-foreground font-bold text-xs">
+              {user.name?.charAt(0)}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium truncate">{user.name}</p>
+            <p className="text-xs text-sidebar-foreground/60 truncate">{
+              user.role === "admin" ? "مدير النظام" :
+              user.role === "supervisor" ? "مشرف" :
+              user.role === "teacher" ? "أستاذ" : "طالب"
+            }</p>
           </div>
-        )}
-        <div className="flex-1 overflow-hidden min-w-0">
-          <p className="text-sm font-medium truncate">{user.name}</p>
-          <p className="text-xs text-sidebar-foreground/60 truncate capitalize">{
-            user.role === "admin" ? "مدير النظام" :
-            user.role === "supervisor" ? "مشرف" :
-            user.role === "teacher" ? "أستاذ" : "طالب"
-          }</p>
         </div>
-      </div>
-      <div className="flex gap-2">
         <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsDark(!isDark)}
-          className="flex-1 bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </Button>
-        <Button
-          variant="destructive"
+          variant="ghost"
           size="icon"
           onClick={logout}
-          className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-200 border-red-900/30"
+          className="shrink-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
+          title="تسجيل الخروج"
+          data-testid="button-logout-top"
         >
           <LogOut className="w-4 h-4" />
         </Button>
@@ -164,13 +151,25 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     </div>
   );
 
+  const SidebarFooter = () => (
+    <div className="p-3 sm:p-4 border-t border-sidebar-border/50 shrink-0">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setIsDark(!isDark)}
+        className="w-full bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      >
+        {isDark ? <Sun className="w-4 h-4 ml-2" /> : <Moon className="w-4 h-4 ml-2" />}
+        {isDark ? "الوضع الفاتح" : "الوضع الداكن"}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir="rtl">
       <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm border border-accent">
-            م
-          </div>
+          <img src="/favicon.svg" alt="مُتْقِن" className="w-8 h-8 rounded-full" />
           <span className="font-bold text-lg">مُتْقِن</span>
         </div>
 
