@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import { insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema, type User, type Assignment } from "@shared/schema";
+import { sessionTracker } from "./session-tracker";
 
 async function logActivity(user: any, action: string, module: string, details?: string) {
   await storage.createActivityLog({
@@ -22,6 +23,14 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  // Session tracking middleware
+  app.use((req: any, res: any, next: any) => {
+    if (req.isAuthenticated() && req.user && req.sessionID) {
+      sessionTracker.updateSession(req.sessionID, req.user, req);
+    }
+    next();
+  });
 
   // ==================== MOSQUES ====================
   app.get("/api/mosques", requireAuth, async (req, res) => {
@@ -1350,6 +1359,110 @@ export async function registerRoutes(
     } catch (err: any) {
       res.status(500).json({ message: err.message || "حدث خطأ أثناء تصفير النظام" });
     }
+  });
+
+  // ==================== ONLINE USERS & SESSION MANAGEMENT ====================
+  app.get("/api/admin/sessions", requireRole("admin"), async (req, res) => {
+    const sessions = sessionTracker.getActiveSessions();
+    res.json(sessions);
+  });
+
+  app.get("/api/admin/online-count", requireAuth, async (req, res) => {
+    if (req.user!.role !== "admin") {
+      return res.json({ count: 0 });
+    }
+    res.json({ count: sessionTracker.getOnlineCount() });
+  });
+
+  app.post("/api/admin/kick-session", requireRole("admin"), async (req, res) => {
+    const { sessionId } = req.body;
+    if (!sessionId) return res.status(400).json({ message: "معرف الجلسة مطلوب" });
+    sessionTracker.removeSession(sessionId);
+    res.json({ message: "تم إنهاء الجلسة" });
+  });
+
+  app.post("/api/admin/kick-user", requireRole("admin"), async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "معرف المستخدم مطلوب" });
+    sessionTracker.removeSessionsByUserId(userId);
+    res.json({ message: "تم إنهاء جميع جلسات المستخدم" });
+  });
+
+  app.post("/api/admin/suspend-user", requireRole("admin"), async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "معرف المستخدم مطلوب" });
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
+    if (user.role === "admin") return res.status(403).json({ message: "لا يمكن إيقاف حساب المدير" });
+    await storage.updateUser(userId, { isActive: false });
+    sessionTracker.removeSessionsByUserId(userId);
+    await logActivity(req.user!, `إيقاف حساب ${user.name} مؤقتاً`, "users");
+    res.json({ message: "تم إيقاف الحساب مؤقتاً" });
+  });
+
+  app.post("/api/admin/activate-user", requireRole("admin"), async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "معرف المستخدم مطلوب" });
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
+    await storage.updateUser(userId, { isActive: true });
+    await logActivity(req.user!, `تفعيل حساب ${user.name}`, "users");
+    res.json({ message: "تم تفعيل الحساب" });
+  });
+
+  app.post("/api/admin/ban-permanent", requireRole("admin"), async (req, res) => {
+    const { userId, reason } = req.body;
+    if (!userId) return res.status(400).json({ message: "معرف المستخدم مطلوب" });
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
+    if (user.role === "admin") return res.status(403).json({ message: "لا يمكن حظر حساب المدير" });
+
+    const userSessions = sessionTracker.getSessionsByUserId(userId);
+    const bannedIPs = new Set<string>();
+    
+    for (const session of userSessions) {
+      if (session.ipAddress && session.ipAddress !== "unknown" && !bannedIPs.has(session.ipAddress)) {
+        bannedIPs.add(session.ipAddress);
+        await storage.createBannedDevice({
+          ipAddress: session.ipAddress,
+          userAgent: session.userAgent,
+          deviceFingerprint: null,
+          reason: reason || `حظر دائم للمستخدم ${user.name}`,
+          bannedBy: req.user!.id,
+        });
+      }
+    }
+
+    await storage.updateUser(userId, { isActive: false });
+    sessionTracker.removeSessionsByUserId(userId);
+    await logActivity(req.user!, `حظر دائم: ${user.name} (${bannedIPs.size} عناوين IP)`, "security", reason);
+    res.json({ message: `تم حظر المستخدم نهائياً وحظر ${bannedIPs.size} عناوين IP` });
+  });
+
+  // ==================== BANNED DEVICES MANAGEMENT ====================
+  app.get("/api/admin/banned-devices", requireRole("admin"), async (req, res) => {
+    const devices = await storage.getBannedDevices();
+    res.json(devices);
+  });
+
+  app.post("/api/admin/ban-ip", requireRole("admin"), async (req, res) => {
+    const { ipAddress, reason } = req.body;
+    if (!ipAddress) return res.status(400).json({ message: "عنوان IP مطلوب" });
+    const banned = await storage.createBannedDevice({
+      ipAddress,
+      userAgent: null,
+      deviceFingerprint: null,
+      reason: reason || "حظر يدوي",
+      bannedBy: req.user!.id,
+    });
+    await logActivity(req.user!, `حظر عنوان IP: ${ipAddress}`, "security", reason);
+    res.status(201).json(banned);
+  });
+
+  app.delete("/api/admin/banned-devices/:id", requireRole("admin"), async (req, res) => {
+    await storage.deleteBannedDevice(req.params.id);
+    await logActivity(req.user!, `إزالة حظر جهاز`, "security");
+    res.json({ message: "تم إزالة الحظر" });
   });
 
   return httpServer;
