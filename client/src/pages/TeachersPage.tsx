@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Mail, Phone, Download, Printer, Upload, Loader2, Camera } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -22,6 +23,7 @@ interface Teacher {
   phone?: string;
   address?: string;
   avatar?: string;
+  gender?: string | null;
   isActive: boolean;
 }
 
@@ -34,7 +36,7 @@ export default function TeachersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    username: "", password: "", name: "", email: "", phone: "", avatar: ""
+    username: "", password: "", name: "", email: "", phone: "", avatar: "", gender: "male"
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,7 +154,7 @@ export default function TeachersPage() {
       if (res.ok) {
         toast({ title: "تم بنجاح", description: "تمت إضافة الأستاذ بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ username: "", password: "", name: "", email: "", phone: "", avatar: "" });
+        setFormData({ username: "", password: "", name: "", email: "", phone: "", avatar: "", gender: "male" });
         fetchTeachers();
       } else {
         const err = await res.json();
@@ -263,6 +265,18 @@ export default function TeachersPage() {
                     <Input data-testid="input-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   <div className="space-y-2">
+                    <Label>الجنس</Label>
+                    <Select value={formData.gender} onValueChange={(v) => setFormData(prev => ({...prev, gender: v}))}>
+                      <SelectTrigger data-testid="select-gender">
+                        <SelectValue placeholder="اختر الجنس" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">ذكر</SelectItem>
+                        <SelectItem value="female">أنثى</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>البريد الإلكتروني</Label>
                     <Input data-testid="input-email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                   </div>
@@ -313,6 +327,7 @@ export default function TeachersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">الاسم</TableHead>
+                    <TableHead className="text-right">الجنس</TableHead>
                     <TableHead className="text-right">البريد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
@@ -323,6 +338,7 @@ export default function TeachersPage() {
                   {filteredTeachers.map((teacher) => (
                     <TableRow key={teacher.id} data-testid={`row-teacher-${teacher.id}`}>
                       <TableCell className="font-medium" data-testid={`text-name-${teacher.id}`}>{teacher.name}</TableCell>
+                      <TableCell data-testid={`text-gender-${teacher.id}`}>{teacher.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
                       <TableCell data-testid={`text-email-${teacher.id}`}>{teacher.email || "—"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${teacher.id}`}>{teacher.phone || "—"}</TableCell>
                       <TableCell>
