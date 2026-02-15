@@ -54,6 +54,8 @@ interface StatsData {
   pendingAssignments?: number;
   activeStudents?: number;
   inactiveStudents?: number;
+  specialNeedsStudents?: number;
+  orphanStudents?: number;
   users?: any[];
   assignments?: any[];
 }
@@ -162,6 +164,8 @@ export default function ReportsPage() {
       ["الواجبات المعلقة", stats.pendingAssignments || 0],
       ["الطلاب النشطين", stats.activeStudents || 0],
       ["الطلاب غير النشطين", stats.inactiveStudents || 0],
+      ["ذوي الاحتياجات الخاصة", stats.specialNeedsStudents || 0],
+      ["الأيتام", stats.orphanStudents || 0],
     ];
 
     const sheets: { name: string; data: Record<string, unknown>[] | unknown[][] }[] = [
@@ -373,6 +377,30 @@ export default function ReportsPage() {
                     {stats.inactiveStudents || 0} غير نشط
                   </Badge>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-special-needs">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">ذوي الاحتياجات الخاصة</CardTitle>
+                <ShieldCheck className="h-5 w-5 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <span className="text-3xl font-bold" data-testid="value-special-needs">
+                  {stats.specialNeedsStudents || 0}
+                </span>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-orphans">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">الأيتام</CardTitle>
+                <Users className="h-5 w-5 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <span className="text-3xl font-bold" data-testid="value-orphans">
+                  {stats.orphanStudents || 0}
+                </span>
               </CardContent>
             </Card>
           </div>

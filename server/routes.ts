@@ -1231,16 +1231,19 @@ export async function registerRoutes(
         assignmentsList = assignmentsList.filter(a => a.teacherId === filterTeacherId);
       }
 
+      const studentsList = usersList.filter(u => u.role === "student");
       return res.json({
-        totalStudents: usersList.filter(u => u.role === "student").length,
+        totalStudents: studentsList.length,
         totalTeachers: usersList.filter(u => u.role === "teacher").length,
         totalSupervisors: usersList.filter(u => u.role === "supervisor").length,
         totalMosques: mosquesList.length,
         totalAssignments: assignmentsList.length,
         completedAssignments: assignmentsList.filter(a => a.status === "done").length,
         pendingAssignments: assignmentsList.filter(a => a.status === "pending").length,
-        activeStudents: usersList.filter(u => u.role === "student" && u.isActive).length,
-        inactiveStudents: usersList.filter(u => u.role === "student" && !u.isActive).length,
+        activeStudents: studentsList.filter(s => s.isActive).length,
+        inactiveStudents: studentsList.filter(s => !s.isActive).length,
+        specialNeedsStudents: studentsList.filter(s => s.isSpecialNeeds).length,
+        orphanStudents: studentsList.filter(s => s.isOrphan).length,
         users: usersList.map(({ password, ...u }) => u),
         assignments: assignmentsList,
       });
@@ -1256,6 +1259,8 @@ export async function registerRoutes(
         pendingAssignments: myAssignments.filter(a => a.status === "pending").length,
         activeStudents: myStudents.filter(s => s.isActive).length,
         inactiveStudents: myStudents.filter(s => !s.isActive).length,
+        specialNeedsStudents: myStudents.filter(s => s.isSpecialNeeds).length,
+        orphanStudents: myStudents.filter(s => s.isOrphan).length,
         users: myStudents.map(({ password, ...u }) => u),
         assignments: myAssignments,
       });
@@ -1270,14 +1275,17 @@ export async function registerRoutes(
         assignmentsList = assignmentsList.filter(a => a.teacherId === filterTeacherId);
       }
 
+      const mosqueStudents = mosqueUsers.filter(u => u.role === "student");
       return res.json({
         totalTeachers: mosqueUsers.filter(u => u.role === "teacher").length,
-        totalStudents: mosqueUsers.filter(u => u.role === "student").length,
+        totalStudents: mosqueStudents.length,
         totalAssignments: assignmentsList.length,
         completedAssignments: assignmentsList.filter(a => a.status === "done").length,
         pendingAssignments: assignmentsList.filter(a => a.status === "pending").length,
-        activeStudents: mosqueUsers.filter(u => u.role === "student" && u.isActive).length,
-        inactiveStudents: mosqueUsers.filter(u => u.role === "student" && !u.isActive).length,
+        activeStudents: mosqueStudents.filter(s => s.isActive).length,
+        inactiveStudents: mosqueStudents.filter(s => !s.isActive).length,
+        specialNeedsStudents: mosqueStudents.filter(s => s.isSpecialNeeds).length,
+        orphanStudents: mosqueStudents.filter(s => s.isOrphan).length,
         users: mosqueUsers.map(({ password, ...u }) => u),
         assignments: assignmentsList,
       });
