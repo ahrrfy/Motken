@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from "react";
 import { useReactToPrint } from "react-to-print";
-import { QRCodeSVG } from "qrcode.react";
 import QRCode from "qrcode";
 import { toPng } from "html-to-image";
 import { Button } from "@/components/ui/button";
@@ -131,6 +130,21 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
   `;
 }
 
+function QRCodeImage({ value, size }: { value: string; size: number }) {
+  const [dataUrl, setDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    QRCode.toDataURL(value, {
+      width: size * 3,
+      margin: 1,
+      errorCorrectionLevel: "M",
+    }).then(setDataUrl).catch(() => {});
+  }, [value, size]);
+
+  if (!dataUrl) return <div style={{ width: size, height: size }} />;
+  return <img src={dataUrl} alt="QR" width={size} height={size} style={{ imageRendering: "pixelated" }} />;
+}
+
 function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
   return (
     <div
@@ -204,10 +218,9 @@ function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
 
           <div className="flex items-center justify-center mt-1 gap-1">
             <div className="p-1 bg-white border rounded-md shadow-sm">
-              <QRCodeSVG
+              <QRCodeImage
                 value={JSON.stringify({ id: user.id, name: user.name, role: user.role })}
                 size={60}
-                data-testid={`qr-code-${user.id}`}
               />
             </div>
             <p className="text-[7px] text-gray-400 writing-vertical-rl" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>امسح للتحقق</p>
