@@ -1,5 +1,7 @@
 import { useAuth } from "@/lib/auth-context";
+import { useEffect } from "react";
 import { Route, Switch } from "wouter";
+import { registerServiceWorker, startNotificationPolling, stopNotificationPolling, isNotificationsEnabled } from "@/lib/notifications";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import StudentsPage from "@/pages/StudentsPage";
@@ -24,6 +26,19 @@ import { Loader2 } from "lucide-react";
 
 function App() {
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
+  useEffect(() => {
+    if (user && isNotificationsEnabled()) {
+      startNotificationPolling();
+    }
+    return () => {
+      stopNotificationPolling();
+    };
+  }, [user]);
 
   if (loading) {
     return (

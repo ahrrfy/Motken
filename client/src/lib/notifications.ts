@@ -41,8 +41,7 @@ export async function showLocalNotification(title: string, body: string, tag?: s
       tag: tag || "mutqin-" + Date.now(),
       dir: "rtl",
       lang: "ar",
-      vibrate: [200, 100, 200],
-    });
+    } as NotificationOptions & { vibrate?: number[] });
   } else if ("Notification" in window) {
     new Notification(title, {
       body,
