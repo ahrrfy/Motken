@@ -50,7 +50,7 @@ export default function LoginPage() {
           <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 border-2 border-primary/20">
              <span className="text-3xl font-bold text-primary">م</span>
           </div>
-          <CardTitle className="text-2xl font-bold text-primary font-serif">نظام متقن</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary font-serif">نظام مُتْقِن</CardTitle>
           <CardDescription>نظام إدارة حلقات التحفيظ</CardDescription>
         </CardHeader>
         <CardContent>
