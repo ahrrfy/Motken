@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useReactToPrint } from "react-to-print";
 import { QRCodeSVG } from "qrcode.react";
 import QRCode from "qrcode";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -355,54 +355,30 @@ export default function IDCardsPage() {
 
   const handlePngExport = async () => {
     setExporting(true);
-    const tempDiv = document.createElement("div");
-    tempDiv.style.position = "fixed";
-    tempDiv.style.left = "-9999px";
-    tempDiv.style.top = "0";
-    tempDiv.style.zIndex = "-1";
-    document.body.appendChild(tempDiv);
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap";
-    document.head.appendChild(link);
-    await new Promise((r) => setTimeout(r, 500));
-
     try {
       for (const u of selectedUsers) {
-        const qrData = JSON.stringify({ id: u.id, name: u.name, role: u.role });
-        const qrDataUrl = await generateQRDataURL(qrData);
-        const cardHtml = generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl);
-
-        tempDiv.innerHTML = `<div dir="rtl" style="font-family:'Tajawal',sans-serif;display:inline-block;">${cardHtml}</div>`;
-
-        const cardEl = tempDiv.querySelector("[dir='rtl']") as HTMLElement;
+        const cardEl = document.querySelector(`[data-testid="card-idcard-${u.id}"]`) as HTMLElement;
         if (!cardEl) continue;
 
-        const canvas = await html2canvas(cardEl, {
-          scale: 300 / 96,
-          useCORS: true,
+        const dataUrl = await toPng(cardEl, {
+          quality: 1,
+          pixelRatio: 300 / 96,
           backgroundColor: "#ffffff",
-          logging: false,
-          width: 340,
-          height: 227,
+          style: {
+            direction: "rtl",
+          },
         });
 
-        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `هوية_${u.name}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-        await new Promise((r) => setTimeout(r, 200));
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `هوية_${u.name}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        await new Promise((r) => setTimeout(r, 300));
       }
     } finally {
-      document.body.removeChild(tempDiv);
       setExporting(false);
     }
   };
