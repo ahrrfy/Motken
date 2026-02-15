@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Bell, BellRing, CheckCheck, Clock, Info, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 
 interface Notification {
   id: string;
@@ -18,7 +19,9 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
+  const canDelete = user?.role === "admin" || user?.role === "supervisor";
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -192,6 +195,7 @@ export default function NotificationsPage() {
             {allSelected ? "إلغاء التحديد" : "تحديد الكل"}
           </Button>
 
+          {canDelete && (
           <Button
             variant="destructive"
             size="sm"
@@ -203,6 +207,7 @@ export default function NotificationsPage() {
             <Trash2 className="w-4 h-4" />
             حذف المحدد
           </Button>
+          )}
 
           <Button
             variant="outline"
@@ -227,6 +232,7 @@ export default function NotificationsPage() {
             تحديد الكل كمقروء
           </Button>
 
+          {canDelete && (
           <Button
             variant="destructive"
             size="sm"
@@ -237,6 +243,7 @@ export default function NotificationsPage() {
             <Trash2 className="w-4 h-4" />
             حذف الكل
           </Button>
+          )}
 
           {selectedIds.size > 0 && (
             <Badge variant="secondary" className="text-xs" data-testid="badge-selected-count">
@@ -306,6 +313,7 @@ export default function NotificationsPage() {
                         </Button>
                       </>
                     )}
+                    {canDelete && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -316,6 +324,7 @@ export default function NotificationsPage() {
                       <Trash2 className="w-3 h-3" />
                       حذف
                     </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
