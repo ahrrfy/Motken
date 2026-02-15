@@ -1,10 +1,20 @@
 import express, { type Request, Response, NextFunction } from "express";
+import compression from "compression";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { createIndexes } from "./db";
 
 const app = express();
+
+app.use(compression());
+
+app.use((req, res, next) => {
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+  }
+  next();
+});
 const httpServer = createServer(app);
 
 declare module "http" {
