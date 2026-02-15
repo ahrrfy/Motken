@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Filter, Search, ShieldAlert, ShieldCheck, Printer, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateAr } from "@/lib/utils";
+import { openPrintWindow } from "@/lib/print-utils";
 
 interface ActivityLog {
   id: string;
@@ -48,7 +50,9 @@ export default function ActivityLogsPage() {
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString("ar-IQ");
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString("ar-IQ", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
     } catch {
       return dateStr;
     }
@@ -62,7 +66,29 @@ export default function ActivityLogsPage() {
           <p className="text-muted-foreground">مراقبة وتتبع جميع العمليات داخل النظام</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <Button variant="outline" className="gap-2" onClick={() => window.print()} data-testid="button-print">
+          <Button variant="outline" className="gap-2" onClick={() => {
+            const tableHtml = `
+              <h3 class="section-title">سجل الحركات (${filteredLogs.length})</h3>
+              <table>
+                <thead>
+                  <tr><th>#</th><th>المستخدم</th><th>العملية</th><th>القسم</th><th>الحالة</th><th>التاريخ</th></tr>
+                </thead>
+                <tbody>
+                  ${filteredLogs.map((log, i) => `
+                    <tr>
+                      <td>${i + 1}</td>
+                      <td>${log.userName}</td>
+                      <td>${log.action}</td>
+                      <td>${log.module}</td>
+                      <td>${log.status === "success" ? "ناجح" : "فشل"}</td>
+                      <td>${formatDate(log.createdAt)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            `;
+            openPrintWindow("سجل الحركات", tableHtml, { landscape: true });
+          }} data-testid="button-print">
             <Printer className="w-4 h-4" />
             طباعة السجل
           </Button>

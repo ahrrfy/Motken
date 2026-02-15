@@ -21,6 +21,7 @@ import RatingsPage from "@/pages/RatingsPage";
 import ExamsPage from "@/pages/ExamsPage";
 import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
 import CoursesPage from "@/pages/CoursesPage";
+import TeacherDailyPage from "@/pages/TeacherDailyPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
@@ -67,6 +68,7 @@ function App() {
   return (
     <SidebarLayout>
       <Switch>
+        <Route path="/daily" component={TeacherDailyPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/mosques" component={MosquesPage} />
         <Route path="/students" component={StudentsPage} />
