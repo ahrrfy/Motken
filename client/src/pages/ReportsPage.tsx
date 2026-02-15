@@ -26,7 +26,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import * as XLSX from "xlsx";
+import { exportMultiSheetExcel } from "@/lib/excel-utils";
 import { openPrintWindow, generateStatsHtml, generateUsersTableHtml } from "@/lib/print-utils";
 import {
   BarChart,
@@ -151,9 +151,7 @@ export default function ReportsPage() {
   ];
 
   const exportExcel = () => {
-    const wb = XLSX.utils.book_new();
-
-    const statsSheet = [
+    const statsSheet: unknown[][] = [
       ["الإحصائية", "القيمة"],
       ["إجمالي الطلاب", stats.totalStudents || 0],
       ["إجمالي الأساتذة", stats.totalTeachers || 0],
@@ -165,23 +163,26 @@ export default function ReportsPage() {
       ["الطلاب النشطين", stats.activeStudents || 0],
       ["الطلاب غير النشطين", stats.inactiveStudents || 0],
     ];
-    const ws1 = XLSX.utils.aoa_to_sheet(statsSheet);
-    XLSX.utils.book_append_sheet(wb, ws1, "Statistics");
+
+    const sheets: { name: string; data: Record<string, unknown>[] | unknown[][] }[] = [
+      { name: "Statistics", data: statsSheet },
+    ];
 
     if (stats.users && stats.users.length > 0) {
-      const usersData = stats.users.map((u: any) => ({
-        Name: u.name,
-        Role: u.role,
-        Username: u.username,
-        Active: u.isActive ? "Yes" : "No",
-        Phone: u.phone || "",
-        Email: u.email || "",
-      }));
-      const ws2 = XLSX.utils.json_to_sheet(usersData);
-      XLSX.utils.book_append_sheet(wb, ws2, "Users");
+      sheets.push({
+        name: "Users",
+        data: stats.users.map((u: any) => ({
+          Name: u.name,
+          Role: u.role,
+          Username: u.username,
+          Active: u.isActive ? "Yes" : "No",
+          Phone: u.phone || "",
+          Email: u.email || "",
+        })),
+      });
     }
 
-    XLSX.writeFile(wb, "report.xlsx");
+    exportMultiSheetExcel(sheets, "report.xlsx");
   };
 
   const exportPDF = () => {
