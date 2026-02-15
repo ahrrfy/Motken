@@ -111,7 +111,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           م
         </div>
         <div className="min-w-0">
-          <h1 className="font-bold text-lg leading-none">متقن</h1>
+          <h1 className="font-bold text-2xl leading-none">مُتْقِن</h1>
           <p className="text-xs text-sidebar-foreground/60 mt-1">نظام إدارة حلقات التحفيظ</p>
         </div>
       </div>
@@ -171,7 +171,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm border border-accent">
             م
           </div>
-          <span className="font-bold text-sm">متقن</span>
+          <span className="font-bold text-lg">مُتْقِن</span>
         </div>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
