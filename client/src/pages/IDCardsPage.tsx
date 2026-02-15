@@ -6,9 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Printer, Users, CreditCard, Loader2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Printer, Users, CreditCard, Loader2, FileDown, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
+import { openPrintWindow } from "@/lib/print-utils";
 
 interface UserData {
   id: string;
@@ -53,6 +55,72 @@ function formatUserId(id: string): string {
 
 function formatDate(dateStr?: string): string {
   return formatDateAr(dateStr);
+}
+
+function generateIDCardHtml(user: UserData, mosqueName: string): string {
+  const roleLabel = roleTranslations[user.role] || user.role;
+  const formattedId = formatUserId(user.id);
+  const joinDate = formatDate(user.createdAt);
+  const avatarSection = user.avatar
+    ? `<img src="${user.avatar}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;" />`
+    : `<span style="font-size:30px;font-weight:bold;color:#16213e;">${user.name.charAt(0)}</span>`;
+
+  return `
+    <div style="width:320px;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;background:white;display:inline-flex;flex-direction:column;margin:12px;page-break-inside:avoid;font-family:'Tajawal',sans-serif;" dir="rtl">
+      <div style="height:90px;background:#16213e;position:relative;overflow:hidden;">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;opacity:0.1;">
+          <defs>
+            <pattern id="p-${user.id}" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="white" stroke-width="0.5"/>
+              <circle cx="20" cy="20" r="8" fill="none" stroke="white" stroke-width="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#p-${user.id})"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;gap:12px;z-index:10;">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);">
+            <span style="font-weight:bold;font-size:18px;">م</span>
+          </div>
+          <div>
+            <h2 style="font-size:18px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;">مُتْقِن</h2>
+            <p style="font-size:10px;opacity:0.8;margin:0;">لإدارة حلقات القرآن الكريم</p>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:20px 20px 12px;">
+        <div style="width:76px;height:76px;border-radius:50%;border:3px solid rgba(22,33,62,0.2);overflow:hidden;background:rgba(22,33,62,0.05);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+          ${avatarSection}
+        </div>
+        <h3 style="font-size:18px;font-weight:bold;color:#1f2937;text-align:center;margin:0;">${user.name}</h3>
+        <span style="display:inline-block;margin-top:6px;padding:2px 10px;border-radius:9999px;background:#f3f4f6;color:#4b5563;font-size:12px;">${roleLabel}</span>
+      </div>
+      <div style="margin:0 20px 12px;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid #f3f4f6;font-size:13px;color:#4b5563;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="color:#9ca3af;">رقم الهوية</span>
+          <span style="font-family:monospace;font-weight:600;color:#16213e;font-size:12px;">${formattedId}</span>
+        </div>
+        ${mosqueName ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="color:#9ca3af;">المسجد</span>
+          <span style="font-weight:500;font-size:12px;">${mosqueName}</span>
+        </div>` : ""}
+        ${user.phone ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="color:#9ca3af;">الهاتف</span>
+          <span dir="ltr" style="font-size:12px;">${user.phone}</span>
+        </div>` : ""}
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#9ca3af;">تاريخ الانضمام</span>
+          <span style="font-size:12px;">${joinDate}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding-bottom:16px;margin-top:auto;">
+        <div style="padding:6px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+          <div style="width:70px;height:70px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:9px;color:#9ca3af;">QR Code</div>
+        </div>
+        <p style="font-size:9px;color:#9ca3af;margin-top:4px;">امسح الرمز للتحقق من الهوية</p>
+      </div>
+      <div style="width:100%;height:6px;background:rgba(22,33,62,0.8);"></div>
+    </div>
+  `;
 }
 
 function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
@@ -214,6 +282,19 @@ export default function IDCardsPage() {
 
   const selectedUsers = users.filter((u) => selectedUserIds.has(u.id));
 
+  const handleIndividualExport = () => {
+    selectedUsers.forEach((u) => {
+      const html = `<div style="display:flex;justify-content:center;padding:20px;">${generateIDCardHtml(u, getMosqueName(u.mosqueId))}</div>`;
+      openPrintWindow(`بطاقة هوية - ${u.name}`, html);
+    });
+  };
+
+  const handleBatchExport = () => {
+    const cardsHtml = selectedUsers.map((u) => generateIDCardHtml(u, getMosqueName(u.mosqueId))).join("");
+    const html = `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;padding:20px;">${cardsHtml}</div>`;
+    openPrintWindow(`بطاقات الهوية (${selectedUsers.length})`, html);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]" data-testid="loading-idcards">
@@ -257,6 +338,27 @@ export default function IDCardsPage() {
             <Printer className="w-4 h-4 ml-2" />
             طباعة ({selectedUsers.length})
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={selectedUsers.length === 0}
+                data-testid="button-export-pdf"
+              >
+                <FileDown className="w-4 h-4 ml-2" />
+                تصدير PDF
+                <ChevronDown className="w-3 h-3 mr-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleIndividualExport} data-testid="menu-export-individual">
+                تصدير منفرد
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleBatchExport} data-testid="menu-export-batch">
+                تصدير مجمع
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
