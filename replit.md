@@ -32,14 +32,17 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 ## Pages
 - DashboardPage, MosquesPage (admin), AllUsersPage (admin), StudentsPage, TeachersPage
 - AssignmentsPage (with Quran surah selector), ExamsPage, RatingsPage
+- CoursesPage (courses & certificates with graduation system)
 - QuranTracker, LibraryPage, ReportsPage, IDCardsPage (permission-based)
 - QRScannerPage, SettingsPage, ActivityLogsPage (admin), TeacherActivitiesPage (supervisor)
 - NotificationsPage
 
 ## Database Tables
 - mosques, users, assignments, ratings, exams, exam_students, activity_logs, notifications
+- courses, course_students, course_teachers, certificates
 
 ## Key Features
+- **Courses & Certificates**: Teachers/supervisors create courses, enroll students (specific/all teacher's/all mosque), add participating teachers, graduate students with 👨‍🎓 button, auto-generate certificates with MTQ-CERT numbers, printable certificate view
 - **Ratings**: Supervisor rates teachers, teacher rates students (1-5 stars + honor badges)
 - **Exams**: Teachers create exams with Quran surah/verse selection, target all or specific students
 - **Print Permission**: Admin toggles `canPrintIds` for supervisors/teachers via AllUsersPage
