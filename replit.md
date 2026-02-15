@@ -56,7 +56,38 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - teacher3/teacher123 (mosque 2)
 - student1-5/student123 (distributed across mosques)
 
+## Security Measures
+- **Authentication**: Passport.js local strategy with scrypt password hashing + timing-safe comparison
+- **Session**: Auto-generated random secret (crypto.randomBytes), secure cookies in production, sameSite: lax
+- **Rate Limiting**: 5 login attempts per 15-minute window per IP+username, auto-lockout
+- **Inactive Users**: Users with isActive=false are blocked from logging in
+- **Open Registration Removed**: No public registration endpoint; user creation only via POST /api/users with role checks
+- **Seed Endpoint**: Protected with requireRole("admin")
+- **IDOR Prevention**: All data access enforces mosque scoping and ownership checks
+  - Students: always see only their own data, query params ignored
+  - Teachers: can only access their own students and assignments
+  - Supervisors: scoped to their mosque only
+  - Admin: unrestricted
+- **Ownership Checks**: PATCH/DELETE on assignments, exams, notifications verify ownership
+- **Role Escalation Prevention**: Non-admin users cannot change role, mosqueId, isActive, canPrintIds via PATCH
+- **Input Validation**: Stars rating validated 1-5, verse numbers validated, type conversion enforced
+- **Activity Logs**: POST endpoint removed; logging only internal via logActivity()
+- **Cross-Mosque Isolation**: Supervisors/teachers cannot access data from other mosques
+
 ## Recent Changes (Feb 15, 2026)
+- **SECURITY AUDIT**: Comprehensive security audit fixing 18 vulnerabilities
+  - Removed open /api/auth/register endpoint (critical)
+  - Added auth to /api/seed endpoint (critical)
+  - Fixed IDOR in assignments, ratings, exams, notifications
+  - Added ownership checks on PATCH/DELETE for assignments and exams
+  - Prevented role escalation via user PATCH
+  - Added login rate limiting (5 attempts/15min)
+  - Blocked inactive user login
+  - Secured session cookies (secure, sameSite)
+  - Auto-generated session secret
+  - Validated rating stars (1-5)
+  - Removed public activity-logs POST endpoint
+  - Added getNotification() to storage for ownership verification
 - System rebranded to "مُتْقِن" (Mutqin) with proper tashkeel
 - Added DateTimePrayerBar component (client/src/components/DateTimePrayerBar.tsx)
   - Shows Hijri and Gregorian date with current time (live clock)
