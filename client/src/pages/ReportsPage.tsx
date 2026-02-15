@@ -177,7 +177,6 @@ export default function ReportsPage() {
           Username: u.username,
           Active: u.isActive ? "Yes" : "No",
           Phone: u.phone || "",
-          Email: u.email || "",
         })),
       });
     }

@@ -58,7 +58,6 @@ export default function SettingsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [address, setAddress] = useState(user?.address || "");
   const [gender, setGender] = useState(user?.gender || "male");
@@ -144,7 +143,7 @@ export default function SettingsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name, email, phone, address, gender }),
+        body: JSON.stringify({ name, phone, address, gender }),
       });
       if (res.ok) {
         setMessage("تم حفظ التغييرات بنجاح. ستظهر التغييرات بعد تسجيل الخروج وإعادة الدخول");
@@ -327,10 +326,6 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>الاسم الكامل</Label>
                   <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="input-settings-name" />
-                </div>
-                <div className="space-y-2">
-                  <Label>البريد الإلكتروني</Label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} data-testid="input-settings-email" />
                 </div>
                 <div className="space-y-2">
                   <Label>رقم الهاتف</Label>

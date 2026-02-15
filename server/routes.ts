@@ -200,7 +200,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "غير مصرح بإنشاء حسابات" });
       }
 
-      const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, email, phone, address, gender, avatar, isActive, canPrintIds } = req.body;
+      const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan } = req.body;
       if (!username || typeof username !== "string" || username.length < 3 || username.length > 50) {
         return res.status(400).json({ message: "اسم المستخدم مطلوب ويجب أن يكون بين 3 و 50 حرف" });
       }
@@ -217,7 +217,7 @@ export async function registerRoutes(
       const data: any = {
         username, name, password: await hashPassword(rawPassword),
         role: req.body.role, mosqueId: req.body.mosqueId, teacherId,
-        email, phone, address, gender, avatar, isActive, canPrintIds,
+        phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan,
       };
       const user = await storage.createUser(data);
       const { password, ...safe } = user;
@@ -249,14 +249,19 @@ export async function registerRoutes(
     }
 
     const updateData: any = {};
-    const { name, email, phone, address, gender, avatar, teacherId } = req.body;
+    const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan } = req.body;
     if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
     if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
     if (gender !== undefined) updateData.gender = gender;
     if (avatar !== undefined) updateData.avatar = avatar;
     if (teacherId !== undefined) updateData.teacherId = teacherId;
+    if (age !== undefined) updateData.age = age;
+    if (telegramId !== undefined) updateData.telegramId = telegramId;
+    if (parentPhone !== undefined) updateData.parentPhone = parentPhone;
+    if (educationLevel !== undefined) updateData.educationLevel = educationLevel;
+    if (isSpecialNeeds !== undefined) updateData.isSpecialNeeds = isSpecialNeeds;
+    if (isOrphan !== undefined) updateData.isOrphan = isOrphan;
 
     if (req.body.password) {
       if (typeof req.body.password !== "string" || req.body.password.length < 6) {
@@ -1368,7 +1373,6 @@ export async function registerRoutes(
         password: await hashPassword("admin123"),
         name: "د. عبد الله المدير",
         role: "admin",
-        email: "admin@huffaz.iq",
         phone: "07701234567",
         isActive: true,
         canPrintIds: true,
@@ -1381,7 +1385,6 @@ export async function registerRoutes(
         name: "المشرف أحمد",
         role: "supervisor",
         mosqueId: mosque1.id,
-        email: "sup1@huffaz.iq",
         phone: "07801111111",
         isActive: true,
       });
@@ -1392,7 +1395,6 @@ export async function registerRoutes(
         name: "المشرف خالد",
         role: "supervisor",
         mosqueId: mosque2.id,
-        email: "sup2@huffaz.iq",
         phone: "07802222222",
         isActive: true,
       });
@@ -1403,7 +1405,6 @@ export async function registerRoutes(
         name: "الشيخ أحمد",
         role: "teacher",
         mosqueId: mosque1.id,
-        email: "ahmed@huffaz.iq",
         phone: "07801234567",
         isActive: true,
       });
@@ -1414,7 +1415,6 @@ export async function registerRoutes(
         name: "الشيخ عبد الله",
         role: "teacher",
         mosqueId: mosque1.id,
-        email: "abdullah@huffaz.iq",
         phone: "07811234567",
         isActive: true,
       });
@@ -1425,16 +1425,15 @@ export async function registerRoutes(
         name: "الشيخ محمد",
         role: "teacher",
         mosqueId: mosque2.id,
-        email: "mohammed@huffaz.iq",
         phone: "07821234567",
         isActive: true,
       });
 
-      const s1 = await storage.createUser({ username: "student1", password: await hashPassword("student123"), name: "عمر خالد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, email: "omar@huffaz.iq", phone: "07901234567", isActive: true });
-      const s2 = await storage.createUser({ username: "student2", password: await hashPassword("student123"), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, email: "ahmad@huffaz.iq", phone: "07911234567", isActive: true });
-      const s3 = await storage.createUser({ username: "student3", password: await hashPassword("student123"), name: "يوسف علي", role: "student", mosqueId: mosque1.id, teacherId: teacher2.id, email: "yusuf@huffaz.iq", phone: "07921234567", isActive: true });
-      const s4 = await storage.createUser({ username: "student4", password: await hashPassword("student123"), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, email: "saeed@huffaz.iq", phone: "07931234567", isActive: true });
-      const s5 = await storage.createUser({ username: "student5", password: await hashPassword("student123"), name: "كريم محمود", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, email: "kareem@huffaz.iq", phone: "07941234567", isActive: true });
+      const s1 = await storage.createUser({ username: "student1", password: await hashPassword("student123"), name: "عمر خالد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07901234567", isActive: true });
+      const s2 = await storage.createUser({ username: "student2", password: await hashPassword("student123"), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07911234567", isActive: true });
+      const s3 = await storage.createUser({ username: "student3", password: await hashPassword("student123"), name: "يوسف علي", role: "student", mosqueId: mosque1.id, teacherId: teacher2.id, phone: "07921234567", isActive: true });
+      const s4 = await storage.createUser({ username: "student4", password: await hashPassword("student123"), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07931234567", isActive: true });
+      const s5 = await storage.createUser({ username: "student5", password: await hashPassword("student123"), name: "كريم محمود", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07941234567", isActive: true });
 
       await storage.createAssignment({
         studentId: s1.id, teacherId: teacher1.id, mosqueId: mosque1.id,
