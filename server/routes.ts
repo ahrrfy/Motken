@@ -1329,5 +1329,28 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/system/reset", requireRole("admin"), async (req, res) => {
+    try {
+      const { password } = req.body;
+      if (!password || typeof password !== "string") {
+        return res.status(400).json({ message: "كلمة المرور مطلوبة" });
+      }
+      const admin = await storage.getUser(req.user!.id);
+      if (!admin) return res.status(404).json({ message: "المستخدم غير موجود" });
+
+      const { comparePasswords } = await import("./auth");
+      const valid = await comparePasswords(password, admin.password);
+      if (!valid) {
+        return res.status(403).json({ message: "كلمة المرور غير صحيحة" });
+      }
+
+      await storage.resetSystemData();
+      await logActivity(req.user!, "تصفير النظام بالكامل", "system", "تم مسح جميع بيانات المساجد والمستخدمين");
+      res.json({ message: "تم تصفير النظام بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "حدث خطأ أثناء تصفير النظام" });
+    }
+  });
+
   return httpServer;
 }

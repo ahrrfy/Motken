@@ -9,7 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera } from "lucide-react";
+import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 
@@ -226,6 +236,9 @@ export default function SettingsPage() {
             )}
             <TabsTrigger value="general" className="flex-1 max-w-[200px] whitespace-nowrap">إعدادات النظام</TabsTrigger>
             <TabsTrigger value="notifications" className="flex-1 max-w-[200px] whitespace-nowrap">الإشعارات</TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="system-management" className="flex-1 max-w-[200px] whitespace-nowrap text-red-600">إدارة النظام</TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -576,7 +589,146 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="system-management" className="space-y-6 mt-6">
+            <SystemResetSection />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
+  );
+}
+
+function SystemResetSection() {
+  const { toast } = useToast();
+  const [resetPassword, setResetPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  const handleReset = async () => {
+    if (!resetPassword) {
+      toast({ title: "خطأ", description: "يرجى إدخال كلمة مرور المدير", variant: "destructive" });
+      return;
+    }
+    if (confirmText !== "تصفير النظام") {
+      toast({ title: "خطأ", description: "يرجى كتابة 'تصفير النظام' للتأكيد", variant: "destructive" });
+      return;
+    }
+    setResetting(true);
+    try {
+      const res = await fetch("/api/system/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: resetPassword }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم تصفير النظام بالكامل", className: "bg-green-50 border-green-200 text-green-800" });
+        setDialogOpen(false);
+        setResetPassword("");
+        setConfirmText("");
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في تصفير النظام", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  return (
+    <Card className="border-red-200 bg-red-50/30 dark:bg-red-950/10 dark:border-red-900">
+      <CardHeader>
+        <CardTitle className="text-red-700 dark:text-red-400 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5" />
+          منطقة الخطر - تصفير النظام
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="p-4 rounded-lg bg-red-100/50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-800 dark:text-red-300 font-medium mb-2">تحذير: هذا الإجراء لا يمكن التراجع عنه!</p>
+          <p className="text-sm text-red-700 dark:text-red-400">سيتم حذف جميع البيانات التالية نهائياً:</p>
+          <ul className="text-sm text-red-700 dark:text-red-400 mt-2 space-y-1 list-disc list-inside">
+            <li>جميع المساجد المسجلة</li>
+            <li>جميع حسابات المشرفين والأساتذة والطلاب</li>
+            <li>جميع الواجبات والامتحانات والتقييمات</li>
+            <li>جميع الدورات والشهادات</li>
+            <li>جميع الإشعارات وسجلات النشاط</li>
+          </ul>
+          <p className="text-sm text-red-800 dark:text-red-300 font-medium mt-3">سيبقى حساب المدير فقط.</p>
+        </div>
+
+        <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="w-full sm:w-auto" data-testid="button-open-reset">
+              <Trash2 className="w-4 h-4 ml-2" />
+              مسح جميع البيانات وتصفير النظام
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-red-700 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                تأكيد تصفير النظام
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-right">
+                هذا الإجراء سيحذف جميع البيانات المدخلة بشكل نهائي ولا يمكن التراجع عنه.
+                يرجى إدخال كلمة مرور المدير وكتابة "تصفير النظام" للتأكيد.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>كلمة مرور المدير</Label>
+                <div className="relative">
+                  <Input
+                    type={showResetPassword ? "text" : "password"}
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    placeholder="أدخل كلمة مرور المدير"
+                    className="pl-10"
+                    data-testid="input-reset-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    className="absolute left-3 top-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>اكتب "تصفير النظام" للتأكيد</Label>
+                <Input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder='اكتب: تصفير النظام'
+                  dir="rtl"
+                  data-testid="input-reset-confirm"
+                />
+              </div>
+            </div>
+            <AlertDialogFooter className="flex-row-reverse gap-2">
+              <AlertDialogCancel data-testid="button-cancel-reset">إلغاء</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                onClick={handleReset}
+                disabled={resetting || !resetPassword || confirmText !== "تصفير النظام"}
+                data-testid="button-confirm-reset"
+              >
+                {resetting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                تأكيد التصفير النهائي
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
   );
 }
