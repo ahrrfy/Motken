@@ -1,35 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, CheckCircle, TrendingUp, Clock, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing, ClipboardList, Loader2, GraduationCap } from "lucide-react";
+import { Users, CheckCircle, TrendingUp, MapPin, ShieldAlert, Activity, ShieldCheck, Calendar, BellRing, ClipboardList, GraduationCap } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Coordinates, CalculationMethod, PrayerTimes } from 'adhan';
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-
-function getBaghdadPrayerTimes() {
-  const coordinates = new Coordinates(33.3152, 44.3661); 
-  const date = new Date();
-  const params = CalculationMethod.MuslimWorldLeague(); 
-  params.madhab = "shafi"; 
-  
-  const prayerTimes = new PrayerTimes(coordinates, date, params);
-  
-  const formatter = new Intl.DateTimeFormat('ar-IQ', {
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true
-  });
-
-  return {
-    fajr: formatter.format(prayerTimes.fajr),
-    dhuhr: formatter.format(prayerTimes.dhuhr),
-    asr: formatter.format(prayerTimes.asr),
-    maghrib: formatter.format(prayerTimes.maghrib),
-    isha: formatter.format(prayerTimes.isha),
-  };
-}
 
 interface Stats {
   totalStudents?: number;
@@ -42,17 +18,9 @@ interface Stats {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [prayerTimes, setPrayerTimes] = useState(getBaghdadPrayerTimes());
   const [showNotification, setShowNotification] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPrayerTimes(getBaghdadPrayerTimes());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (user?.role === "student") {
@@ -129,41 +97,12 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-card p-4 rounded-xl shadow-sm border">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-card p-4 rounded-xl shadow-sm border">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif" data-testid="text-page-title">لوحة التحكم</h1>
           <div className="flex items-center gap-2 text-muted-foreground mt-1">
             <MapPin className="w-4 h-4" />
             <p data-testid="text-mosque-name">{user?.mosqueName || (isAdmin ? "إدارة النظام" : "المسجد غير محدد")}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-2 rounded-lg border border-primary/10 w-full xl:w-auto overflow-x-auto scrollbar-thin">
-          <div className="flex items-center gap-2 px-3 border-l border-primary/20">
-             <Clock className="w-5 h-5 text-primary" />
-             <span className="font-bold text-primary text-sm whitespace-nowrap">أوقات الصلاة (بغداد):</span>
-          </div>
-          <div className="flex items-center gap-4 px-2 text-sm">
-             <div className="flex flex-col items-center">
-               <span className="text-xs text-muted-foreground">الفجر</span>
-               <span className="font-bold" data-testid="text-prayer-fajr">{prayerTimes.fajr}</span>
-             </div>
-             <div className="flex flex-col items-center">
-               <span className="text-xs text-muted-foreground">الظهر</span>
-               <span className="font-bold" data-testid="text-prayer-dhuhr">{prayerTimes.dhuhr}</span>
-             </div>
-             <div className="flex flex-col items-center">
-               <span className="text-xs text-muted-foreground">العصر</span>
-               <span className="font-bold" data-testid="text-prayer-asr">{prayerTimes.asr}</span>
-             </div>
-             <div className="flex flex-col items-center">
-               <span className="text-xs text-muted-foreground">المغرب</span>
-               <span className="font-bold" data-testid="text-prayer-maghrib">{prayerTimes.maghrib}</span>
-             </div>
-             <div className="flex flex-col items-center">
-               <span className="text-xs text-muted-foreground">العشاء</span>
-               <span className="font-bold" data-testid="text-prayer-isha">{prayerTimes.isha}</span>
-             </div>
           </div>
         </div>
       </div>
@@ -187,7 +126,7 @@ export default function DashboardPage() {
       )}
       
       {(isTeacher || isSupervisor || isAdmin) && (
-        <Card className="shadow-sm border-l-4 border-l-primary bg-white">
+        <Card className="shadow-sm border-l-4 border-l-primary bg-white dark:bg-card">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-primary" />
@@ -231,7 +170,7 @@ export default function DashboardPage() {
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 text-slate-500 text-xs">
-                            <Clock className="w-3 h-3" /> انتظار
+                            <Calendar className="w-3 h-3" /> انتظار
                           </span>
                         )}
                       </td>

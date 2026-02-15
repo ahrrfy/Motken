@@ -29,6 +29,7 @@ import {
   ClipboardList
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import DateTimePrayerBar from "@/components/DateTimePrayerBar";
 
 const navItems = [
   { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
@@ -194,6 +195,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       </aside>
 
       <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0 flex flex-col min-h-screen">
+        <DateTimePrayerBar />
         <div className="flex-1">
           {children}
         </div>
