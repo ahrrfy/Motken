@@ -688,10 +688,15 @@ export async function registerRoutes(
   });
 
   // ==================== SEED DATA ====================
-  app.post("/api/seed", requireRole("admin"), async (_req, res) => {
+  app.post("/api/seed", async (req, res) => {
     try {
       const existing = await storage.getUserByUsername("admin");
-      if (existing) return res.json({ message: "البيانات موجودة مسبقًا" });
+      if (existing) {
+        if (!req.isAuthenticated() || req.user!.role !== "admin") {
+          return res.status(403).json({ message: "غير مصرح بالوصول" });
+        }
+        return res.json({ message: "البيانات موجودة مسبقًا" });
+      }
 
       const mosque1 = await storage.createMosque({
         name: "جامع النور الكبير",
