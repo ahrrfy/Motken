@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, BellRing, CheckCheck, Clock, Info, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Bell, BellRing, CheckCheck, Clock, Info, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Notification {
@@ -20,6 +21,7 @@ export default function NotificationsPage() {
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch("/api/notifications", { credentials: "include" })
@@ -49,9 +51,91 @@ export default function NotificationsPage() {
     }
   };
 
+  const allSelected = notifications.length > 0 && selectedIds.size === notifications.length;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(notifications.map(n => n.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const handleMarkAllRead = async () => {
-    toast({ title: "تم", description: "تم تحديد جميع الإشعارات كمقروءة", className: "bg-green-50 border-green-200 text-green-800" });
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    try {
+      const res = await fetch("/api/notifications/read-all", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      toast({ title: "تم", description: "تم تحديد جميع الإشعارات كمقروءة", className: "bg-green-50 border-green-200 text-green-800" });
+    } catch {
+      toast({ title: "خطأ", description: "فشل في تحديد الإشعارات كمقروءة", variant: "destructive" });
+    }
+  };
+
+  const handleMarkOneRead = async (id: string) => {
+    try {
+      const res = await fetch(`/api/notifications/${id}/read`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      toast({ title: "تم", description: "تم تحديد الإشعار كمقروء", className: "bg-green-50 border-green-200 text-green-800" });
+    } catch {
+      toast({ title: "خطأ", description: "فشل في تحديد الإشعار كمقروء", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteOne = async (id: string) => {
+    try {
+      const res = await fetch(`/api/notifications/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast({ title: "تم", description: "تم حذف الإشعار", className: "bg-green-50 border-green-200 text-green-800" });
+    } catch {
+      toast({ title: "خطأ", description: "فشل في حذف الإشعار", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const res = await fetch("/api/notifications/delete-selected", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNotifications(prev => prev.filter(n => !selectedIds.has(n.id)));
+      setSelectedIds(new Set());
+      toast({ title: "تم", description: "تم حذف الإشعارات المحددة", className: "bg-green-50 border-green-200 text-green-800" });
+    } catch {
+      toast({ title: "خطأ", description: "فشل في حذف الإشعارات المحددة", variant: "destructive" });
+    }
   };
 
   return (
@@ -61,11 +145,50 @@ export default function NotificationsPage() {
           <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الإشعارات والتنبيهات</h1>
           <p className="text-muted-foreground">مركز الرسائل والتنبيهات الخاص بك</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={handleMarkAllRead} data-testid="button-mark-all-read">
-          <CheckCheck className="w-4 h-4" />
-          تحديد الكل كمقروء
-        </Button>
       </div>
+
+      {!loading && notifications.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border" data-testid="toolbar-notifications">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={toggleSelectAll}
+            data-testid="button-toggle-select-all"
+          >
+            {allSelected ? "إلغاء التحديد" : "تحديد الكل"}
+          </Button>
+
+          <Button
+            variant="destructive"
+            size="sm"
+            className="gap-2"
+            onClick={handleDeleteSelected}
+            disabled={selectedIds.size === 0}
+            data-testid="button-delete-selected"
+          >
+            <Trash2 className="w-4 h-4" />
+            حذف المحدد
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleMarkAllRead}
+            data-testid="button-mark-all-read"
+          >
+            <CheckCheck className="w-4 h-4" />
+            تحديد الكل كمقروء
+          </Button>
+
+          {selectedIds.size > 0 && (
+            <Badge variant="secondary" className="text-xs" data-testid="badge-selected-count">
+              {selectedIds.size} محدد
+            </Badge>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-12" data-testid="status-loading">
@@ -81,6 +204,14 @@ export default function NotificationsPage() {
           {notifications.map((notif) => (
             <Card key={notif.id} className={`transition-all hover:shadow-md ${!notif.isRead ? 'border-r-4 border-r-primary bg-primary/5' : ''}`} data-testid={`card-notification-${notif.id}`}>
               <CardContent className="p-4 flex items-start gap-4">
+                <div className="flex items-center pt-1">
+                  <Checkbox
+                    checked={selectedIds.has(notif.id)}
+                    onCheckedChange={() => toggleSelect(notif.id)}
+                    data-testid={`checkbox-notification-${notif.id}`}
+                  />
+                </div>
+
                 <div className={`p-3 rounded-full shrink-0 ${
                   notif.type === 'urgent' ? 'bg-red-100 text-red-600' :
                   notif.type === 'success' ? 'bg-green-100 text-green-600' :
@@ -103,9 +234,33 @@ export default function NotificationsPage() {
                   <p className="text-sm text-gray-600 leading-relaxed" data-testid={`text-notification-message-${notif.id}`}>
                     {notif.message}
                   </p>
-                  {!notif.isRead && (
-                    <Badge variant="secondary" className="mt-2 text-xs font-normal" data-testid={`badge-new-${notif.id}`}>جديد</Badge>
-                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    {!notif.isRead && (
+                      <>
+                        <Badge variant="secondary" className="text-xs font-normal" data-testid={`badge-new-${notif.id}`}>جديد</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => handleMarkOneRead(notif.id)}
+                          data-testid={`button-mark-read-${notif.id}`}
+                        >
+                          <CheckCheck className="w-3 h-3" />
+                          تحديد كمقروء
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteOne(notif.id)}
+                      data-testid={`button-delete-${notif.id}`}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      حذف
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

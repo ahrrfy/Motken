@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -50,6 +50,56 @@ export default function StudentsPage() {
 
   const isSupervisor = user?.role === "supervisor";
   const isTeacher = user?.role === "teacher";
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
+        let success = 0;
+        let failed = 0;
+        for (const row of rows) {
+          try {
+            const res = await fetch("/api/users", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                name: row["الاسم"] || "",
+                username: row["اسم المستخدم"] || "",
+                password: row["كلمة المرور"] || "",
+                email: row["البريد"] || "",
+                phone: row["الهاتف"] || "",
+                address: row["العنوان"] || "",
+                role: "student",
+              }),
+            });
+            if (res.ok) success++;
+            else failed++;
+          } catch {
+            failed++;
+          }
+        }
+        toast({
+          title: "نتيجة الاستيراد",
+          description: `تم استيراد ${success} طالب بنجاح${failed > 0 ? `، فشل ${failed}` : ""}`,
+          className: failed === 0 ? "bg-green-50 border-green-200 text-green-800" : undefined,
+          variant: failed > 0 && success === 0 ? "destructive" : undefined,
+        });
+        if (success > 0) fetchData();
+      } catch {
+        toast({ title: "خطأ", description: "فشل في قراءة الملف", variant: "destructive" });
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsBinaryString(file);
+  };
 
   const fetchData = async () => {
     try {
@@ -159,18 +209,30 @@ export default function StudentsPage() {
           <p className="text-muted-foreground">إدارة بيانات الطلاب ومتابعة تقدمهم</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print">
-            <Printer className="w-4 h-4" />
-            طباعة
-          </Button>
-          <Button variant="outline" className="gap-2" data-testid="button-import">
-            <Upload className="w-4 h-4" />
-            استيراد
-          </Button>
-          <Button variant="outline" onClick={handleExport} className="gap-2" data-testid="button-export">
-            <Download className="w-4 h-4" />
-            تصدير
-          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImport}
+            data-testid="input-file-import"
+          />
+          {user?.role !== "student" && (
+            <>
+              <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print">
+                <Printer className="w-4 h-4" />
+                طباعة
+              </Button>
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" data-testid="button-import">
+                <Upload className="w-4 h-4" />
+                استيراد
+              </Button>
+              <Button variant="outline" onClick={handleExport} className="gap-2" data-testid="button-export">
+                <Download className="w-4 h-4" />
+                تصدير
+              </Button>
+            </>
+          )}
           {isTeacher && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
