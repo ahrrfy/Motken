@@ -28,10 +28,12 @@ import {
   FileText,
   ClipboardList,
   Award,
+  Wifi,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
 import DateTimePrayerBar from "@/components/DateTimePrayerBar";
+import HadithTicker from "@/components/HadithTicker";
 import {
   requestNotificationPermission,
   getNotificationPermission,
@@ -58,6 +60,7 @@ const navItems = [
   { href: "/id-cards", label: "الهويات (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
   { href: "/scan-qr", label: "مسح QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
   { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["admin", "supervisor"] },
+  { href: "/online-users", label: "المتصلون الآن", icon: Wifi, roles: ["admin"] },
   { href: "/activity-logs", label: "سجّل الحركات", icon: Activity, roles: ["admin"] },
   { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
@@ -234,6 +237,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <div className="flex-1">
           {children}
         </div>
+        <HadithTicker />
         <footer className="text-center py-4 border-t bg-muted/30 text-xs text-muted-foreground space-y-1">
           <p className="font-semibold">النظام وقف لله تعالى</p>
           <p>برمجة وتطوير أحمد خالد الزبيدي</p>
