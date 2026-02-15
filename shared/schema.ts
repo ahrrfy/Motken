@@ -153,3 +153,65 @@ export const notifications = pgTable("notifications", {
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// ==================== COURSES ====================
+export const courseStatusEnum = pgEnum("course_status", ["active", "completed", "cancelled"]);
+
+export const courses = pgTable("courses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  status: courseStatusEnum("status").notNull().default("active"),
+  targetType: text("target_type").notNull().default("specific"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
+export type InsertCourse = z.infer<typeof insertCourseSchema>;
+export type Course = typeof courses.$inferSelect;
+
+// ==================== COURSE STUDENTS ====================
+export const courseStudents = pgTable("course_students", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  courseId: varchar("course_id").notNull().references(() => courses.id),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  graduated: boolean("graduated").notNull().default(false),
+  graduatedAt: timestamp("graduated_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCourseStudentSchema = createInsertSchema(courseStudents).omit({ id: true, createdAt: true });
+export type InsertCourseStudent = z.infer<typeof insertCourseStudentSchema>;
+export type CourseStudent = typeof courseStudents.$inferSelect;
+
+// ==================== COURSE TEACHERS ====================
+export const courseTeachers = pgTable("course_teachers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  courseId: varchar("course_id").notNull().references(() => courses.id),
+  teacherId: varchar("teacher_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCourseTeacherSchema = createInsertSchema(courseTeachers).omit({ id: true, createdAt: true });
+export type InsertCourseTeacher = z.infer<typeof insertCourseTeacherSchema>;
+export type CourseTeacher = typeof courseTeachers.$inferSelect;
+
+// ==================== CERTIFICATES ====================
+export const certificates = pgTable("certificates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  courseId: varchar("course_id").notNull().references(() => courses.id),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  issuedBy: varchar("issued_by").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  certificateNumber: text("certificate_number").notNull(),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCertificateSchema = createInsertSchema(certificates).omit({ id: true, createdAt: true });
+export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
+export type Certificate = typeof certificates.$inferSelect;
