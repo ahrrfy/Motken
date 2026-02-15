@@ -226,7 +226,13 @@ export async function registerRoutes(
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بإنشاء واجبات" });
       }
-      const data = { ...req.body, mosqueId: currentUser.mosqueId };
+      const data = {
+        ...req.body,
+        mosqueId: currentUser.mosqueId,
+        scheduledDate: new Date(req.body.scheduledDate),
+        fromVerse: Number(req.body.fromVerse),
+        toVerse: Number(req.body.toVerse),
+      };
       const assignment = await storage.createAssignment(data);
       await storage.createNotification({
         userId: req.body.studentId,
@@ -244,7 +250,12 @@ export async function registerRoutes(
   });
 
   app.patch("/api/assignments/:id", requireAuth, async (req, res) => {
-    const updated = await storage.updateAssignment(req.params.id, req.body);
+    const updateData = { ...req.body };
+    if (updateData.scheduledDate) updateData.scheduledDate = new Date(updateData.scheduledDate);
+    if (updateData.fromVerse !== undefined) updateData.fromVerse = Number(updateData.fromVerse);
+    if (updateData.toVerse !== undefined) updateData.toVerse = Number(updateData.toVerse);
+    if (updateData.grade !== undefined) updateData.grade = Number(updateData.grade);
+    const updated = await storage.updateAssignment(req.params.id, updateData);
     if (!updated) return res.status(404).json({ message: "الواجب غير موجود" });
     if (req.body.grade !== undefined) {
       await logActivity(req.user!, `تقييم واجب بدرجة ${req.body.grade}`, "assignments", `واجب ${req.params.id}`);
