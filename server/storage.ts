@@ -61,6 +61,7 @@ export interface IStorage {
   getActivityLogsByMosqueAndRole(mosqueId: string, role: string): Promise<ActivityLog[]>;
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
 
+  getNotification(id: string): Promise<Notification | undefined>;
   getNotifications(userId: string): Promise<Notification[]>;
   createNotification(n: InsertNotification): Promise<Notification>;
   markNotificationRead(id: string): Promise<void>;
@@ -256,6 +257,11 @@ export class DatabaseStorage implements IStorage {
   async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
     const [entry] = await db.insert(activityLogs).values(log).returning();
     return entry;
+  }
+
+  async getNotification(id: string): Promise<Notification | undefined> {
+    const [notif] = await db.select().from(notifications).where(eq(notifications.id, id));
+    return notif;
   }
 
   async getNotifications(userId: string): Promise<Notification[]> {

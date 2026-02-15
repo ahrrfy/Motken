@@ -122,12 +122,16 @@ export async function registerRoutes(
           return res.status(403).json({ message: "المشرف يمكنه إنشاء حسابات الأساتذة فقط" });
         }
         req.body.mosqueId = currentUser.mosqueId;
+        req.body.isActive = true;
+        delete req.body.canPrintIds;
       } else if (currentUser.role === "teacher") {
         if (targetRole !== "student") {
           return res.status(403).json({ message: "الأستاذ يمكنه إضافة الطلاب فقط" });
         }
         req.body.mosqueId = currentUser.mosqueId;
         req.body.teacherId = currentUser.id;
+        req.body.isActive = true;
+        delete req.body.canPrintIds;
       } else {
         return res.status(403).json({ message: "غير مصرح بإنشاء حسابات" });
       }
@@ -168,7 +172,10 @@ export async function registerRoutes(
       delete updateData.password;
     }
 
-    if (updateData.canPrintIds !== undefined && currentUser.role !== "admin") {
+    if (currentUser.role !== "admin") {
+      delete updateData.role;
+      delete updateData.mosqueId;
+      delete updateData.isActive;
       delete updateData.canPrintIds;
     }
 
@@ -203,18 +210,45 @@ export async function registerRoutes(
     const { studentId, teacherId } = req.query;
     let result: Assignment[] = [];
 
-    if (studentId) {
-      result = await storage.getAssignmentsByStudent(studentId as string);
-    } else if (teacherId) {
-      result = await storage.getAssignmentsByTeacher(teacherId as string);
-    } else if (currentUser.role === "admin") {
-      result = await storage.getAssignments();
+    if (currentUser.role === "admin") {
+      if (studentId) {
+        result = await storage.getAssignmentsByStudent(studentId as string);
+      } else if (teacherId) {
+        result = await storage.getAssignmentsByTeacher(teacherId as string);
+      } else {
+        result = await storage.getAssignments();
+      }
     } else if (currentUser.role === "student") {
       result = await storage.getAssignmentsByStudent(currentUser.id);
     } else if (currentUser.role === "teacher") {
-      result = await storage.getAssignmentsByTeacher(currentUser.id);
-    } else if (currentUser.mosqueId) {
-      result = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+      if (studentId) {
+        const student = await storage.getUser(studentId as string);
+        if (student && student.teacherId === currentUser.id) {
+          result = await storage.getAssignmentsByStudent(studentId as string);
+        } else {
+          return res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا الطالب" });
+        }
+      } else {
+        result = await storage.getAssignmentsByTeacher(currentUser.id);
+      }
+    } else if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+      if (studentId) {
+        const student = await storage.getUser(studentId as string);
+        if (student && student.mosqueId === currentUser.mosqueId) {
+          result = await storage.getAssignmentsByStudent(studentId as string);
+        } else {
+          return res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا الطالب" });
+        }
+      } else if (teacherId) {
+        const teacher = await storage.getUser(teacherId as string);
+        if (teacher && teacher.mosqueId === currentUser.mosqueId) {
+          result = await storage.getAssignmentsByTeacher(teacherId as string);
+        } else {
+          return res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا الأستاذ" });
+        }
+      } else {
+        result = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+      }
     }
 
     res.json(result);
@@ -250,6 +284,21 @@ export async function registerRoutes(
   });
 
   app.patch("/api/assignments/:id", requireAuth, async (req, res) => {
+    const currentUser = req.user!;
+    if (currentUser.role === "student") {
+      return res.status(403).json({ message: "غير مصرح بتعديل الواجبات" });
+    }
+
+    const assignment = await storage.getAssignments().then(all => all.find(a => a.id === req.params.id));
+    if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+
+    if (currentUser.role === "teacher" && assignment.teacherId !== currentUser.id) {
+      return res.status(403).json({ message: "غير مصرح بتعديل هذا الواجب" });
+    }
+    if (currentUser.role === "supervisor" && assignment.mosqueId !== currentUser.mosqueId) {
+      return res.status(403).json({ message: "غير مصرح بتعديل هذا الواجب" });
+    }
+
     const updateData = { ...req.body };
     if (updateData.scheduledDate) updateData.scheduledDate = new Date(updateData.scheduledDate);
     if (updateData.fromVerse !== undefined) updateData.fromVerse = Number(updateData.fromVerse);
@@ -264,25 +313,57 @@ export async function registerRoutes(
   });
 
   app.delete("/api/assignments/:id", requireAuth, async (req, res) => {
+    const currentUser = req.user!;
+    if (currentUser.role === "student") {
+      return res.status(403).json({ message: "غير مصرح بحذف الواجبات" });
+    }
+
+    const assignment = await storage.getAssignments().then(all => all.find(a => a.id === req.params.id));
+    if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+
+    if (currentUser.role === "teacher" && assignment.teacherId !== currentUser.id) {
+      return res.status(403).json({ message: "غير مصرح بحذف هذا الواجب" });
+    }
+    if (currentUser.role === "supervisor" && assignment.mosqueId !== currentUser.mosqueId) {
+      return res.status(403).json({ message: "غير مصرح بحذف هذا الواجب" });
+    }
+
     await storage.deleteAssignment(req.params.id);
     res.json({ message: "تم الحذف بنجاح" });
   });
 
   // ==================== RATINGS ====================
   app.get("/api/ratings", requireAuth, async (req, res) => {
-    const { userId, mosqueId } = req.query;
-    if (userId) {
-      const result = await storage.getRatingsByUser(userId as string);
-      return res.json(result);
-    }
-    if (mosqueId) {
-      const result = await storage.getRatingsByMosque(mosqueId as string);
-      return res.json(result);
-    }
     const currentUser = req.user!;
+    const { userId, mosqueId } = req.query;
+
+    if (currentUser.role === "admin") {
+      if (userId) {
+        return res.json(await storage.getRatingsByUser(userId as string));
+      }
+      if (mosqueId) {
+        return res.json(await storage.getRatingsByMosque(mosqueId as string));
+      }
+      return res.json([]);
+    }
+
+    if (userId) {
+      const targetUser = await storage.getUser(userId as string);
+      if (!targetUser || targetUser.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لتقييمات هذا المستخدم" });
+      }
+      return res.json(await storage.getRatingsByUser(userId as string));
+    }
+
+    if (mosqueId) {
+      if (currentUser.mosqueId !== mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لتقييمات هذا الجامع" });
+      }
+      return res.json(await storage.getRatingsByMosque(mosqueId as string));
+    }
+
     if (currentUser.mosqueId) {
-      const result = await storage.getRatingsByMosque(currentUser.mosqueId);
-      return res.json(result);
+      return res.json(await storage.getRatingsByMosque(currentUser.mosqueId));
     }
     res.json([]);
   });
@@ -294,6 +375,11 @@ export async function registerRoutes(
 
       if (!toUserId || !stars || !type) {
         return res.status(400).json({ message: "يرجى تعبئة جميع الحقول المطلوبة" });
+      }
+
+      const starsNum = Number(stars);
+      if (!Number.isInteger(starsNum) || starsNum < 1 || starsNum > 5) {
+        return res.status(400).json({ message: "التقييم يجب أن يكون بين 1 و 5 نجوم" });
       }
 
       const targetUser = await storage.getUser(toUserId);
@@ -365,8 +451,26 @@ export async function registerRoutes(
   });
 
   app.get("/api/exams/:id", requireAuth, async (req, res) => {
+    const currentUser = req.user!;
     const exam = await storage.getExam(req.params.id);
     if (!exam) return res.status(404).json({ message: "الامتحان غير موجود" });
+
+    if (currentUser.role === "student") {
+      const examStudentList = await storage.getExamsByStudent(currentUser.id);
+      const isEnrolled = examStudentList.some(es => es.examId === req.params.id);
+      if (!isEnrolled) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا الامتحان" });
+      }
+    } else if (currentUser.role === "teacher") {
+      if (exam.teacherId !== currentUser.id) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا الامتحان" });
+      }
+    } else if (currentUser.role === "supervisor") {
+      if (exam.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا الامتحان" });
+      }
+    }
+
     const students = await storage.getExamStudents(req.params.id);
     res.json({ ...exam, students });
   });
@@ -421,6 +525,14 @@ export async function registerRoutes(
   });
 
   app.patch("/api/exams/:examId/students/:studentId", requireRole("teacher"), async (req, res) => {
+    const currentUser = req.user!;
+    const exam = await storage.getExam(req.params.examId);
+    if (!exam) return res.status(404).json({ message: "الامتحان غير موجود" });
+
+    if (exam.teacherId !== currentUser.id) {
+      return res.status(403).json({ message: "غير مصرح بتعديل درجات هذا الامتحان" });
+    }
+
     const students = await storage.getExamStudents(req.params.examId);
     const entry = students.find(s => s.studentId === req.params.studentId);
     if (!entry) return res.status(404).json({ message: "الطالب غير مسجل في هذا الامتحان" });
@@ -428,7 +540,21 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  app.delete("/api/exams/:id", requireRole("teacher"), async (req, res) => {
+  app.delete("/api/exams/:id", requireAuth, async (req, res) => {
+    const currentUser = req.user!;
+    const exam = await storage.getExam(req.params.id);
+    if (!exam) return res.status(404).json({ message: "الامتحان غير موجود" });
+
+    if (currentUser.role === "teacher" && exam.teacherId !== currentUser.id) {
+      return res.status(403).json({ message: "غير مصرح بحذف هذا الامتحان" });
+    }
+    if (currentUser.role === "supervisor" && exam.mosqueId !== currentUser.mosqueId) {
+      return res.status(403).json({ message: "غير مصرح بحذف هذا الامتحان" });
+    }
+    if (currentUser.role === "student") {
+      return res.status(403).json({ message: "غير مصرح بحذف الامتحانات" });
+    }
+
     await storage.deleteExam(req.params.id);
     res.json({ message: "تم حذف الامتحان بنجاح" });
   });
@@ -452,11 +578,6 @@ export async function registerRoutes(
     res.json(logs);
   });
 
-  app.post("/api/activity-logs", requireAuth, async (req, res) => {
-    const data = { ...req.body, mosqueId: req.user!.mosqueId, userRole: req.user!.role };
-    const log = await storage.createActivityLog(data);
-    res.status(201).json(log);
-  });
 
   // ==================== NOTIFICATIONS ====================
   app.get("/api/notifications", requireAuth, async (req, res) => {
@@ -465,6 +586,11 @@ export async function registerRoutes(
   });
 
   app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    const notification = await storage.getNotification(req.params.id);
+    if (!notification) return res.status(404).json({ message: "الإشعار غير موجود" });
+    if (notification.userId !== req.user!.id) {
+      return res.status(403).json({ message: "غير مصرح بتعديل هذا الإشعار" });
+    }
     await storage.markNotificationRead(req.params.id);
     res.json({ message: "تم التحديث" });
   });
@@ -562,7 +688,7 @@ export async function registerRoutes(
   });
 
   // ==================== SEED DATA ====================
-  app.post("/api/seed", async (_req, res) => {
+  app.post("/api/seed", requireRole("admin"), async (_req, res) => {
     try {
       const existing = await storage.getUserByUsername("admin");
       if (existing) return res.json({ message: "البيانات موجودة مسبقًا" });
