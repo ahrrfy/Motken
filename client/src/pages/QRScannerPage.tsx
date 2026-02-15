@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { QrCode, ShieldCheck, ShieldAlert, Loader2, Scan, Camera, CameraOff, Search, User, MapPin, Phone, Calendar, X } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
+import { formatDateAr } from "@/lib/utils";
 
 const ROLE_MAP: Record<string, string> = {
   student: "طالب",
@@ -260,7 +261,7 @@ export default function QRScannerPage() {
                 {verifiedUser.createdAt && (
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span>{new Date(verifiedUser.createdAt).toLocaleDateString("ar-IQ")}</span>
+                    <span>{formatDateAr(verifiedUser.createdAt)}</span>
                   </div>
                 )}
               </div>

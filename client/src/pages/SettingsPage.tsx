@@ -5,9 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
-import { useState, useEffect, useCallback } from "react";
-import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus } from "lucide-react";
+import { useTheme } from "@/lib/theme-context";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 
 const FONT_SIZE_KEY = "mutqin_font_size";
@@ -35,8 +38,13 @@ function getFontCategory(size: number): string {
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
+  const { isDark, toggleDark, language, setLanguage } = useTheme();
+  const { toast } = useToast();
   const isAdmin = user?.role === "admin";
   const defaultTab = isAdmin ? "profile" : "mosque";
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatar);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -68,6 +76,46 @@ export default function SettingsPage() {
   const resetFontSize = useCallback(() => {
     setFontSize(DEFAULT_FONT_SIZE);
   }, []);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "خطأ", description: "يرجى اختيار ملف صورة", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const base64 = evt.target?.result as string;
+      if (base64.length > 500000) {
+        toast({ title: "خطأ", description: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)", variant: "destructive" });
+        return;
+      }
+      setAvatarPreview(base64);
+      setUploadingAvatar(true);
+      try {
+        const res = await fetch(`/api/users/${user?.id}/avatar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ avatar: base64 }),
+        });
+        if (res.ok) {
+          toast({ title: "تم بنجاح", description: "تم تحديث الصورة الشخصية", className: "bg-green-50 border-green-200 text-green-800" });
+        } else {
+          const data = await res.json();
+          toast({ title: "خطأ", description: data.message || "فشل في تحديث الصورة", variant: "destructive" });
+          setAvatarPreview(user?.avatar);
+        }
+      } catch {
+        toast({ title: "خطأ", description: "حدث خطأ في الاتصال", variant: "destructive" });
+        setAvatarPreview(user?.avatar);
+      }
+      setUploadingAvatar(false);
+    };
+    reader.readAsDataURL(file);
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  };
 
   const [saving, setSaving] = useState(false);
   const [savingAccount, setSavingAccount] = useState(false);
@@ -222,13 +270,36 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4 mb-6">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt="Avatar" className="w-20 h-20 rounded-full border-2 border-primary" />
-                ) : (
-                  <div className="w-20 h-20 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl">
-                    {user?.name?.charAt(0)}
-                  </div>
-                )}
+                <div className="relative">
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" className="w-20 h-20 rounded-full border-2 border-primary object-cover" data-testid="img-settings-avatar" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl">
+                      {user?.name?.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="file"
+                    ref={avatarInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                    data-testid="input-avatar-file"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="gap-2"
+                    data-testid="button-change-avatar"
+                  >
+                    <Camera className="w-4 h-4" />
+                    {uploadingAvatar ? "جاري الرفع..." : "تغيير الصورة"}
+                  </Button>
+                </div>
               </div>
               
               {message && (
@@ -347,14 +418,22 @@ export default function SettingsPage() {
                   <Label className="text-base">الوضع الليلي</Label>
                   <p className="text-sm text-muted-foreground">تفعيل المظهر الداكن للتطبيق</p>
                 </div>
-                <Switch />
+                <Switch checked={isDark} onCheckedChange={toggleDark} data-testid="switch-dark-mode" />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">اللغة</Label>
                   <p className="text-sm text-muted-foreground">لغة واجهة المستخدم</p>
                 </div>
-                 <Button variant="outline" className="w-[150px]">العربية</Button>
+                 <Select value={language} onValueChange={(val) => setLanguage(val as "ar" | "en")} data-testid="select-language">
+                    <SelectTrigger className="w-[150px]" data-testid="select-language-trigger">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ar">العربية</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
             </CardContent>
           </Card>

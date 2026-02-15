@@ -27,9 +27,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import { saveAs } from "file-saver";
+import { openPrintWindow, generateStatsHtml, generateUsersTableHtml } from "@/lib/print-utils";
 import {
   BarChart,
   Bar,
@@ -187,114 +185,18 @@ export default function ReportsPage() {
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Reports & Statistics", 105, 15, { align: "center" });
-    doc.setFontSize(10);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 22, {
-      align: "center",
-    });
-
-    const statsRows = [
-      ["Total Students", String(stats.totalStudents || 0)],
-      ["Total Teachers", String(stats.totalTeachers || 0)],
-      ...(isAdmin
-        ? [["Total Supervisors", String(stats.totalSupervisors || 0)]]
-        : []),
-      ...(isAdmin
-        ? [["Total Mosques", String(stats.totalMosques || 0)]]
-        : []),
-      ["Total Assignments", String(stats.totalAssignments || 0)],
-      ["Completed", String(stats.completedAssignments || 0)],
-      ["Pending", String(stats.pendingAssignments || 0)],
-      ["Active Students", String(stats.activeStudents || 0)],
-      ["Inactive Students", String(stats.inactiveStudents || 0)],
-    ];
-
-    (doc as any).autoTable({
-      head: [["Metric", "Value"]],
-      body: statsRows,
-      startY: 30,
-      theme: "grid",
-    });
-
-    if (stats.users && stats.users.length > 0) {
-      const usersRows = stats.users.map((u: any) => [
-        u.name,
-        u.role,
-        u.username,
-        u.isActive ? "Active" : "Inactive",
-        u.phone || "-",
-      ]);
-
-      (doc as any).autoTable({
-        head: [["Name", "Role", "Username", "Status", "Phone"]],
-        body: usersRows,
-        startY: (doc as any).lastAutoTable.finalY + 10,
-        theme: "grid",
-      });
-    }
-
-    doc.save("report.pdf");
+    const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
+    openPrintWindow("التقارير والإحصائيات", content);
   };
 
   const exportWord = () => {
-    const statsHtml = `
-      <tr><td>إجمالي الطلاب</td><td>${stats.totalStudents || 0}</td></tr>
-      <tr><td>إجمالي الأساتذة</td><td>${stats.totalTeachers || 0}</td></tr>
-      ${isAdmin ? `<tr><td>إجمالي المشرفين</td><td>${stats.totalSupervisors || 0}</td></tr>` : ""}
-      ${isAdmin ? `<tr><td>إجمالي المساجد</td><td>${stats.totalMosques || 0}</td></tr>` : ""}
-      <tr><td>إجمالي الواجبات</td><td>${stats.totalAssignments || 0}</td></tr>
-      <tr><td>الواجبات المكتملة</td><td>${stats.completedAssignments || 0}</td></tr>
-      <tr><td>الواجبات المعلقة</td><td>${stats.pendingAssignments || 0}</td></tr>
-      <tr><td>الطلاب النشطين</td><td>${stats.activeStudents || 0}</td></tr>
-      <tr><td>الطلاب غير النشطين</td><td>${stats.inactiveStudents || 0}</td></tr>
-    `;
-
-    let usersHtml = "";
-    if (stats.users && stats.users.length > 0) {
-      usersHtml = `
-        <h2>قائمة المستخدمين</h2>
-        <table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;width:100%">
-          <tr style="background:#f0f0f0"><th>الاسم</th><th>الدور</th><th>اسم المستخدم</th><th>الحالة</th><th>الهاتف</th></tr>
-          ${stats.users
-            .map(
-              (u: any) => `
-            <tr>
-              <td>${u.name}</td>
-              <td>${u.role}</td>
-              <td>${u.username}</td>
-              <td>${u.isActive ? "نشط" : "غير نشط"}</td>
-              <td>${u.phone || "-"}</td>
-            </tr>`
-            )
-            .join("")}
-        </table>
-      `;
-    }
-
-    const html = `
-      <html dir="rtl">
-      <head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;direction:rtl}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px;text-align:right}th{background:#f0f0f0}</style></head>
-      <body>
-        <h1>التقارير والإحصائيات</h1>
-        <p>تاريخ التقرير: ${new Date().toLocaleDateString("ar")}</p>
-        <h2>الإحصائيات</h2>
-        <table border="1" cellpadding="5" cellspacing="0">
-          <tr style="background:#f0f0f0"><th>الإحصائية</th><th>القيمة</th></tr>
-          ${statsHtml}
-        </table>
-        ${usersHtml}
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob(["\ufeff" + html], { type: "application/msword" });
-    saveAs(blob, "report.doc");
+    const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
+    openPrintWindow("التقارير والإحصائيات - تصدير", content);
   };
 
   const handlePrint = () => {
-    window.print();
+    const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
+    openPrintWindow("التقارير والإحصائيات", content);
   };
 
   return (

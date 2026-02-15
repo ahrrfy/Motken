@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Star, Award, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateAr } from "@/lib/utils";
 
 interface RatingUser {
   id: string;
@@ -132,10 +133,7 @@ export default function RatingsPage() {
 
   const getHonorBadgeCount = (userId: string) => getUserRatings(userId).filter(r => r.honorBadge).length;
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "short", day: "numeric" }).format(date);
-  };
+  const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
   const renderStars = (count: number, interactive: boolean = false, onSelect?: (n: number) => void) => (
     <div className="flex gap-1" dir="ltr">

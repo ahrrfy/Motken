@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer } from "lucide-react";
+import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download } from "lucide-react";
+import { openPrintWindow } from "@/lib/print-utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Mosque {
@@ -215,7 +216,35 @@ export default function AllUsersPage() {
           <h1 className="text-2xl font-bold" data-testid="text-page-title">جميع المستخدمين</h1>
           <p className="text-muted-foreground text-sm">إدارة جميع حسابات المستخدمين في النظام</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+        <div className="flex gap-2">
+          <Button variant="outline" data-testid="button-print-users" onClick={() => {
+            const roleMap: Record<string, string> = { admin: "مدير", supervisor: "مشرف", teacher: "أستاذ", student: "طالب" };
+            const tableHtml = `
+              <h3 class="section-title">جميع المستخدمين (${filteredUsers.length})</h3>
+              <table>
+                <thead>
+                  <tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الجامع</th><th>الهاتف</th></tr>
+                </thead>
+                <tbody>
+                  ${filteredUsers.map((u, i) => `
+                    <tr>
+                      <td>${i + 1}</td>
+                      <td>${u.name}</td>
+                      <td>${u.username}</td>
+                      <td>${roleMap[u.role] || u.role}</td>
+                      <td>${getMosqueName(u.mosqueId)}</td>
+                      <td>${u.phone || "—"}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            `;
+            openPrintWindow("جميع المستخدمين", tableHtml);
+          }}>
+            <Printer className="w-4 h-4 ml-2" />
+            طباعة
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-user">
               <UserPlus className="w-4 h-4 ml-2" />
@@ -286,6 +315,7 @@ export default function AllUsersPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

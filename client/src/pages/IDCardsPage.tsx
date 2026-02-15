@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, Users, CreditCard, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { formatDateAr } from "@/lib/utils";
 
 interface UserData {
   id: string;
@@ -51,42 +52,41 @@ function formatUserId(id: string): string {
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+  return formatDateAr(dateStr);
 }
 
 function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
   return (
     <div
-      className="bg-white w-[340px] h-[520px] rounded-2xl shadow-xl overflow-hidden relative border border-gray-200 print:shadow-none print:border print:border-gray-300"
+      className="bg-white w-[320px] rounded-2xl shadow-xl overflow-hidden border border-gray-200 print:shadow-none print:border print:border-gray-300 flex flex-col"
       dir="rtl"
       data-testid={`card-idcard-${user.id}`}
     >
-      <div className="h-[140px] bg-primary relative overflow-hidden">
+      <div className="h-[90px] bg-primary relative overflow-hidden shrink-0">
         <div className="absolute inset-0 opacity-10">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id={`islamic-${user.id}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
                 <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="white" strokeWidth="0.5" />
                 <circle cx="20" cy="20" r="8" fill="none" stroke="white" strokeWidth="0.5" />
-                <path d="M10 10L30 10L30 30L10 30Z" fill="none" stroke="white" strokeWidth="0.3" transform="rotate(45 20 20)" />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill={`url(#islamic-${user.id})`} />
           </svg>
         </div>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10">
-          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mb-2 backdrop-blur-sm border border-white/30">
-            <span className="font-bold text-2xl">م</span>
+        <div className="absolute inset-0 flex items-center justify-center text-white z-10 gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0">
+            <span className="font-bold text-lg">م</span>
           </div>
-          <h2 className="font-serif text-xl font-bold tracking-wide">مُتْقِن</h2>
-          <p className="text-[11px] opacity-80 mt-0.5">لإدارة حلقات القرآن الكريم</p>
+          <div>
+            <h2 className="font-serif text-lg font-bold tracking-wide leading-tight">مُتْقِن</h2>
+            <p className="text-[10px] opacity-80">لإدارة حلقات القرآن الكريم</p>
+          </div>
         </div>
       </div>
 
-      <div className="absolute top-[100px] left-1/2 -translate-x-1/2 z-20">
-        <div className="w-[80px] h-[80px] rounded-full border-4 border-white shadow-lg overflow-hidden bg-primary/10 flex items-center justify-center">
+      <div className="flex flex-col items-center pt-5 pb-3 px-5">
+        <div className="w-[76px] h-[76px] rounded-full border-3 border-primary/20 shadow-md overflow-hidden bg-primary/5 flex items-center justify-center mb-3">
           {user.avatar ? (
             <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" data-testid={`img-avatar-${user.id}`} />
           ) : (
@@ -95,52 +95,48 @@ function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
             </span>
           )}
         </div>
+
+        <h3 className="text-lg font-bold text-gray-800 text-center leading-tight" data-testid={`text-user-name-${user.id}`}>{user.name}</h3>
+        <Badge variant="secondary" className="mt-1.5 text-xs" data-testid={`badge-role-${user.id}`}>
+          {roleTranslations[user.role] || user.role}
+        </Badge>
       </div>
 
-      <div className="mt-[50px] px-5 text-center space-y-3">
-        <div>
-          <h3 className="text-xl font-bold text-gray-800" data-testid={`text-user-name-${user.id}`}>{user.name}</h3>
-          <Badge variant="secondary" className="mt-1" data-testid={`badge-role-${user.id}`}>
-            {roleTranslations[user.role] || user.role}
-          </Badge>
+      <div className="mx-5 mb-3 space-y-2 text-[13px] text-gray-600 bg-gray-50 rounded-lg p-3 border border-gray-100">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-400 shrink-0">رقم الهوية</span>
+          <span className="font-mono font-semibold text-primary text-xs" data-testid={`text-userid-${user.id}`}>{formatUserId(user.id)}</span>
         </div>
-
-        <div className="space-y-1.5 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-          <div className="flex justify-between">
-            <span className="text-gray-400">رقم الهوية</span>
-            <span className="font-mono font-semibold text-primary" data-testid={`text-userid-${user.id}`}>{formatUserId(user.id)}</span>
+        {mosqueName && (
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400 shrink-0">المسجد</span>
+            <span className="font-medium text-xs truncate max-w-[160px] text-left" data-testid={`text-mosque-${user.id}`}>{mosqueName}</span>
           </div>
-          {mosqueName && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">المسجد</span>
-              <span className="font-medium" data-testid={`text-mosque-${user.id}`}>{mosqueName}</span>
-            </div>
-          )}
-          {user.phone && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">الهاتف</span>
-              <span dir="ltr" data-testid={`text-phone-${user.id}`}>{user.phone}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-gray-400">تاريخ الانضمام</span>
-            <span data-testid={`text-joindate-${user.id}`}>{formatDate(user.createdAt)}</span>
+        )}
+        {user.phone && (
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400 shrink-0">الهاتف</span>
+            <span dir="ltr" className="text-xs" data-testid={`text-phone-${user.id}`}>{user.phone}</span>
           </div>
+        )}
+        <div className="flex justify-between items-center">
+          <span className="text-gray-400 shrink-0">تاريخ الانضمام</span>
+          <span className="text-xs" data-testid={`text-joindate-${user.id}`}>{formatDate(user.createdAt)}</span>
         </div>
-
-        <div className="flex justify-center pt-1">
-          <div className="p-2 bg-white border rounded-lg shadow-sm">
-            <QRCodeSVG
-              value={JSON.stringify({ id: user.id, name: user.name, role: user.role })}
-              size={80}
-              data-testid={`qr-code-${user.id}`}
-            />
-          </div>
-        </div>
-        <p className="text-[10px] text-gray-400">امسح الرمز للتحقق من الهوية</p>
       </div>
 
-      <div className="absolute bottom-0 w-full h-2 bg-primary/80"></div>
+      <div className="flex flex-col items-center pb-4 mt-auto">
+        <div className="p-1.5 bg-white border rounded-lg shadow-sm">
+          <QRCodeSVG
+            value={JSON.stringify({ id: user.id, name: user.name, role: user.role })}
+            size={70}
+            data-testid={`qr-code-${user.id}`}
+          />
+        </div>
+        <p className="text-[9px] text-gray-400 mt-1">امسح الرمز للتحقق من الهوية</p>
+      </div>
+
+      <div className="w-full h-1.5 bg-primary/80 shrink-0"></div>
     </div>
   );
 }

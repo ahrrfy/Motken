@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
+import { formatDateAr } from "@/lib/utils";
 import { GraduationCap, Plus, Trash2, Award, Loader2, Users, CalendarDays, Printer, BookOpen, CheckCircle } from "lucide-react";
+import { openPrintWindow } from "@/lib/print-utils";
 
 interface StudentUser {
   id: string;
@@ -68,8 +70,6 @@ interface CourseData {
 export default function CoursesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const printRef = useRef<HTMLDivElement>(null);
-
   const [courses, setCourses] = useState<CourseData[]>([]);
   const [certificates, setCertificates] = useState<CertificateData[]>([]);
   const [allStudents, setAllStudents] = useState<StudentUser[]>([]);
@@ -82,7 +82,6 @@ export default function CoursesPage() {
   const [graduatingIds, setGraduatingIds] = useState<string[]>([]);
   const [graduatingAll, setGraduatingAll] = useState<string | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<string | null>(null);
-  const [printCert, setPrintCert] = useState<CertificateData | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -283,13 +282,7 @@ export default function CoursesPage() {
     return courses.find(c => c.id === courseId)?.title || courseId;
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString("ar-SA");
-    } catch {
-      return dateStr;
-    }
-  };
+  const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
   const statusBadge = (status: string) => {
     switch (status) {
@@ -309,29 +302,30 @@ export default function CoursesPage() {
   };
 
   const handlePrint = (cert: CertificateData) => {
-    setPrintCert(cert);
-    setTimeout(() => {
-      const printContent = document.getElementById("certificate-print-area");
-      if (!printContent) return;
-      const win = window.open("", "_blank");
-      if (!win) return;
-      win.document.write(`
-        <html dir="rtl">
-        <head><title>شهادة إتمام دورة</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
-          body { font-family: 'Amiri', serif; margin: 0; padding: 0; }
-        </style>
-        </head>
-        <body>${printContent.innerHTML}</body>
-        </html>
-      `);
-      win.document.close();
-      win.focus();
-      win.print();
-      win.close();
-      setPrintCert(null);
-    }, 300);
+    const studentName = getStudentName(cert.studentId);
+    const courseName = getCourseName(cert.courseId);
+    const certHtml = `
+      <div style="text-align:center; padding: 40px 20px; border: 3px double #16213e; margin: 20px; border-radius: 12px;">
+        <div style="font-size: 28px; font-weight: 700; color: #16213e; margin-bottom: 20px;">شهادة إتمام دورة</div>
+        <div style="font-size: 16px; color: #666; margin-bottom: 30px;">يُشهد بأن الطالب / الطالبة</div>
+        <div style="font-size: 32px; font-weight: 700; color: #0f3460; margin: 20px 0; padding: 10px; border-bottom: 2px solid #e0e0e0;">${studentName}</div>
+        <div style="font-size: 16px; color: #444; margin: 20px 0;">قد أتمّ بنجاح دورة</div>
+        <div style="font-size: 24px; font-weight: 700; color: #16213e; margin: 15px 0;">${courseName}</div>
+        <div style="margin-top: 30px; font-size: 14px; color: #888;">
+          <div>رقم الشهادة: ${cert.certificateNumber}</div>
+          <div style="margin-top: 5px;">تاريخ الإصدار: ${new Date(cert.issuedAt).toLocaleDateString("ar-IQ", { year: "numeric", month: "long", day: "numeric" })}</div>
+        </div>
+        <div style="margin-top: 40px; display: flex; justify-content: space-around;">
+          <div style="text-align: center;">
+            <div style="border-top: 1px solid #333; width: 150px; margin: 0 auto; padding-top: 5px; font-size: 12px;">توقيع المسؤول</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="border-top: 1px solid #333; width: 150px; margin: 0 auto; padding-top: 5px; font-size: 12px;">الختم</div>
+          </div>
+        </div>
+      </div>
+    `;
+    openPrintWindow("شهادة إتمام دورة - " + studentName, certHtml);
   };
 
   return (
@@ -706,70 +700,6 @@ export default function CoursesPage() {
         </TabsContent>
       </Tabs>
 
-      {printCert && (
-        <div id="certificate-print-area" className="fixed -left-[9999px] top-0" ref={printRef}>
-          <div style={{
-            width: "800px",
-            padding: "60px",
-            fontFamily: "'Amiri', serif",
-            border: "8px double #b8860b",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #fffdf7 0%, #fef9e7 100%)",
-            position: "relative",
-            direction: "rtl",
-          }}>
-            <div style={{
-              position: "absolute",
-              top: "15px",
-              left: "15px",
-              right: "15px",
-              bottom: "15px",
-              border: "2px solid #d4a843",
-              borderRadius: "8px",
-              pointerEvents: "none",
-            }} />
-
-            <div style={{ textAlign: "center", marginBottom: "30px" }}>
-              <p style={{ fontSize: "22px", color: "#2c5f2d", marginBottom: "10px", fontWeight: "bold" }}>
-                بسم الله الرحمن الرحيم
-              </p>
-              <div style={{ marginBottom: "15px" }}>
-                <img src="/images/logo.png" alt="مُتْقِن" style={{ width: "60px", height: "60px", margin: "0 auto", borderRadius: "8px" }} />
-              </div>
-              <h1 style={{ fontSize: "32px", color: "#1a5276", marginBottom: "5px", fontWeight: "bold" }}>
-                مُتْقِن
-              </h1>
-              <h2 style={{ fontSize: "26px", color: "#b8860b", marginBottom: "20px", fontWeight: "bold" }}>
-                شهادة إتمام دورة
-              </h2>
-              <div style={{ width: "100px", height: "2px", background: "#b8860b", margin: "0 auto 25px" }} />
-            </div>
-
-            <div style={{ textAlign: "center", fontSize: "18px", lineHeight: "2.2", color: "#333" }}>
-              <p>يُشهد بأن الطالب / الطالبة</p>
-              <p style={{ fontSize: "28px", color: "#1a5276", fontWeight: "bold", margin: "10px 0" }}>
-                {getStudentName(printCert.studentId)}
-              </p>
-              <p>قد أتم / أتمت بنجاح دورة</p>
-              <p style={{ fontSize: "24px", color: "#b8860b", fontWeight: "bold", margin: "10px 0" }}>
-                {getCourseName(printCert.courseId)}
-              </p>
-              <p style={{ marginTop: "15px" }}>
-                بتاريخ: {formatDate(printCert.issuedAt)}
-              </p>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "50px", fontSize: "14px", color: "#666" }}>
-              <div>
-                <p>رقم الشهادة: {printCert.certificateNumber}</p>
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <p>صدرت بواسطة: {getTeacherName(printCert.issuedBy)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
