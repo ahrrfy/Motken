@@ -45,7 +45,6 @@ import {
 const navItems = [
   { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/daily", label: "واجبات اليوم", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/settings?tab=profile", label: "معلومات الحساب", icon: UserCircle, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/mosques", label: "إدارة الجوامع", icon: Building2, roles: ["admin"] },
   { href: "/users", label: "جميع المستخدمين", icon: Users, roles: ["admin"] },
   { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin", "supervisor"] },
