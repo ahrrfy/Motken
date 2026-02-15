@@ -67,7 +67,7 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Theme & Language**: Dark/light mode toggle, Arabic/English language switcher with localStorage persistence
 - **Photo Upload**: Base64 avatar upload for all users, displayed in ID cards and profiles
 - **PDF/Print**: HTML-based print with Tajawal font, Arabic RTL support, formatted print preview
-- **ID Card PDF Export**: Individual (86mm x 54mm per card) or batch (A4 all cards) export with actual QR codes (Google Charts API)
+- **ID Card Export**: Individual (9cm x 6cm per card) or batch (A4 all cards) PDF export + PNG export at 300 DPI, QR codes generated locally via `qrcode` package
 - **Quran Verse Display**: Students see actual Quran text (Amiri font, api.alquran.cloud API) when clicking assignments
 - **Quran Surah Selector**: Full 114 surahs with automatic verse count validation
 - **Enhanced Student Fields**: Age, Telegram ID, parent phone, education level (school/university/postgraduate), special needs status, orphan status
