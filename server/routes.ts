@@ -1408,7 +1408,7 @@ export async function registerRoutes(
   // ==================== SEED DATA ====================
   app.post("/api/seed", async (req, res) => {
     try {
-      const existing = await storage.getUserByUsername("admin");
+      const existing = await storage.getUserByUsername("ahrrfy");
       if (existing) {
         if (!req.isAuthenticated() || req.user!.role !== "admin") {
           return res.status(403).json({ message: "غير مصرح بالوصول" });
@@ -1449,13 +1449,13 @@ export async function registerRoutes(
         isActive: true,
       });
 
-      const existingAdmin = await storage.getUserByUsername("admin");
+      const existingAdmin = await storage.getUserByUsername("ahrrfy");
       const adminUser = existingAdmin || await storage.createUser({
-        username: "admin",
-        password: await hashPassword("admin123"),
-        name: "د. عبد الله المدير",
+        username: "ahrrfy",
+        password: await hashPassword("6399137"),
+        name: "المدير",
         role: "admin",
-        phone: "07701234567",
+        phone: "",
         isActive: true,
         canPrintIds: true,
         mosqueId: null,
