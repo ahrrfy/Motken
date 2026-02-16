@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import { insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema, type User, type Assignment } from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
+import { filterTextFields } from "@shared/content-filter";
 
 async function logActivity(user: any, action: string, module: string, details?: string) {
   await storage.createActivityLog({
@@ -30,6 +31,21 @@ export async function registerRoutes(
       sessionTracker.updateSession(req.sessionID, req.user, req);
     }
     next();
+  });
+
+  // ==================== PRIVACY POLICY ====================
+  app.post("/api/privacy-policy/accept", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      await storage.updateUser(user.id, {
+        acceptedPrivacyPolicy: true,
+        privacyPolicyAcceptedAt: new Date(),
+      });
+      await logActivity(user, "الموافقة على سياسة الخصوصية", "privacy");
+      res.json({ message: "تم قبول سياسة الخصوصية بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
   });
 
   // ==================== MOSQUES ====================
@@ -64,6 +80,11 @@ export async function registerRoutes(
 
   app.post("/api/mosques", requireRole("admin"), async (req, res) => {
     try {
+      const contentCheck = filterTextFields(req.body, ["name", "description", "managerName"]);
+      if (contentCheck.blocked) {
+        return res.status(400).json({ message: contentCheck.reason });
+      }
+
       const { name, province, city, area, landmark, address, phone, managerName, description, image, isActive } = req.body;
       if (!name || typeof name !== "string" || name.length > 200) {
         return res.status(400).json({ message: "اسم الجامع مطلوب ويجب ألا يتجاوز 200 حرف" });
@@ -227,6 +248,11 @@ export async function registerRoutes(
         delete req.body.canPrintIds;
       } else {
         return res.status(403).json({ message: "غير مصرح بإنشاء حسابات" });
+      }
+
+      const contentCheck = filterTextFields(req.body, ["name", "address", "notes"]);
+      if (contentCheck.blocked) {
+        return res.status(400).json({ message: contentCheck.reason });
       }
 
       const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan } = req.body;
@@ -402,6 +428,11 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بإنشاء واجبات" });
+      }
+
+      const contentCheck = filterTextFields(req.body, ["notes"]);
+      if (contentCheck.blocked) {
+        return res.status(400).json({ message: contentCheck.reason });
       }
 
       const { studentId, surahName, fromVerse, toVerse, type, scheduledDate, status, notes } = req.body;
@@ -867,6 +898,11 @@ export async function registerRoutes(
       
       if (!title || !message) {
         return res.status(400).json({ message: "العنوان والرسالة مطلوبان" });
+      }
+
+      const contentCheck = filterTextFields(req.body, ["title", "message"]);
+      if (contentCheck.blocked) {
+        return res.status(400).json({ message: contentCheck.reason });
       }
       
       const notifType = type || "info";

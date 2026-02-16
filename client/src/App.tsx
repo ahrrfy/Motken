@@ -23,6 +23,7 @@ import CoursesPage from "@/pages/CoursesPage";
 import TeacherDailyPage from "@/pages/TeacherDailyPage";
 import OnlineUsersPage from "@/pages/OnlineUsersPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
+import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 
@@ -60,6 +61,15 @@ function App() {
     return (
       <>
         <LoginPage />
+        <Toaster />
+      </>
+    );
+  }
+
+  if (!user.acceptedPrivacyPolicy) {
+    return (
+      <>
+        <PrivacyPolicyPage />
         <Toaster />
       </>
     );
