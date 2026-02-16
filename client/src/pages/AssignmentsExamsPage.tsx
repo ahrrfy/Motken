@@ -703,7 +703,7 @@ export default function AssignmentsExamsPage() {
               <div>
                 <p className="text-muted-foreground">
                   {isTeacher && "إدارة الامتحانات وتقييم الطلاب"}
-                  {isSupervisor && "عرض جميع الامتحانات في المسجد"}
+                  {isSupervisor && "عرض جميع الامتحانات في الجامع/المركز"}
                   {isStudent && "الامتحانات القادمة"}
                 </p>
               </div>
@@ -799,7 +799,7 @@ export default function AssignmentsExamsPage() {
                           data-testid="input-description"
                           value={examDescription}
                           onChange={e => setExamDescription(e.target.value)}
-                          placeholder="مثال: الامتحان سيكون الساعة 10:00 صباحاً بعد صلاة الضحى في قاعة المسجد"
+                          placeholder="مثال: الامتحان سيكون الساعة 10:00 صباحاً بعد صلاة الضحى في قاعة الجامع/المركز"
                           rows={3}
                         />
                       </div>

@@ -42,7 +42,7 @@ export default function DashboardPage() {
         { title: "الطلاب", value: String(stats.totalStudents ?? 0), icon: Users, color: "text-blue-600", bg: "bg-blue-100" },
         { title: "الأساتذة", value: String(stats.totalTeachers ?? 0), icon: GraduationCap, color: "text-emerald-600", bg: "bg-emerald-100" },
         { title: "المشرفون", value: String(stats.totalSupervisors ?? 0), icon: ShieldAlert, color: "text-purple-600", bg: "bg-purple-100" },
-        { title: "الجوامع", value: String(stats.totalMosques ?? 0), icon: Activity, color: "text-green-700", bg: "bg-green-50" },
+        { title: "الجوامع والمراكز", value: String(stats.totalMosques ?? 0), icon: Activity, color: "text-green-700", bg: "bg-green-50" },
         { title: "الواجبات المكتملة", value: String(stats.completedAssignments ?? 0), icon: CheckCircle, color: "text-amber-600", bg: "bg-amber-100" },
         { title: "إجمالي الواجبات", value: String(stats.totalAssignments ?? 0), icon: TrendingUp, color: "text-red-600", bg: "bg-red-50" },
       ];
@@ -77,7 +77,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif" data-testid="text-page-title">لوحة التحكم</h1>
           <div className="flex items-center gap-2 text-muted-foreground mt-1">
             <MapPin className="w-4 h-4" />
-            <p data-testid="text-mosque-name">{user?.mosqueName || (isAdmin ? "إدارة النظام" : "المسجد غير محدد")}</p>
+            <p data-testid="text-mosque-name">{user?.mosqueName || (isAdmin ? "إدارة النظام" : "الجامع/المركز غير محدد")}</p>
           </div>
         </div>
       </div>

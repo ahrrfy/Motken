@@ -102,7 +102,7 @@ export default function AllUsersPage() {
       return;
     }
     if (form.role !== "admin" && !form.mosqueId) {
-      toast({ title: "يرجى اختيار الجامع", variant: "destructive" });
+      toast({ title: "يرجى اختيار الجامع/المركز", variant: "destructive" });
       return;
     }
 
@@ -221,7 +221,7 @@ export default function AllUsersPage() {
               <h3 class="section-title">جميع المستخدمين (${filteredUsers.length})</h3>
               <table>
                 <thead>
-                  <tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الجامع</th><th>الهاتف</th></tr>
+                  <tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الجامع/المركز</th><th>الهاتف</th></tr>
                 </thead>
                 <tbody>
                   ${filteredUsers.map((u, i) => `
@@ -284,10 +284,10 @@ export default function AllUsersPage() {
               </div>
               {form.role !== "admin" && (
                 <div>
-                  <Label>الجامع *</Label>
+                  <Label>الجامع/المركز *</Label>
                   <Select value={form.mosqueId} onValueChange={(v) => setForm({ ...form, mosqueId: v })}>
                     <SelectTrigger data-testid="select-user-mosque">
-                      <SelectValue placeholder="اختر الجامع" />
+                      <SelectValue placeholder="اختر الجامع/المركز" />
                     </SelectTrigger>
                     <SelectContent>
                       {mosques.map((m) => (
@@ -373,7 +373,7 @@ export default function AllUsersPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع الجوامع</SelectItem>
+                <SelectItem value="all">جميع الجوامع والمراكز</SelectItem>
                 {mosques.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
@@ -395,7 +395,7 @@ export default function AllUsersPage() {
                     <th className="text-right py-3 px-2 font-medium">اسم المستخدم</th>
                     <th className="text-right py-3 px-2 font-medium">الجنس</th>
                     <th className="text-right py-3 px-2 font-medium">الدور</th>
-                    <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجامع</th>
+                    <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجامع/المركز</th>
                     <th className="text-right py-3 px-2 font-medium hidden lg:table-cell">الهاتف</th>
                     <th className="text-center py-3 px-2 font-medium">إجراءات</th>
                   </tr>

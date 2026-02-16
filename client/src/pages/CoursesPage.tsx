@@ -430,7 +430,7 @@ export default function CoursesPage() {
             <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الدورات والشهادات</h1>
             <p className="text-muted-foreground text-sm">
               {isTeacher && "إدارة الدورات وتخريج الطلاب"}
-              {isSupervisor && "إدارة جميع الدورات في المسجد"}
+              {isSupervisor && "إدارة جميع الدورات في الجامع/المركز"}
               {isStudent && "دوراتي وشهاداتي"}
               {isAdmin && "إدارة الدورات والشهادات"}
             </p>
@@ -500,7 +500,7 @@ export default function CoursesPage() {
                     <SelectContent>
                       <SelectItem value="specific" data-testid="option-target-specific">طلاب محددين</SelectItem>
                       {isTeacher && <SelectItem value="teacher_all" data-testid="option-target-teacher-all">جميع طلابي</SelectItem>}
-                      {(isSupervisor || isTeacher) && <SelectItem value="mosque_all" data-testid="option-target-mosque-all">جميع طلبة المسجد</SelectItem>}
+                      {(isSupervisor || isTeacher) && <SelectItem value="mosque_all" data-testid="option-target-mosque-all">جميع طلبة الجامع/المركز</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
