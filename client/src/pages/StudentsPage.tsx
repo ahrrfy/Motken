@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X } from "lucide-react";
 import { isValidIraqiPhone, getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -47,6 +47,12 @@ export default function StudentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterGender, setFilterGender] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterSpecialNeeds, setFilterSpecialNeeds] = useState("all");
+  const [filterOrphan, setFilterOrphan] = useState("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,7 +252,43 @@ export default function StudentsPage() {
     setTransferDialogOpen(true);
   };
 
-  const filteredStudents = students.filter(s => s.name.includes(searchTerm) || s.username.includes(searchTerm));
+  const hasActiveFilters = filterGender !== "all" || filterStatus !== "all" || filterSpecialNeeds !== "all" || filterOrphan !== "all" || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterGender("all");
+    setFilterStatus("all");
+    setFilterSpecialNeeds("all");
+    setFilterOrphan("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
+
+  const filteredStudents = students.filter(s => {
+    if (searchTerm && !s.name.includes(searchTerm) && !s.username.includes(searchTerm)) return false;
+    if (filterGender !== "all" && s.gender !== filterGender) return false;
+    if (filterStatus !== "all") {
+      if (filterStatus === "active" && !s.isActive) return false;
+      if (filterStatus === "inactive" && s.isActive) return false;
+    }
+    if (filterSpecialNeeds !== "all") {
+      if (filterSpecialNeeds === "yes" && !s.isSpecialNeeds) return false;
+      if (filterSpecialNeeds === "no" && s.isSpecialNeeds) return false;
+    }
+    if (filterOrphan !== "all") {
+      if (filterOrphan === "yes" && !s.isOrphan) return false;
+      if (filterOrphan === "no" && s.isOrphan) return false;
+    }
+    if (filterDateFrom && (s as any).createdAt) {
+      if (new Date((s as any).createdAt) < new Date(filterDateFrom)) return false;
+    }
+    if (filterDateTo && (s as any).createdAt) {
+      const toDate = new Date(filterDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date((s as any).createdAt) > toDate) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
@@ -424,11 +466,13 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      <Card>
+      <Card dir="rtl">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <CardTitle className="text-lg">قائمة الطلاب ({filteredStudents.length})</CardTitle>
-            <div className="relative w-full sm:w-64">
+          </div>
+          <div className="flex flex-wrap items-end gap-3 mt-3">
+            <div className="relative w-full sm:w-52">
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="بحث عن طالب..."
@@ -438,6 +482,78 @@ export default function StudentsPage() {
                 data-testid="input-search"
               />
             </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterGender} onValueChange={setFilterGender}>
+                <SelectTrigger data-testid="select-filter-gender">
+                  <SelectValue placeholder="الجنس" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الجنس - الكل</SelectItem>
+                  <SelectItem value="male">ذكر</SelectItem>
+                  <SelectItem value="female">أنثى</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger data-testid="select-filter-status">
+                  <SelectValue placeholder="الحالة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الحالة - الكل</SelectItem>
+                  <SelectItem value="active">نشط</SelectItem>
+                  <SelectItem value="inactive">متوقف</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Select value={filterSpecialNeeds} onValueChange={setFilterSpecialNeeds}>
+                <SelectTrigger data-testid="select-filter-special-needs">
+                  <SelectValue placeholder="ذوي الاحتياجات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ذوي الاحتياجات - الكل</SelectItem>
+                  <SelectItem value="yes">نعم</SelectItem>
+                  <SelectItem value="no">لا</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterOrphan} onValueChange={setFilterOrphan}>
+                <SelectTrigger data-testid="select-filter-orphan">
+                  <SelectValue placeholder="يتيم" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">يتيم - الكل</SelectItem>
+                  <SelectItem value="yes">نعم</SelectItem>
+                  <SelectItem value="no">لا</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                data-testid="input-filter-date-from"
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                data-testid="input-filter-date-to"
+              />
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-filters">
+                <X className="w-4 h-4" />
+                مسح الفلاتر
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-4 md:p-6">

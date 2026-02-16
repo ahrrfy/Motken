@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle } from "lucide-react";
+import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X } from "lucide-react";
 import { isValidIraqiPhone, getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -33,6 +33,10 @@ export default function TeachersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterGender, setFilterGender] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -167,7 +171,33 @@ export default function TeachersPage() {
     }
   };
 
-  const filteredTeachers = teachers.filter(t => t.name.includes(searchTerm));
+  const hasActiveFilters = filterGender !== "all" || filterStatus !== "all" || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterGender("all");
+    setFilterStatus("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
+
+  const filteredTeachers = teachers.filter(t => {
+    if (searchTerm && !t.name.includes(searchTerm) && !t.username.includes(searchTerm)) return false;
+    if (filterGender !== "all" && t.gender !== filterGender) return false;
+    if (filterStatus !== "all") {
+      if (filterStatus === "active" && !t.isActive) return false;
+      if (filterStatus === "inactive" && t.isActive) return false;
+    }
+    if (filterDateFrom && (t as any).createdAt) {
+      if (new Date((t as any).createdAt) < new Date(filterDateFrom)) return false;
+    }
+    if (filterDateTo && (t as any).createdAt) {
+      const toDate = new Date(filterDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date((t as any).createdAt) > toDate) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
@@ -293,11 +323,13 @@ export default function TeachersPage() {
         </div>
       </div>
 
-      <Card>
+      <Card dir="rtl">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <CardTitle className="text-lg">قائمة الأساتذة</CardTitle>
-            <div className="relative w-full sm:w-64">
+            <CardTitle className="text-lg">قائمة الأساتذة ({filteredTeachers.length})</CardTitle>
+          </div>
+          <div className="flex flex-wrap items-end gap-3 mt-3">
+            <div className="relative w-full sm:w-52">
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="بحث عن أستاذ..."
@@ -307,6 +339,54 @@ export default function TeachersPage() {
                 data-testid="input-search"
               />
             </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterGender} onValueChange={setFilterGender}>
+                <SelectTrigger data-testid="select-filter-gender">
+                  <SelectValue placeholder="الجنس" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الجنس - الكل</SelectItem>
+                  <SelectItem value="male">ذكر</SelectItem>
+                  <SelectItem value="female">أنثى</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger data-testid="select-filter-status">
+                  <SelectValue placeholder="الحالة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الحالة - الكل</SelectItem>
+                  <SelectItem value="active">نشط</SelectItem>
+                  <SelectItem value="inactive">متوقف</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                data-testid="input-filter-date-from"
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                data-testid="input-filter-date-to"
+              />
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-filters">
+                <X className="w-4 h-4" />
+                مسح الفلاتر
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-4 md:p-6">

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, BellRing, CheckCheck, Clock, Info, Loader2, Trash2, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { Bell, BellRing, CheckCheck, Clock, Info, Loader2, Trash2, Send, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 
@@ -42,6 +42,11 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [notifSearchTerm, setNotifSearchTerm] = useState("");
+  const [filterNotifType, setFilterNotifType] = useState("all");
+  const [filterReadStatus, setFilterReadStatus] = useState("all");
+  const [filterNotifDateFrom, setFilterNotifDateFrom] = useState("");
+  const [filterNotifDateTo, setFilterNotifDateTo] = useState("");
 
   const [showSendForm, setShowSendForm] = useState(false);
   const [sendTitle, setSendTitle] = useState("");
@@ -132,13 +137,13 @@ export default function NotificationsPage() {
     }
   };
 
-  const allSelected = notifications.length > 0 && selectedIds.size === notifications.length;
+  const allSelected = filteredNotifications.length > 0 && selectedIds.size === filteredNotifications.length;
 
   const toggleSelectAll = () => {
     if (allSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(notifications.map(n => n.id)));
+      setSelectedIds(new Set(filteredNotifications.map(n => n.id)));
     }
   };
 
@@ -251,6 +256,34 @@ export default function NotificationsPage() {
       toast({ title: "خطأ", description: "فشل في حذف الإشعارات المحددة", variant: "destructive" });
     }
   };
+
+  const notifHasActiveFilters = notifSearchTerm || filterNotifType !== "all" || filterReadStatus !== "all" || filterNotifDateFrom || filterNotifDateTo;
+
+  const clearNotifFilters = () => {
+    setNotifSearchTerm("");
+    setFilterNotifType("all");
+    setFilterReadStatus("all");
+    setFilterNotifDateFrom("");
+    setFilterNotifDateTo("");
+  };
+
+  const filteredNotifications = notifications.filter(n => {
+    if (notifSearchTerm && !n.title.includes(notifSearchTerm) && !n.message.includes(notifSearchTerm)) return false;
+    if (filterNotifType !== "all" && n.type !== filterNotifType) return false;
+    if (filterReadStatus !== "all") {
+      if (filterReadStatus === "read" && !n.isRead) return false;
+      if (filterReadStatus === "unread" && n.isRead) return false;
+    }
+    if (filterNotifDateFrom && n.createdAt) {
+      if (new Date(n.createdAt) < new Date(filterNotifDateFrom)) return false;
+    }
+    if (filterNotifDateTo && n.createdAt) {
+      const toDate = new Date(filterNotifDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(n.createdAt) > toDate) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
@@ -370,7 +403,74 @@ export default function NotificationsPage() {
         </Card>
       )}
 
-      {!loading && notifications.length > 0 && (
+      <Card dir="rtl">
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="بحث بالعنوان أو الرسالة..."
+                className="pr-8"
+                value={notifSearchTerm}
+                onChange={(e) => setNotifSearchTerm(e.target.value)}
+                data-testid="input-search-notifications"
+              />
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterNotifType} onValueChange={setFilterNotifType}>
+                <SelectTrigger data-testid="select-filter-notif-type">
+                  <SelectValue placeholder="النوع" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">النوع - الكل</SelectItem>
+                  <SelectItem value="info">معلومة</SelectItem>
+                  <SelectItem value="warning">تحذير</SelectItem>
+                  <SelectItem value="urgent">عاجل</SelectItem>
+                  <SelectItem value="success">نجاح</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterReadStatus} onValueChange={setFilterReadStatus}>
+                <SelectTrigger data-testid="select-filter-read-status">
+                  <SelectValue placeholder="حالة القراءة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الحالة - الكل</SelectItem>
+                  <SelectItem value="read">مقروء</SelectItem>
+                  <SelectItem value="unread">غير مقروء</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+              <Input
+                type="date"
+                value={filterNotifDateFrom}
+                onChange={(e) => setFilterNotifDateFrom(e.target.value)}
+                data-testid="input-filter-notif-date-from"
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+              <Input
+                type="date"
+                value={filterNotifDateTo}
+                onChange={(e) => setFilterNotifDateTo(e.target.value)}
+                data-testid="input-filter-notif-date-to"
+              />
+            </div>
+            {notifHasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearNotifFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-notif-filters">
+                <X className="w-4 h-4" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {!loading && filteredNotifications.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border" data-testid="toolbar-notifications">
           <Button
             variant="outline"
@@ -445,13 +545,13 @@ export default function NotificationsPage() {
           <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
           <span>جاري التحميل...</span>
         </div>
-      ) : notifications.length === 0 ? (
+      ) : filteredNotifications.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground" data-testid="status-empty">
           لا توجد إشعارات
         </div>
       ) : (
         <div className="space-y-4">
-          {notifications.map((notif) => (
+          {filteredNotifications.map((notif) => (
             <Card key={notif.id} className={`transition-all hover:shadow-md ${!notif.isRead ? 'border-r-4 border-r-primary bg-primary/5' : ''}`} data-testid={`card-notification-${notif.id}`}>
               <CardContent className="p-3 sm:p-4 flex items-start gap-2 sm:gap-4">
                 <div className="flex items-center pt-1">
