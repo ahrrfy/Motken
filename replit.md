@@ -72,6 +72,8 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Quran Surah Selector**: Full 114 surahs with automatic verse count validation
 - **Enhanced Student Fields**: Age, Telegram ID, parent phone, education level (school/university/postgraduate), special needs status, orphan status
 - **Special Needs/Orphan Stats**: Tracked in reports, printed stats, and Excel exports
+- **Credentials Share**: After creating any user, dialog shows credentials with copy & WhatsApp share buttons, auto-formats message with بسم الله header, user info, login credentials, and app URL; phone number auto-formatted for Iraqi numbers (07x → +964x)
+- **Phone Required**: Phone number is mandatory when creating any user (student/teacher/supervisor)
 - **Student Transfer**: Supervisors can transfer students between teachers
 - **Notification Management**: Mark as read (individual/selected/all), delete (individual/selected/all)
 - **Font Size Controls**: Adjustable 12-28px with localStorage persistence
