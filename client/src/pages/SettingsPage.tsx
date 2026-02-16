@@ -228,7 +228,7 @@ export default function SettingsPage() {
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <TabsList className="w-max md:w-full justify-start h-12 bg-muted/50 p-1">
             {!isAdmin && (
-              <TabsTrigger value="mosque" className="flex-1 max-w-[200px] whitespace-nowrap">بيانات المسجد</TabsTrigger>
+              <TabsTrigger value="mosque" className="flex-1 max-w-[200px] whitespace-nowrap">بيانات الجامع/المركز</TabsTrigger>
             )}
             <TabsTrigger value="profile" className="flex-1 max-w-[200px] whitespace-nowrap">الملف الشخصي</TabsTrigger>
             {isAdmin && (
@@ -246,12 +246,12 @@ export default function SettingsPage() {
           <TabsContent value="mosque" className="space-y-6 mt-6">
              <Card>
               <CardHeader>
-                <CardTitle>الملف التعريفي للمسجد</CardTitle>
+                <CardTitle>الملف التعريفي للجامع/المركز</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>اسم المسجد</Label>
+                    <Label>اسم الجامع/المركز</Label>
                     <Input defaultValue={user?.mosqueName || ""} />
                   </div>
                   <div className="space-y-2">
@@ -268,10 +268,10 @@ export default function SettingsPage() {
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>نبذة تعريفية</Label>
-                    <Textarea placeholder="اكتب نبذة عن نشاطات المسجد..." className="min-h-[100px]" />
+                    <Textarea placeholder="اكتب نبذة عن نشاطات الجامع/المركز..." className="min-h-[100px]" />
                   </div>
                 </div>
-                <Button className="bg-primary text-white">حفظ بيانات المسجد</Button>
+                <Button className="bg-primary text-white">حفظ بيانات الجامع/المركز</Button>
               </CardContent>
              </Card>
           </TabsContent>

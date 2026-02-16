@@ -158,7 +158,7 @@ export default function ReportsPage() {
       ["إجمالي الطلاب", stats.totalStudents || 0],
       ["إجمالي الأساتذة", stats.totalTeachers || 0],
       ...(isAdmin ? [["إجمالي المشرفين", stats.totalSupervisors || 0]] : []),
-      ...(isAdmin ? [["إجمالي المساجد", stats.totalMosques || 0]] : []),
+      ...(isAdmin ? [["إجمالي الجوامع والمراكز", stats.totalMosques || 0]] : []),
       ["إجمالي الواجبات", stats.totalAssignments || 0],
       ["الواجبات المكتملة", stats.completedAssignments || 0],
       ["الواجبات المعلقة", stats.pendingAssignments || 0],
@@ -220,10 +220,10 @@ export default function ReportsPage() {
           {isAdmin && (
             <Select value={selectedMosque} onValueChange={(val) => { setSelectedMosque(val === "all" ? "" : val); }} data-testid="filter-mosque">
               <SelectTrigger className="w-[200px]" data-testid="select-mosque-trigger">
-                <SelectValue placeholder="جميع المساجد" />
+                <SelectValue placeholder="جميع الجوامع والمراكز" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع المساجد</SelectItem>
+                <SelectItem value="all">جميع الجوامع والمراكز</SelectItem>
                 {mosques.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.name}
@@ -315,7 +315,7 @@ export default function ReportsPage() {
             {isAdmin && (
               <Card data-testid="card-total-mosques">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">إجمالي المساجد</CardTitle>
+                  <CardTitle className="text-sm font-medium">إجمالي الجوامع والمراكز</CardTitle>
                   <Building2 className="h-5 w-5 text-amber-500" />
                 </CardHeader>
                 <CardContent>

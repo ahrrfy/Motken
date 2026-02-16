@@ -46,7 +46,7 @@ export default function MosquesPage() {
       const data = await res.json();
       setMosques(data);
     } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل الجوامع", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل في تحميل الجوامع والمراكز", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function MosquesPage() {
 
   const handleAdd = async () => {
     if (!form.name.trim()) {
-      toast({ title: "خطأ", description: "يرجى إدخال اسم الجامع", variant: "destructive" });
+      toast({ title: "خطأ", description: "يرجى إدخال اسم الجامع/المركز", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -95,12 +95,12 @@ export default function MosquesPage() {
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error();
-      toast({ title: "تم بنجاح", description: "تمت إضافة الجامع بنجاح" });
+      toast({ title: "تم بنجاح", description: "تمت إضافة الجامع/المركز بنجاح" });
       setAddOpen(false);
       setForm(emptyForm);
       fetchMosques();
     } catch {
-      toast({ title: "خطأ", description: "فشل في إضافة الجامع", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل في إضافة الجامع/المركز", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -117,13 +117,13 @@ export default function MosquesPage() {
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error();
-      toast({ title: "تم بنجاح", description: "تم تعديل بيانات الجامع" });
+      toast({ title: "تم بنجاح", description: "تم تعديل بيانات الجامع/المركز" });
       setEditOpen(false);
       setEditingMosque(null);
       setForm(emptyForm);
       fetchMosques();
     } catch {
-      toast({ title: "خطأ", description: "فشل في تعديل الجامع", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل في تعديل الجامع/المركز", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -136,10 +136,10 @@ export default function MosquesPage() {
         credentials: "include",
       });
       if (!res.ok) throw new Error();
-      toast({ title: "تم بنجاح", description: "تم حذف الجامع بنجاح" });
+      toast({ title: "تم بنجاح", description: "تم حذف الجامع/المركز بنجاح" });
       fetchMosques();
     } catch {
-      toast({ title: "خطأ", description: "فشل في حذف الجامع", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل في حذف الجامع/المركز", variant: "destructive" });
     }
   };
 
@@ -157,7 +157,7 @@ export default function MosquesPage() {
   };
 
   const formFields = [
-    { key: "name", label: "الاسم", required: true },
+    { key: "name", label: "اسم الجامع/المركز", required: true },
     { key: "city", label: "المدينة" },
     { key: "address", label: "العنوان" },
     { key: "phone", label: "الهاتف" },
@@ -197,20 +197,20 @@ export default function MosquesPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
-            إدارة الجوامع
+            الجوامع ومراكز التحفيظ
           </h1>
-          <p className="text-muted-foreground">إضافة وتعديل وإدارة الجوامع والمساجد</p>
+          <p className="text-muted-foreground">إضافة وتعديل وإدارة الجوامع ومراكز تحفيظ القرآن</p>
         </div>
         <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setForm(emptyForm); }}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 text-white gap-2" data-testid="button-add-mosque">
               <Plus className="w-4 h-4" />
-              إضافة جامع جديد
+              إضافة جامع/مركز
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md" dir="rtl">
             <DialogHeader>
-              <DialogTitle className="font-serif text-primary">إضافة جامع جديد</DialogTitle>
+              <DialogTitle className="font-serif text-primary">إضافة جامع/مركز تحفيظ</DialogTitle>
             </DialogHeader>
             {renderForm()}
             <div className="flex justify-end gap-2 mt-4">
@@ -229,8 +229,8 @@ export default function MosquesPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Building2 className="w-16 h-16 text-muted-foreground/40 mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground">لا توجد جوامع حالياً</h3>
-            <p className="text-sm text-muted-foreground/60 mt-1">ابدأ بإضافة جامع جديد</p>
+            <h3 className="text-lg font-medium text-muted-foreground">لا توجد جوامع أو مراكز حالياً</h3>
+            <p className="text-sm text-muted-foreground/60 mt-1">ابدأ بإضافة جامع/مركز</p>
           </CardContent>
         </Card>
       ) : (
@@ -314,7 +314,7 @@ export default function MosquesPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
                           <AlertDialogDescription>
-                            هل أنت متأكد من حذف جامع "{mosque.name}"؟ لا يمكن التراجع عن هذا الإجراء.
+                            هل أنت متأكد من حذف "{mosque.name}"؟ لا يمكن التراجع عن هذا الإجراء.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter className="flex-row-reverse gap-2">
@@ -340,7 +340,7 @@ export default function MosquesPage() {
       <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) { setEditingMosque(null); setForm(emptyForm); } }}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="font-serif text-primary">تعديل بيانات الجامع</DialogTitle>
+            <DialogTitle className="font-serif text-primary">تعديل بيانات الجامع/المركز</DialogTitle>
           </DialogHeader>
           {renderForm()}
           <div className="flex justify-end gap-2 mt-4">

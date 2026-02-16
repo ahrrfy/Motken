@@ -49,7 +49,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "لوحة التحكم", labelEn: "Dashboard", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/daily", label: "واجبات اليوم", labelEn: "Daily Tasks", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/mosques", label: "إدارة الجوامع", labelEn: "Mosque Management", icon: Building2, roles: ["admin"] },
+  { href: "/mosques", label: "الجوامع ومراكز التحفيظ", labelEn: "Mosques & Centers", icon: Building2, roles: ["admin"] },
   { href: "/users", label: "جميع المستخدمين", labelEn: "All Users", icon: Users, roles: ["admin"] },
   { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Statistics", icon: BarChart3, roles: ["admin", "supervisor"] },
   { href: "/students", label: "الطلاب", labelEn: "Students", icon: Users, roles: ["admin", "teacher", "supervisor"] },

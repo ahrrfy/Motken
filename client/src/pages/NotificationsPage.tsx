@@ -312,7 +312,7 @@ export default function NotificationsPage() {
                 <div className="flex flex-wrap gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="targetType" value="all" checked={targetType === "all"} onChange={() => setTargetType("all")} data-testid="radio-target-all" />
-                    <span className="text-sm">{user?.role === "admin" ? "جميع المستخدمين" : "جميع مستخدمي الجامع"}</span>
+                    <span className="text-sm">{user?.role === "admin" ? "جميع المستخدمين" : "جميع مستخدمي الجامع/المركز"}</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="targetType" value="user" checked={targetType === "user"} onChange={() => setTargetType("user")} data-testid="radio-target-user" />
@@ -321,7 +321,7 @@ export default function NotificationsPage() {
                   {user?.role === "admin" && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="targetType" value="mosque" checked={targetType === "mosque"} onChange={() => setTargetType("mosque")} data-testid="radio-target-mosque" />
-                      <span className="text-sm">جامع محدد</span>
+                      <span className="text-sm">جامع/مركز محدد</span>
                     </label>
                   )}
                 </div>
@@ -343,10 +343,10 @@ export default function NotificationsPage() {
               )}
               {targetType === "mosque" && user?.role === "admin" && (
                 <div className="space-y-2">
-                  <Label>اختر الجامع</Label>
+                  <Label>اختر الجامع/المركز</Label>
                   <Select value={targetMosqueId} onValueChange={setTargetMosqueId}>
                     <SelectTrigger data-testid="select-target-mosque">
-                      <SelectValue placeholder="اختر جامع" />
+                      <SelectValue placeholder="اختر الجامع/المركز" />
                     </SelectTrigger>
                     <SelectContent>
                       {mosquesList.map(m => (
