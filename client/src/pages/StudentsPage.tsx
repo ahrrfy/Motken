@@ -14,6 +14,7 @@ import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
 import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
 import UsernameInput from "@/components/UsernameInput";
+import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
 interface Student {
   id: string;
@@ -58,6 +59,7 @@ export default function StudentsPage() {
     age: "", telegramId: "", parentPhone: "", educationLevel: "", isSpecialNeeds: false, isOrphan: false
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -164,8 +166,8 @@ export default function StudentsPage() {
   };
 
   const handleAddStudent = async () => {
-    if (!formData.username || !formData.password || !formData.name) {
-      toast({ title: "خطأ", description: "يرجى تعبئة الحقول المطلوبة", variant: "destructive" });
+    if (!formData.username || !formData.password || !formData.name || !formData.phone) {
+      toast({ title: "خطأ", description: "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف)", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -184,10 +186,15 @@ export default function StudentsPage() {
         }),
       });
       if (res.ok) {
+        const savedName = formData.name;
+        const savedUsername = formData.username;
+        const savedPassword = formData.password;
+        const savedPhone = formData.phone;
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
         setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", isSpecialNeeds: false, isOrphan: false });
         fetchData();
+        setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "student" });
       } else {
         const err = await res.json();
         toast({ title: "خطأ", description: err.message || "فشل في إضافة الطالب", variant: "destructive" });
@@ -353,8 +360,8 @@ export default function StudentsPage() {
                     <Input data-testid="input-age" type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} />
                   </div>
                   <div className="space-y-2">
-                    <Label>الهاتف</Label>
-                    <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" />
+                    <Label>الهاتف <span className="text-red-500">*</span></Label>
+                    <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
                   </div>
                   <div className="space-y-2">
                     <Label>هاتف ولي الأمر</Label>
@@ -541,6 +548,19 @@ export default function StudentsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {credentialsDialog && (
+        <CredentialsShareDialog
+          open={credentialsDialog.open}
+          onClose={() => setCredentialsDialog(null)}
+          name={credentialsDialog.name}
+          username={credentialsDialog.username}
+          password={credentialsDialog.password}
+          phone={credentialsDialog.phone}
+          role={credentialsDialog.role}
+          mosqueName={user?.mosqueName || undefined}
+        />
+      )}
     </div>
   );
 }
