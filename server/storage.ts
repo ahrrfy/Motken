@@ -12,11 +12,22 @@ import {
   type CourseTeacher, type InsertCourseTeacher,
   type Certificate, type InsertCertificate,
   type BannedDevice, type InsertBannedDevice,
+  type FeatureFlag, type InsertFeatureFlag,
+  type Attendance, type InsertAttendance,
+  type Message, type InsertMessage,
+  type Point, type InsertPoint,
+  type Badge, type InsertBadge,
+  type Schedule, type InsertSchedule,
+  type Competition, type InsertCompetition,
+  type CompetitionParticipant, type InsertCompetitionParticipant,
+  type ParentReport, type InsertParentReport,
   users, mosques, assignments, activityLogs, notifications, ratings, exams, examStudents,
   courses, courseStudents, courseTeachers, certificates, bannedDevices,
+  featureFlags, attendance, messages, points, badges, schedules, competitions,
+  competitionParticipants, parentReports,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, or, inArray, sum, count, asc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -103,6 +114,66 @@ export interface IStorage {
   deleteBannedDevice(id: string): Promise<void>;
   isBannedIP(ip: string): Promise<boolean>;
   isBannedFingerprint(fingerprint: string): Promise<boolean>;
+
+  getFeatureFlags(): Promise<FeatureFlag[]>;
+  getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined>;
+  createFeatureFlag(ff: InsertFeatureFlag): Promise<FeatureFlag>;
+  updateFeatureFlag(id: string, data: Partial<InsertFeatureFlag>): Promise<FeatureFlag | undefined>;
+  isFeatureEnabled(featureKey: string): Promise<boolean>;
+
+  getAttendance(id: string): Promise<Attendance | undefined>;
+  getAttendanceByStudent(studentId: string): Promise<Attendance[]>;
+  getAttendanceByTeacher(teacherId: string): Promise<Attendance[]>;
+  getAttendanceByMosque(mosqueId: string): Promise<Attendance[]>;
+  getAttendanceByDate(date: Date, teacherId: string): Promise<Attendance[]>;
+  createAttendance(a: InsertAttendance): Promise<Attendance>;
+  updateAttendance(id: string, data: Partial<InsertAttendance>): Promise<Attendance | undefined>;
+  deleteAttendance(id: string): Promise<void>;
+
+  getMessage(id: string): Promise<Message | undefined>;
+  getMessagesByUser(userId: string): Promise<Message[]>;
+  getConversation(userId1: string, userId2: string): Promise<Message[]>;
+  createMessage(m: InsertMessage): Promise<Message>;
+  markMessageRead(id: string): Promise<void>;
+  markAllMessagesRead(senderId: string, receiverId: string): Promise<void>;
+  deleteMessage(id: string): Promise<void>;
+  getUnreadMessageCount(userId: string): Promise<number>;
+
+  getPointsByUser(userId: string): Promise<Point[]>;
+  getPointsByMosque(mosqueId: string): Promise<Point[]>;
+  getTotalPoints(userId: string): Promise<number>;
+  createPoint(p: InsertPoint): Promise<Point>;
+  getLeaderboard(mosqueId?: string): Promise<{userId: string, total: number}[]>;
+
+  getBadgesByUser(userId: string): Promise<Badge[]>;
+  getBadgesByMosque(mosqueId: string): Promise<Badge[]>;
+  createBadge(b: InsertBadge): Promise<Badge>;
+  deleteBadge(id: string): Promise<void>;
+
+  getSchedule(id: string): Promise<Schedule | undefined>;
+  getSchedulesByMosque(mosqueId: string): Promise<Schedule[]>;
+  getSchedulesByTeacher(teacherId: string): Promise<Schedule[]>;
+  createSchedule(s: InsertSchedule): Promise<Schedule>;
+  updateSchedule(id: string, data: Partial<InsertSchedule>): Promise<Schedule | undefined>;
+  deleteSchedule(id: string): Promise<void>;
+
+  getCompetition(id: string): Promise<Competition | undefined>;
+  getCompetitions(): Promise<Competition[]>;
+  getCompetitionsByMosque(mosqueId: string): Promise<Competition[]>;
+  createCompetition(c: InsertCompetition): Promise<Competition>;
+  updateCompetition(id: string, data: Partial<InsertCompetition>): Promise<Competition | undefined>;
+  deleteCompetition(id: string): Promise<void>;
+
+  getCompetitionParticipants(competitionId: string): Promise<CompetitionParticipant[]>;
+  createCompetitionParticipant(cp: InsertCompetitionParticipant): Promise<CompetitionParticipant>;
+  updateCompetitionParticipant(id: string, data: Partial<InsertCompetitionParticipant>): Promise<CompetitionParticipant | undefined>;
+  deleteCompetitionParticipant(id: string): Promise<void>;
+
+  getParentReport(id: string): Promise<ParentReport | undefined>;
+  getParentReportByToken(token: string): Promise<ParentReport | undefined>;
+  getParentReportsByStudent(studentId: string): Promise<ParentReport[]>;
+  createParentReport(pr: InsertParentReport): Promise<ParentReport>;
+  deleteParentReport(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -467,6 +538,257 @@ export class DatabaseStorage implements IStorage {
   async isBannedFingerprint(fingerprint: string): Promise<boolean> {
     const [result] = await db.select().from(bannedDevices).where(eq(bannedDevices.deviceFingerprint, fingerprint)).limit(1);
     return !!result;
+  }
+
+  async getFeatureFlags(): Promise<FeatureFlag[]> {
+    return db.select().from(featureFlags).orderBy(desc(featureFlags.createdAt));
+  }
+
+  async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
+    const [ff] = await db.select().from(featureFlags).where(eq(featureFlags.featureKey, featureKey));
+    return ff;
+  }
+
+  async createFeatureFlag(ff: InsertFeatureFlag): Promise<FeatureFlag> {
+    const [entry] = await db.insert(featureFlags).values(ff).returning();
+    return entry;
+  }
+
+  async updateFeatureFlag(id: string, data: Partial<InsertFeatureFlag>): Promise<FeatureFlag | undefined> {
+    const [entry] = await db.update(featureFlags).set(data).where(eq(featureFlags.id, id)).returning();
+    return entry;
+  }
+
+  async isFeatureEnabled(featureKey: string): Promise<boolean> {
+    const [ff] = await db.select().from(featureFlags).where(eq(featureFlags.featureKey, featureKey));
+    return ff?.isEnabled ?? false;
+  }
+
+  async getAttendance(id: string): Promise<Attendance | undefined> {
+    const [entry] = await db.select().from(attendance).where(eq(attendance.id, id));
+    return entry;
+  }
+
+  async getAttendanceByStudent(studentId: string): Promise<Attendance[]> {
+    return db.select().from(attendance).where(eq(attendance.studentId, studentId)).orderBy(desc(attendance.date));
+  }
+
+  async getAttendanceByTeacher(teacherId: string): Promise<Attendance[]> {
+    return db.select().from(attendance).where(eq(attendance.teacherId, teacherId)).orderBy(desc(attendance.date));
+  }
+
+  async getAttendanceByMosque(mosqueId: string): Promise<Attendance[]> {
+    return db.select().from(attendance).where(eq(attendance.mosqueId, mosqueId)).orderBy(desc(attendance.date));
+  }
+
+  async getAttendanceByDate(date: Date, teacherId: string): Promise<Attendance[]> {
+    return db.select().from(attendance).where(
+      and(eq(attendance.date, date), eq(attendance.teacherId, teacherId))
+    ).orderBy(desc(attendance.createdAt));
+  }
+
+  async createAttendance(a: InsertAttendance): Promise<Attendance> {
+    const [entry] = await db.insert(attendance).values(a).returning();
+    return entry;
+  }
+
+  async updateAttendance(id: string, data: Partial<InsertAttendance>): Promise<Attendance | undefined> {
+    const [entry] = await db.update(attendance).set(data).where(eq(attendance.id, id)).returning();
+    return entry;
+  }
+
+  async deleteAttendance(id: string): Promise<void> {
+    await db.delete(attendance).where(eq(attendance.id, id));
+  }
+
+  async getMessage(id: string): Promise<Message | undefined> {
+    const [msg] = await db.select().from(messages).where(eq(messages.id, id));
+    return msg;
+  }
+
+  async getMessagesByUser(userId: string): Promise<Message[]> {
+    return db.select().from(messages).where(
+      or(eq(messages.senderId, userId), eq(messages.receiverId, userId))
+    ).orderBy(desc(messages.createdAt));
+  }
+
+  async getConversation(userId1: string, userId2: string): Promise<Message[]> {
+    return db.select().from(messages).where(
+      or(
+        and(eq(messages.senderId, userId1), eq(messages.receiverId, userId2)),
+        and(eq(messages.senderId, userId2), eq(messages.receiverId, userId1))
+      )
+    ).orderBy(asc(messages.createdAt));
+  }
+
+  async createMessage(m: InsertMessage): Promise<Message> {
+    const [msg] = await db.insert(messages).values(m).returning();
+    return msg;
+  }
+
+  async markMessageRead(id: string): Promise<void> {
+    await db.update(messages).set({ isRead: true }).where(eq(messages.id, id));
+  }
+
+  async markAllMessagesRead(senderId: string, receiverId: string): Promise<void> {
+    await db.update(messages).set({ isRead: true }).where(
+      and(eq(messages.senderId, senderId), eq(messages.receiverId, receiverId))
+    );
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    await db.delete(messages).where(eq(messages.id, id));
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const [result] = await db.select({ value: count() }).from(messages).where(
+      and(eq(messages.receiverId, userId), eq(messages.isRead, false))
+    );
+    return result?.value ?? 0;
+  }
+
+  async getPointsByUser(userId: string): Promise<Point[]> {
+    return db.select().from(points).where(eq(points.userId, userId)).orderBy(desc(points.createdAt));
+  }
+
+  async getPointsByMosque(mosqueId: string): Promise<Point[]> {
+    return db.select().from(points).where(eq(points.mosqueId, mosqueId)).orderBy(desc(points.createdAt));
+  }
+
+  async getTotalPoints(userId: string): Promise<number> {
+    const [result] = await db.select({ value: sum(points.amount) }).from(points).where(eq(points.userId, userId));
+    return Number(result?.value ?? 0);
+  }
+
+  async createPoint(p: InsertPoint): Promise<Point> {
+    const [entry] = await db.insert(points).values(p).returning();
+    return entry;
+  }
+
+  async getLeaderboard(mosqueId?: string): Promise<{userId: string, total: number}[]> {
+    const query = db.select({
+      userId: points.userId,
+      total: sum(points.amount),
+    }).from(points);
+
+    const results = mosqueId
+      ? await query.where(eq(points.mosqueId, mosqueId)).groupBy(points.userId).orderBy(desc(sum(points.amount)))
+      : await query.groupBy(points.userId).orderBy(desc(sum(points.amount)));
+
+    return results.map(r => ({ userId: r.userId, total: Number(r.total ?? 0) }));
+  }
+
+  async getBadgesByUser(userId: string): Promise<Badge[]> {
+    return db.select().from(badges).where(eq(badges.userId, userId)).orderBy(desc(badges.createdAt));
+  }
+
+  async getBadgesByMosque(mosqueId: string): Promise<Badge[]> {
+    return db.select().from(badges).where(eq(badges.mosqueId, mosqueId)).orderBy(desc(badges.createdAt));
+  }
+
+  async createBadge(b: InsertBadge): Promise<Badge> {
+    const [entry] = await db.insert(badges).values(b).returning();
+    return entry;
+  }
+
+  async deleteBadge(id: string): Promise<void> {
+    await db.delete(badges).where(eq(badges.id, id));
+  }
+
+  async getSchedule(id: string): Promise<Schedule | undefined> {
+    const [entry] = await db.select().from(schedules).where(eq(schedules.id, id));
+    return entry;
+  }
+
+  async getSchedulesByMosque(mosqueId: string): Promise<Schedule[]> {
+    return db.select().from(schedules).where(eq(schedules.mosqueId, mosqueId)).orderBy(asc(schedules.dayOfWeek));
+  }
+
+  async getSchedulesByTeacher(teacherId: string): Promise<Schedule[]> {
+    return db.select().from(schedules).where(eq(schedules.teacherId, teacherId)).orderBy(asc(schedules.dayOfWeek));
+  }
+
+  async createSchedule(s: InsertSchedule): Promise<Schedule> {
+    const [entry] = await db.insert(schedules).values(s).returning();
+    return entry;
+  }
+
+  async updateSchedule(id: string, data: Partial<InsertSchedule>): Promise<Schedule | undefined> {
+    const [entry] = await db.update(schedules).set(data).where(eq(schedules.id, id)).returning();
+    return entry;
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    await db.delete(schedules).where(eq(schedules.id, id));
+  }
+
+  async getCompetition(id: string): Promise<Competition | undefined> {
+    const [entry] = await db.select().from(competitions).where(eq(competitions.id, id));
+    return entry;
+  }
+
+  async getCompetitions(): Promise<Competition[]> {
+    return db.select().from(competitions).orderBy(desc(competitions.createdAt));
+  }
+
+  async getCompetitionsByMosque(mosqueId: string): Promise<Competition[]> {
+    return db.select().from(competitions).where(eq(competitions.mosqueId, mosqueId)).orderBy(desc(competitions.createdAt));
+  }
+
+  async createCompetition(c: InsertCompetition): Promise<Competition> {
+    const [entry] = await db.insert(competitions).values(c).returning();
+    return entry;
+  }
+
+  async updateCompetition(id: string, data: Partial<InsertCompetition>): Promise<Competition | undefined> {
+    const [entry] = await db.update(competitions).set(data).where(eq(competitions.id, id)).returning();
+    return entry;
+  }
+
+  async deleteCompetition(id: string): Promise<void> {
+    await db.delete(competitionParticipants).where(eq(competitionParticipants.competitionId, id));
+    await db.delete(competitions).where(eq(competitions.id, id));
+  }
+
+  async getCompetitionParticipants(competitionId: string): Promise<CompetitionParticipant[]> {
+    return db.select().from(competitionParticipants).where(eq(competitionParticipants.competitionId, competitionId)).orderBy(desc(competitionParticipants.createdAt));
+  }
+
+  async createCompetitionParticipant(cp: InsertCompetitionParticipant): Promise<CompetitionParticipant> {
+    const [entry] = await db.insert(competitionParticipants).values(cp).returning();
+    return entry;
+  }
+
+  async updateCompetitionParticipant(id: string, data: Partial<InsertCompetitionParticipant>): Promise<CompetitionParticipant | undefined> {
+    const [entry] = await db.update(competitionParticipants).set(data).where(eq(competitionParticipants.id, id)).returning();
+    return entry;
+  }
+
+  async deleteCompetitionParticipant(id: string): Promise<void> {
+    await db.delete(competitionParticipants).where(eq(competitionParticipants.id, id));
+  }
+
+  async getParentReport(id: string): Promise<ParentReport | undefined> {
+    const [entry] = await db.select().from(parentReports).where(eq(parentReports.id, id));
+    return entry;
+  }
+
+  async getParentReportByToken(token: string): Promise<ParentReport | undefined> {
+    const [entry] = await db.select().from(parentReports).where(eq(parentReports.accessToken, token));
+    return entry;
+  }
+
+  async getParentReportsByStudent(studentId: string): Promise<ParentReport[]> {
+    return db.select().from(parentReports).where(eq(parentReports.studentId, studentId)).orderBy(desc(parentReports.createdAt));
+  }
+
+  async createParentReport(pr: InsertParentReport): Promise<ParentReport> {
+    const [entry] = await db.insert(parentReports).values(pr).returning();
+    return entry;
+  }
+
+  async deleteParentReport(id: string): Promise<void> {
+    await db.delete(parentReports).where(eq(parentReports.id, id));
   }
 
   async resetSystemData(): Promise<void> {
