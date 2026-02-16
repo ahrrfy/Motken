@@ -36,8 +36,8 @@ export async function showLocalNotification(title: string, body: string, tag?: s
   if (swRegistration) {
     await swRegistration.showNotification(title, {
       body,
-      icon: "/favicon.png",
-      badge: "/favicon.png",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
       tag: tag || "mutqin-" + Date.now(),
       dir: "rtl",
       lang: "ar",
@@ -45,7 +45,7 @@ export async function showLocalNotification(title: string, body: string, tag?: s
   } else if ("Notification" in window) {
     new Notification(title, {
       body,
-      icon: "/favicon.png",
+      icon: "/icon-192.png",
       dir: "rtl",
       lang: "ar",
       tag: tag || "mutqin-" + Date.now(),
