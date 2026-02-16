@@ -10,6 +10,7 @@ import LibraryPage from "@/pages/LibraryPage";
 import ReportsPage from "@/pages/ReportsPage";
 import IDCardsPage from "@/pages/IDCardsPage";
 import TeachersPage from "@/pages/TeachersPage";
+import SupervisorsPage from "@/pages/SupervisorsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QRScannerPage from "@/pages/QRScannerPage";
 import AssignmentsExamsPage from "@/pages/AssignmentsExamsPage";
@@ -83,6 +84,7 @@ function App() {
         <Route path="/mosques" component={MosquesPage} />
         <Route path="/students" component={StudentsPage} />
         <Route path="/teachers" component={TeachersPage} />
+        <Route path="/supervisors" component={SupervisorsPage} />
         <Route path="/assignments" component={AssignmentsExamsPage} />
         <Route path="/ratings" component={RatingsPage} />
         <Route path="/courses" component={CoursesPage} />
