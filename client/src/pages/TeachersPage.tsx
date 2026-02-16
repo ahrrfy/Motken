@@ -162,10 +162,10 @@ export default function TeachersPage() {
   const filteredTeachers = teachers.filter(t => t.name.includes(searchTerm));
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الأساتذة</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الأساتذة</h1>
           <p className="text-muted-foreground">إدارة هيئة التدريس والمشرفين</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -226,7 +226,7 @@ export default function TeachersPage() {
                 <DialogHeader>
                   <DialogTitle>إضافة أستاذ جديد</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 mt-4">
+                <div className="space-y-4 mt-4 max-h-[80vh] overflow-y-auto">
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden shrink-0">
                       {formData.avatar ? (
@@ -284,9 +284,9 @@ export default function TeachersPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <CardTitle className="text-lg">قائمة الأساتذة</CardTitle>
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="بحث عن أستاذ..."
@@ -298,7 +298,7 @@ export default function TeachersPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 md:p-6">
+        <CardContent className="p-0 sm:p-4 md:p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12" data-testid="status-loading">
               <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
@@ -314,7 +314,7 @@ export default function TeachersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">الاسم</TableHead>
-                    <TableHead className="text-right">الجنس</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">الجنس</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
                     <TableHead className="text-right">تواصل</TableHead>
@@ -324,7 +324,7 @@ export default function TeachersPage() {
                   {filteredTeachers.map((teacher) => (
                     <TableRow key={teacher.id} data-testid={`row-teacher-${teacher.id}`}>
                       <TableCell className="font-medium" data-testid={`text-name-${teacher.id}`}>{teacher.name}</TableCell>
-                      <TableCell data-testid={`text-gender-${teacher.id}`}>{teacher.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
+                      <TableCell className="hidden sm:table-cell" data-testid={`text-gender-${teacher.id}`}>{teacher.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${teacher.id}`}>{teacher.phone || "—"}</TableCell>
                       <TableCell>
                         <Badge

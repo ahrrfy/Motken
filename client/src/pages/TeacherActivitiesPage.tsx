@@ -65,9 +65,9 @@ export default function TeacherActivitiesPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">أنشطة الأساتذة</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">أنشطة الأساتذة</h1>
         <p className="text-muted-foreground">متابعة جميع الأنشطة التي يقوم بها الأساتذة في الجامع/المركز</p>
       </div>
 
@@ -90,7 +90,7 @@ export default function TeacherActivitiesPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 md:p-6">
+        <CardContent className="p-0 sm:p-3 md:p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12" data-testid="status-loading">
               <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
@@ -107,9 +107,9 @@ export default function TeacherActivitiesPage() {
                   <TableRow>
                     <TableHead className="text-right">الأستاذ</TableHead>
                     <TableHead className="text-right">النشاط</TableHead>
-                    <TableHead className="text-right">القسم</TableHead>
-                    <TableHead className="text-right">التفاصيل</TableHead>
-                    <TableHead className="text-right">التاريخ</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">القسم</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">التفاصيل</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">التاريخ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -117,11 +117,11 @@ export default function TeacherActivitiesPage() {
                     <TableRow key={log.id} data-testid={`row-activity-${log.id}`}>
                       <TableCell className="font-bold" data-testid={`text-teacher-${log.id}`}>{log.userName}</TableCell>
                       <TableCell>{log.action}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge variant="outline" className="bg-slate-100">{getModuleLabel(log.module)}</Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{log.details || "—"}</TableCell>
-                      <TableCell className="text-sm" dir="ltr">{formatDate(log.createdAt)}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{log.details || "—"}</TableCell>
+                      <TableCell className="text-sm hidden sm:table-cell" dir="ltr">{formatDate(log.createdAt)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -209,13 +209,13 @@ export default function AllUsersPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">جميع المستخدمين</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold" data-testid="text-page-title">جميع المستخدمين</h1>
           <p className="text-muted-foreground text-sm">إدارة جميع حسابات المستخدمين في النظام</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" data-testid="button-print-users" onClick={() => {
             const roleMap: Record<string, string> = { admin: "مدير", supervisor: "مشرف", teacher: "أستاذ", student: "طالب" };
             const tableHtml = `
@@ -254,8 +254,8 @@ export default function AllUsersPage() {
             <DialogHeader>
               <DialogTitle>{editingUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-4 mt-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>الاسم الكامل *</Label>
                   <Input data-testid="input-user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="الاسم" />
@@ -395,8 +395,8 @@ export default function AllUsersPage() {
                 <thead>
                   <tr className="border-b text-muted-foreground">
                     <th className="text-right py-3 px-2 font-medium">الاسم</th>
-                    <th className="text-right py-3 px-2 font-medium">اسم المستخدم</th>
-                    <th className="text-right py-3 px-2 font-medium">الجنس</th>
+                    <th className="text-right py-3 px-2 font-medium hidden sm:table-cell">اسم المستخدم</th>
+                    <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجنس</th>
                     <th className="text-right py-3 px-2 font-medium">الدور</th>
                     <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجامع/المركز</th>
                     <th className="text-right py-3 px-2 font-medium hidden lg:table-cell">الهاتف</th>
@@ -416,8 +416,8 @@ export default function AllUsersPage() {
                             <span className="font-medium">{u.name}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-2 text-muted-foreground" dir="ltr">{u.username}</td>
-                        <td className="py-3 px-2" data-testid={`text-gender-${u.id}`}>{u.gender === "female" ? "أنثى" : "ذكر"}</td>
+                        <td className="py-3 px-2 text-muted-foreground hidden sm:table-cell" dir="ltr">{u.username}</td>
+                        <td className="py-3 px-2 hidden md:table-cell" data-testid={`text-gender-${u.id}`}>{u.gender === "female" ? "أنثى" : "ذكر"}</td>
                         <td className="py-3 px-2">
                           <Badge variant="secondary" className={`${roleColors[u.role]} text-xs gap-1`}>
                             <RoleIcon className="w-3 h-3" />

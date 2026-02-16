@@ -162,9 +162,9 @@ export default function RatingsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">التقييمات والأوسمة</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">التقييمات والأوسمة</h1>
         <p className="text-muted-foreground">
           {isSupervisor && "تقييم أداء الأساتذة ومنح الأوسمة"}
           {isTeacher && "تقييم أداء الطلاب ومنح الأوسمة"}
@@ -173,7 +173,7 @@ export default function RatingsPage() {
       </div>
 
       {(isSupervisor || isTeacher) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {users.map(u => {
             const avg = getAverageStars(u.id);
             const total = getUserRatings(u.id).length;
@@ -199,7 +199,7 @@ export default function RatingsPage() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="p-3 sm:p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {renderStars(Math.round(avg))}
@@ -265,12 +265,12 @@ export default function RatingsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <Card className="shadow-sm">
-                  <CardContent className="p-4 flex items-center justify-between">
+                  <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">متوسط التقييم</p>
-                      <p className="text-2xl font-bold" data-testid="text-my-avg">
+                      <p className="text-xs sm:text-sm text-muted-foreground">متوسط التقييم</p>
+                      <p className="text-xl sm:text-2xl font-bold" data-testid="text-my-avg">
                         {(ratings.reduce((s, r) => s + r.stars, 0) / ratings.length).toFixed(1)}
                       </p>
                     </div>
@@ -278,19 +278,19 @@ export default function RatingsPage() {
                   </CardContent>
                 </Card>
                 <Card className="shadow-sm">
-                  <CardContent className="p-4 flex items-center justify-between">
+                  <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">عدد التقييمات</p>
-                      <p className="text-2xl font-bold" data-testid="text-my-total">{ratings.length}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">عدد التقييمات</p>
+                      <p className="text-xl sm:text-2xl font-bold" data-testid="text-my-total">{ratings.length}</p>
                     </div>
                     <MessageSquare className="w-8 h-8 text-primary" />
                   </CardContent>
                 </Card>
                 <Card className="shadow-sm">
-                  <CardContent className="p-4 flex items-center justify-between">
+                  <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">أوسمة الشرف</p>
-                      <p className="text-2xl font-bold" data-testid="text-my-badges">
+                      <p className="text-xs sm:text-sm text-muted-foreground">أوسمة الشرف</p>
+                      <p className="text-xl sm:text-2xl font-bold" data-testid="text-my-badges">
                         {ratings.filter(r => r.honorBadge).length}
                       </p>
                     </div>

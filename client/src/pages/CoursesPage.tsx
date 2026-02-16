@@ -422,12 +422,12 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div className="flex items-center gap-3">
-          <GraduationCap className="w-8 h-8 text-primary" />
+          <GraduationCap className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الدورات والشهادات</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الدورات والشهادات</h1>
             <p className="text-muted-foreground text-sm">
               {isTeacher && "إدارة الدورات وتخريج الطلاب"}
               {isSupervisor && "إدارة جميع الدورات في الجامع/المركز"}
@@ -444,7 +444,7 @@ export default function CoursesPage() {
                 إنشاء دورة جديدة
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+            <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto" dir="rtl">
               <DialogHeader>
                 <DialogTitle>إنشاء دورة جديدة</DialogTitle>
               </DialogHeader>
@@ -470,7 +470,7 @@ export default function CoursesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">تاريخ البداية *</label>
                     <Input
@@ -596,7 +596,7 @@ export default function CoursesPage() {
               <p className="text-muted-foreground text-lg">لا توجد دورات</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {courses.map(course => (
                 <Card
                   key={course.id}
@@ -768,7 +768,7 @@ export default function CoursesPage() {
               <p className="text-muted-foreground text-lg">لا توجد شهادات</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {certificates.map(cert => (
                 <Card key={cert.id} className="hover:shadow-md transition-shadow" data-testid={`card-certificate-${cert.id}`}>
                   <CardHeader className="pb-2">

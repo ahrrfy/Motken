@@ -167,6 +167,31 @@
   }
 }
 
+/* Touch-friendly tap targets on mobile */
+@media (max-width: 640px) {
+  button, [role="button"], a, input, select, textarea {
+    min-height: 36px;
+  }
+  
+  /* Prevent horizontal overflow on mobile */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better dialog sizing on mobile */
+  [role="dialog"] > div {
+    max-height: 90vh;
+    max-height: 90dvh;
+  }
+}
+
+/* Use dynamic viewport height for full-screen layouts */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print {

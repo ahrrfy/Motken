@@ -55,11 +55,11 @@ export default function LoginPage() {
         <div className="h-1.5 bg-gradient-to-r from-emerald-600 via-amber-500 to-emerald-600 w-full" />
         <CardHeader className="text-center space-y-3 pb-2 pt-6">
           <p className="text-lg text-muted-foreground font-serif">﷽</p>
-          <div className="mx-auto w-20 h-20 mb-2 relative">
+          <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 mb-2 relative">
             <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse"></div>
             <img src="/favicon.svg" alt="مُتْقِن" className="w-full h-full rounded-full shadow-lg relative z-10" />
           </div>
-          <CardTitle className="text-3xl font-bold text-primary font-serif">{isEn ? "Mutqin System" : "نظام مُتْقِن"}</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-primary font-serif">{isEn ? "Mutqin System" : "نظام مُتْقِن"}</CardTitle>
           <CardDescription>{isEn ? "Quran Memorization Management System" : "نظام إدارة حلقات التحفيظ"}</CardDescription>
         </CardHeader>
         <CardContent>

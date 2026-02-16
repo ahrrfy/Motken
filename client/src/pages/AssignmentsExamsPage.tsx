@@ -448,9 +448,9 @@ export default function AssignmentsExamsPage() {
   const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
           الواجبات والامتحانات
         </h1>
         <p className="text-muted-foreground">إدارة واجبات الطلاب والامتحانات في مكان واحد</p>

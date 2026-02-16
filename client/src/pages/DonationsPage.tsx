@@ -6,9 +6,9 @@ import { CreditCard, Heart, History } from "lucide-react";
 
 export default function DonationsPage() {
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
       <div className="text-center space-y-2 mb-8">
-        <h1 className="text-3xl font-bold font-serif text-primary">التبرع ودعم النظام</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary">التبرع ودعم النظام</h1>
         <p className="text-muted-foreground">ساهم في استمرار تطوير منصة الحفاظ وخدمة كتاب الله</p>
       </div>
 
@@ -22,7 +22,7 @@ export default function DonationsPage() {
             <CardDescription>الدفع الآمن عبر ماستر كارد (MasterCard)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <Button variant="outline" className="border-primary/20 hover:bg-primary/5">10,000 د.ع</Button>
               <Button variant="outline" className="border-primary/20 hover:bg-primary/5">25,000 د.ع</Button>
               <Button variant="outline" className="border-primary/20 hover:bg-primary/5">50,000 د.ع</Button>

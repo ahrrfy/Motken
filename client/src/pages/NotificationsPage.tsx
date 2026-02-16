@@ -253,10 +253,10 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الإشعارات والتنبيهات</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الإشعارات والتنبيهات</h1>
           <p className="text-muted-foreground">مركز الرسائل والتنبيهات الخاص بك</p>
         </div>
       </div>
@@ -273,7 +273,7 @@ export default function NotificationsPage() {
             </div>
           </CardHeader>
           {showSendForm && (
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 max-h-[80vh] overflow-y-auto">
               <div className="space-y-2">
                 <Label>عنوان الإشعار</Label>
                 <Input
@@ -453,7 +453,7 @@ export default function NotificationsPage() {
         <div className="space-y-4">
           {notifications.map((notif) => (
             <Card key={notif.id} className={`transition-all hover:shadow-md ${!notif.isRead ? 'border-r-4 border-r-primary bg-primary/5' : ''}`} data-testid={`card-notification-${notif.id}`}>
-              <CardContent className="p-4 flex items-start gap-4">
+              <CardContent className="p-3 sm:p-4 flex items-start gap-2 sm:gap-4">
                 <div className="flex items-center pt-1">
                   <Checkbox
                     checked={selectedIds.has(notif.id)}
@@ -462,7 +462,7 @@ export default function NotificationsPage() {
                   />
                 </div>
 
-                <div className={`p-3 rounded-full shrink-0 ${
+                <div className={`p-2 sm:p-3 rounded-full shrink-0 hidden sm:flex ${
                   notif.type === 'urgent' ? 'bg-red-100 text-red-600' :
                   notif.type === 'success' ? 'bg-green-100 text-green-600' :
                   notif.type === 'warning' ? 'bg-amber-100 text-amber-600' :
@@ -475,16 +475,16 @@ export default function NotificationsPage() {
                 </div>
                 
                 <div className="flex-1 space-y-1">
-                  <div className="flex justify-between items-start">
-                    <h4 className={`font-bold text-base ${!notif.isRead ? 'text-primary' : ''}`} data-testid={`text-notification-title-${notif.id}`}>{notif.title}</h4>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-1">
+                    <h4 className={`font-bold text-sm sm:text-base ${!notif.isRead ? 'text-primary' : ''}`} data-testid={`text-notification-title-${notif.id}`}>{notif.title}</h4>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
                       <Clock className="w-3 h-3" /> {formatTime(notif.createdAt)}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed" data-testid={`text-notification-message-${notif.id}`}>
                     {notif.message}
                   </p>
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
                     {!notif.isRead && (
                       <>
                         <Badge variant="secondary" className="text-xs font-normal" data-testid={`badge-new-${notif.id}`}>جديد</Badge>
