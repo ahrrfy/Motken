@@ -22,7 +22,8 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 ## Key Files
 - `shared/schema.ts` - Database schema (Drizzle) with all tables
 - `shared/quran-surahs.ts` - Complete 114 Quran surahs with verse counts
-- `shared/hadiths.ts` - 60 authentic hadiths from Bukhari/Muslim for ticker
+- `shared/hadiths.ts` - 100 authentic hadiths from Bukhari/Muslim for ticker
+- `client/src/lib/phone-utils.ts` - Iraqi phone format validation and WhatsApp URL generation
 - `server/storage.ts` - Storage layer with mosque-scoped queries
 - `server/routes.ts` - API routes with hierarchical permissions
 - `server/auth.ts` - Authentication setup (passport, sessions)
@@ -49,17 +50,17 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - NotificationsPage (with bulk actions), TeacherDailyPage
 
 ## Database Tables
-- mosques, users (with gender, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan fields; NO email field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
+- mosques (with status, adminNotes fields), users (with gender, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, adminNotes, suspendedUntil fields; NO email field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
 - activity_logs, notifications, courses, course_students, course_teachers, certificates
 - banned_devices (permanent IP bans with indexes on ip_address and device_fingerprint)
 
 ## Key Features
 - **Unified Assignments & Exams**: Single page with tabs for managing assignments and exams
 - **Gender Support**: Male/female selection for all users, displayed in tables and profiles
-- **Assignment Seen Status**: WhatsApp-style blue double checkmarks showing if student has seen their assignment
+- **Assignment Seen Status**: WhatsApp-style blue double checkmarks showing if student has seen their assignment - visible ONLY to teachers/supervisors, hidden from students (backend strips seenByStudent/seenAt from student API responses)
 - **Auto Notifications**: System automatically sends notifications when assignments, exams, or course enrollments are created
-- **Courses & Certificates**: Teachers/supervisors create courses, enroll students, graduate with professional Islamic certificate (﷽, corner decorations, gold accents, printable A4)
-- **Internal Islamic Library**: 50 books with internal reader, chapters, bookmarking, reading progress - no external links
+- **Courses & Certificates**: Teachers/supervisors create courses, enroll students, graduate with 3 certificate templates auto-detected by gender/age: Male (navy/gold), Female (purple/rose gold), Children (teal/yellow), A4 landscape
+- **Internal Islamic Library**: 50+ books with internal reader, chapters, bookmarking, reading progress, custom book uploads (localStorage), font size controls, background themes (white/sepia/dark), page navigation - no external links
 - **Ratings**: Supervisor rates teachers, teacher rates students (1-5 stars + honor badges)
 - **Exams**: Teachers create exams with Quran surah/verse selection, target all or specific students
 - **Print Permission**: Admin toggles `canPrintIds` for supervisors/teachers via AllUsersPage
@@ -80,9 +81,16 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - **Font Size Controls**: Adjustable 12-28px with localStorage persistence
 - **Web Push Notifications**: Service Worker polling for browser notifications
 - **Online User Monitoring**: In-memory session tracking with IP/device/browser/OS info, green/orange status indicators, 10-second auto-refresh
-- **Admin Controls**: Kick session, kick all user sessions, suspend/activate accounts, permanent IP ban
+- **Admin Controls**: Kick session, kick all user sessions, suspend/activate accounts, permanent IP ban, admin notes, temporary/permanent suspend with date picker
+- **Admin Account Protection**: Admin users cannot be deleted, suspended, deactivated, or banned - UI shows shield icon and "محمي" label
+- **Mosque Management**: Status control (active/suspended/permanently_closed), admin notes, comprehensive filters (search, status, province, date range)
 - **Permanent Banning**: IP-based bans stored in bannedDevices table, blocks login from banned IPs
-- **Hadith Ticker**: 60 authentic hadiths (Bukhari/Muslim) with fade animation, 15-second rotation, emerald gradient bar
+- **2-Device Login Limit**: Non-admin users limited to 2 concurrent sessions, oldest auto-kicked on 3rd login
+- **Hadith Ticker**: 100 authentic hadiths (Bukhari/Muslim) with fade animation, 15-second rotation, emerald gradient bar
+- **Iraqi Phone Validation**: Format validation (+964), auto-formatting, WhatsApp messaging buttons on all user pages
+- **Privacy Policy Settings**: Admin tab with policy text, acceptance stats, enforcement toggle, non-compliant user list
+- **Comprehensive Filters**: All management pages have search, status, date range, and contextual filters
+- **Quran Tracker Enhanced**: Surah progress grid (color-coded), overall stats with radial progress, activity timeline, surah search
 - **Device Permissions**: Camera (QR), geolocation (prayer times), notifications with visual status indicators in Settings
 - **Resilient API**: Automatic retries (3x exponential backoff) for GET requests, 15s timeout, Arabic error messages
 - **Response Compression**: gzip/brotli compression middleware for all responses
@@ -120,7 +128,7 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - Avatar upload uses base64 encoding (limit 500KB), stored in user.avatar field
 - Print utility uses HTML with Tajawal font, opens formatted window with Print/Save as PDF/Close buttons
 - Certificate printing uses direct window.open() without openPrintWindow header/footer, only certificate design
-- Certificate design: Islamic frame with ﷽, gold (#c9a84c) accents, navy (#16213e) theme, corner decorations
+- Certificate design: 3 templates - Male (navy/gold), Female (purple/rose gold), Children (teal/yellow) - auto-detected by gender/age, A4 landscape
 - Email field completely removed from entire system (schema, all pages, API routes, seed data)
 - Prayer times use geolocation with fallback to Baghdad coordinates (33.3152, 44.3661), all times in Asia/Baghdad timezone, recalculate every 60 seconds
 - Student form field order: name → username → password → gender → age → phone → parentPhone → telegramId → address → educationLevel → isSpecialNeeds → isOrphan
