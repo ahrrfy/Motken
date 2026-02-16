@@ -180,7 +180,7 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
       </div>
       <div class="content-area">
         <div class="header">
-          <div class="logo">مُتْقِن</div>
+          <div class="logo"><img src="/logo.png" style="width:60px;height:60px;border-radius:12px;" alt="مُتْقِن" /><br/>مُتْقِن</div>
           <div class="subtitle">نظام إدارة حلقات القرآن الكريم</div>
           <div class="report-title">${title}</div>
           <div class="date">${new Date().toLocaleDateString("ar-IQ", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>

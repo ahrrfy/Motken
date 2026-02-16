@@ -49,7 +49,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-islamic-pattern" dir="rtl">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 mx-auto">
-            <img src="/favicon.svg" alt="مُتْقِن" className="w-full h-full rounded-lg" />
+            <img src="/logo.png" alt="مُتْقِن" className="w-full h-full rounded-lg" />
           </div>
           <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground text-sm">جاري التحميل...</p>

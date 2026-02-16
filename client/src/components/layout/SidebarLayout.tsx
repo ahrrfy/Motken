@@ -143,7 +143,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const SidebarHeader = () => (
     <div className="p-4 sm:p-6 border-b border-sidebar-border/50 shrink-0">
       <div className="flex items-center gap-3">
-        <img src="/favicon.svg" alt="مُتْقِن" className="w-11 h-11 rounded-full shrink-0" />
+        <img src="/logo.png" alt="مُتْقِن" className="w-11 h-11 rounded-xl shrink-0" />
         <div className="min-w-0 flex-1">
           <h1 className="font-bold text-2xl leading-none">مُتْقِن</h1>
           <p className="text-xs text-sidebar-foreground/60 mt-1">{isEn ? "Quran Memorization System" : "نظام إدارة حلقات التحفيظ"}</p>
@@ -231,7 +231,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir={dir}>
       <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg">
         <div className="flex items-center gap-2">
-          <img src="/favicon.svg" alt="مُتْقِن" className="w-8 h-8 rounded-full" />
+          <img src="/logo.png" alt="مُتْقِن" className="w-8 h-8 rounded-lg" />
           <span className="font-bold text-lg">مُتْقِن</span>
         </div>
 

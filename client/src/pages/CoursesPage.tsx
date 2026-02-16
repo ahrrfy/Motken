@@ -310,7 +310,7 @@ export default function CoursesPage() {
           <div class="corner-decoration corner-br"></div>
           <div class="cert-header">
             <div class="bismillah">﷽</div>
-            <div class="cert-logo">م</div>
+            <div class="cert-logo"><img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>
             <div class="cert-system-name">مُتْقِن</div>
             <div class="cert-subtitle">نظام إدارة حلقات القرآن الكريم</div>
           </div>
