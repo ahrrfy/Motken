@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import { insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema, type User, type Assignment } from "@shared/schema";
@@ -1822,6 +1823,889 @@ export async function registerRoutes(
       res.json({ message: "تم إزالة الحظر" });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== FEATURE FLAGS ====================
+  app.get("/api/feature-flags", requireRole("admin"), async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      res.json(flags);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.patch("/api/feature-flags/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const { isEnabled } = req.body;
+      if (typeof isEnabled !== "boolean") {
+        return res.status(400).json({ message: "قيمة التفعيل مطلوبة" });
+      }
+      const updated = await storage.updateFeatureFlag(req.params.id, { isEnabled, updatedAt: new Date() });
+      if (!updated) return res.status(404).json({ message: "الميزة غير موجودة" });
+      await logActivity(req.user!, `${isEnabled ? "تفعيل" : "تعطيل"} ميزة: ${updated.featureName}`, "feature_flags");
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تحديث البيانات" });
+    }
+  });
+
+  app.get("/api/features/check/:key", requireAuth, async (req, res) => {
+    try {
+      const enabled = await storage.isFeatureEnabled(req.params.key);
+      res.json({ enabled });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.post("/api/feature-flags/seed", requireRole("admin"), async (req, res) => {
+    try {
+      const existing = await storage.getFeatureFlags();
+      if (existing.length > 0) {
+        return res.status(400).json({ message: "الميزات موجودة مسبقاً" });
+      }
+      const defaults = [
+        { featureKey: "attendance", featureName: "نظام الحضور والغياب", category: "management", isEnabled: true },
+        { featureKey: "messaging", featureName: "المحادثات الداخلية", category: "communication", isEnabled: true },
+        { featureKey: "points_rewards", featureName: "النقاط والمكافآت", category: "gamification", isEnabled: true },
+        { featureKey: "schedules", featureName: "جدولة الحلقات", category: "management", isEnabled: true },
+        { featureKey: "parent_portal", featureName: "بوابة ولي الأمر", category: "communication", isEnabled: true },
+        { featureKey: "mosque_map", featureName: "خريطة الجوامع", category: "visualization", isEnabled: false },
+        { featureKey: "backup_export", featureName: "النسخ الاحتياطي والتصدير", category: "data", isEnabled: true },
+        { featureKey: "smart_alerts", featureName: "التنبيهات الذكية", category: "automation", isEnabled: true },
+        { featureKey: "competitions", featureName: "المسابقات القرآنية", category: "gamification", isEnabled: true },
+        { featureKey: "advanced_reports", featureName: "التقارير المتقدمة", category: "analytics", isEnabled: true },
+      ];
+      const created = [];
+      for (const flag of defaults) {
+        const f = await storage.createFeatureFlag(flag);
+        created.push(f);
+      }
+      await logActivity(req.user!, "إنشاء الميزات الافتراضية", "feature_flags");
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إنشاء الميزات" });
+    }
+  });
+
+  // ==================== ATTENDANCE ====================
+  app.get("/api/attendance", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { studentId, teacherId, mosqueId, date } = req.query;
+
+      if (date && teacherId) {
+        const records = await storage.getAttendanceByDate(new Date(date as string), teacherId as string);
+        return res.json(records);
+      }
+      if (studentId) {
+        const records = await storage.getAttendanceByStudent(studentId as string);
+        return res.json(records);
+      }
+      if (teacherId) {
+        const records = await storage.getAttendanceByTeacher(teacherId as string);
+        return res.json(records);
+      }
+      if (mosqueId) {
+        const records = await storage.getAttendanceByMosque(mosqueId as string);
+        return res.json(records);
+      }
+      if (currentUser.role === "student") {
+        const records = await storage.getAttendanceByStudent(currentUser.id);
+        return res.json(records);
+      }
+      if (currentUser.role === "teacher") {
+        const records = await storage.getAttendanceByTeacher(currentUser.id);
+        return res.json(records);
+      }
+      if (currentUser.mosqueId) {
+        const records = await storage.getAttendanceByMosque(currentUser.mosqueId);
+        return res.json(records);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/attendance", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتسجيل الحضور" });
+      }
+      const { studentId, date, status, notes } = req.body;
+      if (!studentId || !date || !status) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const record = await storage.createAttendance({
+        studentId,
+        teacherId: currentUser.id,
+        mosqueId: currentUser.mosqueId,
+        date: new Date(date),
+        status,
+        notes,
+      });
+      await logActivity(currentUser, "تسجيل حضور", "attendance");
+      res.status(201).json(record);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تسجيل الحضور" });
+    }
+  });
+
+  app.patch("/api/attendance/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتعديل الحضور" });
+      }
+      const { status, notes } = req.body;
+      const updateData: any = {};
+      if (status !== undefined) updateData.status = status;
+      if (notes !== undefined) updateData.notes = notes;
+      const updated = await storage.updateAttendance(req.params.id, updateData);
+      if (!updated) return res.status(404).json({ message: "سجل الحضور غير موجود" });
+      await logActivity(currentUser, "تعديل حضور", "attendance");
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تعديل الحضور" });
+    }
+  });
+
+  app.delete("/api/attendance/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بحذف الحضور" });
+      }
+      await storage.deleteAttendance(req.params.id);
+      await logActivity(currentUser, "حذف سجل حضور", "attendance");
+      res.json({ message: "تم حذف سجل الحضور" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في حذف الحضور" });
+    }
+  });
+
+  app.post("/api/attendance/bulk", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتسجيل الحضور" });
+      }
+      const { date, students } = req.body;
+      if (!date || !students || !Array.isArray(students) || students.length === 0) {
+        return res.status(400).json({ message: "التاريخ وقائمة الطلاب مطلوبة" });
+      }
+      const created = [];
+      for (const s of students) {
+        if (!s.studentId || !s.status) continue;
+        const record = await storage.createAttendance({
+          studentId: s.studentId,
+          teacherId: currentUser.id,
+          mosqueId: currentUser.mosqueId,
+          date: new Date(date),
+          status: s.status,
+          notes: s.notes,
+        });
+        created.push(record);
+      }
+      await logActivity(currentUser, `تسجيل حضور جماعي: ${created.length} طالب`, "attendance");
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تسجيل الحضور الجماعي" });
+    }
+  });
+
+  // ==================== MESSAGES ====================
+  app.get("/api/messages", requireAuth, async (req, res) => {
+    try {
+      const msgs = await storage.getMessagesByUser(req.user!.id);
+      res.json(msgs);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب الرسائل" });
+    }
+  });
+
+  app.get("/api/messages/conversations", requireAuth, async (req, res) => {
+    try {
+      const msgs = await storage.getMessagesByUser(req.user!.id);
+      const userIds = new Set<string>();
+      for (const msg of msgs) {
+        if (msg.senderId !== req.user!.id) userIds.add(msg.senderId);
+        if (msg.receiverId !== req.user!.id) userIds.add(msg.receiverId);
+      }
+      const conversations = [];
+      for (const uid of Array.from(userIds)) {
+        const user = await storage.getUser(uid);
+        if (user) {
+          const { password, ...safe } = user;
+          const conv = await storage.getConversation(req.user!.id, uid);
+          const lastMsg = conv[conv.length - 1];
+          const unread = conv.filter(m => m.receiverId === req.user!.id && !m.isRead).length;
+          conversations.push({ user: safe, lastMessage: lastMsg, unreadCount: unread });
+        }
+      }
+      res.json(conversations);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب المحادثات" });
+    }
+  });
+
+  app.get("/api/messages/conversation/:userId", requireAuth, async (req, res) => {
+    try {
+      const msgs = await storage.getConversation(req.user!.id, req.params.userId);
+      res.json(msgs);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب المحادثة" });
+    }
+  });
+
+  app.get("/api/messages/unread-count", requireAuth, async (req, res) => {
+    try {
+      const count = await storage.getUnreadMessageCount(req.user!.id);
+      res.json({ count });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.post("/api/messages", requireAuth, async (req, res) => {
+    try {
+      const { receiverId, content } = req.body;
+      if (!receiverId || !content || typeof content !== "string") {
+        return res.status(400).json({ message: "المستلم والمحتوى مطلوبان" });
+      }
+      const receiver = await storage.getUser(receiverId);
+      if (!receiver) return res.status(404).json({ message: "المستلم غير موجود" });
+      const msg = await storage.createMessage({
+        senderId: req.user!.id,
+        receiverId,
+        mosqueId: req.user!.mosqueId,
+        content,
+        isRead: false,
+      });
+      await logActivity(req.user!, "إرسال رسالة", "messages");
+      res.status(201).json(msg);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إرسال الرسالة" });
+    }
+  });
+
+  app.patch("/api/messages/:id/read", requireAuth, async (req, res) => {
+    try {
+      const msg = await storage.getMessage(req.params.id);
+      if (!msg) return res.status(404).json({ message: "الرسالة غير موجودة" });
+      if (msg.receiverId !== req.user!.id) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      await storage.markMessageRead(req.params.id);
+      res.json({ message: "تم التحديث" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.post("/api/messages/mark-all-read/:senderId", requireAuth, async (req, res) => {
+    try {
+      await storage.markAllMessagesRead(req.params.senderId, req.user!.id);
+      res.json({ message: "تم تحديد الكل كمقروء" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.delete("/api/messages/:id", requireAuth, async (req, res) => {
+    try {
+      const msg = await storage.getMessage(req.params.id);
+      if (!msg) return res.status(404).json({ message: "الرسالة غير موجودة" });
+      if (msg.senderId !== req.user!.id) {
+        return res.status(403).json({ message: "يمكنك حذف رسائلك فقط" });
+      }
+      await storage.deleteMessage(req.params.id);
+      await logActivity(req.user!, "حذف رسالة", "messages");
+      res.json({ message: "تم حذف الرسالة" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في حذف الرسالة" });
+    }
+  });
+
+  // ==================== POINTS & BADGES ====================
+  app.get("/api/points", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || req.user!.id;
+      const pts = await storage.getPointsByUser(userId);
+      res.json(pts);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب النقاط" });
+    }
+  });
+
+  app.get("/api/points/total/:userId", requireAuth, async (req, res) => {
+    try {
+      const total = await storage.getTotalPoints(req.params.userId);
+      res.json({ total });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/points/leaderboard", requireAuth, async (req, res) => {
+    try {
+      const mosqueId = req.query.mosqueId as string | undefined;
+      const leaderboard = await storage.getLeaderboard(mosqueId);
+      res.json(leaderboard);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب لوحة المتصدرين" });
+    }
+  });
+
+  app.post("/api/points", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بمنح النقاط" });
+      }
+      const { userId, amount, reason, category } = req.body;
+      if (!userId || !amount || !reason) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const point = await storage.createPoint({
+        userId,
+        mosqueId: currentUser.mosqueId,
+        amount: Number(amount),
+        reason,
+        category: category || "assignment",
+      });
+      await logActivity(currentUser, `منح ${amount} نقطة`, "points");
+      res.status(201).json(point);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في منح النقاط" });
+    }
+  });
+
+  app.get("/api/badges", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || req.user!.id;
+      const userBadges = await storage.getBadgesByUser(userId);
+      res.json(userBadges);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب الأوسمة" });
+    }
+  });
+
+  app.post("/api/badges", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بمنح الأوسمة" });
+      }
+      const { userId, badgeType, badgeName, description } = req.body;
+      if (!userId || !badgeType || !badgeName) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const badge = await storage.createBadge({
+        userId,
+        mosqueId: currentUser.mosqueId,
+        badgeType,
+        badgeName,
+        description,
+      });
+      await logActivity(currentUser, `منح وسام: ${badgeName}`, "badges");
+      res.status(201).json(badge);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في منح الوسام" });
+    }
+  });
+
+  app.delete("/api/badges/:id", requireRole("admin"), async (req, res) => {
+    try {
+      await storage.deleteBadge(req.params.id);
+      await logActivity(req.user!, "حذف وسام", "badges");
+      res.json({ message: "تم حذف الوسام" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في حذف الوسام" });
+    }
+  });
+
+  // ==================== SCHEDULES ====================
+  app.get("/api/schedules", requireAuth, async (req, res) => {
+    try {
+      const { mosqueId, teacherId } = req.query;
+      if (mosqueId) {
+        const scheds = await storage.getSchedulesByMosque(mosqueId as string);
+        return res.json(scheds);
+      }
+      if (teacherId) {
+        const scheds = await storage.getSchedulesByTeacher(teacherId as string);
+        return res.json(scheds);
+      }
+      const currentUser = req.user!;
+      if (currentUser.role === "teacher") {
+        const scheds = await storage.getSchedulesByTeacher(currentUser.id);
+        return res.json(scheds);
+      }
+      if (currentUser.mosqueId) {
+        const scheds = await storage.getSchedulesByMosque(currentUser.mosqueId);
+        return res.json(scheds);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب الجداول" });
+    }
+  });
+
+  app.post("/api/schedules", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بإنشاء جدول" });
+      }
+      const { teacherId, title, dayOfWeek, startTime, endTime, location } = req.body;
+      if (!title || dayOfWeek === undefined || !startTime || !endTime) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const schedule = await storage.createSchedule({
+        mosqueId: currentUser.mosqueId,
+        teacherId: teacherId || currentUser.id,
+        title,
+        dayOfWeek: Number(dayOfWeek),
+        startTime,
+        endTime,
+        location,
+      });
+      await logActivity(currentUser, `إنشاء جدول: ${title}`, "schedules");
+      res.status(201).json(schedule);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إنشاء الجدول" });
+    }
+  });
+
+  app.patch("/api/schedules/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتعديل الجدول" });
+      }
+      const updateData: any = {};
+      if (req.body.title !== undefined) updateData.title = req.body.title;
+      if (req.body.dayOfWeek !== undefined) updateData.dayOfWeek = Number(req.body.dayOfWeek);
+      if (req.body.startTime !== undefined) updateData.startTime = req.body.startTime;
+      if (req.body.endTime !== undefined) updateData.endTime = req.body.endTime;
+      if (req.body.location !== undefined) updateData.location = req.body.location;
+      if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive;
+      const updated = await storage.updateSchedule(req.params.id, updateData);
+      if (!updated) return res.status(404).json({ message: "الجدول غير موجود" });
+      await logActivity(currentUser, "تعديل جدول", "schedules");
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تعديل الجدول" });
+    }
+  });
+
+  app.delete("/api/schedules/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بحذف الجدول" });
+      }
+      await storage.deleteSchedule(req.params.id);
+      await logActivity(currentUser, "حذف جدول", "schedules");
+      res.json({ message: "تم حذف الجدول" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في حذف الجدول" });
+    }
+  });
+
+  // ==================== COMPETITIONS ====================
+  app.get("/api/competitions", requireAuth, async (req, res) => {
+    try {
+      const mosqueId = req.query.mosqueId as string | undefined;
+      if (mosqueId) {
+        const comps = await storage.getCompetitionsByMosque(mosqueId);
+        return res.json(comps);
+      }
+      const currentUser = req.user!;
+      if (currentUser.role === "admin") {
+        const comps = await storage.getCompetitions();
+        return res.json(comps);
+      }
+      if (currentUser.mosqueId) {
+        const comps = await storage.getCompetitionsByMosque(currentUser.mosqueId);
+        return res.json(comps);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب المسابقات" });
+    }
+  });
+
+  app.get("/api/competitions/:id", requireAuth, async (req, res) => {
+    try {
+      const comp = await storage.getCompetition(req.params.id);
+      if (!comp) return res.status(404).json({ message: "المسابقة غير موجودة" });
+      const participants = await storage.getCompetitionParticipants(req.params.id);
+      res.json({ ...comp, participants });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب المسابقة" });
+    }
+  });
+
+  app.post("/api/competitions", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بإنشاء مسابقة" });
+      }
+      const { title, description, surahName, fromVerse, toVerse, competitionDate } = req.body;
+      if (!title || !competitionDate) {
+        return res.status(400).json({ message: "العنوان وتاريخ المسابقة مطلوبان" });
+      }
+      const comp = await storage.createCompetition({
+        mosqueId: currentUser.mosqueId,
+        createdBy: currentUser.id,
+        title,
+        description,
+        surahName,
+        fromVerse: fromVerse ? Number(fromVerse) : undefined,
+        toVerse: toVerse ? Number(toVerse) : undefined,
+        competitionDate: new Date(competitionDate),
+      });
+      await logActivity(currentUser, `إنشاء مسابقة: ${title}`, "competitions");
+      res.status(201).json(comp);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إنشاء المسابقة" });
+    }
+  });
+
+  app.patch("/api/competitions/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتعديل المسابقة" });
+      }
+      const updateData: any = {};
+      if (req.body.title !== undefined) updateData.title = req.body.title;
+      if (req.body.description !== undefined) updateData.description = req.body.description;
+      if (req.body.surahName !== undefined) updateData.surahName = req.body.surahName;
+      if (req.body.fromVerse !== undefined) updateData.fromVerse = Number(req.body.fromVerse);
+      if (req.body.toVerse !== undefined) updateData.toVerse = Number(req.body.toVerse);
+      if (req.body.competitionDate !== undefined) updateData.competitionDate = new Date(req.body.competitionDate);
+      if (req.body.status !== undefined) updateData.status = req.body.status;
+      const updated = await storage.updateCompetition(req.params.id, updateData);
+      if (!updated) return res.status(404).json({ message: "المسابقة غير موجودة" });
+      await logActivity(currentUser, "تعديل مسابقة", "competitions");
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تعديل المسابقة" });
+    }
+  });
+
+  app.delete("/api/competitions/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بحذف المسابقة" });
+      }
+      await storage.deleteCompetition(req.params.id);
+      await logActivity(currentUser, "حذف مسابقة", "competitions");
+      res.json({ message: "تم حذف المسابقة" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في حذف المسابقة" });
+    }
+  });
+
+  app.post("/api/competitions/:id/participants", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بإضافة مشاركين" });
+      }
+      const { studentId } = req.body;
+      if (!studentId) {
+        return res.status(400).json({ message: "معرف الطالب مطلوب" });
+      }
+      const participant = await storage.createCompetitionParticipant({
+        competitionId: req.params.id,
+        studentId,
+      });
+      await logActivity(currentUser, "إضافة مشارك في مسابقة", "competitions");
+      res.status(201).json(participant);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إضافة المشارك" });
+    }
+  });
+
+  app.patch("/api/competitions/:id/participants/:participantId", requireAuth, async (req, res) => {
+    try {
+      const updateData: any = {};
+      if (req.body.score !== undefined) updateData.score = Number(req.body.score);
+      if (req.body.rank !== undefined) updateData.rank = Number(req.body.rank);
+      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+      const updated = await storage.updateCompetitionParticipant(req.params.participantId, updateData);
+      if (!updated) return res.status(404).json({ message: "المشارك غير موجود" });
+      await logActivity(req.user!, "تعديل نتيجة مشارك", "competitions");
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تعديل المشارك" });
+    }
+  });
+
+  app.delete("/api/competitions/:id/participants/:participantId", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteCompetitionParticipant(req.params.participantId);
+      await logActivity(req.user!, "إزالة مشارك من مسابقة", "competitions");
+      res.json({ message: "تم إزالة المشارك" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إزالة المشارك" });
+    }
+  });
+
+  // ==================== PARENT REPORTS ====================
+  app.get("/api/parent-reports", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بعرض التقارير" });
+      }
+      const studentId = req.query.studentId as string;
+      if (!studentId) {
+        return res.status(400).json({ message: "معرف الطالب مطلوب" });
+      }
+      const reports = await storage.getParentReportsByStudent(studentId);
+      res.json(reports);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب التقارير" });
+    }
+  });
+
+  app.post("/api/parent-reports", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بإنشاء تقرير" });
+      }
+      const { studentId, reportType, content, expiresAt } = req.body;
+      if (!studentId || !content) {
+        return res.status(400).json({ message: "معرف الطالب والمحتوى مطلوبان" });
+      }
+      const accessToken = crypto.randomBytes(32).toString("hex");
+      const report = await storage.createParentReport({
+        studentId,
+        mosqueId: currentUser.mosqueId,
+        reportType: reportType || "weekly",
+        content,
+        accessToken,
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      });
+      await logActivity(currentUser, "إنشاء تقرير ولي أمر", "parent_reports");
+      res.status(201).json(report);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إنشاء التقرير" });
+    }
+  });
+
+  app.delete("/api/parent-reports/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بحذف التقرير" });
+      }
+      await storage.deleteParentReport(req.params.id);
+      await logActivity(currentUser, "حذف تقرير ولي أمر", "parent_reports");
+      res.json({ message: "تم حذف التقرير" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في حذف التقرير" });
+    }
+  });
+
+  app.get("/api/parent-report/:token", async (req, res) => {
+    try {
+      const report = await storage.getParentReportByToken(req.params.token);
+      if (!report) return res.status(404).json({ message: "التقرير غير موجود" });
+      if (report.expiresAt && new Date(report.expiresAt) < new Date()) {
+        return res.status(410).json({ message: "انتهت صلاحية التقرير" });
+      }
+      res.json(report);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب التقرير" });
+    }
+  });
+
+  // ==================== EXPORT ====================
+  app.get("/api/export/students", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتصدير البيانات" });
+      }
+      let students: User[] = [];
+      if (currentUser.role === "admin") {
+        const mosqueId = req.query.mosqueId as string | undefined;
+        if (mosqueId) {
+          students = await storage.getUsersByMosqueAndRole(mosqueId, "student");
+        } else {
+          students = await storage.getUsersByRole("student");
+        }
+      } else if (currentUser.mosqueId) {
+        students = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
+      }
+      const exported = students.map(({ password, ...s }) => s);
+      res.json(exported);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تصدير البيانات" });
+    }
+  });
+
+  app.get("/api/export/attendance", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتصدير البيانات" });
+      }
+      let records: any[] = [];
+      if (currentUser.role === "admin") {
+        const mosqueId = req.query.mosqueId as string | undefined;
+        if (mosqueId) {
+          records = await storage.getAttendanceByMosque(mosqueId);
+        } else {
+          const allMosques = await storage.getMosques();
+          for (const m of allMosques) {
+            const mr = await storage.getAttendanceByMosque(m.id);
+            records.push(...mr);
+          }
+        }
+      } else if (currentUser.role === "teacher") {
+        records = await storage.getAttendanceByTeacher(currentUser.id);
+      } else if (currentUser.mosqueId) {
+        records = await storage.getAttendanceByMosque(currentUser.mosqueId);
+      }
+      res.json(records);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تصدير البيانات" });
+    }
+  });
+
+  app.get("/api/export/assignments", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتصدير البيانات" });
+      }
+      let result: Assignment[] = [];
+      if (currentUser.role === "admin") {
+        const mosqueId = req.query.mosqueId as string | undefined;
+        if (mosqueId) {
+          result = await storage.getAssignmentsByMosque(mosqueId);
+        } else {
+          result = await storage.getAssignments();
+        }
+      } else if (currentUser.role === "teacher") {
+        result = await storage.getAssignmentsByTeacher(currentUser.id);
+      } else if (currentUser.mosqueId) {
+        result = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تصدير البيانات" });
+    }
+  });
+
+  // ==================== SMART ALERTS ====================
+  app.get("/api/smart-alerts", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بعرض التنبيهات" });
+      }
+      const alerts: any[] = [];
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+      let students: User[] = [];
+      let teachersList: User[] = [];
+      let assignmentsList: Assignment[] = [];
+
+      if (currentUser.role === "admin") {
+        students = await storage.getUsersByRole("student");
+        teachersList = await storage.getUsersByRole("teacher");
+        assignmentsList = await storage.getAssignments();
+      } else if (currentUser.role === "teacher") {
+        students = await storage.getUsersByTeacher(currentUser.id);
+        assignmentsList = await storage.getAssignmentsByTeacher(currentUser.id);
+      } else if (currentUser.mosqueId) {
+        const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+        students = mosqueUsers.filter(u => u.role === "student");
+        teachersList = mosqueUsers.filter(u => u.role === "teacher");
+        assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+      }
+
+      for (const student of students) {
+        const studentAssignments = assignmentsList.filter(a => a.studentId === student.id);
+        const hasRecent = studentAssignments.some(a => new Date(a.createdAt) > sevenDaysAgo);
+        if (!hasRecent && student.isActive) {
+          alerts.push({
+            type: "no_assignments",
+            severity: "warning",
+            message: `الطالب ${student.name} لم يتلق واجبات منذ أكثر من 7 أيام`,
+            userId: student.id,
+          });
+        }
+        const lowGrades = studentAssignments.filter(a => a.grade !== null && a.grade !== undefined && a.grade < 60);
+        if (lowGrades.length > 0) {
+          alerts.push({
+            type: "low_grades",
+            severity: "danger",
+            message: `الطالب ${student.name} لديه ${lowGrades.length} واجبات بدرجات أقل من 60`,
+            userId: student.id,
+          });
+        }
+      }
+
+      for (const teacher of teachersList) {
+        const teacherAssignments = assignmentsList.filter(a => a.teacherId === teacher.id);
+        const hasRecent = teacherAssignments.some(a => new Date(a.createdAt) > sevenDaysAgo);
+        if (!hasRecent && teacher.isActive) {
+          alerts.push({
+            type: "inactive_teacher",
+            severity: "info",
+            message: `الأستاذ ${teacher.name} لم يسجل أي نشاط منذ أكثر من 7 أيام`,
+            userId: teacher.id,
+          });
+        }
+      }
+
+      let examsList: any[] = [];
+      if (currentUser.role === "admin") {
+        const allMosques = await storage.getMosques();
+        for (const m of allMosques) {
+          const me = await storage.getExamsByMosque(m.id);
+          examsList.push(...me);
+        }
+      } else if (currentUser.role === "teacher") {
+        examsList = await storage.getExamsByTeacher(currentUser.id);
+      } else if (currentUser.mosqueId) {
+        examsList = await storage.getExamsByMosque(currentUser.mosqueId);
+      }
+
+      for (const exam of examsList) {
+        const examDate = new Date(exam.examDate);
+        if (examDate >= new Date() && examDate <= threeDaysFromNow) {
+          alerts.push({
+            type: "upcoming_exam",
+            severity: "info",
+            message: `اختبار قادم: ${exam.title} بتاريخ ${examDate.toLocaleDateString("ar")}`,
+            examId: exam.id,
+          });
+        }
+      }
+
+      res.json(alerts);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تحليل التنبيهات" });
     }
   });
 

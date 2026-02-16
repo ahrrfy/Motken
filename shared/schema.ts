@@ -247,3 +247,149 @@ export const bannedDevices = pgTable("banned_devices", {
 export const insertBannedDeviceSchema = createInsertSchema(bannedDevices).omit({ id: true, createdAt: true });
 export type InsertBannedDevice = z.infer<typeof insertBannedDeviceSchema>;
 export type BannedDevice = typeof bannedDevices.$inferSelect;
+
+// ==================== FEATURE FLAGS ====================
+export const featureFlags = pgTable("feature_flags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  featureKey: text("feature_key").notNull().unique(),
+  featureName: text("feature_name").notNull(),
+  description: text("description"),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  category: text("category").notNull().default("general"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({ id: true, createdAt: true });
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+export type FeatureFlag = typeof featureFlags.$inferSelect;
+
+// ==================== ATTENDANCE ====================
+export const attendance = pgTable("attendance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  teacherId: varchar("teacher_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  date: timestamp("date").notNull(),
+  status: text("status").notNull().default("present"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true, createdAt: true });
+export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
+export type Attendance = typeof attendance.$inferSelect;
+
+// ==================== MESSAGES ====================
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderId: varchar("sender_id").notNull().references(() => users.id),
+  receiverId: varchar("receiver_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;
+
+// ==================== POINTS ====================
+export const points = pgTable("points", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  amount: integer("amount").notNull(),
+  reason: text("reason").notNull(),
+  category: text("category").notNull().default("assignment"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPointSchema = createInsertSchema(points).omit({ id: true, createdAt: true });
+export type InsertPoint = z.infer<typeof insertPointSchema>;
+export type Point = typeof points.$inferSelect;
+
+// ==================== BADGES ====================
+export const badges = pgTable("badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  badgeType: text("badge_type").notNull(),
+  badgeName: text("badge_name").notNull(),
+  description: text("description"),
+  earnedAt: timestamp("earned_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({ id: true, createdAt: true });
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;
+
+// ==================== SCHEDULES ====================
+export const schedules = pgTable("schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  teacherId: varchar("teacher_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  dayOfWeek: integer("day_of_week").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  location: text("location"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertScheduleSchema = createInsertSchema(schedules).omit({ id: true, createdAt: true });
+export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
+export type Schedule = typeof schedules.$inferSelect;
+
+// ==================== COMPETITIONS ====================
+export const competitions = pgTable("competitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  surahName: text("surah_name"),
+  fromVerse: integer("from_verse"),
+  toVerse: integer("to_verse"),
+  competitionDate: timestamp("competition_date").notNull(),
+  status: text("status").notNull().default("upcoming"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCompetitionSchema = createInsertSchema(competitions).omit({ id: true, createdAt: true });
+export type InsertCompetition = z.infer<typeof insertCompetitionSchema>;
+export type Competition = typeof competitions.$inferSelect;
+
+// ==================== COMPETITION PARTICIPANTS ====================
+export const competitionParticipants = pgTable("competition_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  competitionId: varchar("competition_id").notNull().references(() => competitions.id),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  score: integer("score"),
+  rank: integer("rank"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCompetitionParticipantSchema = createInsertSchema(competitionParticipants).omit({ id: true, createdAt: true });
+export type InsertCompetitionParticipant = z.infer<typeof insertCompetitionParticipantSchema>;
+export type CompetitionParticipant = typeof competitionParticipants.$inferSelect;
+
+// ==================== PARENT REPORTS ====================
+export const parentReports = pgTable("parent_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  reportType: text("report_type").notNull().default("weekly"),
+  content: text("content").notNull(),
+  accessToken: text("access_token").notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertParentReportSchema = createInsertSchema(parentReports).omit({ id: true, createdAt: true });
+export type InsertParentReport = z.infer<typeof insertParentReportSchema>;
+export type ParentReport = typeof parentReports.$inferSelect;
