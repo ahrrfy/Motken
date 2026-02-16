@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle } from "lucide-react";
 import type { Mosque } from "@shared/schema";
 
 interface MosqueStats {
@@ -26,7 +28,19 @@ interface MosqueStats {
   students: number;
 }
 
-const emptyForm = { name: "", province: "", city: "", area: "", landmark: "", address: "", phone: "", managerName: "", description: "" };
+const emptyForm = { name: "", province: "", city: "", area: "", landmark: "", address: "", phone: "", managerName: "", description: "", adminNotes: "" };
+
+const statusLabels: Record<string, string> = {
+  active: "نشط",
+  suspended: "موقوف مؤقتاً",
+  permanently_closed: "موقوف نهائياً",
+};
+
+const statusColors: Record<string, string> = {
+  active: "bg-green-100 text-green-700 hover:bg-green-200 border-none",
+  suspended: "bg-orange-100 text-orange-700 hover:bg-orange-200 border-none",
+  permanently_closed: "bg-red-100 text-red-700 hover:bg-red-200 border-none",
+};
 
 export default function MosquesPage() {
   const { toast } = useToast();
@@ -38,6 +52,12 @@ export default function MosquesPage() {
   const [editingMosque, setEditingMosque] = useState<Mosque | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterProvince, setFilterProvince] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const fetchMosques = useCallback(async () => {
     try {
@@ -65,7 +85,6 @@ export default function MosquesPage() {
       }
       setStats((prev) => ({ ...prev, [mosqueId]: s }));
     } catch {
-      // ignore
     }
   }, []);
 
@@ -88,11 +107,12 @@ export default function MosquesPage() {
     }
     setSubmitting(true);
     try {
+      const { adminNotes, ...addData } = form;
       const res = await fetch("/api/mosques", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify(addData),
       });
       if (!res.ok) throw new Error();
       toast({ title: "تم بنجاح", description: "تمت إضافة الجامع/المركز بنجاح" });
@@ -143,6 +163,23 @@ export default function MosquesPage() {
     }
   };
 
+  const handleStatusChange = async (mosque: Mosque, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/mosques/${mosque.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error();
+      const statusMsg = newStatus === "suspended" ? "تم إيقاف الجامع مؤقتاً" : newStatus === "permanently_closed" ? "تم إيقاف الجامع نهائياً" : "تم تفعيل الجامع";
+      toast({ title: "تم بنجاح", description: statusMsg });
+      fetchMosques();
+    } catch {
+      toast({ title: "خطأ", description: "فشل في تغيير حالة الجامع", variant: "destructive" });
+    }
+  };
+
   const openEditDialog = (mosque: Mosque) => {
     setEditingMosque(mosque);
     setForm({
@@ -155,6 +192,7 @@ export default function MosquesPage() {
       phone: mosque.phone || "",
       managerName: (mosque as any).managerName || "",
       description: mosque.description || "",
+      adminNotes: (mosque as any).adminNotes || "",
     });
     setEditOpen(true);
   };
@@ -171,7 +209,26 @@ export default function MosquesPage() {
     { key: "description", label: "الوصف" },
   ];
 
-  const renderForm = () => (
+  const provinces = Array.from(new Set(mosques.map((m) => (m as any).province).filter(Boolean)));
+
+  const filteredMosques = mosques.filter((m) => {
+    const matchesSearch = !search || m.name.includes(search) || ((m as any).province || "").includes(search) || (m.city || "").includes(search);
+    const matchesStatus = filterStatus === "all" || (m as any).status === filterStatus;
+    const matchesProvince = filterProvince === "all" || (m as any).province === filterProvince;
+    let matchesDate = true;
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      matchesDate = matchesDate && new Date(m.createdAt) >= from;
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      matchesDate = matchesDate && new Date(m.createdAt) <= to;
+    }
+    return matchesSearch && matchesStatus && matchesProvince && matchesDate;
+  });
+
+  const renderForm = (isEdit: boolean = false) => (
     <div className="space-y-4" dir="rtl">
       {formFields.map((f) => (
         <div key={f.key} className="space-y-2">
@@ -187,6 +244,19 @@ export default function MosquesPage() {
           />
         </div>
       ))}
+      {isEdit && (
+        <div className="space-y-2">
+          <Label htmlFor="field-adminNotes">ملاحظات إدارية</Label>
+          <Textarea
+            id="field-adminNotes"
+            data-testid="input-mosque-adminNotes"
+            value={form.adminNotes}
+            onChange={(e) => handleChange("adminNotes", e.target.value)}
+            placeholder="ملاحظات إدارية خاصة..."
+            rows={3}
+          />
+        </div>
+      )}
     </div>
   );
 
@@ -218,7 +288,7 @@ export default function MosquesPage() {
             <DialogHeader>
               <DialogTitle className="font-serif text-primary">إضافة جامع/مركز تحفيظ</DialogTitle>
             </DialogHeader>
-            <div className="max-h-[80vh] overflow-y-auto">{renderForm()}</div>
+            <div className="max-h-[80vh] overflow-y-auto">{renderForm(false)}</div>
             <div className="flex flex-wrap justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setAddOpen(false)} data-testid="button-cancel-add">
                 إلغاء
@@ -231,7 +301,78 @@ export default function MosquesPage() {
         </Dialog>
       </div>
 
-      {mosques.length === 0 ? (
+      <Card>
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  data-testid="input-search-mosques"
+                  placeholder="بحث بالاسم أو المحافظة أو المدينة..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pr-9"
+                />
+              </div>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full sm:w-44" data-testid="select-filter-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الحالات</SelectItem>
+                  <SelectItem value="active">نشط</SelectItem>
+                  <SelectItem value="suspended">موقوف مؤقتاً</SelectItem>
+                  <SelectItem value="permanently_closed">موقوف نهائياً</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterProvince} onValueChange={setFilterProvince}>
+                <SelectTrigger className="w-full sm:w-44" data-testid="select-filter-province">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع المحافظات</SelectItem>
+                  {provinces.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 items-end">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-muted-foreground">من تاريخ</Label>
+                <Input
+                  type="date"
+                  data-testid="input-date-from"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-muted-foreground">إلى تاريخ</Label>
+                <Input
+                  type="date"
+                  data-testid="input-date-to"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+              {(search || filterStatus !== "all" || filterProvince !== "all" || dateFrom || dateTo) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setSearch(""); setFilterStatus("all"); setFilterProvince("all"); setDateFrom(""); setDateTo(""); }}
+                  data-testid="button-clear-filters"
+                >
+                  مسح الفلاتر
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {filteredMosques.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Building2 className="w-16 h-16 text-muted-foreground/40 mb-4" />
@@ -241,8 +382,9 @@ export default function MosquesPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mosques.map((mosque) => {
+          {filteredMosques.map((mosque) => {
             const mosqueStats = stats[mosque.id] || { supervisors: 0, teachers: 0, students: 0 };
+            const mosqueStatus = (mosque as any).status || "active";
             return (
               <Card key={mosque.id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`card-mosque-${mosque.id}`}>
                 <CardContent className="p-3 sm:p-4 md:p-5 space-y-3">
@@ -264,11 +406,11 @@ export default function MosquesPage() {
                       </div>
                     </div>
                     <Badge
-                      variant={mosque.isActive ? "default" : "secondary"}
-                      className={mosque.isActive ? "bg-green-100 text-green-700 hover:bg-green-200 border-none shrink-0" : "shrink-0"}
+                      variant="secondary"
+                      className={`${statusColors[mosqueStatus] || statusColors.active} shrink-0`}
                       data-testid={`badge-status-${mosque.id}`}
                     >
-                      {mosque.isActive ? "نشط" : "غير نشط"}
+                      {statusLabels[mosqueStatus] || "نشط"}
                     </Badge>
                   </div>
 
@@ -293,17 +435,93 @@ export default function MosquesPage() {
                     <span data-testid={`text-students-${mosque.id}`}>طلاب: {mosqueStats.students}</span>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 gap-1"
+                      className="gap-1"
                       onClick={() => openEditDialog(mosque)}
                       data-testid={`button-edit-mosque-${mosque.id}`}
                     >
                       <Edit className="w-3.5 h-3.5" />
                       تعديل
                     </Button>
+                    {mosqueStatus !== "suspended" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            data-testid={`button-suspend-mosque-${mosque.id}`}
+                          >
+                            <PauseCircle className="w-3.5 h-3.5" />
+                            إيقاف مؤقت
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent dir="rtl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>إيقاف مؤقت</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              هل أنت متأكد من إيقاف "{mosque.name}" مؤقتاً؟
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-row-reverse gap-2">
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleStatusChange(mosque, "suspended")}
+                              className="bg-orange-600 hover:bg-orange-700"
+                            >
+                              إيقاف مؤقت
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {mosqueStatus !== "permanently_closed" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            data-testid={`button-close-mosque-${mosque.id}`}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            إيقاف نهائي
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent dir="rtl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>إيقاف نهائي</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              هل أنت متأكد من الإيقاف النهائي لـ "{mosque.name}"؟ هذا الإجراء يعني إغلاق الجامع/المركز بشكل دائم.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-row-reverse gap-2">
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleStatusChange(mosque, "permanently_closed")}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              إيقاف نهائي
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {mosqueStatus !== "active" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => handleStatusChange(mosque, "active")}
+                        data-testid={`button-activate-mosque-${mosque.id}`}
+                      >
+                        <PlayCircle className="w-3.5 h-3.5" />
+                        تفعيل
+                      </Button>
+                    )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -348,7 +566,7 @@ export default function MosquesPage() {
           <DialogHeader>
             <DialogTitle className="font-serif text-primary">تعديل بيانات الجامع/المركز</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[80vh] overflow-y-auto">{renderForm()}</div>
+          <div className="max-h-[80vh] overflow-y-auto">{renderForm(true)}</div>
           <div className="flex flex-wrap justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setEditOpen(false)} data-testid="button-cancel-edit">
               إلغاء
