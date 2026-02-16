@@ -1,8 +1,9 @@
 const CACHE_NAME = "mutqin-cache-v1";
 const STATIC_ASSETS = [
-  "/favicon.png",
-  "/favicon.svg",
-  "/images/logo.png",
+  "/logo.png",
+  "/icon-192.png",
+  "/favicon.ico",
+  "/apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (event) => {
