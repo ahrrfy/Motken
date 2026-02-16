@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle } from "lucide-react";
+import { isValidIraqiPhone, getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -362,10 +363,16 @@ export default function StudentsPage() {
                   <div className="space-y-2">
                     <Label>الهاتف <span className="text-red-500">*</span></Label>
                     <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
+                    {formData.phone && !isValidIraqiPhone(formData.phone) && (
+                      <p className="text-xs text-orange-500 mt-1" data-testid="text-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>هاتف ولي الأمر</Label>
-                    <Input data-testid="input-parent-phone" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} dir="ltr" />
+                    <Input data-testid="input-parent-phone" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" />
+                    {formData.parentPhone && !isValidIraqiPhone(formData.parentPhone) && (
+                      <p className="text-xs text-orange-500 mt-1" data-testid="text-parent-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>معرف التلغرام</Label>
@@ -468,7 +475,35 @@ export default function StudentsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell" data-testid={`text-gender-${student.id}`}>{student.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
-                      <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>{student.phone || "—"}</TableCell>
+                      <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>
+                        <div className="flex items-center gap-1">
+                          <span>{student.phone || "—"}</span>
+                          {student.phone && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => window.open(getWhatsAppUrl(student.phone!), "_blank")}
+                              title="واتساب"
+                              data-testid={`button-whatsapp-${student.id}`}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          {student.parentPhone && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => window.open(getWhatsAppUrl(student.parentPhone!), "_blank")}
+                              title="واتساب ولي الأمر"
+                              data-testid={`button-whatsapp-parent-${student.id}`}
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                       {isSupervisor && (
                         <TableCell className="hidden md:table-cell">
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
