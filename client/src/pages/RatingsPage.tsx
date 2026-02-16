@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Star, Award, MessageSquare } from "lucide-react";
+import { Loader2, Star, Award, MessageSquare, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAr } from "@/lib/utils";
@@ -41,6 +43,11 @@ export default function RatingsPage() {
   const [formStars, setFormStars] = useState(0);
   const [formComment, setFormComment] = useState("");
   const [formHonorBadge, setFormHonorBadge] = useState(false);
+
+  const [ratingSearchTerm, setRatingSearchTerm] = useState("");
+  const [filterStars, setFilterStars] = useState("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   const isSupervisor = user?.role === "supervisor";
   const isTeacher = user?.role === "teacher";
@@ -133,6 +140,37 @@ export default function RatingsPage() {
 
   const getHonorBadgeCount = (userId: string) => getUserRatings(userId).filter(r => r.honorBadge).length;
 
+  const ratingsHasActiveFilters = ratingSearchTerm || filterStars !== "all" || filterDateFrom || filterDateTo;
+
+  const clearRatingFilters = () => {
+    setRatingSearchTerm("");
+    setFilterStars("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
+
+  const filteredUsers = users.filter(u => {
+    if (ratingSearchTerm && !u.name.includes(ratingSearchTerm) && !u.username.includes(ratingSearchTerm)) return false;
+    if (filterStars !== "all") {
+      const avg = getAverageStars(u.id);
+      if (Math.round(avg) !== parseInt(filterStars)) return false;
+    }
+    return true;
+  });
+
+  const filteredRatings = ratings.filter(r => {
+    if (filterStars !== "all" && r.stars !== parseInt(filterStars)) return false;
+    if (filterDateFrom && r.createdAt) {
+      if (new Date(r.createdAt) < new Date(filterDateFrom)) return false;
+    }
+    if (filterDateTo && r.createdAt) {
+      const toDate = new Date(filterDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(r.createdAt) > toDate) return false;
+    }
+    return true;
+  });
+
   const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
   const renderStars = (count: number, interactive: boolean = false, onSelect?: (n: number) => void) => (
@@ -172,9 +210,65 @@ export default function RatingsPage() {
         </p>
       </div>
 
+      <Card dir="rtl">
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={isStudent ? "بحث في التقييمات..." : "بحث بالاسم..."}
+                className="pr-8"
+                value={ratingSearchTerm}
+                onChange={(e) => setRatingSearchTerm(e.target.value)}
+                data-testid="input-search-ratings"
+              />
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterStars} onValueChange={setFilterStars}>
+                <SelectTrigger data-testid="select-filter-stars">
+                  <SelectValue placeholder="النجوم" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">النجوم - الكل</SelectItem>
+                  <SelectItem value="5">5 نجوم</SelectItem>
+                  <SelectItem value="4">4 نجوم</SelectItem>
+                  <SelectItem value="3">3 نجوم</SelectItem>
+                  <SelectItem value="2">نجمتان</SelectItem>
+                  <SelectItem value="1">نجمة واحدة</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                data-testid="input-filter-date-from"
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                data-testid="input-filter-date-to"
+              />
+            </div>
+            {ratingsHasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearRatingFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-filters">
+                <X className="w-4 h-4" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {(isSupervisor || isTeacher) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {users.map(u => {
+          {filteredUsers.map(u => {
             const avg = getAverageStars(u.id);
             const total = getUserRatings(u.id).length;
             const badges = getHonorBadgeCount(u.id);
@@ -249,7 +343,7 @@ export default function RatingsPage() {
               </Card>
             );
           })}
-          {users.length === 0 && (
+          {filteredUsers.length === 0 && (
             <div className="col-span-full text-center py-12 text-muted-foreground" data-testid="status-empty">
               لا يوجد {isSupervisor ? "أساتذة" : "طلاب"} لتقييمهم
             </div>
@@ -259,7 +353,7 @@ export default function RatingsPage() {
 
       {isStudent && (
         <div className="space-y-4">
-          {ratings.length === 0 ? (
+          {filteredRatings.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground" data-testid="status-empty">
               لا توجد تقييمات بعد
             </div>
@@ -271,7 +365,7 @@ export default function RatingsPage() {
                     <div>
                       <p className="text-xs sm:text-sm text-muted-foreground">متوسط التقييم</p>
                       <p className="text-xl sm:text-2xl font-bold" data-testid="text-my-avg">
-                        {(ratings.reduce((s, r) => s + r.stars, 0) / ratings.length).toFixed(1)}
+                        {(filteredRatings.reduce((s, r) => s + r.stars, 0) / filteredRatings.length).toFixed(1)}
                       </p>
                     </div>
                     <Star className="w-8 h-8 fill-yellow-400 text-yellow-400" />
@@ -281,7 +375,7 @@ export default function RatingsPage() {
                   <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                     <div>
                       <p className="text-xs sm:text-sm text-muted-foreground">عدد التقييمات</p>
-                      <p className="text-xl sm:text-2xl font-bold" data-testid="text-my-total">{ratings.length}</p>
+                      <p className="text-xl sm:text-2xl font-bold" data-testid="text-my-total">{filteredRatings.length}</p>
                     </div>
                     <MessageSquare className="w-8 h-8 text-primary" />
                   </CardContent>
@@ -291,7 +385,7 @@ export default function RatingsPage() {
                     <div>
                       <p className="text-xs sm:text-sm text-muted-foreground">أوسمة الشرف</p>
                       <p className="text-xl sm:text-2xl font-bold" data-testid="text-my-badges">
-                        {ratings.filter(r => r.honorBadge).length}
+                        {filteredRatings.filter(r => r.honorBadge).length}
                       </p>
                     </div>
                     <Award className="w-8 h-8 text-amber-500" />
@@ -303,7 +397,7 @@ export default function RatingsPage() {
                   <CardTitle className="text-lg font-serif">سجل التقييمات</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {ratings.map(r => (
+                  {filteredRatings.map(r => (
                     <div key={r.id} className="border rounded-lg p-3" data-testid={`rating-item-${r.id}`}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">

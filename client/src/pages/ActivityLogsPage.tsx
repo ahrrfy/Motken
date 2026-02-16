@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Filter, Search, ShieldAlert, ShieldCheck, Printer, Loader2 } from "lucide-react";
+import { Download, Filter, Search, ShieldAlert, ShieldCheck, Printer, Loader2, X } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAr } from "@/lib/utils";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -27,6 +28,10 @@ export default function ActivityLogsPage() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [filterModule, setFilterModule] = useState("all");
+  const [filterAction, setFilterAction] = useState("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,10 +48,35 @@ export default function ActivityLogsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredLogs = logs.filter(log =>
-    (log.userName.includes(searchTerm) || log.action.includes(searchTerm)) &&
-    (filterType === "all" || log.status === filterType)
-  );
+  const hasActiveFilters = filterType !== "all" || filterModule !== "all" || filterAction !== "all" || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterType("all");
+    setFilterModule("all");
+    setFilterAction("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
+
+  const uniqueModules = [...new Set(logs.map(l => l.module))];
+  const uniqueActions = [...new Set(logs.map(l => l.action))];
+
+  const filteredLogs = logs.filter(log => {
+    if (searchTerm && !log.userName.includes(searchTerm) && !log.action.includes(searchTerm) && !(log.details || "").includes(searchTerm)) return false;
+    if (filterType !== "all" && log.status !== filterType) return false;
+    if (filterModule !== "all" && log.module !== filterModule) return false;
+    if (filterAction !== "all" && log.action !== filterAction) return false;
+    if (filterDateFrom && log.createdAt) {
+      if (new Date(log.createdAt) < new Date(filterDateFrom)) return false;
+    }
+    if (filterDateTo && log.createdAt) {
+      const toDate = new Date(filterDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(log.createdAt) > toDate) return false;
+    }
+    return true;
+  });
 
   const formatDate = (dateStr: string) => {
     try {
@@ -99,36 +129,87 @@ export default function ActivityLogsPage() {
         </div>
       </div>
 
-      <Card>
+      <Card dir="rtl">
         <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
             <CardTitle className="text-lg flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-green-600" />
-              العمليات المسجلة
+              العمليات المسجلة ({filteredLogs.length})
             </CardTitle>
-            <div className="flex gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-64">
-                <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="بحث في السجل..."
-                  className="pr-9"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  data-testid="input-search"
-                />
-              </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-3 mt-3">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="بحث في السجل..."
+                className="pr-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                data-testid="input-search"
+              />
+            </div>
+            <div className="w-full sm:w-40">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[150px]" data-testid="select-filter">
-                  <Filter className="w-4 h-4 ml-2 text-muted-foreground" />
-                  <SelectValue placeholder="تصفية" />
+                <SelectTrigger data-testid="select-filter-type">
+                  <SelectValue placeholder="الحالة" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="all">الحالة - الكل</SelectItem>
                   <SelectItem value="success">عمليات ناجحة</SelectItem>
                   <SelectItem value="danger">تنبيهات أمنية</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-full sm:w-40">
+              <Select value={filterModule} onValueChange={setFilterModule}>
+                <SelectTrigger data-testid="select-filter-module">
+                  <SelectValue placeholder="القسم" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">القسم - الكل</SelectItem>
+                  {uniqueModules.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Select value={filterAction} onValueChange={setFilterAction}>
+                <SelectTrigger data-testid="select-filter-action">
+                  <SelectValue placeholder="نوع العملية" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">العملية - الكل</SelectItem>
+                  {uniqueActions.map(a => (
+                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                data-testid="input-filter-date-from"
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+              <Input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                data-testid="input-filter-date-to"
+              />
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-filters">
+                <X className="w-4 h-4" />
+                مسح الفلاتر
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-3 md:p-6">

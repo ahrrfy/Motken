@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import {
   CalendarIcon, Clock, CheckCircle2, User, BookOpen, Loader2,
-  Plus, Calendar as CalendarLucide, Users, FileText, Trash2
+  Plus, Calendar as CalendarLucide, Users, FileText, Trash2, Search, X
 } from "lucide-react";
 
 interface Student {
@@ -102,6 +102,12 @@ export default function AssignmentsExamsPage() {
   const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
   const [verseText, setVerseText] = useState<Record<string, any[]>>({});
   const [loadingVerses, setLoadingVerses] = useState<string | null>(null);
+
+  const [assignSearchTerm, setAssignSearchTerm] = useState("");
+  const [assignFilterStatus, setAssignFilterStatus] = useState("all");
+  const [assignFilterSurah, setAssignFilterSurah] = useState("all");
+  const [assignFilterDateFrom, setAssignFilterDateFrom] = useState("");
+  const [assignFilterDateTo, setAssignFilterDateTo] = useState("");
 
   const [examTitle, setExamTitle] = useState("");
   const [examSelectedSurah, setExamSelectedSurah] = useState("");
@@ -445,6 +451,36 @@ export default function AssignmentsExamsPage() {
     return students.find(s => s.id === studentId)?.name || studentId;
   };
 
+  const assignHasActiveFilters = assignSearchTerm || assignFilterStatus !== "all" || assignFilterSurah !== "all" || assignFilterDateFrom || assignFilterDateTo;
+
+  const clearAssignFilters = () => {
+    setAssignSearchTerm("");
+    setAssignFilterStatus("all");
+    setAssignFilterSurah("all");
+    setAssignFilterDateFrom("");
+    setAssignFilterDateTo("");
+  };
+
+  const filteredAssignments = assignments.filter(a => {
+    if (assignSearchTerm) {
+      const studentName = getAssignStudentName(a.studentId);
+      if (!studentName.includes(assignSearchTerm) && !a.surahName.includes(assignSearchTerm)) return false;
+    }
+    if (assignFilterStatus !== "all" && a.status !== assignFilterStatus) return false;
+    if (assignFilterSurah !== "all" && a.surahName !== assignFilterSurah) return false;
+    if (assignFilterDateFrom && a.scheduledDate) {
+      if (new Date(a.scheduledDate) < new Date(assignFilterDateFrom)) return false;
+    }
+    if (assignFilterDateTo && a.scheduledDate) {
+      const toDate = new Date(assignFilterDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(a.scheduledDate) > toDate) return false;
+    }
+    return true;
+  });
+
+  const uniqueSurahNames = [...new Set(assignments.map(a => a.surahName))];
+
   const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
   return (
@@ -592,9 +628,71 @@ export default function AssignmentsExamsPage() {
             </Card>)}
 
             <div className="space-y-6">
-              <Card className="bg-muted/30 border-none">
+              <Card className="bg-muted/30 border-none" dir="rtl">
                 <CardHeader>
-                  <CardTitle className="text-lg">الواجبات الأخيرة</CardTitle>
+                  <CardTitle className="text-lg">الواجبات ({filteredAssignments.length})</CardTitle>
+                  <div className="flex flex-wrap items-end gap-3 mt-3">
+                    <div className="relative w-full sm:w-48">
+                      <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="بحث بالاسم أو السورة..."
+                        className="pr-8"
+                        value={assignSearchTerm}
+                        onChange={(e) => setAssignSearchTerm(e.target.value)}
+                        data-testid="input-search-assignments"
+                      />
+                    </div>
+                    <div className="w-full sm:w-36">
+                      <Select value={assignFilterStatus} onValueChange={setAssignFilterStatus}>
+                        <SelectTrigger data-testid="select-filter-assign-status">
+                          <SelectValue placeholder="الحالة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">الحالة - الكل</SelectItem>
+                          <SelectItem value="pending">انتظار</SelectItem>
+                          <SelectItem value="done">تم التسميع</SelectItem>
+                          <SelectItem value="cancelled">ملغي</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-full sm:w-40">
+                      <Select value={assignFilterSurah} onValueChange={setAssignFilterSurah}>
+                        <SelectTrigger data-testid="select-filter-assign-surah">
+                          <SelectValue placeholder="السورة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">السورة - الكل</SelectItem>
+                          {uniqueSurahNames.map(name => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-full sm:w-36">
+                      <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+                      <Input
+                        type="date"
+                        value={assignFilterDateFrom}
+                        onChange={(e) => setAssignFilterDateFrom(e.target.value)}
+                        data-testid="input-filter-assign-date-from"
+                      />
+                    </div>
+                    <div className="w-full sm:w-36">
+                      <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+                      <Input
+                        type="date"
+                        value={assignFilterDateTo}
+                        onChange={(e) => setAssignFilterDateTo(e.target.value)}
+                        data-testid="input-filter-assign-date-to"
+                      />
+                    </div>
+                    {assignHasActiveFilters && (
+                      <Button variant="ghost" size="sm" onClick={clearAssignFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-assign-filters">
+                        <X className="w-4 h-4" />
+                        مسح الفلاتر
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {loadingAssignments ? (
@@ -602,12 +700,12 @@ export default function AssignmentsExamsPage() {
                       <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
                       <span>جاري التحميل...</span>
                     </div>
-                  ) : assignments.length === 0 ? (
+                  ) : filteredAssignments.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground" data-testid="status-empty-assignments">
                       لا توجد واجبات
                     </div>
                   ) : (
-                    (isStudent ? assignments : assignments.slice(0, 5)).map((task) => (
+                    (isStudent ? filteredAssignments : filteredAssignments).map((task) => (
                       <div key={task.id} className={`p-4 bg-white rounded-lg shadow-sm border border-slate-100 ${isStudent ? 'cursor-pointer hover:border-primary/30 transition-colors' : ''}`} data-testid={`card-assignment-${task.id}`} onClick={() => isStudent && fetchQuranVerses(task.id, task.surahName, task.fromVerse, task.toVerse)}>
                         <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
