@@ -241,10 +241,10 @@ export default function StudentsPage() {
   const filteredStudents = students.filter(s => s.name.includes(searchTerm) || s.username.includes(searchTerm));
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الطلاب</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الطلاب</h1>
           <p className="text-muted-foreground">إدارة بيانات الطلاب ومتابعة تقدمهم</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -306,7 +306,7 @@ export default function StudentsPage() {
                 <DialogHeader>
                   <DialogTitle>إضافة طالب جديد</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 mt-4">
+                <div className="space-y-4 mt-4 max-h-[80vh] overflow-y-auto">
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden shrink-0">
                       {formData.avatar ? (
@@ -412,9 +412,9 @@ export default function StudentsPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <CardTitle className="text-lg">قائمة الطلاب ({filteredStudents.length})</CardTitle>
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="بحث عن طالب..."
@@ -426,7 +426,7 @@ export default function StudentsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 md:p-6">
+        <CardContent className="p-0 sm:p-4 md:p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12" data-testid="status-loading">
               <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
@@ -442,9 +442,9 @@ export default function StudentsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">الاسم</TableHead>
-                    <TableHead className="text-right">الجنس</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">الجنس</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
-                    {isSupervisor && <TableHead className="text-right">الأستاذ</TableHead>}
+                    {isSupervisor && <TableHead className="text-right hidden md:table-cell">الأستاذ</TableHead>}
                     <TableHead className="text-right">الحالة</TableHead>
                     {isSupervisor && <TableHead className="text-center">إجراءات</TableHead>}
                   </TableRow>
@@ -460,10 +460,10 @@ export default function StudentsPage() {
                           {student.name}
                         </div>
                       </TableCell>
-                      <TableCell data-testid={`text-gender-${student.id}`}>{student.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
+                      <TableCell className="hidden sm:table-cell" data-testid={`text-gender-${student.id}`}>{student.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>{student.phone || "—"}</TableCell>
                       {isSupervisor && (
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <GraduationCap className="w-3.5 h-3.5" />
                             {getTeacherName(student.teacherId)}

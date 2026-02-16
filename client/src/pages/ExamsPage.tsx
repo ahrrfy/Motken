@@ -280,10 +280,10 @@ export default function ExamsPage() {
   const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الامتحانات</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الامتحانات</h1>
           <p className="text-muted-foreground">
             {isTeacher && "إدارة الامتحانات وتقييم الطلاب"}
             {isSupervisor && "عرض جميع الامتحانات في الجامع/المركز"}
@@ -298,7 +298,7 @@ export default function ExamsPage() {
                 إنشاء امتحان
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+            <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto" dir="rtl">
               <DialogHeader>
                 <DialogTitle>إنشاء امتحان جديد</DialogTitle>
               </DialogHeader>
@@ -329,7 +329,7 @@ export default function ExamsPage() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>من آية *</Label>
                     <Input
@@ -366,7 +366,7 @@ export default function ExamsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>تاريخ الامتحان *</Label>
                     <Input

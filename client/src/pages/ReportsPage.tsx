@@ -204,10 +204,10 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6" data-testid="reports-page">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" data-testid="reports-page">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary" data-testid="reports-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="reports-title">
             التقارير والإحصائيات
           </h1>
           <p className="text-muted-foreground">تحليل شامل لأداء الحلقات والطلاب</p>
@@ -219,7 +219,7 @@ export default function ReportsPage() {
           <Filter className="h-5 w-5 text-muted-foreground" />
           {isAdmin && (
             <Select value={selectedMosque} onValueChange={(val) => { setSelectedMosque(val === "all" ? "" : val); }} data-testid="filter-mosque">
-              <SelectTrigger className="w-[200px]" data-testid="select-mosque-trigger">
+              <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-mosque-trigger">
                 <SelectValue placeholder="جميع الجوامع والمراكز" />
               </SelectTrigger>
               <SelectContent>
@@ -233,7 +233,7 @@ export default function ReportsPage() {
             </Select>
           )}
           <Select value={selectedTeacher} onValueChange={(val) => { setSelectedTeacher(val === "all" ? "" : val); }} data-testid="filter-teacher">
-            <SelectTrigger className="w-[200px]" data-testid="select-teacher-trigger">
+            <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-teacher-trigger">
               <SelectValue placeholder="جميع الأساتذة" />
             </SelectTrigger>
             <SelectContent>
@@ -273,14 +273,14 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="stats-cards">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4" data-testid="stats-cards">
             <Card data-testid="card-total-students">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">إجمالي الطلاب</CardTitle>
                 <Users className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold" data-testid="value-total-students">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-total-students">
                   {stats.totalStudents || 0}
                 </div>
               </CardContent>
@@ -292,7 +292,7 @@ export default function ReportsPage() {
                 <BookOpen className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold" data-testid="value-total-teachers">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-total-teachers">
                   {stats.totalTeachers || 0}
                 </div>
               </CardContent>
@@ -305,7 +305,7 @@ export default function ReportsPage() {
                   <ShieldCheck className="h-5 w-5 text-purple-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold" data-testid="value-total-supervisors">
+                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-total-supervisors">
                     {stats.totalSupervisors || 0}
                   </div>
                 </CardContent>
@@ -319,7 +319,7 @@ export default function ReportsPage() {
                   <Building2 className="h-5 w-5 text-amber-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold" data-testid="value-total-mosques">
+                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-total-mosques">
                     {stats.totalMosques || 0}
                   </div>
                 </CardContent>
@@ -332,7 +332,7 @@ export default function ReportsPage() {
                 <BarChart3 className="h-5 w-5 text-indigo-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold" data-testid="value-total-assignments">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-total-assignments">
                   {stats.totalAssignments || 0}
                 </div>
               </CardContent>
@@ -344,7 +344,7 @@ export default function ReportsPage() {
                 <CheckCircle className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold" data-testid="value-completed-assignments">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-completed-assignments">
                   {stats.completedAssignments || 0}
                 </div>
               </CardContent>
@@ -356,7 +356,7 @@ export default function ReportsPage() {
                 <Clock className="h-5 w-5 text-amber-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold" data-testid="value-pending-assignments">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-pending-assignments">
                   {stats.pendingAssignments || 0}
                 </div>
               </CardContent>
@@ -369,7 +369,7 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <span className="text-3xl font-bold" data-testid="value-active-students">
+                  <span className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-active-students">
                     {stats.activeStudents || 0}
                   </span>
                   <Badge variant="secondary" data-testid="badge-inactive-students">
@@ -386,7 +386,7 @@ export default function ReportsPage() {
                 <ShieldCheck className="h-5 w-5 text-purple-500" />
               </CardHeader>
               <CardContent>
-                <span className="text-3xl font-bold" data-testid="value-special-needs">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-special-needs">
                   {stats.specialNeedsStudents || 0}
                 </span>
               </CardContent>
@@ -398,20 +398,20 @@ export default function ReportsPage() {
                 <Users className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <span className="text-3xl font-bold" data-testid="value-orphans">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-bold" data-testid="value-orphans">
                   {stats.orphanStudents || 0}
                 </span>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-testid="charts-grid">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" data-testid="charts-grid">
             <Card data-testid="chart-assignments-status">
               <CardHeader>
                 <CardTitle>حالة الواجبات</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
+                <div className="h-[220px] sm:h-[280px] md:h-[300px] w-full">
                   {pieData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -451,7 +451,7 @@ export default function ReportsPage() {
                 <CardTitle>حالة الطلاب</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
+                <div className="h-[220px] sm:h-[280px] md:h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={barData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -488,27 +488,27 @@ export default function ReportsPage() {
                   <table className="w-full text-sm" data-testid="users-table">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="p-3 text-right font-medium">الاسم</th>
-                        <th className="p-3 text-right font-medium">الدور</th>
-                        <th className="p-3 text-right font-medium">اسم المستخدم</th>
-                        <th className="p-3 text-right font-medium">الحالة</th>
-                        <th className="p-3 text-right font-medium">الهاتف</th>
+                        <th className="p-2 sm:p-3 text-right font-medium">الاسم</th>
+                        <th className="p-2 sm:p-3 text-right font-medium">الدور</th>
+                        <th className="p-2 sm:p-3 text-right font-medium hidden sm:table-cell">اسم المستخدم</th>
+                        <th className="p-2 sm:p-3 text-right font-medium">الحالة</th>
+                        <th className="p-2 sm:p-3 text-right font-medium hidden md:table-cell">الهاتف</th>
                       </tr>
                     </thead>
                     <tbody>
                       {stats.users.map((u: any, i: number) => (
                         <tr key={u.id || i} className="border-b" data-testid={`row-user-${u.id || i}`}>
-                          <td className="p-3">{u.name}</td>
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3">{u.name}</td>
+                          <td className="p-2 sm:p-3">
                             <Badge variant="outline">{u.role}</Badge>
                           </td>
-                          <td className="p-3">{u.username}</td>
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3 hidden sm:table-cell">{u.username}</td>
+                          <td className="p-2 sm:p-3">
                             <Badge variant={u.isActive ? "default" : "secondary"}>
                               {u.isActive ? "نشط" : "غير نشط"}
                             </Badge>
                           </td>
-                          <td className="p-3">{u.phone || "-"}</td>
+                          <td className="p-2 sm:p-3 hidden md:table-cell">{u.phone || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
