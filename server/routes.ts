@@ -1643,7 +1643,19 @@ export async function registerRoutes(
 
   app.get("/api/verify-user/:id", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUser(req.params.id);
+      let user;
+      const idParam = req.params.id.trim();
+      const mtqMatch = idParam.match(/^MTQ-\d{4}-([A-Za-z0-9]{4})$/i);
+      if (mtqMatch) {
+        const last4 = mtqMatch[1].toUpperCase();
+        const allUsers = await storage.getUsers();
+        user = allUsers.find((u) => {
+          const uLast4 = u.id.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase();
+          return uLast4 === last4;
+        });
+      } else {
+        user = await storage.getUser(idParam);
+      }
       if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
       const currentUser = req.user!;
       if (currentUser.role !== "admin" && user.mosqueId !== currentUser.mosqueId) {
