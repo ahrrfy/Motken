@@ -26,7 +26,7 @@ interface MosqueStats {
   students: number;
 }
 
-const emptyForm = { name: "", city: "", address: "", phone: "", imam: "", description: "" };
+const emptyForm = { name: "", province: "", city: "", area: "", landmark: "", address: "", phone: "", managerName: "", description: "" };
 
 export default function MosquesPage() {
   const { toast } = useToast();
@@ -147,10 +147,13 @@ export default function MosquesPage() {
     setEditingMosque(mosque);
     setForm({
       name: mosque.name || "",
+      province: (mosque as any).province || "",
       city: mosque.city || "",
+      area: (mosque as any).area || "",
+      landmark: (mosque as any).landmark || "",
       address: mosque.address || "",
       phone: mosque.phone || "",
-      imam: mosque.imam || "",
+      managerName: (mosque as any).managerName || "",
       description: mosque.description || "",
     });
     setEditOpen(true);
@@ -158,10 +161,13 @@ export default function MosquesPage() {
 
   const formFields = [
     { key: "name", label: "اسم الجامع/المركز", required: true },
+    { key: "managerName", label: "اسم مسؤول الجامع أو مركز التحفيظ" },
+    { key: "province", label: "المحافظة" },
     { key: "city", label: "المدينة" },
-    { key: "address", label: "العنوان" },
+    { key: "area", label: "المنطقة" },
+    { key: "landmark", label: "أقرب نقطة دالة" },
+    { key: "address", label: "العنوان التفصيلي" },
     { key: "phone", label: "الهاتف" },
-    { key: "imam", label: "الإمام" },
     { key: "description", label: "الوصف" },
   ];
 
@@ -249,10 +255,10 @@ export default function MosquesPage() {
                         <h3 className="font-bold font-serif text-base truncate" data-testid={`text-mosque-name-${mosque.id}`}>
                           {mosque.name}
                         </h3>
-                        {mosque.city && (
+                        {((mosque as any).province || mosque.city) && (
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <MapPin className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{mosque.city}</span>
+                            <span className="truncate">{[(mosque as any).province, mosque.city, (mosque as any).area].filter(Boolean).join(" - ")}</span>
                           </div>
                         )}
                       </div>
@@ -267,10 +273,10 @@ export default function MosquesPage() {
                   </div>
 
                   <div className="space-y-1.5 text-sm">
-                    {mosque.imam && (
+                    {(mosque as any).managerName && (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Users className="w-3.5 h-3.5 shrink-0" />
-                        <span>الإمام: {mosque.imam}</span>
+                        <span>المسؤول: {(mosque as any).managerName}</span>
                       </div>
                     )}
                     {mosque.phone && (

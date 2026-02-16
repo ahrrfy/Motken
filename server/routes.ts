@@ -64,11 +64,11 @@ export async function registerRoutes(
 
   app.post("/api/mosques", requireRole("admin"), async (req, res) => {
     try {
-      const { name, city, address, phone, imam, description, image, isActive } = req.body;
+      const { name, province, city, area, landmark, address, phone, managerName, description, image, isActive } = req.body;
       if (!name || typeof name !== "string" || name.length > 200) {
         return res.status(400).json({ message: "اسم الجامع مطلوب ويجب ألا يتجاوز 200 حرف" });
       }
-      const mosque = await storage.createMosque({ name, city, address, phone, imam, description, image, isActive });
+      const mosque = await storage.createMosque({ name, province, city, area, landmark, address, phone, managerName, description, image, isActive });
       await logActivity(req.user!, `إنشاء جامع: ${mosque.name}`, "mosques");
       res.status(201).json(mosque);
     } catch (err: any) {
@@ -78,15 +78,27 @@ export async function registerRoutes(
 
   app.patch("/api/mosques/:id", requireRole("admin"), async (req, res) => {
     try {
-      const { name, city, address, phone, imam, description, image, isActive } = req.body;
+      const { name, province, city, area, landmark, address, phone, managerName, description, image, isActive } = req.body;
       const updateData: any = {};
       if (name !== undefined) {
         if (typeof name !== "string" || name.length > 200) return res.status(400).json({ message: "اسم الجامع يجب ألا يتجاوز 200 حرف" });
         updateData.name = name;
       }
+      if (province !== undefined) {
+        if (typeof province !== "string" || province.length > 100) return res.status(400).json({ message: "اسم المحافظة يجب ألا يتجاوز 100 حرف" });
+        updateData.province = province;
+      }
       if (city !== undefined) {
         if (typeof city !== "string" || city.length > 100) return res.status(400).json({ message: "اسم المدينة يجب ألا يتجاوز 100 حرف" });
         updateData.city = city;
+      }
+      if (area !== undefined) {
+        if (typeof area !== "string" || area.length > 200) return res.status(400).json({ message: "اسم المنطقة يجب ألا يتجاوز 200 حرف" });
+        updateData.area = area;
+      }
+      if (landmark !== undefined) {
+        if (typeof landmark !== "string" || landmark.length > 300) return res.status(400).json({ message: "أقرب نقطة دالة يجب ألا تتجاوز 300 حرف" });
+        updateData.landmark = landmark;
       }
       if (address !== undefined) {
         if (typeof address !== "string" || address.length > 500) return res.status(400).json({ message: "العنوان يجب ألا يتجاوز 500 حرف" });
@@ -96,9 +108,9 @@ export async function registerRoutes(
         if (typeof phone !== "string" || phone.length > 20) return res.status(400).json({ message: "رقم الهاتف يجب ألا يتجاوز 20 حرف" });
         updateData.phone = phone;
       }
-      if (imam !== undefined) {
-        if (typeof imam !== "string" || imam.length > 200) return res.status(400).json({ message: "اسم الإمام يجب ألا يتجاوز 200 حرف" });
-        updateData.imam = imam;
+      if (managerName !== undefined) {
+        if (typeof managerName !== "string" || managerName.length > 200) return res.status(400).json({ message: "اسم المسؤول يجب ألا يتجاوز 200 حرف" });
+        updateData.managerName = managerName;
       }
       if (description !== undefined) {
         if (typeof description !== "string" || description.length > 1000) return res.status(400).json({ message: "الوصف يجب ألا يتجاوز 1000 حرف" });
@@ -1438,30 +1450,39 @@ export async function registerRoutes(
 
       const mosque1 = await storage.createMosque({
         name: "جامع النور الكبير",
+        province: "بغداد",
         city: "بغداد",
+        area: "الكرخ",
+        landmark: "قرب ساحة النصر",
         address: "الكرخ - شارع حيفا",
         phone: "07701000001",
-        imam: "الشيخ عبد الكريم",
+        managerName: "الشيخ عبد الكريم",
         description: "جامع رئيسي لتحفيظ القرآن الكريم",
         isActive: true,
       });
 
       const mosque2 = await storage.createMosque({
         name: "جامع الإمام أبي حنيفة",
+        province: "بغداد",
         city: "بغداد",
+        area: "الأعظمية",
+        landmark: "قرب جسر الأعظمية",
         address: "الأعظمية",
         phone: "07701000002",
-        imam: "الشيخ محمود",
+        managerName: "الشيخ محمود",
         description: "من أعرق مساجد بغداد",
         isActive: true,
       });
 
       const mosque3 = await storage.createMosque({
         name: "جامع الرحمن",
+        province: "البصرة",
         city: "البصرة",
+        area: "المركز",
+        landmark: "قرب سوق الهنود",
         address: "شارع الجمهورية",
         phone: "07701000003",
-        imam: "الشيخ حسن",
+        managerName: "الشيخ حسن",
         description: "مسجد تحفيظ القرآن في البصرة",
         isActive: true,
       });
