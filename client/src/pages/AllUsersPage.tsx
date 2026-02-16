@@ -12,6 +12,7 @@ import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Tr
 import { openPrintWindow } from "@/lib/print-utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import UsernameInput from "@/components/UsernameInput";
+import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
 interface Mosque {
   id: string;
@@ -72,6 +73,7 @@ export default function AllUsersPage() {
     mosqueId: "",
     phone: "",
   });
+  const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string; mosqueName: string } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -98,8 +100,8 @@ export default function AllUsersPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.username || !form.name || (!editingUser && !form.password)) {
-      toast({ title: "يرجى ملء جميع الحقول المطلوبة", variant: "destructive" });
+    if (!form.username || !form.name || (!editingUser && !form.password) || (!editingUser && !form.phone)) {
+      toast({ title: "يرجى ملء جميع الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف)", variant: "destructive" });
       return;
     }
     if (form.role !== "admin" && !form.mosqueId) {
@@ -122,10 +124,24 @@ export default function AllUsersPage() {
       });
 
       if (res.ok) {
-        toast({ title: editingUser ? "تم تحديث المستخدم بنجاح" : "تم إضافة المستخدم بنجاح" });
-        setDialogOpen(false);
-        resetForm();
-        fetchData();
+        if (!editingUser) {
+          const savedName = form.name;
+          const savedUsername = form.username;
+          const savedPassword = form.password;
+          const savedPhone = form.phone;
+          const savedRole = form.role;
+          const savedMosqueName = mosques.find(m => m.id === form.mosqueId)?.name || "";
+          toast({ title: "تم إضافة المستخدم بنجاح" });
+          setDialogOpen(false);
+          resetForm();
+          fetchData();
+          setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: savedRole, mosqueName: savedMosqueName });
+        } else {
+          toast({ title: "تم تحديث المستخدم بنجاح" });
+          setDialogOpen(false);
+          resetForm();
+          fetchData();
+        }
       } else {
         const data = await res.json();
         toast({ title: data.message || "حدث خطأ", variant: "destructive" });
@@ -301,8 +317,8 @@ export default function AllUsersPage() {
                 </div>
               )}
               <div>
-                <Label>رقم الهاتف</Label>
-                <Input data-testid="input-user-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xxxxxxxxx" dir="ltr" />
+                <Label>رقم الهاتف <span className="text-red-500">*</span></Label>
+                <Input data-testid="input-user-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xxxxxxxxx" dir="ltr" required />
               </div>
               <Button className="w-full" onClick={handleSubmit} data-testid="button-submit-user">
                 {editingUser ? "تحديث" : "إضافة"}
@@ -482,6 +498,19 @@ export default function AllUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {credentialsDialog && (
+        <CredentialsShareDialog
+          open={credentialsDialog.open}
+          onClose={() => setCredentialsDialog(null)}
+          name={credentialsDialog.name}
+          username={credentialsDialog.username}
+          password={credentialsDialog.password}
+          phone={credentialsDialog.phone}
+          role={credentialsDialog.role}
+          mosqueName={credentialsDialog.mosqueName || undefined}
+        />
+      )}
     </div>
   );
 }
