@@ -20,6 +20,8 @@ export const mosques = pgTable("mosques", {
   managerName: text("manager_name"),
   description: text("description"),
   image: text("image"),
+  status: text("status").notNull().default("active"),
+  adminNotes: text("admin_notes"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -51,6 +53,8 @@ export const users = pgTable("users", {
   canPrintIds: boolean("can_print_ids").notNull().default(false),
   acceptedPrivacyPolicy: boolean("accepted_privacy_policy").notNull().default(false),
   privacyPolicyAcceptedAt: timestamp("privacy_policy_accepted_at"),
+  adminNotes: text("admin_notes"),
+  suspendedUntil: timestamp("suspended_until"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

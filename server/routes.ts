@@ -139,6 +139,13 @@ export async function registerRoutes(
       }
       if (image !== undefined) updateData.image = image;
       if (isActive !== undefined) updateData.isActive = isActive;
+      if (req.body.status !== undefined) {
+        if (!["active", "suspended", "permanently_closed"].includes(req.body.status)) {
+          return res.status(400).json({ message: "حالة الجامع غير صحيحة" });
+        }
+        updateData.status = req.body.status;
+      }
+      if (req.body.adminNotes !== undefined) updateData.adminNotes = req.body.adminNotes;
       const updated = await storage.updateMosque(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "الجامع غير موجود" });
       res.json(updated);
@@ -328,9 +335,21 @@ export async function registerRoutes(
     if (currentUser.role === "admin") {
       if (req.body.role !== undefined) updateData.role = req.body.role;
       if (req.body.mosqueId !== undefined) updateData.mosqueId = req.body.mosqueId;
-      if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive;
+      if (req.body.isActive !== undefined) {
+        if (targetUser.role === "admin" && req.body.isActive === false) {
+          return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
+        }
+        updateData.isActive = req.body.isActive;
+      }
       if (req.body.canPrintIds !== undefined) updateData.canPrintIds = req.body.canPrintIds;
       if (req.body.username !== undefined) updateData.username = req.body.username;
+      if (req.body.adminNotes !== undefined) updateData.adminNotes = req.body.adminNotes;
+      if (req.body.suspendedUntil !== undefined) {
+        if (targetUser.role === "admin") {
+          return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
+        }
+        updateData.suspendedUntil = req.body.suspendedUntil ? new Date(req.body.suspendedUntil) : null;
+      }
     }
 
     const updated = await storage.updateUser(req.params.id, updateData);
@@ -344,6 +363,11 @@ export async function registerRoutes(
 
   app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {
     try {
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) return res.status(404).json({ message: "المستخدم غير موجود" });
+      if (targetUser.role === "admin") {
+        return res.status(403).json({ message: "لا يمكن حذف حساب مدير النظام" });
+      }
       await storage.deleteUser(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
@@ -1672,6 +1696,10 @@ export async function registerRoutes(
   app.post("/api/admin/kick-session", requireRole("admin"), async (req, res) => {
     const { sessionId } = req.body;
     if (!sessionId) return res.status(400).json({ message: "معرف الجلسة مطلوب" });
+    const session = sessionTracker.getSession(sessionId);
+    if (session && session.role === "admin") {
+      return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
+    }
     sessionTracker.removeSession(sessionId);
     res.json({ message: "تم إنهاء الجلسة" });
   });
@@ -1679,6 +1707,10 @@ export async function registerRoutes(
   app.post("/api/admin/kick-user", requireRole("admin"), async (req, res) => {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ message: "معرف المستخدم مطلوب" });
+    const targetUser = await storage.getUser(userId);
+    if (targetUser && targetUser.role === "admin") {
+      return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
+    }
     sessionTracker.removeSessionsByUserId(userId);
     res.json({ message: "تم إنهاء جميع جلسات المستخدم" });
   });
@@ -1688,7 +1720,7 @@ export async function registerRoutes(
     if (!userId) return res.status(400).json({ message: "معرف المستخدم مطلوب" });
     const user = await storage.getUser(userId);
     if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
-    if (user.role === "admin") return res.status(403).json({ message: "لا يمكن إيقاف حساب المدير" });
+    if (user.role === "admin") return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
     await storage.updateUser(userId, { isActive: false });
     sessionTracker.removeSessionsByUserId(userId);
     await logActivity(req.user!, `إيقاف حساب ${user.name} مؤقتاً`, "users");
@@ -1710,7 +1742,7 @@ export async function registerRoutes(
     if (!userId) return res.status(400).json({ message: "معرف المستخدم مطلوب" });
     const user = await storage.getUser(userId);
     if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
-    if (user.role === "admin") return res.status(403).json({ message: "لا يمكن حظر حساب المدير" });
+    if (user.role === "admin") return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
 
     const userSessions = sessionTracker.getSessionsByUserId(userId);
     const bannedIPs = new Set<string>();
