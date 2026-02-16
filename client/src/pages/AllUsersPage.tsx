@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download, PauseCircle, XCircle, FileText } from "lucide-react";
+import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download, PauseCircle, XCircle, FileText, MessageCircle } from "lucide-react";
+import { isValidIraqiPhone, getWhatsAppUrl } from "@/lib/phone-utils";
 import { openPrintWindow } from "@/lib/print-utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import UsernameInput from "@/components/UsernameInput";
@@ -426,6 +427,9 @@ export default function AllUsersPage() {
               <div>
                 <Label>رقم الهاتف <span className="text-red-500">*</span></Label>
                 <Input data-testid="input-user-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xxxxxxxxx" dir="ltr" required />
+                {form.phone && !isValidIraqiPhone(form.phone) && (
+                  <p className="text-xs text-orange-500 mt-1" data-testid="text-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
+                )}
               </div>
               <Button className="w-full" onClick={handleSubmit} data-testid="button-submit-user">
                 {editingUser ? "تحديث" : "إضافة"}
@@ -610,7 +614,23 @@ export default function AllUsersPage() {
                             {getMosqueName(u.mosqueId)}
                           </div>
                         </td>
-                        <td className="py-3 px-2 hidden lg:table-cell text-muted-foreground" dir="ltr">{u.phone || "—"}</td>
+                        <td className="py-3 px-2 hidden lg:table-cell text-muted-foreground" dir="ltr">
+                          <div className="flex items-center gap-1">
+                            <span>{u.phone || "—"}</span>
+                            {u.phone && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => window.open(getWhatsAppUrl(u.phone!), "_blank")}
+                                title="واتساب"
+                                data-testid={`button-whatsapp-${u.id}`}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-3 px-2 text-center hidden lg:table-cell">
                           {u.isActive !== false ? (
                             <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs">

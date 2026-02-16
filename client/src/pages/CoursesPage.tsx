@@ -17,6 +17,8 @@ interface StudentUser {
   id: string;
   name: string;
   username: string;
+  gender?: string | null;
+  age?: number | null;
 }
 
 interface TeacherUser {
@@ -300,62 +302,307 @@ export default function CoursesPage() {
     return isSupervisor || isAdmin || course.createdBy === user?.id;
   };
 
-  const printCertificate = (cert: CertificateData, courseName: string, studentName: string) => {
+  type CertTemplateType = "male" | "female" | "children";
+
+  const detectCertificateTemplate = (studentId: string): CertTemplateType => {
+    const student = allStudents.find(s => s.id === studentId);
+    if (!student) return "male";
+
+    const gender = student.gender;
+    const age = student.age;
+
+    if (age !== null && age !== undefined && age <= 12) return "children";
+    if (!age && !gender) return "children";
+
+    if (gender === "male" || gender === "ذكر") return "male";
+    if (gender === "female" || gender === "أنثى") return "female";
+
+    return "male";
+  };
+
+  const getCertificateTheme = (template: CertTemplateType) => {
+    switch (template) {
+      case "male":
+        return {
+          primary: "#16213e",
+          accent: "#c9a84c",
+          secondary: "#0f3460",
+          bg: "linear-gradient(135deg, #fefefe 0%, #f8f4e8 100%)",
+          detailBg: "#f8f4e8",
+          detailBorder: "#e0d5b8",
+          titleLabel: "شهادة إتمام",
+          completionText: "قد أتمّ بنجاح وتفوّق الدورة التعليمية",
+          actionBarBg: "#16213e",
+          btnPrint: "#e94560",
+          btnSave: "#0f3460",
+        };
+      case "female":
+        return {
+          primary: "#4a1942",
+          accent: "#b76e79",
+          secondary: "#6b2d5b",
+          bg: "linear-gradient(135deg, #fefefe 0%, #faf0f2 100%)",
+          detailBg: "#faf0f2",
+          detailBorder: "#e8cdd2",
+          titleLabel: "شهادة إتمام",
+          completionText: "قد أتمّت بنجاح وتفوّق الدورة التعليمية",
+          actionBarBg: "#4a1942",
+          btnPrint: "#b76e79",
+          btnSave: "#6b2d5b",
+        };
+      case "children":
+        return {
+          primary: "#0d9488",
+          accent: "#f59e0b",
+          secondary: "#0f766e",
+          bg: "linear-gradient(135deg, #fefefe 0%, #f0fdfa 100%)",
+          detailBg: "#f0fdfa",
+          detailBorder: "#99f6e4",
+          titleLabel: "شهادة تقدير",
+          completionText: "قد أتمّ بنجاح الدورة التعليمية",
+          actionBarBg: "#0d9488",
+          btnPrint: "#f59e0b",
+          btnSave: "#0f766e",
+        };
+    }
+  };
+
+  const getTemplateDecorations = (template: CertTemplateType) => {
+    switch (template) {
+      case "male":
+        return {
+          cornerStyle: `
+            .corner-decoration { position: absolute; width: 70px; height: 70px; }
+            .corner-tl, .corner-tr, .corner-bl, .corner-br {
+              border: none;
+              background: none;
+            }
+            .corner-tl::before, .corner-tr::before, .corner-bl::before, .corner-br::before {
+              content: '';
+              position: absolute;
+              width: 50px;
+              height: 50px;
+              border: 2px solid #c9a84c;
+            }
+            .corner-tl::after, .corner-tr::after, .corner-bl::after, .corner-br::after {
+              content: '';
+              position: absolute;
+              width: 30px;
+              height: 30px;
+              border: 1px solid #16213e;
+            }
+            .corner-tl { top: 20px; left: 20px; }
+            .corner-tl::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+            .corner-tl::after { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+            .corner-tr { top: 20px; right: 20px; }
+            .corner-tr::before { top: 0; right: 0; border-left: none; border-bottom: none; }
+            .corner-tr::after { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+            .corner-bl { bottom: 20px; left: 20px; }
+            .corner-bl::before { bottom: 0; left: 0; border-right: none; border-top: none; }
+            .corner-bl::after { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+            .corner-br { bottom: 20px; right: 20px; }
+            .corner-br::before { bottom: 0; right: 0; border-left: none; border-top: none; }
+            .corner-br::after { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+          `,
+          watermark: `
+            .watermark {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              opacity: 0.04;
+              font-size: 200px;
+              color: #16213e;
+              pointer-events: none;
+              z-index: 0;
+            }
+          `,
+          watermarkHtml: `<div class="watermark">🕌</div>`,
+          extraFrame: `
+            .cert-frame::before { content: ''; position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 2px solid #c9a84c; pointer-events: none; }
+            .cert-frame::after { content: ''; position: absolute; top: 14px; left: 14px; right: 14px; bottom: 14px; border: 1px solid #16213e; pointer-events: none; }
+          `,
+        };
+      case "female":
+        return {
+          cornerStyle: `
+            .corner-decoration { position: absolute; width: 80px; height: 80px; opacity: 0.6; }
+            .corner-tl { top: 15px; left: 15px; }
+            .corner-tr { top: 15px; right: 15px; transform: scaleX(-1); }
+            .corner-bl { bottom: 15px; left: 15px; transform: scaleY(-1); }
+            .corner-br { bottom: 15px; right: 15px; transform: scale(-1, -1); }
+            .corner-decoration::before {
+              content: '❀';
+              position: absolute;
+              font-size: 40px;
+              color: #b76e79;
+            }
+            .corner-decoration::after {
+              content: '';
+              position: absolute;
+              width: 60px;
+              height: 60px;
+              border-top: 2px solid #b76e79;
+              border-left: 2px solid #b76e79;
+              border-radius: 5px 0 0 0;
+              top: 5px;
+              left: 5px;
+            }
+          `,
+          watermark: `
+            .watermark {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              opacity: 0.03;
+              font-size: 300px;
+              color: #4a1942;
+              pointer-events: none;
+              z-index: 0;
+            }
+          `,
+          watermarkHtml: `<div class="watermark">❀</div>`,
+          extraFrame: `
+            .cert-frame::before { content: ''; position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 2px solid #b76e79; pointer-events: none; border-radius: 4px; }
+            .cert-frame::after { content: ''; position: absolute; top: 14px; left: 14px; right: 14px; bottom: 14px; border: 1px solid #4a1942; pointer-events: none; border-radius: 2px; }
+            .floral-border-top, .floral-border-bottom {
+              position: absolute;
+              left: 50%;
+              transform: translateX(-50%);
+              font-size: 16px;
+              letter-spacing: 8px;
+              color: #b76e79;
+              opacity: 0.5;
+            }
+            .floral-border-top { top: 22px; }
+            .floral-border-bottom { bottom: 22px; }
+          `,
+        };
+      case "children":
+        return {
+          cornerStyle: `
+            .corner-decoration { position: absolute; width: 60px; height: 60px; }
+            .corner-tl { top: 15px; left: 15px; }
+            .corner-tr { top: 15px; right: 15px; }
+            .corner-bl { bottom: 15px; left: 15px; }
+            .corner-br { bottom: 15px; right: 15px; }
+            .corner-decoration::before {
+              content: '⭐';
+              position: absolute;
+              font-size: 30px;
+            }
+            .corner-decoration::after {
+              content: '✨';
+              position: absolute;
+              font-size: 18px;
+              top: 35px;
+              left: 35px;
+            }
+            .star-row {
+              position: absolute;
+              left: 0;
+              right: 0;
+              text-align: center;
+              font-size: 14px;
+              letter-spacing: 12px;
+              opacity: 0.4;
+            }
+            .star-row-top { top: 25px; }
+            .star-row-bottom { bottom: 25px; }
+          `,
+          watermark: `
+            .watermark {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              opacity: 0.04;
+              font-size: 200px;
+              pointer-events: none;
+              z-index: 0;
+            }
+          `,
+          watermarkHtml: `<div class="watermark">🌟</div>`,
+          extraFrame: `
+            .cert-frame::before { content: ''; position: absolute; top: 6px; left: 6px; right: 6px; bottom: 6px; border: 3px dashed #f59e0b; pointer-events: none; border-radius: 12px; opacity: 0.5; }
+            .cert-frame::after { content: ''; position: absolute; top: 14px; left: 14px; right: 14px; bottom: 14px; border: 2px solid #0d9488; pointer-events: none; border-radius: 8px; opacity: 0.4; }
+          `,
+        };
+    }
+  };
+
+  const printCertificate = (cert: CertificateData, courseName: string, studentName: string, studentId: string) => {
+    const template = detectCertificateTemplate(studentId);
+    const theme = getCertificateTheme(template);
+    const decorations = getTemplateDecorations(template);
+    const issuedDate = new Date(cert.issuedAt).toLocaleDateString("ar-IQ", { year: "numeric", month: "long", day: "numeric" });
+
+    const extraHtml = template === "female"
+      ? `<div class="floral-border-top">❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀</div><div class="floral-border-bottom">❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀ ❀</div>`
+      : template === "children"
+      ? `<div class="star-row star-row-top">⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐</div><div class="star-row star-row-bottom">⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐</div>`
+      : "";
+
     const certHtml = `
       <div class="cert-container">
         <div class="cert-frame">
+          ${decorations.watermarkHtml}
           <div class="corner-decoration corner-tl"></div>
           <div class="corner-decoration corner-tr"></div>
           <div class="corner-decoration corner-bl"></div>
           <div class="corner-decoration corner-br"></div>
-          <div class="cert-header">
-            <div class="bismillah">﷽</div>
-            <div class="cert-logo"><img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>
-            <div class="cert-system-name">مُتْقِن</div>
-            <div class="cert-subtitle">نظام إدارة حلقات القرآن الكريم</div>
-          </div>
-          <div class="cert-title">
-            <h1>شهادة إتمام</h1>
-            <div class="underline-decoration"></div>
-          </div>
-          <div class="cert-body">
-            يشهد نظام مُتْقِن لإدارة حلقات القرآن الكريم بأن
-            <br />
-            <span class="student-name">${studentName}</span>
-            <br />
-            قد أتمّ بنجاح وتفوّق الدورة التعليمية
-            <br />
-            <span class="course-name">${courseName}</span>
-            <br />
-            وقد استوفى جميع المتطلبات والشروط المقررة
-          </div>
-          <div class="cert-details">
-            <div class="cert-detail-item">
-              <div class="cert-detail-label">رقم الشهادة</div>
-              <div class="cert-detail-value">${cert.certificateNumber}</div>
+          ${extraHtml}
+          <div class="cert-content">
+            <div class="cert-header">
+              <div class="bismillah">﷽</div>
+              <div class="cert-logo"><img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>
+              <div class="cert-system-name">مُتْقِن</div>
+              <div class="cert-subtitle">نظام إدارة حلقات القرآن الكريم</div>
             </div>
-            <div class="cert-detail-item">
-              <div class="cert-detail-label">تاريخ الإصدار</div>
-              <div class="cert-detail-value">${new Date(cert.issuedAt).toLocaleDateString("ar-IQ", { year: "numeric", month: "long", day: "numeric" })}</div>
+            <div class="cert-title">
+              <h1>${theme.titleLabel}</h1>
+              <div class="underline-decoration"></div>
             </div>
-          </div>
-          <div class="cert-signatures">
-            <div class="cert-signature">
-              <div class="line"></div>
-              <div class="label">توقيع المشرف</div>
+            <div class="cert-body">
+              يشهد نظام مُتْقِن لإدارة حلقات القرآن الكريم بأن
+              <br />
+              <span class="student-name">${studentName}</span>
+              <br />
+              ${theme.completionText}
+              <br />
+              <span class="course-name">${courseName}</span>
+              <br />
+              وقد استوفى جميع المتطلبات والشروط المقررة
             </div>
-            <div class="cert-signature">
-              <div class="line"></div>
-              <div class="label">ختم المؤسسة</div>
+            <div class="cert-details">
+              <div class="cert-detail-item">
+                <div class="cert-detail-label">رقم الشهادة</div>
+                <div class="cert-detail-value">${cert.certificateNumber}</div>
+              </div>
+              <div class="cert-detail-item">
+                <div class="cert-detail-label">تاريخ الإصدار</div>
+                <div class="cert-detail-value">${issuedDate}</div>
+              </div>
             </div>
-            <div class="cert-signature">
-              <div class="line"></div>
-              <div class="label">توقيع الأستاذ</div>
+            <div class="cert-signatures">
+              <div class="cert-signature">
+                <div class="line"></div>
+                <div class="label">توقيع المشرف</div>
+              </div>
+              <div class="cert-signature">
+                <div class="line"></div>
+                <div class="label">ختم المؤسسة</div>
+              </div>
+              <div class="cert-signature">
+                <div class="line"></div>
+                <div class="label">توقيع الأستاذ</div>
+              </div>
             </div>
-          </div>
-          <div class="cert-footer">
-            <div class="cert-number">${cert.certificateNumber}</div>
-            <div class="cert-qr-note">النظام وقف لله تعالى • برمجة وتطوير أحمد خالد الزبيدي</div>
+            <div class="cert-footer">
+              <div class="cert-number">${cert.certificateNumber}</div>
+              <div class="cert-qr-note">النظام وقف لله تعالى • برمجة وتطوير أحمد خالد الزبيدي</div>
+            </div>
           </div>
         </div>
       </div>
@@ -367,44 +614,41 @@ export default function CoursesPage() {
       @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; direction: rtl; background: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-      .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: #16213e; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+      .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: ${theme.actionBarBg}; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
       .actions-bar button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; }
-      .btn-print { background: #e94560; color: white; }
-      .btn-save { background: #0f3460; color: white; }
+      .btn-print { background: ${theme.btnPrint}; color: white; }
+      .btn-save { background: ${theme.btnSave}; color: white; }
       .btn-close { background: #555; color: white; }
       .cert-area { margin-top: 60px; }
-      .cert-container { width: 100%; max-width: 800px; margin: 0 auto; position: relative; padding: 0; background: white; }
-      .cert-frame { border: 3px solid #16213e; padding: 40px; position: relative; background: linear-gradient(135deg, #fefefe 0%, #f8f4e8 100%); }
-      .cert-frame::before { content: ''; position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 2px solid #c9a84c; pointer-events: none; }
-      .cert-frame::after { content: ''; position: absolute; top: 14px; left: 14px; right: 14px; bottom: 14px; border: 1px solid #16213e; pointer-events: none; }
-      .corner-decoration { position: absolute; width: 60px; height: 60px; border: 2px solid #c9a84c; }
-      .corner-tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
-      .corner-tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
-      .corner-bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
-      .corner-br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
-      .cert-header { text-align: center; margin-bottom: 30px; }
-      .bismillah { font-size: 24px; color: #c9a84c; margin-bottom: 15px; font-family: 'Tajawal', serif; }
-      .cert-logo { width: 70px; height: 70px; margin: 0 auto 10px; background: #16213e; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 32px; font-weight: 700; }
-      .cert-system-name { font-size: 22px; font-weight: 700; color: #16213e; }
-      .cert-subtitle { font-size: 13px; color: #666; margin-top: 3px; }
-      .cert-title { text-align: center; margin: 25px 0; }
-      .cert-title h1 { font-size: 36px; font-weight: 700; color: #c9a84c; margin: 0; letter-spacing: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
-      .cert-title .underline-decoration { width: 200px; height: 3px; background: linear-gradient(to right, transparent, #c9a84c, transparent); margin: 10px auto; }
-      .cert-body { text-align: center; margin: 30px 0; font-size: 18px; line-height: 2.2; color: #333; }
-      .cert-body .student-name { font-size: 28px; font-weight: 700; color: #16213e; border-bottom: 2px solid #c9a84c; padding-bottom: 5px; display: inline-block; margin: 5px 0; }
-      .cert-body .course-name { font-size: 22px; font-weight: 700; color: #0f3460; display: inline-block; margin: 5px 0; }
-      .cert-details { display: flex; justify-content: space-between; margin: 30px 0; padding: 15px; background: #f8f4e8; border-radius: 8px; border: 1px solid #e0d5b8; }
+      .cert-container { width: 29.7cm; height: 21cm; margin: 0 auto; position: relative; padding: 0; background: white; }
+      .cert-frame { border: 3px solid ${theme.primary}; padding: 40px; position: relative; background: ${theme.bg}; width: 100%; height: 100%; overflow: hidden; }
+      ${decorations.extraFrame}
+      ${decorations.cornerStyle}
+      ${decorations.watermark}
+      .cert-content { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+      .cert-header { text-align: center; margin-bottom: 10px; }
+      .bismillah { font-size: 28px; color: ${theme.accent}; margin-bottom: 10px; font-family: 'Tajawal', serif; }
+      .cert-logo { width: 60px; height: 60px; margin: 0 auto 8px; background: ${theme.primary}; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; font-weight: 700; overflow: hidden; }
+      .cert-system-name { font-size: 20px; font-weight: 700; color: ${theme.primary}; }
+      .cert-subtitle { font-size: 12px; color: #666; margin-top: 2px; }
+      .cert-title { text-align: center; margin: 10px 0; }
+      .cert-title h1 { font-size: 34px; font-weight: 700; color: ${theme.accent}; margin: 0; letter-spacing: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+      .cert-title .underline-decoration { width: 200px; height: 3px; background: linear-gradient(to right, transparent, ${theme.accent}, transparent); margin: 8px auto; }
+      .cert-body { text-align: center; margin: 10px 0; font-size: 17px; line-height: 2; color: #333; }
+      .cert-body .student-name { font-size: 26px; font-weight: 700; color: ${theme.primary}; border-bottom: 2px solid ${theme.accent}; padding-bottom: 4px; display: inline-block; margin: 4px 0; }
+      .cert-body .course-name { font-size: 20px; font-weight: 700; color: ${theme.secondary}; display: inline-block; margin: 4px 0; }
+      .cert-details { display: flex; justify-content: space-around; margin: 10px 0; padding: 12px; background: ${theme.detailBg}; border-radius: 8px; border: 1px solid ${theme.detailBorder}; }
       .cert-detail-item { text-align: center; }
       .cert-detail-label { font-size: 11px; color: #888; margin-bottom: 3px; }
-      .cert-detail-value { font-size: 14px; font-weight: 700; color: #16213e; }
-      .cert-signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; }
+      .cert-detail-value { font-size: 14px; font-weight: 700; color: ${theme.primary}; }
+      .cert-signatures { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 10px; }
       .cert-signature { text-align: center; width: 200px; }
       .cert-signature .line { width: 150px; border-top: 1px solid #333; margin: 0 auto 5px; }
       .cert-signature .label { font-size: 12px; color: #666; }
-      .cert-footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0d5b8; }
+      .cert-footer { text-align: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid ${theme.detailBorder}; }
       .cert-number { font-size: 11px; color: #999; font-family: monospace; }
-      .cert-qr-note { font-size: 10px; color: #aaa; margin-top: 5px; }
-      @media print { .actions-bar { display: none !important; } .cert-area { margin-top: 0; } body { padding: 0; } .cert-container { max-width: none; } @page { size: landscape; margin: 10mm; } }
+      .cert-qr-note { font-size: 10px; color: #aaa; margin-top: 3px; }
+      @media print { .actions-bar { display: none !important; } .cert-area { margin-top: 0; } body { padding: 0; } .cert-container { max-width: none; } @page { size: 29.7cm 21cm landscape; margin: 0; } }
     </style></head><body>
     <div class="actions-bar">
       <button class="btn-print" onclick="window.print()">🖨️ طباعة مباشرة</button>
@@ -418,7 +662,7 @@ export default function CoursesPage() {
   const handlePrint = (cert: CertificateData) => {
     const studentName = getStudentName(cert.studentId);
     const courseName = getCourseName(cert.courseId);
-    printCertificate(cert, courseName, studentName);
+    printCertificate(cert, courseName, studentName, cert.studentId);
   };
 
   return (
@@ -690,7 +934,7 @@ export default function CoursesPage() {
                                                 variant="outline"
                                                 className="text-xs gap-1 h-7"
                                                 data-testid={`button-print-grad-cert-${cs.studentId}`}
-                                                onClick={() => printCertificate(cert, course.title, cs.studentName || getStudentName(cs.studentId))}
+                                                onClick={() => printCertificate(cert, course.title, cs.studentName || getStudentName(cs.studentId), cs.studentId)}
                                               >
                                                 <Printer className="w-3 h-3" />
                                                 الشهادة

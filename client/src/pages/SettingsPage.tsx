@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2, Shield, Users, UserCheck, UserX } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -236,6 +237,9 @@ export default function SettingsPage() {
             )}
             <TabsTrigger value="general" className="flex-1 max-w-[200px] whitespace-nowrap">إعدادات النظام</TabsTrigger>
             <TabsTrigger value="notifications" className="flex-1 max-w-[200px] whitespace-nowrap">الإشعارات</TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="privacy-policy" className="flex-1 max-w-[200px] whitespace-nowrap">سياسة الخصوصية</TabsTrigger>
+            )}
             {isAdmin && (
               <TabsTrigger value="system-management" className="flex-1 max-w-[200px] whitespace-nowrap text-red-600">إدارة النظام</TabsTrigger>
             )}
@@ -588,11 +592,231 @@ export default function SettingsPage() {
         </TabsContent>
 
         {isAdmin && (
+          <TabsContent value="privacy-policy" className="space-y-6 mt-6">
+            <PrivacyPolicySection />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
           <TabsContent value="system-management" className="space-y-6 mt-6">
             <SystemResetSection />
           </TabsContent>
         )}
       </Tabs>
+    </div>
+  );
+}
+
+interface UserData {
+  id: string;
+  name: string;
+  username: string;
+  role: string;
+  acceptedPrivacyPolicy: boolean;
+  mosqueName?: string;
+}
+
+const PRIVACY_POLICY_TEXT = `سياسة الخصوصية لنظام متقن
+
+أولاً: جمع البيانات واستخدامها
+يقوم نظام متقن بجمع البيانات الشخصية التالية لأغراض تشغيل النظام التعليمي:
+• الاسم الكامل ومعلومات التواصل (رقم الهاتف، العنوان)
+• بيانات الحساب (اسم المستخدم وكلمة المرور المشفرة)
+• بيانات التعلم والتقييم (سجلات الحفظ، الدرجات، الواجبات)
+• بيانات الحضور والانصراف
+• الصور الشخصية (في حال رفعها)
+تُستخدم هذه البيانات حصرياً لتقديم الخدمات التعليمية وإدارة الحلقات القرآنية.
+
+ثانياً: حقوق المستخدم
+يحق لكل مستخدم:
+• الاطلاع على بياناته الشخصية المحفوظة في النظام
+• طلب تصحيح أي معلومات غير دقيقة
+• طلب حذف حسابه وبياناته من النظام
+• الحصول على نسخة من بياناته الشخصية
+• الاعتراض على أي معالجة لبياناته الشخصية
+
+ثالثاً: مشاركة البيانات
+• لا يتم مشاركة البيانات الشخصية مع أي أطراف خارجية
+• يمكن للمشرفين والأساتذة الاطلاع على بيانات الطلاب المرتبطين بهم فقط
+• يحق لمدير النظام الاطلاع على جميع البيانات لأغراض الإدارة
+• لا يتم بيع أو تأجير البيانات الشخصية لأي جهة
+
+رابعاً: أمن البيانات
+• يتم تشفير كلمات المرور باستخدام خوارزميات تشفير قوية
+• يتم حماية الاتصال بالنظام عبر بروتوكول HTTPS
+• يتم إجراء نسخ احتياطية دورية للبيانات
+• يتم تقييد الوصول للبيانات بناءً على صلاحيات المستخدم
+
+خامساً: معلومات التواصل
+لأي استفسارات تتعلق بسياسة الخصوصية أو لممارسة حقوقك، يرجى التواصل مع إدارة النظام عبر القنوات الرسمية المتاحة في التطبيق.
+
+تاريخ آخر تحديث: فبراير 2026`;
+
+function PrivacyPolicySection() {
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [enforcementEnabled, setEnforcementEnabled] = useState(() => {
+    return localStorage.getItem("mutqin_privacy_enforcement") === "true";
+  });
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("/api/users", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setUsers(data);
+        }
+      } catch {
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleEnforcementChange = (checked: boolean) => {
+    setEnforcementEnabled(checked);
+    localStorage.setItem("mutqin_privacy_enforcement", String(checked));
+  };
+
+  const totalUsers = users.filter(u => u.role !== "admin").length;
+  const acceptedUsers = users.filter(u => u.role !== "admin" && u.acceptedPrivacyPolicy).length;
+  const nonCompliantUsers = users.filter(u => u.role !== "admin" && !u.acceptedPrivacyPolicy);
+
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case "teacher": return "أستاذ";
+      case "student": return "طالب";
+      case "supervisor": return "مشرف";
+      default: return role;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            نص سياسة الخصوصية
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={PRIVACY_POLICY_TEXT}
+            readOnly
+            className="min-h-[400px] text-sm leading-relaxed font-medium bg-muted/30 resize-none"
+            dir="rtl"
+            data-testid="textarea-privacy-policy"
+          />
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">إجمالي المستخدمين</p>
+                <p className="text-3xl font-bold text-primary" data-testid="text-total-users">
+                  {loading ? "..." : totalUsers}
+                </p>
+              </div>
+              <Users className="w-10 h-10 text-primary/30" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">قبلوا السياسة</p>
+                <p className="text-3xl font-bold text-green-600" data-testid="text-accepted-users">
+                  {loading ? "..." : acceptedUsers}
+                </p>
+              </div>
+              <UserCheck className="w-10 h-10 text-green-600/30" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">لم يقبلوا بعد</p>
+                <p className="text-3xl font-bold text-red-600" data-testid="text-noncompliant-users">
+                  {loading ? "..." : nonCompliantUsers.length}
+                </p>
+              </div>
+              <UserX className="w-10 h-10 text-red-600/30" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>إلزام قبول سياسة الخصوصية</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base">تفعيل الإلزام</Label>
+              <p className="text-sm text-muted-foreground">عند التفعيل، سيُطلب من جميع المستخدمين قبول سياسة الخصوصية قبل استخدام النظام</p>
+            </div>
+            <Switch
+              checked={enforcementEnabled}
+              onCheckedChange={handleEnforcementChange}
+              data-testid="switch-privacy-enforcement"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserX className="w-5 h-5" />
+            المستخدمون الذين لم يقبلوا السياسة
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : nonCompliantUsers.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <UserCheck className="w-12 h-12 mx-auto mb-2 text-green-500/50" />
+              <p>جميع المستخدمين قبلوا سياسة الخصوصية</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {nonCompliantUsers.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/20"
+                  data-testid={`row-noncompliant-user-${u.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center text-red-600 text-sm font-bold">
+                      {u.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{u.name}</p>
+                      <p className="text-xs text-muted-foreground">{u.username}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {getRoleName(u.role)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
