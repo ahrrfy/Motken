@@ -329,22 +329,23 @@ export default function LibraryPage() {
     return (
       <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #faf8f0 0%, #f5f0e8 100%)" }} data-testid="book-reader">
         <div className="sticky top-0 z-10 border-b" style={{ background: "linear-gradient(90deg, #1a5e3a 0%, #2d7a4f 50%, #1a5e3a 100%)", borderColor: "#c8a45e" }}>
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="px-2 sm:px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Button
                 data-testid="button-back-to-library"
                 variant="ghost"
                 size="sm"
                 onClick={closeReader}
-                className="text-white hover:bg-white/20 gap-2"
+                className="text-white hover:bg-white/20 gap-1 sm:gap-2 text-xs sm:text-sm"
               >
                 <ArrowRight className="w-4 h-4" />
-                العودة للمكتبة
+                <span className="hidden sm:inline">العودة للمكتبة</span>
+                <span className="sm:hidden">رجوع</span>
               </Button>
             </div>
-            <div className="text-center flex-1">
-              <h1 className="text-white font-serif text-lg font-bold" data-testid="reader-book-title">{selectedBook.title}</h1>
-              <p className="text-white/70 text-sm">{selectedBook.author}</p>
+            <div className="text-center flex-1 min-w-0">
+              <h1 className="text-white font-serif text-sm sm:text-lg font-bold truncate" data-testid="reader-book-title">{selectedBook.title}</h1>
+              <p className="text-white/70 text-xs sm:text-sm truncate">{selectedBook.author}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -416,14 +417,14 @@ export default function LibraryPage() {
           </div>
 
           <div className="flex-1 min-h-[calc(100vh-80px)]">
-            <div className="max-w-3xl mx-auto p-6 md:p-10">
+            <div className="max-w-3xl mx-auto p-3 sm:p-6 md:p-10">
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs px-2 py-1 rounded" style={{ background: "#1a5e3a", color: "#c8a45e" }}>
                     الفصل {activeChapter + 1} من {currentChapters.length}
                   </span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-serif font-bold mb-1" style={{ color: "#1a3a2a" }} data-testid="reader-chapter-title">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold mb-1" style={{ color: "#1a3a2a" }} data-testid="reader-chapter-title">
                   {chapter?.title}
                 </h2>
                 <div className="h-0.5 w-24 rounded mt-2" style={{ background: "linear-gradient(90deg, #c8a45e, transparent)" }} />
@@ -476,10 +477,10 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="p-6 space-y-6" data-testid="library-page">
+    <div className="p-3 sm:p-4 md:p-6 space-y-6" data-testid="library-page">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary" data-testid="library-title">المكتبة الإسلامية</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="library-title">المكتبة الإسلامية</h1>
           <p className="text-muted-foreground">مجموعة شاملة من أمهات الكتب والمراجع الإسلامية</p>
         </div>
         <div className="relative w-full md:w-96">
@@ -518,7 +519,7 @@ export default function LibraryPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="books-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" data-testid="books-grid">
         {filteredBooks.map((book) => (
           <Card
             key={book.id}

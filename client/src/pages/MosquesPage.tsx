@@ -193,10 +193,10 @@ export default function MosquesPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
             الجوامع ومراكز التحفيظ
           </h1>
           <p className="text-muted-foreground">إضافة وتعديل وإدارة الجوامع ومراكز تحفيظ القرآن</p>
@@ -212,8 +212,8 @@ export default function MosquesPage() {
             <DialogHeader>
               <DialogTitle className="font-serif text-primary">إضافة جامع/مركز تحفيظ</DialogTitle>
             </DialogHeader>
-            {renderForm()}
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="max-h-[80vh] overflow-y-auto">{renderForm()}</div>
+            <div className="flex flex-wrap justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setAddOpen(false)} data-testid="button-cancel-add">
                 إلغاء
               </Button>
@@ -239,7 +239,7 @@ export default function MosquesPage() {
             const mosqueStats = stats[mosque.id] || { supervisors: 0, teachers: 0, students: 0 };
             return (
               <Card key={mosque.id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`card-mosque-${mosque.id}`}>
-                <CardContent className="p-4 md:p-5 space-y-3">
+                <CardContent className="p-3 sm:p-4 md:p-5 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -342,8 +342,8 @@ export default function MosquesPage() {
           <DialogHeader>
             <DialogTitle className="font-serif text-primary">تعديل بيانات الجامع/المركز</DialogTitle>
           </DialogHeader>
-          {renderForm()}
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="max-h-[80vh] overflow-y-auto">{renderForm()}</div>
+          <div className="flex flex-wrap justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setEditOpen(false)} data-testid="button-cancel-edit">
               إلغاء
             </Button>

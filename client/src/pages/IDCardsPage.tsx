@@ -242,6 +242,7 @@ export default function IDCardsPage() {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [filterRole, setFilterRole] = useState<string>("all");
 
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -408,10 +409,10 @@ export default function IDCardsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary flex items-center gap-2" data-testid="text-idcards-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary flex items-center gap-2" data-testid="text-idcards-title">
             <CreditCard className="w-7 h-7" />
             بطاقات الهوية
           </h1>
@@ -482,7 +483,7 @@ export default function IDCardsPage() {
       ) : (
         <>
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-3 mb-3">
                 <Checkbox
                   checked={selectedUserIds.size === filteredUsers.length && filteredUsers.length > 0}
@@ -552,7 +553,7 @@ export default function IDCardsPage() {
           </Card>
 
           {selectedUsers.length > 0 && (
-            <div className="bg-muted/20 rounded-xl p-6" data-testid="preview-section">
+            <div className="bg-muted/20 rounded-xl p-3 sm:p-4 md:p-6" data-testid="preview-section">
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-primary" />
                 معاينة البطاقات ({selectedUsers.length})

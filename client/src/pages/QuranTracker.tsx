@@ -105,10 +105,10 @@ export default function QuranTracker() {
   const progressPercent = verses.length > 0 ? Math.round((memorizedCount / verses.length) * 100) : 0;
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto" data-testid="quran-tracker-page">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto" data-testid="quran-tracker-page">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="page-title">المصحف التفاعلي</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="page-title">المصحف التفاعلي</h1>
           <p className="text-muted-foreground">تتبع حفظك آية بآية</p>
         </div>
 

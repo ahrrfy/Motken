@@ -319,10 +319,10 @@ export default function OnlineUsersPage() {
   const offlineCount = sessions.filter((s) => !s.isOnline).length;
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">مراقبة المستخدمين</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold" data-testid="text-page-title">مراقبة المستخدمين</h1>
           <p className="text-muted-foreground text-sm">مراقبة الجلسات النشطة وإدارة الحظر</p>
         </div>
         <Button
@@ -336,36 +336,36 @@ export default function OnlineUsersPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
         <Card className="border-r-4 border-r-green-500">
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
               <Wifi className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <div className="text-2xl font-bold" data-testid="text-stat-online">{onlineCount}</div>
+              <div className="text-xl sm:text-2xl font-bold" data-testid="text-stat-online">{onlineCount}</div>
               <div className="text-xs text-muted-foreground">متصل الآن</div>
             </div>
           </CardContent>
         </Card>
         <Card className="border-r-4 border-r-orange-500">
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
               <WifiOff className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <div className="text-2xl font-bold" data-testid="text-stat-offline">{offlineCount}</div>
+              <div className="text-xl sm:text-2xl font-bold" data-testid="text-stat-offline">{offlineCount}</div>
               <div className="text-xs text-muted-foreground">غير متصل</div>
             </div>
           </CardContent>
         </Card>
         <Card className="border-r-4 border-r-red-500">
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
               <Ban className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <div className="text-2xl font-bold" data-testid="text-stat-banned">{bannedDevices.length}</div>
+              <div className="text-xl sm:text-2xl font-bold" data-testid="text-stat-banned">{bannedDevices.length}</div>
               <div className="text-xs text-muted-foreground">عناوين محظورة</div>
             </div>
           </CardContent>

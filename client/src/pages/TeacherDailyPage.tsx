@@ -102,56 +102,56 @@ export default function TeacherDailyPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-3">
-        <CalendarDays className="w-7 h-7 text-primary" />
-        <h1 className="text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+        <CalendarDays className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
           واجبات اليوم
         </h1>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-summary">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4" data-testid="stats-summary">
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-full text-blue-600">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" data-testid="stat-total-students">{totalStudents}</p>
-              <p className="text-xs text-muted-foreground">طلاب لديهم واجبات</p>
+              <p className="text-xl sm:text-2xl font-bold" data-testid="stat-total-students">{totalStudents}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">طلاب لديهم واجبات</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-full text-purple-600">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" data-testid="stat-total-assignments">{totalAssignments}</p>
-              <p className="text-xs text-muted-foreground">إجمالي الواجبات</p>
+              <p className="text-xl sm:text-2xl font-bold" data-testid="stat-total-assignments">{totalAssignments}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">إجمالي الواجبات</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-full text-green-600">
               <CheckCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" data-testid="stat-completed">{completedCount}</p>
-              <p className="text-xs text-muted-foreground">مكتملة</p>
+              <p className="text-xl sm:text-2xl font-bold" data-testid="stat-completed">{completedCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">مكتملة</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
             <div className="p-2 bg-yellow-100 rounded-full text-yellow-600">
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" data-testid="stat-pending">{pendingCount}</p>
-              <p className="text-xs text-muted-foreground">قيد الانتظار</p>
+              <p className="text-xl sm:text-2xl font-bold" data-testid="stat-pending">{pendingCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">قيد الانتظار</p>
             </div>
           </CardContent>
         </Card>
@@ -201,7 +201,7 @@ export default function TeacherDailyPage() {
                     {studentAssignments.map((a) => (
                       <div
                         key={a.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/20"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-3 rounded-lg border bg-muted/20 gap-2"
                         data-testid={`row-assignment-${a.id}`}
                       >
                         <div className="flex items-center gap-3">

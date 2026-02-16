@@ -115,9 +115,9 @@ export default function QRScannerPage() {
   }, []);
 
   return (
-    <div className="p-4 md:p-6 space-y-6" dir="rtl">
+    <div className="p-3 sm:p-4 md:p-6 space-y-6" dir="rtl">
       <div className="text-center space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-qr-title">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-qr-title">
           التحقق من الهوية
         </h1>
         <p className="text-muted-foreground">مسح رمز QR أو إدخال معرف المستخدم للتحقق</p>
