@@ -17,6 +17,8 @@ export interface User {
   gender?: string | null;
   isActive?: boolean;
   canPrintIds?: boolean;
+  acceptedPrivacyPolicy?: boolean;
+  privacyPolicyAcceptedAt?: string | null;
 }
 
 interface AuthContextType {
@@ -25,6 +27,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => Promise<void>;
   switchRole: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -74,6 +77,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLocation("/");
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && !data.message) {
+          setUser(data);
+        }
+      }
+    } catch {}
+  };
+
   const switchRole = () => {
     if (!user) return;
     const actualRole = user.actualRole || user.role;
@@ -87,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, switchRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
