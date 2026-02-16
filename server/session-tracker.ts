@@ -51,6 +51,10 @@ class SessionTracker {
     });
   }
 
+  getSession(sessionId: string): ActiveSession | undefined {
+    return this.sessions.get(sessionId);
+  }
+
   removeSession(sessionId: string) {
     this.sessions.delete(sessionId);
   }

@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download } from "lucide-react";
+import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download, PauseCircle, XCircle, FileText } from "lucide-react";
 import { openPrintWindow } from "@/lib/print-utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import UsernameInput from "@/components/UsernameInput";
@@ -32,6 +33,9 @@ interface UserRecord {
   canPrintIds?: boolean;
   acceptedPrivacyPolicy?: boolean;
   privacyPolicyAcceptedAt?: string | null;
+  adminNotes?: string | null;
+  suspendedUntil?: string | null;
+  createdAt?: string;
 }
 
 const roleLabels: Record<string, string> = {
@@ -64,8 +68,18 @@ export default function AllUsersPage() {
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterMosque, setFilterMosque] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterGender, setFilterGender] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [notesTarget, setNotesTarget] = useState<UserRecord | null>(null);
+  const [adminNotes, setAdminNotes] = useState("");
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [suspendTarget, setSuspendTarget] = useState<UserRecord | null>(null);
+  const [suspendDate, setSuspendDate] = useState("");
 
   const [form, setForm] = useState({
     username: "",
@@ -189,6 +203,74 @@ export default function AllUsersPage() {
     }
   };
 
+  const handleDeactivate = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isActive: false }),
+      });
+      if (res.ok) {
+        toast({ title: "تم إيقاف الحساب" });
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast({ title: data.message || "حدث خطأ", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!notesTarget) return;
+    try {
+      const res = await fetch(`/api/users/${notesTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ adminNotes }),
+      });
+      if (res.ok) {
+        toast({ title: "تم حفظ الملاحظات الإدارية" });
+        setNotesDialogOpen(false);
+        setNotesTarget(null);
+        setAdminNotes("");
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast({ title: data.message || "حدث خطأ", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    }
+  };
+
+  const handleSuspendTemporarily = async () => {
+    if (!suspendTarget || !suspendDate) return;
+    try {
+      const res = await fetch(`/api/users/${suspendTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ suspendedUntil: new Date(suspendDate).toISOString(), isActive: false }),
+      });
+      if (res.ok) {
+        toast({ title: "تم إيقاف الحساب مؤقتاً" });
+        setSuspendDialogOpen(false);
+        setSuspendTarget(null);
+        setSuspendDate("");
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast({ title: data.message || "حدث خطأ", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ في الاتصال", variant: "destructive" });
+    }
+  };
+
   const openEdit = (u: UserRecord) => {
     setEditingUser(u);
     setForm({
@@ -200,6 +282,18 @@ export default function AllUsersPage() {
       phone: u.phone || "",
     });
     setDialogOpen(true);
+  };
+
+  const openNotesDialog = (u: UserRecord) => {
+    setNotesTarget(u);
+    setAdminNotes(u.adminNotes || "");
+    setNotesDialogOpen(true);
+  };
+
+  const openSuspendDialog = (u: UserRecord) => {
+    setSuspendTarget(u);
+    setSuspendDate("");
+    setSuspendDialogOpen(true);
   };
 
   if (user?.role !== "admin") {
@@ -215,7 +309,18 @@ export default function AllUsersPage() {
     const matchesSearch = u.name.includes(search) || u.username.includes(search);
     const matchesRole = filterRole === "all" || u.role === filterRole;
     const matchesMosque = filterMosque === "all" || u.mosqueId === filterMosque;
-    return matchesSearch && matchesRole && matchesMosque;
+    const matchesStatus = filterStatus === "all" || (filterStatus === "active" ? u.isActive !== false : u.isActive === false);
+    const matchesGender = filterGender === "all" || u.gender === filterGender;
+    let matchesDate = true;
+    if (dateFrom && u.createdAt) {
+      matchesDate = matchesDate && new Date(u.createdAt) >= new Date(dateFrom);
+    }
+    if (dateTo && u.createdAt) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      matchesDate = matchesDate && new Date(u.createdAt) <= to;
+    }
+    return matchesSearch && matchesRole && matchesMosque && matchesStatus && matchesGender && matchesDate;
   });
 
   const stats = {
@@ -366,40 +471,92 @@ export default function AllUsersPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                data-testid="input-search-users"
-                placeholder="بحث بالاسم أو اسم المستخدم..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pr-9"
-              />
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  data-testid="input-search-users"
+                  placeholder="بحث بالاسم أو اسم المستخدم..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pr-9"
+                />
+              </div>
+              <Select value={filterRole} onValueChange={setFilterRole}>
+                <SelectTrigger className="w-full sm:w-40" data-testid="select-filter-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الأدوار</SelectItem>
+                  <SelectItem value="admin">مديرون</SelectItem>
+                  <SelectItem value="supervisor">مشرفون</SelectItem>
+                  <SelectItem value="teacher">أساتذة</SelectItem>
+                  <SelectItem value="student">طلاب</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterMosque} onValueChange={setFilterMosque}>
+                <SelectTrigger className="w-full sm:w-48" data-testid="select-filter-mosque">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الجوامع والمراكز</SelectItem>
+                  {mosques.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={filterRole} onValueChange={setFilterRole}>
-              <SelectTrigger className="w-full sm:w-40" data-testid="select-filter-role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأدوار</SelectItem>
-                <SelectItem value="admin">مديرون</SelectItem>
-                <SelectItem value="supervisor">مشرفون</SelectItem>
-                <SelectItem value="teacher">أساتذة</SelectItem>
-                <SelectItem value="student">طلاب</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterMosque} onValueChange={setFilterMosque}>
-              <SelectTrigger className="w-full sm:w-48" data-testid="select-filter-mosque">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الجوامع والمراكز</SelectItem>
-                {mosques.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row gap-3 items-end">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full sm:w-40" data-testid="select-filter-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الحالات</SelectItem>
+                  <SelectItem value="active">نشط</SelectItem>
+                  <SelectItem value="inactive">غير نشط</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterGender} onValueChange={setFilterGender}>
+                <SelectTrigger className="w-full sm:w-40" data-testid="select-filter-gender">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الجنس</SelectItem>
+                  <SelectItem value="male">ذكر</SelectItem>
+                  <SelectItem value="female">أنثى</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-muted-foreground">من تاريخ</Label>
+                <Input
+                  type="date"
+                  data-testid="input-date-from"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-muted-foreground">إلى تاريخ</Label>
+                <Input
+                  type="date"
+                  data-testid="input-date-to"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+              {(search || filterRole !== "all" || filterMosque !== "all" || filterStatus !== "all" || filterGender !== "all" || dateFrom || dateTo) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setSearch(""); setFilterRole("all"); setFilterMosque("all"); setFilterStatus("all"); setFilterGender("all"); setDateFrom(""); setDateTo(""); }}
+                  data-testid="button-clear-filters"
+                >
+                  مسح الفلاتر
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -418,13 +575,14 @@ export default function AllUsersPage() {
                     <th className="text-right py-3 px-2 font-medium">الدور</th>
                     <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجامع/المركز</th>
                     <th className="text-right py-3 px-2 font-medium hidden lg:table-cell">الهاتف</th>
-                    <th className="text-center py-3 px-2 font-medium hidden lg:table-cell">الخصوصية</th>
+                    <th className="text-center py-3 px-2 font-medium hidden lg:table-cell">الحالة</th>
                     <th className="text-center py-3 px-2 font-medium">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredUsers.map((u) => {
                     const RoleIcon = roleIcons[u.role] || Users;
+                    const isAdmin = u.role === "admin";
                     return (
                       <tr key={u.id} className="border-b hover:bg-muted/50 transition-colors" data-testid={`row-user-${u.id}`}>
                         <td className="py-3 px-2">
@@ -432,7 +590,10 @@ export default function AllUsersPage() {
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
                               {u.name?.charAt(0)}
                             </div>
-                            <span className="font-medium">{u.name}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">{u.name}</span>
+                              {isAdmin && <Shield className="w-4 h-4 text-red-500" />}
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 px-2 text-muted-foreground hidden sm:table-cell" dir="ltr">{u.username}</td>
@@ -451,55 +612,111 @@ export default function AllUsersPage() {
                         </td>
                         <td className="py-3 px-2 hidden lg:table-cell text-muted-foreground" dir="ltr">{u.phone || "—"}</td>
                         <td className="py-3 px-2 text-center hidden lg:table-cell">
-                          {u.acceptedPrivacyPolicy ? (
+                          {u.isActive !== false ? (
                             <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs">
-                              موافق
+                              نشط
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-xs">
-                              لم يوافق
+                            <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs">
+                              غير نشط
                             </Badge>
                           )}
                         </td>
                         <td className="py-3 px-2 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {(u.role === "supervisor" || u.role === "teacher") && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-8 w-8 ${u.canPrintIds ? "text-green-600" : "text-muted-foreground"}`}
-                                onClick={() => handleTogglePrint(u.id)}
-                                title={u.canPrintIds ? "إلغاء صلاحية الطباعة" : "منح صلاحية الطباعة"}
-                                data-testid={`button-toggle-print-${u.id}`}
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)} data-testid={`button-edit-user-${u.id}`}>
-                              <Edit className="w-3.5 h-3.5" />
-                            </Button>
-                            {u.id !== user?.id && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" data-testid={`button-delete-user-${u.id}`}>
-                                    <Trash2 className="w-3.5 h-3.5" />
+                            {isAdmin ? (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Shield className="w-3.5 h-3.5 text-red-500" />
+                                محمي
+                              </span>
+                            ) : (
+                              <>
+                                {(u.role === "supervisor" || u.role === "teacher") && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={`h-8 w-8 ${u.canPrintIds ? "text-green-600" : "text-muted-foreground"}`}
+                                    onClick={() => handleTogglePrint(u.id)}
+                                    title={u.canPrintIds ? "إلغاء صلاحية الطباعة" : "منح صلاحية الطباعة"}
+                                    data-testid={`button-toggle-print-${u.id}`}
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
                                   </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent dir="rtl">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      هل أنت متأكد من حذف المستخدم "{u.name}"؟ لا يمكن التراجع عن هذا الإجراء.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter className="flex-row-reverse gap-2">
-                                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(u.id)} className="bg-red-600 hover:bg-red-700">
-                                      حذف
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)} data-testid={`button-edit-user-${u.id}`}>
+                                  <Edit className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-blue-500 hover:text-blue-700"
+                                  onClick={() => openNotesDialog(u)}
+                                  title="ملاحظات إدارية"
+                                  data-testid={`button-notes-user-${u.id}`}
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-orange-500 hover:text-orange-700"
+                                  onClick={() => openSuspendDialog(u)}
+                                  title="إيقاف مؤقت"
+                                  data-testid={`button-suspend-user-${u.id}`}
+                                >
+                                  <PauseCircle className="w-3.5 h-3.5" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-red-500 hover:text-red-700"
+                                      title="إيقاف نهائي"
+                                      data-testid={`button-deactivate-user-${u.id}`}
+                                    >
+                                      <XCircle className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent dir="rtl">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>إيقاف نهائي</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        هل أنت متأكد من إيقاف حساب "{u.name}" بشكل نهائي؟
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter className="flex-row-reverse gap-2">
+                                      <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeactivate(u.id)} className="bg-red-600 hover:bg-red-700">
+                                        إيقاف نهائي
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                                {u.id !== user?.id && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" data-testid={`button-delete-user-${u.id}`}>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent dir="rtl">
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          هل أنت متأكد من حذف المستخدم "{u.name}"؟ لا يمكن التراجع عن هذا الإجراء.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter className="flex-row-reverse gap-2">
+                                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(u.id)} className="bg-red-600 hover:bg-red-700">
+                                          حذف
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </>
                             )}
                           </div>
                         </td>
@@ -512,6 +729,56 @@ export default function AllUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={notesDialogOpen} onOpenChange={(open) => { setNotesDialogOpen(open); if (!open) { setNotesTarget(null); setAdminNotes(""); } }}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>ملاحظات إدارية - {notesTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>ملاحظات إدارية</Label>
+              <Textarea
+                data-testid="input-admin-notes"
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                placeholder="أضف ملاحظات إدارية..."
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>إلغاء</Button>
+              <Button onClick={handleSaveNotes} data-testid="button-save-notes">حفظ الملاحظات</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suspendDialogOpen} onOpenChange={(open) => { setSuspendDialogOpen(open); if (!open) { setSuspendTarget(null); setSuspendDate(""); } }}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>إيقاف مؤقت - {suspendTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>إيقاف حتى تاريخ</Label>
+              <Input
+                type="date"
+                data-testid="input-suspend-date"
+                value={suspendDate}
+                onChange={(e) => setSuspendDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSuspendDialogOpen(false)}>إلغاء</Button>
+              <Button onClick={handleSuspendTemporarily} disabled={!suspendDate} className="bg-orange-600 hover:bg-orange-700" data-testid="button-confirm-suspend">
+                إيقاف مؤقت
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {credentialsDialog && (
         <CredentialsShareDialog
