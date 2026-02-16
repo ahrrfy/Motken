@@ -630,6 +630,7 @@ export default function AssignmentsExamsPage() {
                           )} data-testid={`status-assignment-${task.id}`}>
                             {task.status === "done" ? "تم التسميع" : "انتظار"}
                           </span>
+                          {!isStudent && (
                           <div className="flex items-center gap-1 mt-1" data-testid={`seen-status-${task.id}`}>
                             {task.seenByStudent ? (
                               <span className="flex items-center gap-1 text-[10px] text-blue-600">
@@ -646,6 +647,7 @@ export default function AssignmentsExamsPage() {
                               </span>
                             )}
                           </div>
+                          )}
                         </div>
                         </div>
                         {isStudent && expandedAssignmentId === task.id && (
