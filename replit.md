@@ -40,6 +40,7 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 ## Pages
 - DashboardPage, MosquesPage (admin), AllUsersPage (admin), StudentsPage, TeachersPage
 - AssignmentsExamsPage (unified assignments + exams with tabs), RatingsPage
+- SupervisorsPage (admin - full supervisor management with add/search/print/export/import, mosque assignment)
 - CoursesPage (courses & certificates with graduation system, Islamic certificate design)
 - QuranTracker, LibraryPage (internal reader, no external links), ReportsPage
 - IDCardsPage (permission-based), QRScannerPage, SettingsPage

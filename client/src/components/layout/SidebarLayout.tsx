@@ -53,6 +53,7 @@ const navItems = [
   { href: "/users", label: "جميع المستخدمين", labelEn: "All Users", icon: Users, roles: ["admin"] },
   { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Statistics", icon: BarChart3, roles: ["admin", "supervisor"] },
   { href: "/students", label: "الطلاب", labelEn: "Students", icon: Users, roles: ["admin", "teacher", "supervisor"] },
+  { href: "/supervisors", label: "المشرفون", labelEn: "Supervisors", icon: UserCircle, roles: ["admin"] },
   { href: "/teachers", label: "الأساتذة", labelEn: "Teachers", icon: GraduationCap, roles: ["admin", "supervisor"] },
   { href: "/assignments", label: "الواجبات والامتحانات", labelEn: "Assignments & Exams", icon: ClipboardList, roles: ["admin", "teacher", "supervisor", "student"] },
   { href: "/ratings", label: "التقييمات والأوسمة", labelEn: "Ratings & Badges", icon: Star, roles: ["admin", "teacher", "supervisor", "student"] },
