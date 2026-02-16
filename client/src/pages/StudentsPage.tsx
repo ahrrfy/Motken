@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
 import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
+import UsernameInput from "@/components/UsernameInput";
 
 interface Student {
   id: string;
@@ -326,10 +327,11 @@ export default function StudentsPage() {
                     <Label>الاسم الكامل *</Label>
                     <Input data-testid="input-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>اسم المستخدم *</Label>
-                    <Input data-testid="input-username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} dir="ltr" />
-                  </div>
+                  <UsernameInput
+                    value={formData.username}
+                    onChange={(v) => setFormData({...formData, username: v})}
+                    editingUserId={selectedStudent?.id}
+                  />
                   <div className="space-y-2">
                     <Label>كلمة المرور *</Label>
                     <Input data-testid="input-password" type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} dir="ltr" />

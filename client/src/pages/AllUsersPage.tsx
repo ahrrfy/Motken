@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download } from "lucide-react";
 import { openPrintWindow } from "@/lib/print-utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import UsernameInput from "@/components/UsernameInput";
 
 interface Mosque {
   id: string;
@@ -259,10 +260,12 @@ export default function AllUsersPage() {
                   <Label>الاسم الكامل *</Label>
                   <Input data-testid="input-user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="الاسم" />
                 </div>
-                <div>
-                  <Label>اسم المستخدم *</Label>
-                  <Input data-testid="input-user-username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" dir="ltr" />
-                </div>
+                <UsernameInput
+                  value={form.username}
+                  onChange={(v) => setForm({ ...form, username: v })}
+                  editingUserId={editingUser?.id}
+                  testId="input-user-username"
+                />
               </div>
               <div>
                 <Label>{editingUser ? "كلمة المرور (اتركها فارغة لعدم التغيير)" : "كلمة المرور *"}</Label>
