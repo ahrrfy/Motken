@@ -49,6 +49,8 @@ export const users = pgTable("users", {
   isOrphan: boolean("is_orphan").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   canPrintIds: boolean("can_print_ids").notNull().default(false),
+  acceptedPrivacyPolicy: boolean("accepted_privacy_policy").notNull().default(false),
+  privacyPolicyAcceptedAt: timestamp("privacy_policy_accepted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

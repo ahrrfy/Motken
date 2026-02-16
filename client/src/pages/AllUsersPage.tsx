@@ -30,6 +30,8 @@ interface UserRecord {
   gender?: string | null;
   isActive?: boolean;
   canPrintIds?: boolean;
+  acceptedPrivacyPolicy?: boolean;
+  privacyPolicyAcceptedAt?: string | null;
 }
 
 const roleLabels: Record<string, string> = {
@@ -416,6 +418,7 @@ export default function AllUsersPage() {
                     <th className="text-right py-3 px-2 font-medium">الدور</th>
                     <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجامع/المركز</th>
                     <th className="text-right py-3 px-2 font-medium hidden lg:table-cell">الهاتف</th>
+                    <th className="text-center py-3 px-2 font-medium hidden lg:table-cell">الخصوصية</th>
                     <th className="text-center py-3 px-2 font-medium">إجراءات</th>
                   </tr>
                 </thead>
@@ -447,6 +450,17 @@ export default function AllUsersPage() {
                           </div>
                         </td>
                         <td className="py-3 px-2 hidden lg:table-cell text-muted-foreground" dir="ltr">{u.phone || "—"}</td>
+                        <td className="py-3 px-2 text-center hidden lg:table-cell">
+                          {u.acceptedPrivacyPolicy ? (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs">
+                              موافق
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-xs">
+                              لم يوافق
+                            </Badge>
+                          )}
+                        </td>
                         <td className="py-3 px-2 text-center">
                           <div className="flex items-center justify-center gap-1">
                             {(u.role === "supervisor" || u.role === "teacher") && (
