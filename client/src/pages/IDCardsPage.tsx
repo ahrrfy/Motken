@@ -105,7 +105,7 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
               <span style="font-family:monospace;font-weight:600;color:#16213e;font-size:10px;">${formattedId}</span>
             </div>
             ${mosqueName ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="color:#9ca3af;">المسجد</span>
+              <span style="color:#9ca3af;">الجامع/المركز</span>
               <span style="font-weight:500;font-size:10px;">${mosqueName}</span>
             </div>` : ""}
             ${user.phone ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
@@ -200,7 +200,7 @@ function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
             </div>
             {mosqueName && (
               <div className="flex justify-between items-center">
-                <span className="text-gray-400 shrink-0">المسجد</span>
+                <span className="text-gray-400 shrink-0">الجامع/المركز</span>
                 <span className="font-medium text-[10px] truncate max-w-[120px] text-left" data-testid={`text-mosque-${user.id}`}>{mosqueName}</span>
               </div>
             )}

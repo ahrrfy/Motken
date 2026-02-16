@@ -68,7 +68,7 @@ export default function TeacherActivitiesPage() {
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">أنشطة الأساتذة</h1>
-        <p className="text-muted-foreground">متابعة جميع الأنشطة التي يقوم بها الأساتذة في الجامع</p>
+        <p className="text-muted-foreground">متابعة جميع الأنشطة التي يقوم بها الأساتذة في الجامع/المركز</p>
       </div>
 
       <Card>

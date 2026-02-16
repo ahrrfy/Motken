@@ -286,7 +286,7 @@ export default function ExamsPage() {
           <h1 className="text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الامتحانات</h1>
           <p className="text-muted-foreground">
             {isTeacher && "إدارة الامتحانات وتقييم الطلاب"}
-            {isSupervisor && "عرض جميع الامتحانات في المسجد"}
+            {isSupervisor && "عرض جميع الامتحانات في الجامع/المركز"}
             {isStudent && "الامتحانات القادمة"}
           </p>
         </div>
