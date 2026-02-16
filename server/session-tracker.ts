@@ -1,4 +1,5 @@
 import { UAParser } from "ua-parser-js";
+import { pool } from "./db";
 
 interface ActiveSession {
   userId: string;
@@ -15,6 +16,8 @@ interface ActiveSession {
   lastActivity: number;
   loginTime: number;
 }
+
+const MAX_SESSIONS_PER_USER = 2;
 
 class SessionTracker {
   private sessions = new Map<string, ActiveSession>();
@@ -33,6 +36,12 @@ class SessionTracker {
     const browserStr = browser.name ? `${browser.name} ${browser.version || ""}`.trim() : "غير معروف";
     const osStr = os.name ? `${os.name} ${os.version || ""}`.trim() : "غير معروف";
 
+    const isNewSession = !this.sessions.has(sessionId);
+
+    if (isNewSession && user.role !== "admin") {
+      this.enforceSessionLimit(user.id, sessionId);
+    }
+
     const existing = this.sessions.get(sessionId);
     this.sessions.set(sessionId, {
       userId: user.id,
@@ -49,6 +58,21 @@ class SessionTracker {
       lastActivity: Date.now(),
       loginTime: existing?.loginTime || Date.now(),
     });
+  }
+
+  private enforceSessionLimit(userId: string, incomingSessionId: string) {
+    try {
+      const userSessions = this.getActiveSessionsByUserId(userId);
+      if (userSessions.length >= MAX_SESSIONS_PER_USER) {
+        const sorted = userSessions.sort((a, b) => a.loginTime - b.loginTime);
+        const sessionsToRemove = sorted.slice(0, userSessions.length - MAX_SESSIONS_PER_USER + 1);
+        for (const session of sessionsToRemove) {
+          this.sessions.delete(session.sessionId);
+          pool.query('DELETE FROM "session" WHERE sid = $1', [session.sessionId]).catch(() => {});
+        }
+      }
+    } catch {
+    }
   }
 
   getSession(sessionId: string): ActiveSession | undefined {
@@ -77,6 +101,17 @@ class SessionTracker {
     }
     
     return result.sort((a, b) => b.lastActivity - a.lastActivity);
+  }
+
+  getActiveSessionsByUserId(userId: string) {
+    const now = Date.now();
+    const result: (ActiveSession & { sessionId: string })[] = [];
+    for (const [sessionId, session] of Array.from(this.sessions.entries())) {
+      if (session.userId === userId && now - session.lastActivity <= 30 * 60 * 1000) {
+        result.push({ ...session, sessionId });
+      }
+    }
+    return result.sort((a, b) => a.loginTime - b.loginTime);
   }
 
   getSessionsByUserId(userId: string) {

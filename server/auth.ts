@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import { sessionTracker } from "./session-tracker";
 
 declare global {
   namespace Express {
@@ -141,6 +142,7 @@ export function setupAuth(app: Express) {
       recordLoginAttempt(rateLimitKey, true);
       req.login(user, async (err) => {
         if (err) return next(err);
+        sessionTracker.updateSession(req.sessionID, user, req);
         const { password, ...safeUser } = user;
         let mosqueName = null;
         if (user.mosqueId) {

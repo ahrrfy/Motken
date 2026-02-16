@@ -82,7 +82,7 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
         </svg>
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;gap:8px;z-index:10;">
           <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);">
-            <span style="font-weight:bold;font-size:14px;">م</span>
+            <img src="/logo.png" style="width:24px;height:24px;border-radius:50%;object-fit:contain;" />
           </div>
           <div>
             <h2 style="font-size:14px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;">مُتْقِن</h2>
@@ -166,7 +166,7 @@ function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
         </div>
         <div className="absolute inset-0 flex items-center justify-center text-white z-10 gap-2">
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0">
-            <span className="font-bold text-sm">م</span>
+            <img src="/logo.png" className="w-6 h-6 rounded-full object-contain" />
           </div>
           <div>
             <h2 className="font-serif text-sm font-bold tracking-wide leading-tight">مُتْقِن</h2>

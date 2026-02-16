@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { QrCode, ShieldCheck, ShieldAlert, Loader2, Scan, Camera, CameraOff, Search, User, MapPin, Phone, Calendar, X } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { formatDateAr } from "@/lib/utils";
 
 const ROLE_MAP: Record<string, string> = {
@@ -14,6 +14,13 @@ const ROLE_MAP: Record<string, string> = {
   admin: "مدير",
 };
 
+function formatManualId(value: string): string {
+  const clean = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (clean.length <= 3) return clean;
+  if (clean.length <= 7) return clean.slice(0, 3) + "-" + clean.slice(3);
+  return clean.slice(0, 3) + "-" + clean.slice(3, 7) + "-" + clean.slice(7, 11);
+}
+
 export default function QRScannerPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -21,9 +28,10 @@ export default function QRScannerPage() {
   const [error, setError] = useState("");
   const [manualId, setManualId] = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const scanningRef = useRef(false);
 
-  const verifyUser = async (data: string) => {
+  const verifyUser = useCallback(async (data: string) => {
+    if (verifying) return;
     setVerifying(true);
     setError("");
     setVerifiedUser(null);
@@ -43,7 +51,7 @@ export default function QRScannerPage() {
         return;
       }
 
-      const res = await fetch(`/api/verify-user/${userId}`, { credentials: "include" });
+      const res = await fetch(`/api/verify-user/${encodeURIComponent(userId)}`, { credentials: "include" });
       if (!res.ok) {
         const err = await res.json();
         setError(err.message || "فشل التحقق");
@@ -57,44 +65,74 @@ export default function QRScannerPage() {
       setError("حدث خطأ أثناء التحقق");
     }
     setVerifying(false);
-  };
+  }, [verifying]);
 
-  const startCamera = async () => {
-    setError("");
-    setVerifiedUser(null);
-    try {
-      const scanner = new Html5Qrcode("qr-reader");
-      scannerRef.current = scanner;
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-          stopCamera();
-          verifyUser(decodedText);
-        },
-        () => {}
-      );
-      setCameraActive(true);
-    } catch {
-      setError("لا يمكن الوصول إلى الكاميرا. تأكد من منح الإذن.");
-    }
-  };
-
-  const stopCamera = async () => {
+  const stopCamera = useCallback(async () => {
+    scanningRef.current = false;
     if (scannerRef.current) {
       try {
-        await scannerRef.current.stop();
+        const state = scannerRef.current.getState();
+        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+          await scannerRef.current.stop();
+        }
         scannerRef.current.clear();
       } catch {}
       scannerRef.current = null;
     }
     setCameraActive(false);
+  }, []);
+
+  const startCamera = async () => {
+    setError("");
+    setVerifiedUser(null);
+
+    if (scannerRef.current) {
+      await stopCamera();
+    }
+
+    try {
+      const scanner = new Html5Qrcode("qr-reader", { verbose: false });
+      scannerRef.current = scanner;
+      scanningRef.current = true;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 15,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1,
+          disableFlip: false,
+        },
+        async (decodedText) => {
+          if (!scanningRef.current) return;
+          scanningRef.current = false;
+          try {
+            await scanner.stop();
+            scanner.clear();
+          } catch {}
+          scannerRef.current = null;
+          setCameraActive(false);
+          verifyUser(decodedText);
+        },
+        () => {}
+      );
+      setCameraActive(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      setError("لا يمكن الوصول إلى الكاميرا. تأكد من منح الإذن.");
+    }
   };
 
   const handleManualSearch = () => {
-    if (manualId.trim()) {
-      verifyUser(manualId.trim());
+    const trimmed = manualId.trim();
+    if (trimmed) {
+      verifyUser(trimmed);
     }
+  };
+
+  const handleManualIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatManualId(e.target.value);
+    setManualId(formatted);
   };
 
   const resetScan = () => {
@@ -105,11 +143,17 @@ export default function QRScannerPage() {
 
   useEffect(() => {
     return () => {
+      scanningRef.current = false;
       if (scannerRef.current) {
         try {
-          scannerRef.current.stop();
-          scannerRef.current.clear();
+          const state = scannerRef.current.getState();
+          if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+            scannerRef.current.stop().then(() => {
+              scannerRef.current?.clear();
+            }).catch(() => {});
+          }
         } catch {}
+        scannerRef.current = null;
       }
     };
   }, []);
@@ -126,8 +170,19 @@ export default function QRScannerPage() {
       <div className="max-w-lg mx-auto space-y-6">
         <Card>
           <CardContent className="p-4 space-y-4">
-            <div className="relative aspect-square bg-gray-900 rounded-xl overflow-hidden" ref={containerRef}>
-              <div id="qr-reader" className="w-full h-full" />
+            <div className="relative bg-gray-900 rounded-xl overflow-hidden" style={{ width: "100%", minHeight: "300px" }}>
+              <div id="qr-reader" style={{ width: "100%", minHeight: "300px" }} />
+              {cameraActive && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                  <div className="w-[250px] h-[250px] relative">
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-400/50 animate-pulse" style={{ animationDuration: "1.5s" }} />
+                  </div>
+                </div>
+              )}
               {!cameraActive && !verifying && !verifiedUser && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 space-y-4">
                   <QrCode className="w-20 h-20" />
@@ -176,12 +231,13 @@ export default function QRScannerPage() {
 
             <div className="flex gap-2">
               <Input
-                placeholder="أدخل معرّف المستخدم..."
+                placeholder="MTQ-2026-XXXX"
                 value={manualId}
-                onChange={(e) => setManualId(e.target.value)}
+                onChange={handleManualIdChange}
                 onKeyDown={(e) => e.key === "Enter" && handleManualSearch()}
-                className="flex-1"
+                className="flex-1 font-mono tracking-wider"
                 dir="ltr"
+                maxLength={13}
                 data-testid="input-manual-id"
               />
               <Button
