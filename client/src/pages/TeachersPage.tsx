@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera } from "lucide-react";
+import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle } from "lucide-react";
+import { isValidIraqiPhone, getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -277,6 +278,9 @@ export default function TeachersPage() {
                   <div className="space-y-2">
                     <Label>الهاتف <span className="text-red-500">*</span></Label>
                     <Input data-testid="input-phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
+                    {formData.phone && !isValidIraqiPhone(formData.phone) && (
+                      <p className="text-xs text-orange-500 mt-1" data-testid="text-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
+                    )}
                   </div>
                   <Button onClick={handleAddTeacher} disabled={submitting} className="w-full" data-testid="button-submit-teacher">
                     {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
@@ -345,9 +349,21 @@ export default function TeachersPage() {
                       <TableCell>
                         <div className="flex gap-2 justify-end">
                           {teacher.phone && (
-                            <Button variant="ghost" size="icon" data-testid={`button-phone-${teacher.id}`}>
-                              <Phone className="w-4 h-4 text-gray-500" />
-                            </Button>
+                            <>
+                              <Button variant="ghost" size="icon" data-testid={`button-phone-${teacher.id}`}>
+                                <Phone className="w-4 h-4 text-gray-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => window.open(getWhatsAppUrl(teacher.phone!), "_blank")}
+                                title="واتساب"
+                                data-testid={`button-whatsapp-${teacher.id}`}
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>

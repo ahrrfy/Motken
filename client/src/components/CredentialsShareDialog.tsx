@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Copy, Check, MessageCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getWhatsAppUrl } from "@/lib/phone-utils";
 
 interface CredentialsShareDialogProps {
   open: boolean;
@@ -85,15 +86,8 @@ export default function CredentialsShareDialog({
   };
 
   const handleWhatsApp = () => {
-    const message = encodeURIComponent(getMessage());
-    const phoneNumber = phone ? phone.replace(/[^0-9+]/g, "") : "";
-    let waUrl: string;
-    if (phoneNumber) {
-      const formattedPhone = phoneNumber.startsWith("+") ? phoneNumber.slice(1) : phoneNumber.startsWith("0") ? "964" + phoneNumber.slice(1) : phoneNumber;
-      waUrl = `https://wa.me/${formattedPhone}?text=${message}`;
-    } else {
-      waUrl = `https://wa.me/?text=${message}`;
-    }
+    const msg = getMessage();
+    const waUrl = phone ? getWhatsAppUrl(phone, msg) : `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, "_blank");
   };
 
