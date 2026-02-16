@@ -123,6 +123,23 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== USERNAME CHECK ====================
+  app.get("/api/check-username/:username", requireAuth, async (req, res) => {
+    try {
+      const username = req.params.username.trim().toLowerCase();
+      if (!username || username.length < 2) {
+        return res.json({ available: false, message: "اسم المستخدم قصير جداً" });
+      }
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.json({ available: false, message: "اسم المستخدم مستخدم بالفعل" });
+      }
+      return res.json({ available: true, message: "اسم المستخدم متاح" });
+    } catch (error) {
+      res.status(500).json({ available: false, message: "خطأ في التحقق" });
+    }
+  });
+
   // ==================== USERS ====================
   app.get("/api/users", requireAuth, async (req, res) => {
     try {
