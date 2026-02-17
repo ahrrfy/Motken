@@ -866,7 +866,7 @@ export default function CoursesPage() {
     const template = detectCertificateTemplate(studentId);
     const theme = getCertificateTheme(template);
     const decorations = getTemplateDecorations(template);
-    const issuedDate = new Date(cert.issuedAt).toLocaleDateString("ar-IQ", { year: "numeric", month: "long", day: "numeric" });
+    const issuedDate = formatDateAr(cert.issuedAt);
 
     const gradeText = cert.graduationGrade && GRADE_LABELS[cert.graduationGrade]
       ? `<br /><span class="grade-text">بتقدير: ${GRADE_LABELS[cert.graduationGrade]}</span>`

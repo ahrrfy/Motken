@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, RefreshCw, BookOpen, Loader2, Search, Calendar, Award, TrendingUp, Clock, Star, BarChart3 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { cn } from "@/lib/utils";
+import { cn, formatDateAr } from "@/lib/utils";
 import { quranSurahs } from "@shared/quran-surahs";
 import { apiGet } from "@/lib/api";
 
@@ -287,7 +287,7 @@ export default function QuranTracker() {
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" });
+      return formatDateAr(d);
     } catch {
       return dateStr;
     }

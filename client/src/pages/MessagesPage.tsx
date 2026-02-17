@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
+import { formatDateAr, formatTimeAr } from "@/lib/utils";
 
 interface Conversation {
   userId: string;
@@ -358,7 +359,7 @@ export default function MessagesPage() {
       if (hours < 24) return `منذ ${hours} س`;
       const days = Math.floor(hours / 24);
       if (days < 7) return `منذ ${days} ي`;
-      return date.toLocaleDateString("ar");
+      return formatDateAr(date);
     } catch {
       return dateStr;
     }
@@ -367,7 +368,7 @@ export default function MessagesPage() {
   const formatMessageTime = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
-      return date.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
+      return formatTimeAr(date);
     } catch {
       return "";
     }
@@ -381,7 +382,7 @@ export default function MessagesPage() {
       yesterday.setDate(yesterday.getDate() - 1);
       if (date.toDateString() === today.toDateString()) return "اليوم";
       if (date.toDateString() === yesterday.toDateString()) return "أمس";
-      return date.toLocaleDateString("ar", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]; return days[date.getDay()] + " " + formatDateAr(date);
     } catch {
       return "";
     }

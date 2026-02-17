@@ -43,6 +43,7 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react";
+import { formatDateAr, formatDateTimeAr } from "@/lib/utils";
 
 interface Session {
   sessionId: string;
@@ -90,13 +91,7 @@ function getRelativeTime(timestamp: number): string {
 }
 
 function formatDateTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleString("ar-SA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeAr(timestamp);
 }
 
 function DeviceIcon({ type }: { type: string }) {
@@ -601,9 +596,9 @@ export default function OnlineUsersPage() {
                           </td>
                           <td className="py-3 px-3 hidden md:table-cell text-xs text-muted-foreground">
                             {device.createdAt
-                              ? new Date(device.createdAt).toLocaleDateString("ar-SA")
+                              ? formatDateAr(device.createdAt)
                               : device.bannedAt
-                              ? new Date(device.bannedAt).toLocaleDateString("ar-SA")
+                              ? formatDateAr(device.bannedAt)
                               : "—"}
                           </td>
                           <td className="py-3 px-3 text-center">

@@ -340,6 +340,9 @@ export async function registerRoutes(
       if (req.body.password && (typeof req.body.password !== "string" || req.body.password.length < 6)) {
         return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
       }
+      if (req.body.role === "student" && (!parentPhone || typeof parentPhone !== "string" || parentPhone.length < 10)) {
+        return res.status(400).json({ message: "رقم هاتف ولي الأمر مطلوب للطلاب" });
+      }
       const data: any = {
         username, name, password: await hashPassword(rawPassword),
         role: req.body.role, mosqueId: req.body.mosqueId, teacherId,
