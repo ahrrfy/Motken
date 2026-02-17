@@ -68,13 +68,13 @@ const navItems = [
   { href: "/courses", label: "الدورات والشهادات", labelEn: "Courses & Certificates", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
   { href: "/quran", label: "المصحف والحفظ", labelEn: "Quran Tracker", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
   { href: "/library", label: "المكتبة الإسلامية", labelEn: "Islamic Library", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/attendance", label: "الحضور والغياب", labelEn: "Attendance", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/points-rewards", label: "النقاط والمكافآت", labelEn: "Points & Rewards", icon: Gift, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/schedules", label: "جدول الحلقات", labelEn: "Schedules", icon: Clock, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/competitions", label: "المسابقات القرآنية", labelEn: "Competitions", icon: Trophy, roles: ["admin", "teacher", "supervisor", "student"] },
-  { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"] },
+  { href: "/attendance", label: "الحضور والغياب", labelEn: "Attendance", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"], featureKey: "attendance" },
+  { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "messaging" },
+  { href: "/points-rewards", label: "النقاط والمكافآت", labelEn: "Points & Rewards", icon: Gift, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "points_rewards" },
+  { href: "/schedules", label: "جدول الحلقات", labelEn: "Schedules", icon: Clock, roles: ["admin", "teacher", "supervisor"], featureKey: "schedules" },
+  { href: "/competitions", label: "المسابقات القرآنية", labelEn: "Competitions", icon: Trophy, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "competitions" },
+  { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
+  { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
   { href: "/id-cards", label: "الهويات (QR)", labelEn: "ID Cards (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
   { href: "/scan-qr", label: "مسح QR", labelEn: "Scan QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
   { href: "/teacher-activities", label: "أنشطة الأساتذة", labelEn: "Teacher Activities", icon: ClipboardList, roles: ["admin", "supervisor"] },
@@ -85,13 +85,16 @@ const navItems = [
   { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
 ];
 
-function NavContent({ user, location, onNavigate }: { user: any; location: string; onNavigate?: () => void }) {
+function NavContent({ user, location, onNavigate, enabledFeatures }: { user: any; location: string; onNavigate?: () => void; enabledFeatures: string[] }) {
   const { language } = useTheme();
   const filteredNav = navItems.filter((item) => {
     if (!item.roles.includes(user.role)) {
       if (item.permission === "canPrintIds" && user.canPrintIds) {
         return true;
       }
+      return false;
+    }
+    if (item.featureKey && !enabledFeatures.includes(item.featureKey)) {
       return false;
     }
     return true;
@@ -125,6 +128,22 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const { isDark, toggleDark, language } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
+  const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function loadFeatures() {
+      try {
+        const res = await fetch("/api/features/enabled", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setEnabledFeatures(data.enabled || []);
+        }
+      } catch {}
+    }
+    loadFeatures();
+    const interval = setInterval(loadFeatures, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const togglePushNotifications = useCallback(async () => {
     if (pushEnabled) {
@@ -259,7 +278,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           </SheetTrigger>
           <SheetContent side={isEn ? "left" : "right"} className="w-72 p-0 bg-sidebar text-sidebar-foreground border-l-sidebar-border" dir={dir}>
             <SidebarHeader />
-            <NavContent user={user} location={location} onNavigate={() => setMobileOpen(false)} />
+            <NavContent user={user} location={location} onNavigate={() => setMobileOpen(false)} enabledFeatures={enabledFeatures} />
             <SidebarFooter />
           </SheetContent>
         </Sheet>
@@ -267,7 +286,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
       <aside className={`w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col ${isEn ? "border-r" : "border-l"} border-sidebar-border shadow-xl z-10 overflow-y-auto sticky top-0 h-screen`}>
         <SidebarHeader />
-        <NavContent user={user} location={location} />
+        <NavContent user={user} location={location} enabledFeatures={enabledFeatures} />
         <SidebarFooter />
       </aside>
 
