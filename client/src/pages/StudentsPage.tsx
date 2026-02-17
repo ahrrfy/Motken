@@ -34,6 +34,7 @@ interface Student {
   telegramId?: string | null;
   parentPhone?: string | null;
   educationLevel?: string | null;
+  level?: number | null;
   isSpecialNeeds?: boolean;
   isOrphan?: boolean;
   isActive: boolean;
@@ -54,12 +55,19 @@ interface ProfileStats {
   badges: { total: number; list: any[] };
 }
 
-function getStudentLevel(student: Student): { label: string; color: string; level: string } {
-  const age = student.age || 0;
-  const edu = student.educationLevel || "";
-  if (edu === "postgraduate" || age >= 20) return { label: "متقدم", color: "bg-emerald-100 text-emerald-700", level: "advanced" };
-  if (edu === "university" || age >= 15) return { label: "متوسط", color: "bg-blue-100 text-blue-700", level: "intermediate" };
-  return { label: "مبتدئ", color: "bg-amber-100 text-amber-700", level: "beginner" };
+const LEVEL_NAMES: Record<number, string> = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم", 4: "متميز", 5: "خاتم" };
+const LEVEL_COLORS: Record<number, string> = {
+  1: "bg-amber-100 text-amber-700",
+  2: "bg-blue-100 text-blue-700",
+  3: "bg-emerald-100 text-emerald-700",
+  4: "bg-purple-100 text-purple-700",
+  5: "bg-yellow-100 text-yellow-800",
+};
+const LEVEL_RANGES: Record<number, string> = { 1: "0-5 أجزاء", 2: "6-10 أجزاء", 3: "11-20 جزء", 4: "21-28 جزء", 5: "29-30 جزء" };
+
+function getStudentLevel(student: Student): { label: string; color: string; level: number } {
+  const lv = student.level || 1;
+  return { label: LEVEL_NAMES[lv] || "مبتدئ", color: LEVEL_COLORS[lv] || LEVEL_COLORS[1], level: lv };
 }
 
 export default function StudentsPage() {
@@ -70,6 +78,7 @@ export default function StudentsPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSpecialNeeds, setFilterSpecialNeeds] = useState("all");
   const [filterOrphan, setFilterOrphan] = useState("all");
+  const [filterLevel, setFilterLevel] = useState("all");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
@@ -400,7 +409,7 @@ export default function StudentsPage() {
     setTransferDialogOpen(true);
   };
 
-  const hasActiveFilters = filterGender !== "all" || filterStatus !== "all" || filterSpecialNeeds !== "all" || filterOrphan !== "all" || filterDateFrom || filterDateTo;
+  const hasActiveFilters = filterGender !== "all" || filterStatus !== "all" || filterSpecialNeeds !== "all" || filterOrphan !== "all" || filterLevel !== "all" || filterDateFrom || filterDateTo;
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -408,6 +417,7 @@ export default function StudentsPage() {
     setFilterStatus("all");
     setFilterSpecialNeeds("all");
     setFilterOrphan("all");
+    setFilterLevel("all");
     setFilterDateFrom("");
     setFilterDateTo("");
   };
@@ -428,6 +438,7 @@ export default function StudentsPage() {
         if (filterOrphan === "yes" && !s.isOrphan) return false;
         if (filterOrphan === "no" && s.isOrphan) return false;
       }
+      if (filterLevel !== "all" && String(s.level || 1) !== filterLevel) return false;
       if (filterDateFrom && (s as any).createdAt) {
         if (new Date((s as any).createdAt) < new Date(filterDateFrom)) return false;
       }
@@ -841,6 +852,21 @@ export default function StudentsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterLevel} onValueChange={setFilterLevel}>
+                <SelectTrigger data-testid="select-filter-level">
+                  <SelectValue placeholder="المستوى" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">المستوى - الكل</SelectItem>
+                  <SelectItem value="1">مبتدئ (0-5 أجزاء)</SelectItem>
+                  <SelectItem value="2">متوسط (6-10 أجزاء)</SelectItem>
+                  <SelectItem value="3">متقدم (11-20 جزء)</SelectItem>
+                  <SelectItem value="4">متميز (21-28 جزء)</SelectItem>
+                  <SelectItem value="5">خاتم (29-30 جزء)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="w-full sm:w-40">
               <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
               <Input
@@ -962,7 +988,7 @@ export default function StudentsPage() {
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge variant="secondary" className={`text-xs ${level.color}`} data-testid={`badge-level-${student.id}`}>
-                            {level.label}
+                            {level.label} ({level.level})
                           </Badge>
                         </TableCell>
                         {isSupervisor && (
@@ -1105,7 +1131,7 @@ export default function StudentsPage() {
                   <h3 className="text-lg font-bold" data-testid="text-profile-name">{profileStudent.name}</h3>
                   <div className="flex flex-wrap gap-2 mt-1">
                     <Badge variant="secondary" className={getStudentLevel(profileStudent).color} data-testid="badge-profile-level">
-                      {getStudentLevel(profileStudent).label}
+                      المستوى {getStudentLevel(profileStudent).level}: {getStudentLevel(profileStudent).label}
                     </Badge>
                     <Badge variant={profileStudent.isActive ? "default" : "destructive"} className={profileStudent.isActive ? "bg-green-100 text-green-700 border-none" : ""}>
                       {profileStudent.isActive ? "نشط" : "متوقف"}
@@ -1149,6 +1175,51 @@ export default function StudentsPage() {
                 <div className="space-y-1">
                   <span className="text-muted-foreground">المستوى الدراسي</span>
                   <p className="font-medium" data-testid="text-profile-education">{profileStudent.educationLevel || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">مستوى الحفظ</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className={getStudentLevel(profileStudent).color}>
+                      {getStudentLevel(profileStudent).label} - {LEVEL_RANGES[profileStudent.level || 1]}
+                    </Badge>
+                    {!isStudent && (
+                      <Select
+                        value={String(profileStudent.level || 1)}
+                        onValueChange={async (val) => {
+                          try {
+                            const res = await fetch(`/api/levels/student/${profileStudent.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              credentials: "include",
+                              body: JSON.stringify({ level: Number(val) }),
+                            });
+                            if (res.ok) {
+                              toast({ title: "تم بنجاح", description: `تم تغيير المستوى إلى ${LEVEL_NAMES[Number(val)]}`, className: "bg-green-50 border-green-200 text-green-800" });
+                              setProfileStudent(prev => prev ? { ...prev, level: Number(val) } : null);
+                              setStudents(prev => prev.map(s => s.id === profileStudent.id ? { ...s, level: Number(val) } : s));
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "خطأ", description: err.message, variant: "destructive" });
+                            }
+                          } catch {
+                            toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+                          }
+                        }}
+                        data-testid="select-change-level"
+                      >
+                        <SelectTrigger className="h-7 w-24 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 - مبتدئ</SelectItem>
+                          <SelectItem value="2">2 - متوسط</SelectItem>
+                          <SelectItem value="3">3 - متقدم</SelectItem>
+                          <SelectItem value="4">4 - متميز</SelectItem>
+                          <SelectItem value="5">5 - خاتم</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <span className="text-muted-foreground">الأستاذ</span>
