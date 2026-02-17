@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, Filter, Search, ShieldAlert, ShieldCheck, Printer, Loader2, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { formatDateAr } from "@/lib/utils";
+import { formatDateAr, formatDateTimeAr } from "@/lib/utils";
 import { openPrintWindow } from "@/lib/print-utils";
 
 interface ActivityLog {
@@ -82,7 +82,7 @@ export default function ActivityLogsPage() {
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleString("ar-IQ", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+      return formatDateTimeAr(d);
     } catch {
       return dateStr;
     }

@@ -173,8 +173,8 @@ export default function StudentsPage() {
   };
 
   const handleAddStudent = async () => {
-    if (!formData.username || !formData.password || !formData.name || !formData.phone) {
-      toast({ title: "خطأ", description: "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف)", variant: "destructive" });
+    if (!formData.username || !formData.password || !formData.name || !formData.phone || !formData.parentPhone) {
+      toast({ title: "خطأ", description: "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف، هاتف ولي الأمر)", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -410,8 +410,8 @@ export default function StudentsPage() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label>هاتف ولي الأمر</Label>
-                    <Input data-testid="input-parent-phone" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" />
+                    <Label>هاتف ولي الأمر <span className="text-red-500">*</span></Label>
+                    <Input data-testid="input-parent-phone" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
                     {formData.parentPhone && !isValidIraqiPhone(formData.parentPhone) && (
                       <p className="text-xs text-orange-500 mt-1" data-testid="text-parent-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
                     )}
