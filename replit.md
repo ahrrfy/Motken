@@ -48,11 +48,27 @@ A comprehensive multi-tenant online Quran memorization management system for Isl
 - ActivityLogsPage (admin), TeacherActivitiesPage (supervisor)
 - OnlineUsersPage (admin - session monitoring, kick/suspend/ban)
 - NotificationsPage (with bulk actions), TeacherDailyPage
+- AttendancePage (bulk mark attendance, history with filters)
+- MessagesPage (internal WhatsApp-style chat, conversations, unread counts)
+- PointsRewardsPage (leaderboard with podium, points history, badges system)
+- SchedulesPage (weekly calendar grid, color-coded by teacher)
+- CompetitionsPage (Quran competitions with participants, scoring, ranking)
+- ParentPortalPage (generate shareable progress reports with tokens)
+- SmartAlertsPage (auto-detected alerts: inactive students/teachers, upcoming exams, low grades)
+- FeatureControlPage (admin - toggle system features on/off)
 
 ## Database Tables
 - mosques (with status, adminNotes fields), users (with gender, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, adminNotes, suspendedUntil fields; NO email field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
 - activity_logs, notifications, courses, course_students, course_teachers, certificates
 - banned_devices (permanent IP bans with indexes on ip_address and device_fingerprint)
+- feature_flags (system feature toggles with categories)
+- attendance (daily records: present/absent/late/excused with bulk marking)
+- messages (internal messaging with read tracking)
+- points (reward points by category: assignment/exam/behavior/attendance/extra)
+- badges (achievement badges: memorization/tajweed/behavior/attendance/excellence)
+- schedules (weekly class schedules with day/time/location)
+- competitions, competition_participants (Quran competitions with scoring/ranking)
+- parent_reports (shareable progress reports with access tokens)
 
 ## Key Features
 - **Unified Assignments & Exams**: Single page with tabs for managing assignments and exams
