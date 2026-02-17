@@ -54,6 +54,7 @@ The system is built with a modern web stack:
     -   **Performance**: Response compression (gzip/brotli), static asset caching, and service worker for offline capabilities.
 
 ## Recent Changes
+-   **Feb 17, 2026**: Mandatory privacy policy acceptance for all users (non-optional, admin exempt). Comprehensive backup/restore system with integrity validation. Fixed language switching (lang/dir attributes). Phone uniqueness validation (11+ digits, green border). Save buttons on all settings tabs.
 -   **Feb 17, 2026**: Admin interface redesign - categorized sidebar navigation with collapsible groups, merged similar sections (ID Cards + QR Scanner, Monitoring pages), enhanced dashboard with visual statistics and quick access grid.
 -   **Feb 17, 2026**: Comprehensive enhancement of all 8 major sections with 60+ new features including stats cards, visual calendars, batch operations, Excel exports, WhatsApp integration, print functionality, achievement systems, and advanced filtering.
 
