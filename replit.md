@@ -4,7 +4,10 @@
 Mutqin is a multi-tenant online Quran memorization management system designed for Islamic centers in Iraq. It offers mosque-based data isolation, hierarchical role-based access control (Admin, Supervisor, Teacher, Student), and a full Arabic RTL interface. The system aims to streamline the administration of Quran memorization, student progress tracking, and communication within Islamic educational institutions.
 
 ## User Preferences
-Not specified.
+- Date format: dd/mm/yyyy, time format: 12-hour with Arabic ص/م
+- Parent phone is mandatory for all students
+- No features requiring paid subscriptions or external API integrations
+- Logo: transparent icon (golden Quran book + checkmark) without text or white frame
 
 ## System Architecture
 The system is built with a modern web stack:
@@ -19,7 +22,21 @@ The system is built with a modern web stack:
     -   **Supervisor**: Mosque-scoped, manages teachers and students, rates teachers.
     -   **Teacher**: Mosque-scoped, manages students, rates students, creates assignments and exams.
     -   **Student**: Accesses personal data and assignments.
+
+### Sidebar Navigation Structure (Categorized Groups)
+1. **الرئيسية (Main)**: لوحة التحكم, واجبات اليوم
+2. **إدارة المستخدمين (People)**: الطلاب, الأساتذة, المشرفون, جميع المستخدمين
+3. **التعليم والحفظ (Education)**: الواجبات والامتحانات, المصحف والحفظ, الدورات والشهادات, المكتبة الإسلامية
+4. **المتابعة والتقييم (Tracking)**: الحضور والغياب, النقاط والمكافآت, التقييمات والأوسمة, جدول الحلقات, المسابقات القرآنية
+5. **التواصل والإشعارات (Communication)**: المحادثات, الإشعارات, التنبيهات الذكية, بوابة ولي الأمر
+6. **الإدارة والمراقبة (Admin)**: الجوامع, التقارير, الهويات ومسح QR (merged), المراقبة والأمان (merged: المتصلون+سجل الحركات+أنشطة الأساتذة), التحكم بالمميزات, الإعدادات
+
+### Merged Pages
+- **IDCardsQRPage**: Combines ID Cards + QR Scanner in tabs (`/id-cards`)
+- **MonitoringPage**: Combines Online Users + Activity Logs + Teacher Activities in tabs (`/monitoring`)
+
 -   **Core Features**:
+    -   **Dashboard**: Enhanced with visual statistics (SVG progress rings), quick access grid, assignment completion rate, today's attendance summary, student breakdown (active/archived/special needs/orphans).
     -   **Students Management**: Stats cards, profile summary dialog with aggregated data (attendance/points/assignments/badges), sort options, batch actions (WhatsApp/export), archive/restore, student notes, level display, enhanced export.
     -   **Assignments & Exams**: Stats cards, grading system (1-100 with color-coded badges), deadline tracking with overdue alerts, assignment type badges, visual calendar tab, completion rate per student, bulk assignment to multiple students, notes editing, quick stats summary per student.
     -   **Attendance**: Stats cards, mark-all quick actions, consecutive absence alerts, monthly calendar view with color-coded dots, statistics tab with SVG progress indicators and per-student bar charts, printable attendance sheet, absence reason dropdown, parent WhatsApp notification, pre-fill existing records.
@@ -30,14 +47,15 @@ The system is built with a modern web stack:
     -   **Courses & Certificates**: Stats, search/filter, edit, duplicate, graduation grades, ungraduate, progress bars, public certificate verification, batch printing, category badges, course timeline.
     -   **User Management**: Comprehensive student, teacher, and supervisor management with detailed profiles (including special needs, orphan status), credential sharing via WhatsApp, and transfer capabilities.
     -   **Internal Islamic Library**: Offline-capable reader with 50+ books, chapters, bookmarking, and progress tracking.
-    -   **Activity & Monitoring**: Detailed activity logs for teachers and supervisors, real-time online user monitoring with session management (kick/suspend/ban).
+    -   **Activity & Monitoring**: Combined monitoring page with tabs for online users, activity logs, and teacher activities. Session management (kick/suspend/ban).
     -   **Reporting & Analytics**: Tracking of student progress, attendance, points, and generation of ID cards and reports with print/export capabilities.
-    -   **Communication**: Internal messaging system, automated notifications for key events, and a rotating Hadith ticker.
+    -   **Communication**: Internal messaging system, automated notifications for key events, smart alerts, and a rotating Hadith ticker.
     -   **Security**: Scrypt password hashing, session security, rate limiting, IP banning, IDOR prevention, and comprehensive input validation.
     -   **Performance**: Response compression (gzip/brotli), static asset caching, and service worker for offline capabilities.
 
 ## Recent Changes
--   **Feb 17, 2026**: Comprehensive enhancement of all 8 major sections with 60+ new features including stats cards, visual calendars, batch operations, Excel exports, WhatsApp integration, print functionality, achievement systems, and advanced filtering across Students, Attendance, Points, Assignments, Schedules, Ratings, Quran Tracker, and Courses pages.
+-   **Feb 17, 2026**: Admin interface redesign - categorized sidebar navigation with collapsible groups, merged similar sections (ID Cards + QR Scanner, Monitoring pages), enhanced dashboard with visual statistics and quick access grid.
+-   **Feb 17, 2026**: Comprehensive enhancement of all 8 major sections with 60+ new features including stats cards, visual calendars, batch operations, Excel exports, WhatsApp integration, print functionality, achievement systems, and advanced filtering.
 
 ## External Dependencies
 -   **api.alquran.cloud**: Used for fetching Quran text for display.
