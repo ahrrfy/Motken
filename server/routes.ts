@@ -3,7 +3,15 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
-import { insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema, type User, type Assignment } from "@shared/schema";
+import { db } from "./db";
+import {
+  insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema,
+  type User, type Assignment,
+  mosques, users, assignments, attendance, courses, courseStudents, courseTeachers,
+  certificates, notifications, messages, activityLogs, ratings, points, badges,
+  competitions, competitionParticipants, schedules, parentReports, exams, examStudents,
+  featureFlags, bannedDevices,
+} from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
 import { filterTextFields } from "@shared/content-filter";
 
@@ -217,6 +225,27 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== PHONE CHECK ====================
+  app.get("/api/phone/check", requireAuth, async (req, res) => {
+    try {
+      const phone = (req.query.phone as string || "").replace(/[\s\-\.]/g, "");
+      const excludeId = req.query.excludeId as string | undefined;
+      if (!phone) {
+        return res.json({ exists: false });
+      }
+      const allUsers = await storage.getUsers();
+      const exists = allUsers.some(u => {
+        if (excludeId && u.id === excludeId) return false;
+        const uPhone = (u.phone || "").replace(/[\s\-\.]/g, "");
+        const uParentPhone = (u.parentPhone || "").replace(/[\s\-\.]/g, "");
+        return (uPhone && uPhone === phone) || (uParentPhone && uParentPhone === phone);
+      });
+      return res.json({ exists });
+    } catch (error) {
+      res.status(500).json({ exists: false });
+    }
+  });
+
   // ==================== USERNAME CHECK ====================
   app.get("/api/check-username/:username", requireAuth, async (req, res) => {
     try {
@@ -343,6 +372,30 @@ export async function registerRoutes(
       if (req.body.role === "student" && (!parentPhone || typeof parentPhone !== "string" || parentPhone.length < 10)) {
         return res.status(400).json({ message: "رقم هاتف ولي الأمر مطلوب للطلاب" });
       }
+      const allUsers = await storage.getUsers();
+      const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
+      if (phone) {
+        const cleanPhone = cleanDigits(phone);
+        const phoneDup = allUsers.some(u => {
+          const up = cleanDigits(u.phone || "");
+          const upp = cleanDigits(u.parentPhone || "");
+          return (up && up === cleanPhone) || (upp && upp === cleanPhone);
+        });
+        if (phoneDup) {
+          return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل" });
+        }
+      }
+      if (parentPhone) {
+        const cleanPP = cleanDigits(parentPhone);
+        const ppDup = allUsers.some(u => {
+          const up = cleanDigits(u.phone || "");
+          const upp = cleanDigits(u.parentPhone || "");
+          return (up && up === cleanPP) || (upp && upp === cleanPP);
+        });
+        if (ppDup) {
+          return res.status(400).json({ message: "رقم هاتف ولي الأمر مستخدم بالفعل" });
+        }
+      }
       const data: any = {
         username, name, password: await hashPassword(rawPassword),
         role: req.body.role, mosqueId: req.body.mosqueId, teacherId,
@@ -379,6 +432,35 @@ export async function registerRoutes(
 
     const updateData: any = {};
     const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan } = req.body;
+
+    const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
+    if (phone !== undefined && phone) {
+      const cleanPhone = cleanDigits(phone);
+      const allUsers = await storage.getUsers();
+      const phoneDup = allUsers.some(u => {
+        if (u.id === req.params.id) return false;
+        const up = cleanDigits(u.phone || "");
+        const upp = cleanDigits(u.parentPhone || "");
+        return (up && up === cleanPhone) || (upp && upp === cleanPhone);
+      });
+      if (phoneDup) {
+        return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل" });
+      }
+    }
+    if (parentPhone !== undefined && parentPhone) {
+      const cleanPP = cleanDigits(parentPhone);
+      const allUsers = await storage.getUsers();
+      const ppDup = allUsers.some(u => {
+        if (u.id === req.params.id) return false;
+        const up = cleanDigits(u.phone || "");
+        const upp = cleanDigits(u.parentPhone || "");
+        return (up && up === cleanPP) || (upp && upp === cleanPP);
+      });
+      if (ppDup) {
+        return res.status(400).json({ message: "رقم هاتف ولي الأمر مستخدم بالفعل" });
+      }
+    }
+
     if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
@@ -1925,6 +2007,356 @@ export async function registerRoutes(
       res.json({ message: "تم تصفير النظام بنجاح" });
     } catch (err: any) {
       res.status(500).json({ message: err.message || "حدث خطأ أثناء تصفير النظام" });
+    }
+  });
+
+  app.get("/api/system/backup", requireRole("admin"), async (req, res) => {
+    try {
+      const [
+        mosquesData, usersData, assignmentsData, attendanceData,
+        coursesData, courseStudentsData, courseTeachersData, certificatesData,
+        notificationsData, messagesData, activityLogsData, ratingsData,
+        pointsData, badgesData, competitionsData, competitionParticipantsData,
+        schedulesData, parentReportsData, examsData, examStudentsData,
+        featureFlagsData, bannedDevicesData,
+      ] = await Promise.all([
+        db.select().from(mosques),
+        db.select().from(users),
+        db.select().from(assignments),
+        db.select().from(attendance),
+        db.select().from(courses),
+        db.select().from(courseStudents),
+        db.select().from(courseTeachers),
+        db.select().from(certificates),
+        db.select().from(notifications),
+        db.select().from(messages),
+        db.select().from(activityLogs),
+        db.select().from(ratings),
+        db.select().from(points),
+        db.select().from(badges),
+        db.select().from(competitions),
+        db.select().from(competitionParticipants),
+        db.select().from(schedules),
+        db.select().from(parentReports),
+        db.select().from(exams),
+        db.select().from(examStudents),
+        db.select().from(featureFlags),
+        db.select().from(bannedDevices),
+      ]);
+
+      const backup = {
+        metadata: {
+          version: "1.0",
+          timestamp: new Date().toISOString(),
+          tableCount: 22,
+          totalRecords:
+            mosquesData.length + usersData.length + assignmentsData.length +
+            attendanceData.length + coursesData.length + courseStudentsData.length +
+            courseTeachersData.length + certificatesData.length + notificationsData.length +
+            messagesData.length + activityLogsData.length + ratingsData.length +
+            pointsData.length + badgesData.length + competitionsData.length +
+            competitionParticipantsData.length + schedulesData.length +
+            parentReportsData.length + examsData.length + examStudentsData.length +
+            featureFlagsData.length + bannedDevicesData.length,
+        },
+        data: {
+          mosques: mosquesData,
+          users: usersData,
+          assignments: assignmentsData,
+          attendance: attendanceData,
+          courses: coursesData,
+          courseStudents: courseStudentsData,
+          courseTeachers: courseTeachersData,
+          certificates: certificatesData,
+          notifications: notificationsData,
+          messages: messagesData,
+          activityLogs: activityLogsData,
+          ratings: ratingsData,
+          points: pointsData,
+          badges: badgesData,
+          competitions: competitionsData,
+          competitionParticipants: competitionParticipantsData,
+          schedules: schedulesData,
+          parentReports: parentReportsData,
+          exams: examsData,
+          examStudents: examStudentsData,
+          featureFlags: featureFlagsData,
+          bannedDevices: bannedDevicesData,
+        },
+      };
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      res.setHeader("Content-Disposition", `attachment; filename="mutqin_backup_${dateStr}.json"`);
+      res.setHeader("Content-Type", "application/json");
+      await logActivity(req.user!, "إنشاء نسخة احتياطية", "system", `تم تصدير ${backup.metadata.totalRecords} سجل`);
+      res.json(backup);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "حدث خطأ أثناء إنشاء النسخة الاحتياطية" });
+    }
+  });
+
+  app.post("/api/system/backup/validate", requireRole("admin"), async (req, res) => {
+    try {
+      const { metadata, data } = req.body;
+      const errors: string[] = [];
+
+      if (!metadata || !data) {
+        return res.json({ valid: false, summary: null, errors: ["ملف النسخة الاحتياطية غير صالح: البيانات الوصفية أو البيانات مفقودة"] });
+      }
+
+      if (!metadata.version || !metadata.timestamp) {
+        errors.push("البيانات الوصفية غير مكتملة");
+      }
+
+      const expectedTables = [
+        "mosques", "users", "assignments", "attendance", "courses",
+        "courseStudents", "courseTeachers", "certificates", "notifications",
+        "messages", "activityLogs", "ratings", "points", "badges",
+        "competitions", "competitionParticipants", "schedules",
+        "parentReports", "exams", "examStudents", "featureFlags", "bannedDevices",
+      ];
+
+      const details: { tableName: string; count: number }[] = [];
+      let totalRecords = 0;
+
+      for (const table of expectedTables) {
+        if (!data[table]) {
+          if (!Array.isArray(data[table]) && data[table] !== undefined) {
+            errors.push(`الجدول ${table} غير موجود في النسخة الاحتياطية`);
+          }
+          details.push({ tableName: table, count: 0 });
+        } else if (!Array.isArray(data[table])) {
+          errors.push(`الجدول ${table} ليس مصفوفة`);
+          details.push({ tableName: table, count: 0 });
+        } else {
+          details.push({ tableName: table, count: data[table].length });
+          totalRecords += data[table].length;
+        }
+      }
+
+      if (data.users && Array.isArray(data.users)) {
+        for (const user of data.users) {
+          if (!user.username || !user.name || !user.password) {
+            errors.push("بعض سجلات المستخدمين تفتقد حقول مطلوبة (username, name, password)");
+            break;
+          }
+        }
+      }
+
+      if (data.mosques && Array.isArray(data.mosques)) {
+        for (const mosque of data.mosques) {
+          if (!mosque.name) {
+            errors.push("بعض سجلات المساجد تفتقد حقل الاسم");
+            break;
+          }
+        }
+      }
+
+      res.json({
+        valid: errors.length === 0,
+        summary: {
+          tables: details.filter(d => d.count > 0).length,
+          totalRecords,
+          details,
+        },
+        errors,
+      });
+    } catch (err: any) {
+      res.status(500).json({ valid: false, summary: null, errors: [err.message || "حدث خطأ أثناء التحقق"] });
+    }
+  });
+
+  app.post("/api/system/backup/restore", requireRole("admin"), async (req, res) => {
+    try {
+      const { password, backup } = req.body;
+      if (!password || typeof password !== "string") {
+        return res.status(400).json({ message: "كلمة المرور مطلوبة" });
+      }
+      const admin = await storage.getUser(req.user!.id);
+      if (!admin) return res.status(404).json({ message: "المستخدم غير موجود" });
+
+      const { comparePasswords } = await import("./auth");
+      const valid = await comparePasswords(password, admin.password);
+      if (!valid) {
+        return res.status(403).json({ message: "كلمة المرور غير صحيحة" });
+      }
+
+      if (!backup || !backup.data) {
+        return res.status(400).json({ message: "بيانات النسخة الاحتياطية مفقودة" });
+      }
+
+      const { data } = backup;
+
+      const { pool } = await import("./db");
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+
+        await db.delete(competitionParticipants);
+        await db.delete(competitions);
+        await db.delete(parentReports);
+        await db.delete(schedules);
+        await db.delete(badges);
+        await db.delete(points);
+        await db.delete(messages);
+        await db.delete(attendance);
+        await db.delete(bannedDevices);
+        await db.delete(certificates);
+        await db.delete(courseStudents);
+        await db.delete(courseTeachers);
+        await db.delete(courses);
+        await db.delete(examStudents);
+        await db.delete(exams);
+        await db.delete(ratings);
+        await db.delete(assignments);
+        await db.delete(notifications);
+        await db.delete(activityLogs);
+        await db.delete(featureFlags);
+        await db.delete(users);
+        await db.delete(mosques);
+
+        if (data.mosques?.length) {
+          for (const row of data.mosques) {
+            await db.insert(mosques).values(row);
+          }
+        }
+
+        if (data.users?.length) {
+          for (const row of data.users) {
+            await db.insert(users).values(row);
+          }
+        }
+
+        if (data.assignments?.length) {
+          for (const row of data.assignments) {
+            await db.insert(assignments).values(row);
+          }
+        }
+
+        if (data.attendance?.length) {
+          for (const row of data.attendance) {
+            await db.insert(attendance).values(row);
+          }
+        }
+
+        if (data.courses?.length) {
+          for (const row of data.courses) {
+            await db.insert(courses).values(row);
+          }
+        }
+
+        if (data.courseStudents?.length) {
+          for (const row of data.courseStudents) {
+            await db.insert(courseStudents).values(row);
+          }
+        }
+
+        if (data.courseTeachers?.length) {
+          for (const row of data.courseTeachers) {
+            await db.insert(courseTeachers).values(row);
+          }
+        }
+
+        if (data.certificates?.length) {
+          for (const row of data.certificates) {
+            await db.insert(certificates).values(row);
+          }
+        }
+
+        if (data.notifications?.length) {
+          for (const row of data.notifications) {
+            await db.insert(notifications).values(row);
+          }
+        }
+
+        if (data.messages?.length) {
+          for (const row of data.messages) {
+            await db.insert(messages).values(row);
+          }
+        }
+
+        if (data.activityLogs?.length) {
+          for (const row of data.activityLogs) {
+            await db.insert(activityLogs).values(row);
+          }
+        }
+
+        if (data.ratings?.length) {
+          for (const row of data.ratings) {
+            await db.insert(ratings).values(row);
+          }
+        }
+
+        if (data.points?.length) {
+          for (const row of data.points) {
+            await db.insert(points).values(row);
+          }
+        }
+
+        if (data.badges?.length) {
+          for (const row of data.badges) {
+            await db.insert(badges).values(row);
+          }
+        }
+
+        if (data.competitions?.length) {
+          for (const row of data.competitions) {
+            await db.insert(competitions).values(row);
+          }
+        }
+
+        if (data.competitionParticipants?.length) {
+          for (const row of data.competitionParticipants) {
+            await db.insert(competitionParticipants).values(row);
+          }
+        }
+
+        if (data.schedules?.length) {
+          for (const row of data.schedules) {
+            await db.insert(schedules).values(row);
+          }
+        }
+
+        if (data.parentReports?.length) {
+          for (const row of data.parentReports) {
+            await db.insert(parentReports).values(row);
+          }
+        }
+
+        if (data.exams?.length) {
+          for (const row of data.exams) {
+            await db.insert(exams).values(row);
+          }
+        }
+
+        if (data.examStudents?.length) {
+          for (const row of data.examStudents) {
+            await db.insert(examStudents).values(row);
+          }
+        }
+
+        if (data.featureFlags?.length) {
+          for (const row of data.featureFlags) {
+            await db.insert(featureFlags).values(row);
+          }
+        }
+
+        if (data.bannedDevices?.length) {
+          for (const row of data.bannedDevices) {
+            await db.insert(bannedDevices).values(row);
+          }
+        }
+
+        await client.query("COMMIT");
+        res.json({ message: "تم استعادة النسخة الاحتياطية بنجاح" });
+      } catch (err: any) {
+        await client.query("ROLLBACK");
+        throw err;
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "حدث خطأ أثناء استعادة النسخة الاحتياطية" });
     }
   });
 
