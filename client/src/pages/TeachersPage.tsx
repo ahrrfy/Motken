@@ -57,7 +57,7 @@ export default function TeachersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    username: "", password: "", name: "", phone: "", avatar: "", gender: "male"
+    username: "", password: "", name: "", phone: "", avatar: "", gender: "male", teacherLevels: [1, 2, 3, 4, 5] as number[]
   });
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
   const [levelDialogOpen, setLevelDialogOpen] = useState(false);
@@ -167,7 +167,7 @@ export default function TeachersPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...formData, role: "teacher" }),
+        body: JSON.stringify({ ...formData, role: "teacher", teacherLevels: formData.teacherLevels.join(",") }),
       });
       if (res.ok) {
         const savedName = formData.name;
@@ -176,7 +176,7 @@ export default function TeachersPage() {
         const savedPhone = formData.phone;
         toast({ title: "تم بنجاح", description: "تمت إضافة الأستاذ بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ username: "", password: "", name: "", phone: "", avatar: "", gender: "male" });
+        setFormData({ username: "", password: "", name: "", phone: "", avatar: "", gender: "male", teacherLevels: [1, 2, 3, 4, 5] });
         fetchTeachers();
         setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "teacher" });
       } else {
@@ -368,7 +368,33 @@ export default function TeachersPage() {
                       <p className={`text-xs mt-1 ${phoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-phone-validation">{phoneValidation.message}</p>
                     )}
                   </div>
-                  <Button onClick={handleAddTeacher} disabled={submitting} className="w-full" data-testid="button-submit-teacher">
+                  <div className="space-y-2">
+                    <Label>المستويات المسموح بها</Label>
+                    <p className="text-xs text-muted-foreground">حدد مستويات الطلاب التي يمكن لهذا الأستاذ التعامل معها</p>
+                    <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
+                      {[1, 2, 3, 4, 5].map(lv => (
+                        <div key={lv} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`add-level-${lv}`}
+                            checked={formData.teacherLevels.includes(lv)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setFormData(prev => ({...prev, teacherLevels: [...prev.teacherLevels, lv].sort()}));
+                              else setFormData(prev => ({...prev, teacherLevels: prev.teacherLevels.filter(l => l !== lv)}));
+                            }}
+                            data-testid={`checkbox-add-level-${lv}`}
+                          />
+                          <label htmlFor={`add-level-${lv}`} className="text-sm cursor-pointer flex items-center gap-2">
+                            <Badge variant="secondary" className={`text-xs ${LEVEL_COLORS[lv]}`}>{lv}</Badge>
+                            <span>{LEVEL_NAMES[lv]}</span>
+                            <span className="text-xs text-muted-foreground">
+                              ({lv === 1 ? "0-5 أجزاء" : lv === 2 ? "6-10 أجزاء" : lv === 3 ? "11-20 جزء" : lv === 4 ? "21-28 جزء" : "29-30 جزء"})
+                            </span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Button onClick={handleAddTeacher} disabled={submitting || formData.teacherLevels.length === 0} className="w-full" data-testid="button-submit-teacher">
                     {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                     إضافة الأستاذ
                   </Button>
