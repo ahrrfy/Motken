@@ -143,7 +143,7 @@ export interface IStorage {
   getPointsByMosque(mosqueId: string): Promise<Point[]>;
   getTotalPoints(userId: string): Promise<number>;
   createPoint(p: InsertPoint): Promise<Point>;
-  getLeaderboard(mosqueId?: string): Promise<{userId: string, total: number}[]>;
+  getLeaderboard(mosqueId?: string): Promise<{id: string, name: string, username: string, avatar: string | null, totalPoints: number}[]>;
 
   getBadgesByUser(userId: string): Promise<Badge[]>;
   getBadgesByMosque(mosqueId: string): Promise<Badge[]>;
@@ -665,7 +665,7 @@ export class DatabaseStorage implements IStorage {
     return entry;
   }
 
-  async getLeaderboard(mosqueId?: string): Promise<{userId: string, total: number}[]> {
+  async getLeaderboard(mosqueId?: string): Promise<{id: string, name: string, username: string, avatar: string | null, totalPoints: number}[]> {
     const query = db.select({
       userId: points.userId,
       total: sum(points.amount),
@@ -675,7 +675,20 @@ export class DatabaseStorage implements IStorage {
       ? await query.where(eq(points.mosqueId, mosqueId)).groupBy(points.userId).orderBy(desc(sum(points.amount)))
       : await query.groupBy(points.userId).orderBy(desc(sum(points.amount)));
 
-    return results.map(r => ({ userId: r.userId, total: Number(r.total ?? 0) }));
+    const enriched = [];
+    for (const r of results) {
+      const user = await this.getUser(r.userId);
+      if (user) {
+        enriched.push({
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          avatar: user.avatar,
+          totalPoints: Number(r.total ?? 0),
+        });
+      }
+    }
+    return enriched;
   }
 
   async getBadgesByUser(userId: string): Promise<Badge[]> {

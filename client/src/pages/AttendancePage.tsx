@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Loader2, Save, Calendar, ClipboardList, Search } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -268,58 +268,38 @@ export default function AttendancePage() {
                                 <span data-testid={`text-student-name-${student.id}`}>{student.name}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-center">
-                              <RadioGroup
-                                value={attendanceData[student.id]?.status}
-                                onValueChange={(val) => updateStatus(student.id, val as any)}
-                                className="flex justify-center"
-                              >
-                                <RadioGroupItem
-                                  value="present"
-                                  className="border-green-500 text-green-500 data-[state=checked]:border-green-600"
-                                  data-testid={`radio-present-${student.id}`}
-                                />
-                              </RadioGroup>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <RadioGroup
-                                value={attendanceData[student.id]?.status}
-                                onValueChange={(val) => updateStatus(student.id, val as any)}
-                                className="flex justify-center"
-                              >
-                                <RadioGroupItem
-                                  value="absent"
-                                  className="border-red-500 text-red-500 data-[state=checked]:border-red-600"
-                                  data-testid={`radio-absent-${student.id}`}
-                                />
-                              </RadioGroup>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <RadioGroup
-                                value={attendanceData[student.id]?.status}
-                                onValueChange={(val) => updateStatus(student.id, val as any)}
-                                className="flex justify-center"
-                              >
-                                <RadioGroupItem
-                                  value="late"
-                                  className="border-yellow-500 text-yellow-500 data-[state=checked]:border-yellow-600"
-                                  data-testid={`radio-late-${student.id}`}
-                                />
-                              </RadioGroup>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <RadioGroup
-                                value={attendanceData[student.id]?.status}
-                                onValueChange={(val) => updateStatus(student.id, val as any)}
-                                className="flex justify-center"
-                              >
-                                <RadioGroupItem
-                                  value="excused"
-                                  className="border-blue-500 text-blue-500 data-[state=checked]:border-blue-600"
-                                  data-testid={`radio-excused-${student.id}`}
-                                />
-                              </RadioGroup>
-                            </TableCell>
+                            {(["present", "absent", "late", "excused"] as const).map((statusVal) => {
+                              const colorMap = {
+                                present: "border-green-500 text-green-500 data-[state=checked]:bg-green-500",
+                                absent: "border-red-500 text-red-500 data-[state=checked]:bg-red-500",
+                                late: "border-yellow-500 text-yellow-500 data-[state=checked]:bg-yellow-500",
+                                excused: "border-blue-500 text-blue-500 data-[state=checked]:bg-blue-500",
+                              };
+                              const isChecked = attendanceData[student.id]?.status === statusVal;
+                              return (
+                                <TableCell key={statusVal} className="text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateStatus(student.id, statusVal)}
+                                    className={`w-5 h-5 rounded-full border-2 transition-all ${
+                                      isChecked
+                                        ? `${colorMap[statusVal]} scale-110`
+                                        : "border-muted-foreground/30 hover:border-muted-foreground/60"
+                                    }`}
+                                    data-testid={`radio-${statusVal}-${student.id}`}
+                                  >
+                                    {isChecked && (
+                                      <div className={`w-2.5 h-2.5 rounded-full mx-auto ${
+                                        statusVal === "present" ? "bg-green-500" :
+                                        statusVal === "absent" ? "bg-red-500" :
+                                        statusVal === "late" ? "bg-yellow-500" :
+                                        "bg-blue-500"
+                                      }`} />
+                                    )}
+                                  </button>
+                                </TableCell>
+                              );
+                            })}
                             <TableCell>
                               <Input
                                 placeholder="ملاحظات..."
