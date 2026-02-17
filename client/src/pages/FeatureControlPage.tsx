@@ -7,10 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, Loader2 } from "lucide-react";
 
 interface FeatureFlag {
-  id: number;
-  key: string;
-  name: string;
-  description: string;
+  id: string;
+  featureKey: string;
+  featureName: string;
+  description: string | null;
   category: string;
   isEnabled: boolean;
 }
@@ -32,7 +32,7 @@ export default function FeatureControlPage() {
   const { toast } = useToast();
   const [features, setFeatures] = useState<FeatureFlag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function loadFeatures() {
@@ -71,7 +71,7 @@ export default function FeatureControlPage() {
         );
         toast({
           title: "تم بنجاح",
-          description: `تم ${!feature.isEnabled ? "تفعيل" : "تعطيل"} ${feature.name}`,
+          description: `تم ${!feature.isEnabled ? "تفعيل" : "تعطيل"} ${feature.featureName}`,
           className: "bg-green-50 border-green-200 text-green-800",
         });
       } else {
@@ -126,7 +126,7 @@ export default function FeatureControlPage() {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm" data-testid={`text-feature-name-${feature.id}`}>
-                      {feature.name}
+                      {feature.featureName}
                     </span>
                     <Badge
                       variant={feature.isEnabled ? "default" : "destructive"}
@@ -136,9 +136,11 @@ export default function FeatureControlPage() {
                       {feature.isEnabled ? "مفعّل" : "معطّل"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground" data-testid={`text-feature-desc-${feature.id}`}>
-                    {feature.description}
-                  </p>
+                  {feature.description && (
+                    <p className="text-xs text-muted-foreground leading-relaxed" data-testid={`text-feature-desc-${feature.id}`}>
+                      {feature.description}
+                    </p>
+                  )}
                 </div>
                 <Switch
                   checked={feature.isEnabled}
