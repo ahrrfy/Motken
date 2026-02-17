@@ -184,6 +184,7 @@ export default function CoursesPage() {
   const [verifyCertNumber, setVerifyCertNumber] = useState("");
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
+  const [mosqueData, setMosqueData] = useState<{ name?: string; image?: string | null }>({});
 
   const isTeacher = user?.role === "teacher";
   const isStudent = user?.role === "student";
@@ -237,6 +238,18 @@ export default function CoursesPage() {
           fetch("/api/users?role=teacher", { credentials: "include" })
             .then(r => r.ok ? r.json() : [])
             .then(d => setAllTeachers(d))
+            .catch(() => {})
+        );
+      }
+
+      if (user?.mosqueId) {
+        promises.push(
+          fetch("/api/mosques", { credentials: "include" })
+            .then(r => r.ok ? r.json() : [])
+            .then((mosques: any[]) => {
+              const m = mosques.find((ms: any) => ms.id === user.mosqueId);
+              if (m) setMosqueData({ name: m.name, image: m.image });
+            })
             .catch(() => {})
         );
       }
@@ -890,8 +903,11 @@ export default function CoursesPage() {
           <div class="cert-content">
             <div class="cert-header">
               <div class="bismillah">﷽</div>
-              <div class="cert-logo"><img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>
-              <div class="cert-system-name">مُتْقِن</div>
+              <div class="cert-logos" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:8px;">
+                ${mosqueData.image ? `<div class="cert-logo"><img src="${mosqueData.image}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>` : ""}
+                <div class="cert-logo"><img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>
+              </div>
+              <div class="cert-system-name">${mosqueData.name || "مُتْقِن"}</div>
               <div class="cert-subtitle">نظام إدارة حلقات القرآن الكريم</div>
             </div>
             <div class="cert-title">

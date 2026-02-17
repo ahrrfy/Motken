@@ -30,6 +30,7 @@ interface Mosque {
   name: string;
   city?: string;
   address?: string;
+  image?: string | null;
 }
 
 const roleTranslations: Record<string, string> = {
@@ -60,13 +61,23 @@ async function generateQRDataURL(data: string): Promise<string> {
   return QRCode.toDataURL(data, { width: 80, margin: 1 });
 }
 
-function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: string): string {
+function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: string, mosqueImage?: string): string {
   const roleLabel = roleTranslations[user.role] || user.role;
   const formattedId = formatUserId(user.id);
   const joinDate = formatDate(user.createdAt);
   const avatarSection = user.avatar
     ? `<img src="${user.avatar}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;" />`
     : `<span style="font-size:22px;font-weight:bold;color:#16213e;">${user.name.charAt(0)}</span>`;
+
+  const mosqueLogoSection = mosqueImage
+    ? `<div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);overflow:hidden;">
+        <img src="${mosqueImage}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" />
+      </div>`
+    : "";
+
+  const headerTitle = mosqueName
+    ? `<h2 style="font-size:11px;font-weight:bold;margin:0;line-height:1.2;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${mosqueName}</h2>`
+    : `<h2 style="font-size:14px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;">مُتْقِن</h2>`;
 
   return `
     <div style="width:9cm;height:6cm;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;background:white;display:inline-flex;flex-direction:column;margin:8px;page-break-inside:avoid;font-family:'Tajawal',sans-serif;" dir="rtl">
@@ -80,13 +91,16 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
           </defs>
           <rect width="100%" height="100%" fill="url(#p-${user.id})"/>
         </svg>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;gap:8px;z-index:10;">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;color:white;padding:0 12px;z-index:10;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${mosqueLogoSection}
+            <div>
+              ${headerTitle}
+              <p style="font-size:8px;opacity:0.8;margin:0;">لإدارة حلقات القرآن الكريم</p>
+            </div>
+          </div>
           <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);">
             <img src="/logo.png" style="width:24px;height:24px;border-radius:50%;object-fit:contain;" />
-          </div>
-          <div>
-            <h2 style="font-size:14px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;">مُتْقِن</h2>
-            <p style="font-size:8px;opacity:0.8;margin:0;">لإدارة حلقات القرآن الكريم</p>
           </div>
         </div>
       </div>
@@ -145,7 +159,7 @@ function QRCodeImage({ value, size }: { value: string; size: number }) {
   return <img src={dataUrl} alt="QR" width={size} height={size} style={{ imageRendering: "pixelated" }} />;
 }
 
-function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
+function IDCard({ user, mosqueName, mosqueImage }: { user: UserData; mosqueName: string; mosqueImage?: string }) {
   return (
     <div
       className="bg-white w-[340px] rounded-2xl shadow-xl overflow-hidden border border-gray-200 print:shadow-none print:border print:border-gray-300 flex flex-col"
@@ -164,13 +178,21 @@ function IDCard({ user, mosqueName }: { user: UserData; mosqueName: string }) {
             <rect width="100%" height="100%" fill={`url(#islamic-${user.id})`} />
           </svg>
         </div>
-        <div className="absolute inset-0 flex items-center justify-center text-white z-10 gap-2">
+        <div className="absolute inset-0 flex items-center justify-between text-white z-10 px-3">
+          <div className="flex items-center gap-2">
+            {mosqueImage ? (
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 overflow-hidden">
+                <img src={mosqueImage} className="w-7 h-7 rounded-full object-cover" />
+              </div>
+            ) : null}
+            <div>
+              {mosqueName && <h2 className="font-serif text-[11px] font-bold leading-tight truncate max-w-[140px]">{mosqueName}</h2>}
+              {!mosqueName && <h2 className="font-serif text-sm font-bold tracking-wide leading-tight">مُتْقِن</h2>}
+              <p className="text-[8px] opacity-80">لإدارة حلقات القرآن الكريم</p>
+            </div>
+          </div>
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0">
             <img src="/logo.png" className="w-6 h-6 rounded-full object-contain" />
-          </div>
-          <div>
-            <h2 className="font-serif text-sm font-bold tracking-wide leading-tight">مُتْقِن</h2>
-            <p className="text-[8px] opacity-80">لإدارة حلقات القرآن الكريم</p>
           </div>
         </div>
       </div>
@@ -272,11 +294,16 @@ export default function IDCardsPage() {
     documentTitle: "بطاقات الهوية - مُتْقِن",
   });
 
-  const mosqueMap = new Map(mosques.map((m) => [m.id, m.name]));
+  const mosqueMap = new Map(mosques.map((m) => [m.id, m]));
 
   const getMosqueName = (mosqueId?: string | null) => {
     if (!mosqueId) return "";
-    return mosqueMap.get(mosqueId) || "";
+    return mosqueMap.get(mosqueId)?.name || "";
+  };
+
+  const getMosqueImage = (mosqueId?: string | null) => {
+    if (!mosqueId) return "";
+    return mosqueMap.get(mosqueId)?.image || "";
   };
 
   const groupedUsers = {
@@ -311,7 +338,7 @@ export default function IDCardsPage() {
     for (const u of selectedUsers) {
       const qrData = JSON.stringify({ id: u.id, name: u.name, role: u.role });
       const qrDataUrl = await generateQRDataURL(qrData);
-      const cardHtml = generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl);
+      const cardHtml = generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl, getMosqueImage(u.mosqueId));
       const win = window.open("", "_blank");
       if (!win) return;
       win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>هوية - ${u.name}</title><style>
@@ -340,7 +367,7 @@ export default function IDCardsPage() {
     for (const u of selectedUsers) {
       const qrData = JSON.stringify({ id: u.id, name: u.name, role: u.role });
       const qrDataUrl = await generateQRDataURL(qrData);
-      cardsHtml.push(generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl));
+      cardsHtml.push(generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl, getMosqueImage(u.mosqueId)));
     }
     const allCardsHtml = cardsHtml.join("");
     const win = window.open("", "_blank");
@@ -564,7 +591,7 @@ export default function IDCardsPage() {
                 data-testid="print-area"
               >
                 {selectedUsers.map((u) => (
-                  <IDCard key={u.id} user={u} mosqueName={getMosqueName(u.mosqueId)} />
+                  <IDCard key={u.id} user={u} mosqueName={getMosqueName(u.mosqueId)} mosqueImage={getMosqueImage(u.mosqueId)} />
                 ))}
               </div>
             </div>

@@ -1,4 +1,4 @@
-export function openPrintWindow(title: string, contentHtml: string, options?: { landscape?: boolean }) {
+export function openPrintWindow(title: string, contentHtml: string, options?: { landscape?: boolean; mosqueName?: string; mosqueImage?: string }) {
   const printWindow = window.open("", "_blank");
   if (!printWindow) return;
 
@@ -180,7 +180,11 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
       </div>
       <div class="content-area">
         <div class="header">
-          <div class="logo"><img src="/logo.png" style="width:60px;height:60px;border-radius:12px;" alt="مُتْقِن" /><br/>مُتْقِن</div>
+          <div class="logo" style="display:flex;align-items:center;justify-content:center;gap:12px;">
+            ${options?.mosqueImage ? `<img src="${options.mosqueImage}" style="width:50px;height:50px;border-radius:12px;object-fit:cover;" alt="شعار المركز" />` : ""}
+            <img src="/logo.png" style="width:60px;height:60px;border-radius:12px;" alt="مُتْقِن" />
+          </div>
+          <div style="font-size:32px;font-weight:700;color:#16213e;margin:4px 0;">${options?.mosqueName || "مُتْقِن"}</div>
           <div class="subtitle">نظام إدارة حلقات القرآن الكريم</div>
           <div class="report-title">${title}</div>
           <div class="date">${(() => { const d = new Date(); const day = String(d.getDate()).padStart(2, "0"); const month = String(d.getMonth() + 1).padStart(2, "0"); const year = d.getFullYear(); return day + "/" + month + "/" + year; })()}</div>
