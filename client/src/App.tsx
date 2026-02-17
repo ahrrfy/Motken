@@ -33,6 +33,9 @@ import MessagesPage from "@/pages/MessagesPage";
 import PointsRewardsPage from "@/pages/PointsRewardsPage";
 import SchedulesPage from "@/pages/SchedulesPage";
 import SmartAlertsPage from "@/pages/SmartAlertsPage";
+import CrisisManagementPage from "@/pages/CrisisManagementPage";
+import GraduationPage from "@/pages/GraduationPage";
+import InstitutionalPage from "@/pages/InstitutionalPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import PublicParentReportPage from "@/pages/PublicParentReportPage";
@@ -130,6 +133,9 @@ function App() {
         <Route path="/points-rewards" component={PointsRewardsPage} />
         <Route path="/schedules" component={SchedulesPage} />
         <Route path="/smart-alerts" component={SmartAlertsPage} />
+        <Route path="/crisis-management" component={CrisisManagementPage} />
+        <Route path="/graduation" component={GraduationPage} />
+        <Route path="/institutional" component={InstitutionalPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">
