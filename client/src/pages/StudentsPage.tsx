@@ -91,7 +91,7 @@ export default function StudentsPage() {
   const [newTeacherId, setNewTeacherId] = useState("");
   const [formData, setFormData] = useState({
     name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male",
-    age: "", telegramId: "", parentPhone: "", educationLevel: "", isSpecialNeeds: false, isOrphan: false
+    age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
@@ -238,6 +238,7 @@ export default function StudentsPage() {
           ...formData,
           role: "student",
           age: formData.age ? parseInt(formData.age) : null,
+          level: formData.level ? parseInt(formData.level) : 1,
           educationLevel: formData.educationLevel || null,
           telegramId: formData.telegramId || null,
           parentPhone: formData.parentPhone || null,
@@ -250,7 +251,7 @@ export default function StudentsPage() {
         const savedPhone = formData.phone;
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", isSpecialNeeds: false, isOrphan: false });
+        setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false });
         fetchData();
         setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "student" });
       } else {
@@ -665,6 +666,22 @@ export default function StudentsPage() {
                         <SelectItem value="postgraduate">دراسات عليا</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>مستوى الحفظ</Label>
+                    <Select value={formData.level} onValueChange={(v) => setFormData(prev => ({...prev, level: v}))}>
+                      <SelectTrigger data-testid="select-level">
+                        <SelectValue placeholder="اختر مستوى الحفظ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">المستوى 1 - مبتدئ (0-5 أجزاء)</SelectItem>
+                        <SelectItem value="2">المستوى 2 - متوسط (6-10 أجزاء)</SelectItem>
+                        <SelectItem value="3">المستوى 3 - متقدم (11-20 جزء)</SelectItem>
+                        <SelectItem value="4">المستوى 4 - متميز (21-28 جزء)</SelectItem>
+                        <SelectItem value="5">المستوى 5 - خاتم (29-30 جزء)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">يحدد المستوى أي الأساتذة يمكنهم التعامل مع هذا الطالب</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
