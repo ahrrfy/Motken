@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, RefreshCw, BookOpen, Loader2, Search, Calendar, Award, TrendingUp, Clock, Star, BarChart3, Flame, Target, Map, Bookmark, TreePine, Sparkles, Crown, Medal, Filter, ChevronDown, ChevronUp, SortAsc } from "lucide-react";
+import { CheckCircle, RefreshCw, BookOpen, Loader2, Search, Calendar, Award, TrendingUp, Clock, Star, BarChart3, Flame, Target, Map as MapIcon, Bookmark, TreePine, Sparkles, Crown, Medal, Filter, ChevronDown, ChevronUp, SortAsc } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn, formatDateAr } from "@/lib/utils";
 import { quranSurahs } from "@shared/quran-surahs";
