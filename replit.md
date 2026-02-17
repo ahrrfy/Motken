@@ -1,158 +1,43 @@
 # متقن (Mutqin) - Quran Memorization Management System
 
 ## Overview
-A comprehensive multi-tenant online Quran memorization management system for Islamic centers across Iraq. Features mosque-based data isolation, hierarchical role-based access control, and full Arabic RTL interface. System branded as "مُتْقِن" with logo "م". Supports both male and female students.
+Mutqin is a multi-tenant online Quran memorization management system designed for Islamic centers in Iraq. It offers mosque-based data isolation, hierarchical role-based access control (Admin, Supervisor, Teacher, Student), and a full Arabic RTL interface. The system aims to streamline the administration of Quran memorization, student progress tracking, and communication within Islamic educational institutions.
 
-## Architecture
-- **Frontend**: React + Vite + TypeScript, Tailwind CSS, shadcn/ui components
-- **Backend**: Express.js + TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
-- **Auth**: Passport.js with session-based authentication (connect-pg-simple)
-- **Routing**: wouter (frontend), Express routes (backend)
+## User Preferences
+Not specified.
 
-## Multi-Tenant Architecture
-- Each mosque is a tenant with isolated data
-- `mosqueId` foreign key on users, assignments, activity_logs, notifications, ratings, exams
-- Hierarchical access: Admin → Supervisor → Teacher → Student
-- Admin: system-wide access, creates mosques and supervisors
-- Supervisor: mosque-scoped, creates teachers and students, rates teachers, views teacher activities
-- Teacher: mosque-scoped, adds students, rates students, creates exams
-- Student: sees only their own data
+## System Architecture
+The system is built with a modern web stack:
+-   **Frontend**: React, Vite, TypeScript, Tailwind CSS, shadcn/ui.
+-   **Backend**: Express.js, TypeScript.
+-   **Database**: PostgreSQL with Drizzle ORM.
+-   **Authentication**: Passport.js with session-based authentication.
+-   **UI/UX**: Full Arabic RTL support, dynamic theming (dark/light), language switching (Arabic/English), responsive design.
+-   **Multi-Tenancy**: Data isolation per mosque using `mosqueId` foreign keys across relevant tables.
+-   **Role-Based Access Control**:
+    -   **Admin**: System-wide access, creates mosques and supervisors.
+    -   **Supervisor**: Mosque-scoped, manages teachers and students, rates teachers.
+    -   **Teacher**: Mosque-scoped, manages students, rates students, creates assignments and exams.
+    -   **Student**: Accesses personal data and assignments.
+-   **Core Features**:
+    -   **Assignments & Exams**: Unified management page, Quran surah/verse selection, student progress tracking, automated notifications.
+    -   **User Management**: Comprehensive student, teacher, and supervisor management with detailed profiles (including special needs, orphan status), credential sharing via WhatsApp, and transfer capabilities.
+    -   **Courses & Certificates**: Creation of courses, student enrollment, and generation of gender/age-specific printable certificates.
+    -   **Internal Islamic Library**: Offline-capable reader with 50+ books, chapters, bookmarking, and progress tracking.
+    -   **Activity & Monitoring**: Detailed activity logs for teachers and supervisors, real-time online user monitoring with session management (kick/suspend/ban).
+    -   **Reporting & Analytics**: Tracking of student progress, attendance, points, and generation of ID cards and reports with print/export capabilities.
+    -   **Communication**: Internal messaging system, automated notifications for key events, and a rotating Hadith ticker.
+    -   **Security**: Scrypt password hashing, session security, rate limiting, IP banning, IDOR prevention, and comprehensive input validation.
+    -   **Performance**: Response compression (gzip/brotli), static asset caching, and service worker for offline capabilities.
 
-## Key Files
-- `shared/schema.ts` - Database schema (Drizzle) with all tables
-- `shared/quran-surahs.ts` - Complete 114 Quran surahs with verse counts
-- `shared/hadiths.ts` - 100 authentic hadiths from Bukhari/Muslim for ticker
-- `client/src/lib/phone-utils.ts` - Iraqi phone format validation and WhatsApp URL generation
-- `server/storage.ts` - Storage layer with mosque-scoped queries
-- `server/routes.ts` - API routes with hierarchical permissions
-- `server/auth.ts` - Authentication setup (passport, sessions)
-- `server/session-tracker.ts` - In-memory session tracking (IP, device, user agent)
-- `client/src/App.tsx` - Frontend routing
-- `client/src/lib/auth-context.tsx` - Auth context with mosqueName, canPrintIds, gender
-- `client/src/lib/api.ts` - Resilient API fetch with retries & timeout
-- `client/src/lib/theme-context.tsx` - Theme (dark/light) and language (ar/en) context
-- `client/src/lib/translations.ts` - Arabic/English translations
-- `client/src/lib/print-utils.ts` - HTML-based print utility with Arabic/RTL support
-- `client/src/components/layout/SidebarLayout.tsx` - Main layout with sidebar
-- `client/src/components/HadithTicker.tsx` - Rotating hadith ticker bar
-- `client/src/components/DevicePermissions.tsx` - Camera/location/notification permissions
-
-## Pages
-- DashboardPage, MosquesPage (admin), AllUsersPage (admin), StudentsPage, TeachersPage
-- AssignmentsExamsPage (unified assignments + exams with tabs), RatingsPage
-- SupervisorsPage (admin - full supervisor management with add/search/print/export/import, mosque assignment)
-- CoursesPage (courses & certificates with graduation system, Islamic certificate design)
-- QuranTracker, LibraryPage (internal reader, no external links), ReportsPage
-- IDCardsPage (permission-based), QRScannerPage, SettingsPage
-- ActivityLogsPage (admin), TeacherActivitiesPage (supervisor)
-- OnlineUsersPage (admin - session monitoring, kick/suspend/ban)
-- NotificationsPage (with bulk actions), TeacherDailyPage
-- AttendancePage (bulk mark attendance, history with filters)
-- MessagesPage (internal WhatsApp-style chat, conversations, unread counts)
-- PointsRewardsPage (leaderboard with podium, points history, badges system)
-- SchedulesPage (weekly calendar grid, color-coded by teacher)
-- CompetitionsPage (Quran competitions with participants, scoring, ranking)
-- ParentPortalPage (generate shareable progress reports with tokens)
-- SmartAlertsPage (auto-detected alerts: inactive students/teachers, upcoming exams, low grades)
-- FeatureControlPage (admin - toggle system features on/off)
-
-## Database Tables
-- mosques (with status, adminNotes fields), users (with gender, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, adminNotes, suspendedUntil fields; NO email field), assignments (with seenByStudent, seenAt), ratings, exams, exam_students
-- activity_logs, notifications, courses, course_students, course_teachers, certificates
-- banned_devices (permanent IP bans with indexes on ip_address and device_fingerprint)
-- feature_flags (system feature toggles with categories)
-- attendance (daily records: present/absent/late/excused with bulk marking)
-- messages (internal messaging with read tracking)
-- points (reward points by category: assignment/exam/behavior/attendance/extra)
-- badges (achievement badges: memorization/tajweed/behavior/attendance/excellence)
-- schedules (weekly class schedules with day/time/location)
-- competitions, competition_participants (Quran competitions with scoring/ranking)
-- parent_reports (shareable progress reports with access tokens)
-
-## Key Features
-- **Unified Assignments & Exams**: Single page with tabs for managing assignments and exams
-- **Gender Support**: Male/female selection for all users, displayed in tables and profiles
-- **Assignment Seen Status**: WhatsApp-style blue double checkmarks showing if student has seen their assignment - visible ONLY to teachers/supervisors, hidden from students (backend strips seenByStudent/seenAt from student API responses)
-- **Auto Notifications**: System automatically sends notifications when assignments, exams, or course enrollments are created
-- **Courses & Certificates**: Teachers/supervisors create courses, enroll students, graduate with 3 certificate templates auto-detected by gender/age: Male (navy/gold), Female (purple/rose gold), Children (teal/yellow), A4 landscape
-- **Internal Islamic Library**: 50+ books with internal reader, chapters, bookmarking, reading progress, custom book uploads (localStorage), font size controls, background themes (white/sepia/dark), page navigation - no external links
-- **Ratings**: Supervisor rates teachers, teacher rates students (1-5 stars + honor badges)
-- **Exams**: Teachers create exams with Quran surah/verse selection, target all or specific students
-- **Print Permission**: Admin toggles `canPrintIds` for supervisors/teachers via AllUsersPage
-- **Teacher Activities**: Admin and supervisors see teacher-role activity logs (admin sees all, supervisor sees own mosque)
-- **Teacher Daily View**: "واجبات اليوم" page showing today's assignments grouped by student
-- **Theme & Language**: Dark/light mode toggle, Arabic/English language switcher with localStorage persistence
-- **Photo Upload**: Base64 avatar upload for all users, displayed in ID cards and profiles
-- **PDF/Print**: HTML-based print with Tajawal font, Arabic RTL support, formatted print preview
-- **ID Card Export**: Individual (9cm x 6cm per card) or batch (A4 all cards) PDF export + PNG export at 300 DPI, QR codes generated locally via `qrcode` package
-- **Quran Verse Display**: Students see actual Quran text (Amiri font, api.alquran.cloud API) when clicking assignments
-- **Quran Surah Selector**: Full 114 surahs with automatic verse count validation
-- **Enhanced Student Fields**: Age, Telegram ID, parent phone, education level (school/university/postgraduate), special needs status, orphan status
-- **Special Needs/Orphan Stats**: Tracked in reports, printed stats, and Excel exports
-- **Credentials Share**: After creating any user, dialog shows credentials with copy & WhatsApp share buttons, auto-formats message with بسم الله header, user info, login credentials, and app URL; phone number auto-formatted for Iraqi numbers (07x → +964x)
-- **Phone Required**: Phone number is mandatory when creating any user (student/teacher/supervisor)
-- **Student Transfer**: Supervisors can transfer students between teachers
-- **Notification Management**: Mark as read (individual/selected/all), delete (individual/selected/all)
-- **Font Size Controls**: Adjustable 12-28px with localStorage persistence
-- **Web Push Notifications**: Service Worker polling for browser notifications
-- **Online User Monitoring**: In-memory session tracking with IP/device/browser/OS info, green/orange status indicators, 10-second auto-refresh
-- **Admin Controls**: Kick session, kick all user sessions, suspend/activate accounts, permanent IP ban, admin notes, temporary/permanent suspend with date picker
-- **Admin Account Protection**: Admin users cannot be deleted, suspended, deactivated, or banned - UI shows shield icon and "محمي" label
-- **Mosque Management**: Status control (active/suspended/permanently_closed), admin notes, comprehensive filters (search, status, province, date range)
-- **Permanent Banning**: IP-based bans stored in bannedDevices table, blocks login from banned IPs
-- **2-Device Login Limit**: Non-admin users limited to 2 concurrent sessions, oldest auto-kicked on 3rd login
-- **Hadith Ticker**: 100 authentic hadiths (Bukhari/Muslim) with fade animation, 15-second rotation, emerald gradient bar
-- **Iraqi Phone Validation**: Format validation (+964), auto-formatting, WhatsApp messaging buttons on all user pages
-- **Privacy Policy Settings**: Admin tab with policy text, acceptance stats, enforcement toggle, non-compliant user list
-- **Comprehensive Filters**: All management pages have search, status, date range, and contextual filters
-- **Quran Tracker Enhanced**: Surah progress grid (color-coded), overall stats with radial progress, activity timeline, surah search
-- **Device Permissions**: Camera (QR), geolocation (prayer times), notifications with visual status indicators in Settings
-- **Resilient API**: Automatic retries (3x exponential backoff) for GET requests, 15s timeout, Arabic error messages
-- **Response Compression**: gzip/brotli compression middleware for all responses
-- **Static Asset Caching**: 24h max-age + 7-day stale-while-revalidate for js/css/images/fonts
-- **Service Worker Caching**: Stale-while-revalidate for static assets, offline capability
-- **Footer**: "النظام وقف لله تعالى" + "برمجة وتطوير أحمد خالد الزبيدي"
-
-## Test Credentials
-- admin/admin123 (system admin, no mosque)
-- supervisor1/super123 (mosque: جامع النور الكبير)
-- supervisor2/super123 (mosque: جامع الإمام أبي حنيفة)
-- teacher1/teacher123, teacher2/teacher123 (mosque 1)
-- teacher3/teacher123 (mosque 2)
-- student1-5/student123 (distributed across mosques)
-
-## Security Measures
-- **Authentication**: Passport.js local strategy with scrypt password hashing + timing-safe comparison
-- **Session**: Auto-generated random secret (crypto.randomBytes), secure cookies in production, sameSite: lax
-- **Rate Limiting**: 5 login attempts per 15-minute window per IP+username, auto-lockout
-- **Inactive Users**: Users with isActive=false are blocked from logging in
-- **Open Registration Removed**: No public registration endpoint; user creation only via POST /api/users with role checks
-- **Seed Endpoint**: Protected with requireRole("admin")
-- **IDOR Prevention**: All data access enforces mosque scoping and ownership checks
-- **Ownership Checks**: PATCH/DELETE on assignments, exams, notifications verify ownership
-- **Role Escalation Prevention**: Non-admin users cannot change role, mosqueId, isActive, canPrintIds via PATCH
-- **Input Validation**: Stars rating validated 1-5, verse numbers validated, type conversion enforced
-- **Activity Logs**: POST endpoint removed; logging only internal via logActivity()
-- **Cross-Mosque Isolation**: Supervisors/teachers cannot access data from other mosques
-- **IP Banning**: Permanent IP bans block login even with new accounts, validated to 45 chars max
-- **Cascade Deletes**: Mosque deletion cascades to all child records (users, logs, notifications)
-- **Notification Array Limits**: Bulk operations limited to 100 items to prevent abuse
-- **Comprehensive Error Handling**: All async routes wrapped in try/catch
-
-## Design Choices
-- Avatar upload uses base64 encoding (limit 500KB), stored in user.avatar field
-- Print utility uses HTML with Tajawal font, opens formatted window with Print/Save as PDF/Close buttons
-- Certificate printing uses direct window.open() without openPrintWindow header/footer, only certificate design
-- Certificate design: 3 templates - Male (navy/gold), Female (purple/rose gold), Children (teal/yellow) - auto-detected by gender/age, A4 landscape
-- Email field completely removed from entire system (schema, all pages, API routes, seed data)
-- Prayer times use geolocation with fallback to Baghdad coordinates (33.3152, 44.3661), all times in Asia/Baghdad timezone, recalculate every 60 seconds
-- Student form field order: name → username → password → gender → age → phone → parentPhone → telegramId → address → educationLevel → isSpecialNeeds → isOrphan
-- Quran verses fetched from api.alquran.cloud and cached per assignment, displayed with Amiri font at 20px
-- Theme stored in localStorage "mutqin_theme" (dark/light), language in "mutqin_language" (ar/en)
-- Library books have internal reader with generated chapters and content per category
-- Assignment "seen" auto-triggered when student views assignments page
-- Notifications auto-created for assignments, exams, course enrollments
-- Session tracking uses in-memory Map with 5-minute online timeout and 30-minute auto-cleanup
-- API retry logic only retries GET requests to avoid duplicate mutations
-- Hadith ticker starts at random index, rotates every 15 seconds with 500ms fade transition
+## External Dependencies
+-   **api.alquran.cloud**: Used for fetching Quran text for display.
+-   **qrcode package**: Local generation of QR codes for ID cards.
+-   **Passport.js**: Authentication middleware.
+-   **Drizzle ORM**: Database interaction.
+-   **PostgreSQL**: Primary database.
+-   **Express.js**: Backend framework.
+-   **React**: Frontend library.
+-   **Vite**: Frontend build tool.
+-   **Tailwind CSS**: Utility-first CSS framework.
+-   **shadcn/ui**: UI component library.
