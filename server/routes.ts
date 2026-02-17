@@ -26,6 +26,8 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
+  const messageSendTimes = new Map<string, number[]>();
+
   // Auto-seed feature flags
   try {
     const existingFlags = await storage.getFeatureFlags();
@@ -2082,6 +2084,7 @@ export async function registerRoutes(
           conversations.push({ user: safe, lastMessage: lastMsg, unreadCount: unread });
         }
       }
+      conversations.sort((a, b) => new Date(b.lastMessage?.createdAt || 0).getTime() - new Date(a.lastMessage?.createdAt || 0).getTime());
       res.json(conversations);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب المحادثات" });
@@ -2108,12 +2111,28 @@ export async function registerRoutes(
 
   app.post("/api/messages", requireAuth, async (req, res) => {
     try {
-      const { receiverId, content } = req.body;
+      const { receiverId } = req.body;
+      let { content } = req.body;
       if (!receiverId || !content || typeof content !== "string") {
         return res.status(400).json({ message: "المستلم والمحتوى مطلوبان" });
       }
+      if (content.length > 2000) return res.status(400).json({ message: "الرسالة طويلة جداً (الحد الأقصى 2000 حرف)" });
+      if (receiverId === req.user!.id) return res.status(400).json({ message: "لا يمكنك إرسال رسالة لنفسك" });
+      content = content.replace(/<[^>]*>/g, "").trim();
+      if (!content) return res.status(400).json({ message: "المحتوى مطلوب" });
       const receiver = await storage.getUser(receiverId);
       if (!receiver) return res.status(404).json({ message: "المستلم غير موجود" });
+      if (receiver.suspendedUntil && new Date(receiver.suspendedUntil) > new Date()) {
+        return res.status(403).json({ message: "هذا المستخدم موقوف" });
+      }
+      const now = Date.now();
+      const userTimes = messageSendTimes.get(req.user!.id) || [];
+      const recentTimes = userTimes.filter(t => now - t < 60000);
+      if (recentTimes.length >= 30) {
+        return res.status(429).json({ message: "عدد كبير من الرسائل. انتظر قليلاً" });
+      }
+      recentTimes.push(now);
+      messageSendTimes.set(req.user!.id, recentTimes);
       const msg = await storage.createMessage({
         senderId: req.user!.id,
         receiverId,
@@ -2163,6 +2182,64 @@ export async function registerRoutes(
       res.json({ message: "تم حذف الرسالة" });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في حذف الرسالة" });
+    }
+  });
+
+  app.post("/api/messages/broadcast", requireAuth, async (req, res) => {
+    try {
+      if (req.user!.role !== "admin" && req.user!.role !== "supervisor") {
+        return res.status(403).json({ message: "غير مصرح بإرسال رسائل جماعية" });
+      }
+      const { content, targetRole } = req.body;
+      if (!content || typeof content !== "string") {
+        return res.status(400).json({ message: "المحتوى مطلوب" });
+      }
+      const sanitized = content.replace(/<[^>]*>/g, "").trim();
+      if (sanitized.length === 0 || sanitized.length > 2000) {
+        return res.status(400).json({ message: "محتوى غير صالح" });
+      }
+      const allUsers = await storage.getUsersByMosque(req.user!.mosqueId!);
+      const targets = targetRole ? allUsers.filter(u => u.role === targetRole && u.id !== req.user!.id) : allUsers.filter(u => u.id !== req.user!.id);
+      let sent = 0;
+      for (const target of targets) {
+        await storage.createMessage({
+          senderId: req.user!.id,
+          receiverId: target.id,
+          mosqueId: req.user!.mosqueId,
+          content: sanitized,
+          isRead: false,
+        });
+        sent++;
+      }
+      await logActivity(req.user!, `إرسال رسالة جماعية إلى ${sent} مستخدم`, "messages");
+      res.status(201).json({ message: `تم إرسال الرسالة إلى ${sent} مستخدم`, count: sent });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إرسال الرسالة الجماعية" });
+    }
+  });
+
+  app.delete("/api/messages/conversation/:userId", requireAuth, async (req, res) => {
+    try {
+      const conv = await storage.getConversation(req.user!.id, req.params.userId);
+      for (const msg of conv) {
+        await storage.deleteMessage(msg.id);
+      }
+      await logActivity(req.user!, "حذف محادثة", "messages");
+      res.json({ message: "تم حذف المحادثة" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في حذف المحادثة" });
+    }
+  });
+
+  app.get("/api/messages/search", requireAuth, async (req, res) => {
+    try {
+      const query = (req.query.q as string || "").trim().toLowerCase();
+      if (!query || query.length < 2) return res.status(400).json({ message: "كلمة البحث قصيرة جداً" });
+      const msgs = await storage.getMessagesByUser(req.user!.id);
+      const results = msgs.filter(m => m.content.toLowerCase().includes(query)).slice(0, 50);
+      res.json(results);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في البحث" });
     }
   });
 
