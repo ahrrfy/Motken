@@ -9,6 +9,7 @@ import QuranTracker from "@/pages/QuranTracker";
 import LibraryPage from "@/pages/LibraryPage";
 import ReportsPage from "@/pages/ReportsPage";
 import IDCardsPage from "@/pages/IDCardsPage";
+import IDCardsQRPage from "@/pages/IDCardsQRPage";
 import TeachersPage from "@/pages/TeachersPage";
 import SupervisorsPage from "@/pages/SupervisorsPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -23,6 +24,7 @@ import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
 import CoursesPage from "@/pages/CoursesPage";
 import TeacherDailyPage from "@/pages/TeacherDailyPage";
 import OnlineUsersPage from "@/pages/OnlineUsersPage";
+import MonitoringPage from "@/pages/MonitoringPage";
 import AttendancePage from "@/pages/AttendancePage";
 import CompetitionsPage from "@/pages/CompetitionsPage";
 import ParentPortalPage from "@/pages/ParentPortalPage";
@@ -99,13 +101,14 @@ function App() {
         <Route path="/quran" component={QuranTracker} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/reports" component={ReportsPage} />
-        <Route path="/id-cards" component={IDCardsPage} />
+        <Route path="/id-cards" component={IDCardsQRPage} />
         <Route path="/scan-qr" component={QRScannerPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/activity-logs" component={ActivityLogsPage} />
         <Route path="/teacher-activities" component={TeacherActivitiesPage} />
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/users" component={AllUsersPage} />
+        <Route path="/monitoring" component={MonitoringPage} />
         <Route path="/online-users" component={OnlineUsersPage} />
         <Route path="/attendance" component={AttendancePage} />
         <Route path="/competitions" component={CompetitionsPage} />
