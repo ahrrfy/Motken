@@ -106,6 +106,9 @@ export interface IStorage {
   getCertificatesByStudent(studentId: string): Promise<Certificate[]>;
   getCertificatesByMosque(mosqueId: string): Promise<Certificate[]>;
   createCertificate(c: InsertCertificate): Promise<Certificate>;
+  deleteCertificate(id: string): Promise<void>;
+  getCertificate(id: string): Promise<Certificate | undefined>;
+  getCertificateByNumber(certNumber: string): Promise<Certificate | undefined>;
   getCoursesByStudent(studentId: string): Promise<CourseStudent[]>;
   getCoursesByTeacher(teacherId: string): Promise<CourseTeacher[]>;
 
@@ -506,6 +509,20 @@ export class DatabaseStorage implements IStorage {
 
   async createCertificate(c: InsertCertificate): Promise<Certificate> {
     const [cert] = await db.insert(certificates).values(c).returning();
+    return cert;
+  }
+
+  async deleteCertificate(id: string): Promise<void> {
+    await db.delete(certificates).where(eq(certificates.id, id));
+  }
+
+  async getCertificate(id: string): Promise<Certificate | undefined> {
+    const [cert] = await db.select().from(certificates).where(eq(certificates.id, id));
+    return cert;
+  }
+
+  async getCertificateByNumber(certNumber: string): Promise<Certificate | undefined> {
+    const [cert] = await db.select().from(certificates).where(eq(certificates.certificateNumber, certNumber));
     return cert;
   }
 

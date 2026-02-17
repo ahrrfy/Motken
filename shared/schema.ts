@@ -184,6 +184,9 @@ export const courses = pgTable("courses", {
   endDate: timestamp("end_date"),
   status: courseStatusEnum("status").notNull().default("active"),
   targetType: text("target_type").notNull().default("specific"),
+  category: text("category").notNull().default("memorization"),
+  maxStudents: integer("max_students"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -198,6 +201,7 @@ export const courseStudents = pgTable("course_students", {
   studentId: varchar("student_id").notNull().references(() => users.id),
   graduated: boolean("graduated").notNull().default(false),
   graduatedAt: timestamp("graduated_at"),
+  graduationGrade: text("graduation_grade"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -225,6 +229,8 @@ export const certificates = pgTable("certificates", {
   issuedBy: varchar("issued_by").notNull().references(() => users.id),
   mosqueId: varchar("mosque_id").references(() => mosques.id),
   certificateNumber: text("certificate_number").notNull(),
+  notes: text("notes"),
+  graduationGrade: text("graduation_grade"),
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
