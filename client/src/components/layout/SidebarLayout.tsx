@@ -41,6 +41,13 @@ import {
   Eye,
   Megaphone,
   Wrench,
+  HeartHandshake,
+  Lightbulb,
+  ArrowUpDown,
+  BookOpenCheck,
+  FileText,
+  Brain,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -110,6 +117,9 @@ const navCategories: NavCategory[] = [
       { href: "/quran", label: "المصحف والحفظ", labelEn: "Quran Tracker", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
       { href: "/courses", label: "الدورات والشهادات", labelEn: "Courses & Certificates", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
       { href: "/library", label: "المكتبة الإسلامية", labelEn: "Islamic Library", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/knowledge-base", label: "موسوعة التجويد", labelEn: "Tajweed Encyclopedia", icon: Brain, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/educational-content", label: "المحتوى التعليمي", labelEn: "Educational Content", icon: Sparkles, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/graduation", label: "التخرج والمتابعة", labelEn: "Graduation & Follow-up", icon: BookOpenCheck, roles: ["admin", "supervisor", "teacher"] },
     ],
   },
   {
@@ -135,6 +145,7 @@ const navCategories: NavCategory[] = [
       { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
       { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
       { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
+      { href: "/family-system", label: "نظام الأسرة", labelEn: "Family System", icon: HeartHandshake, roles: ["admin", "supervisor", "teacher"] },
     ],
   },
   {
@@ -149,6 +160,9 @@ const navCategories: NavCategory[] = [
       { href: "/monitoring", label: "المراقبة والأمان", labelEn: "Monitoring & Security", icon: Eye, roles: ["admin"] },
       { href: "/teacher-activities", label: "أنشطة الأساتذة", labelEn: "Teacher Activities", icon: ClipboardList, roles: ["supervisor"] },
       { href: "/feature-control", label: "التحكم بالمميزات", labelEn: "Feature Control", icon: Shield, roles: ["admin"] },
+      { href: "/crisis-management", label: "إدارة الأزمات", labelEn: "Crisis Management", icon: AlertTriangle, roles: ["admin", "supervisor"] },
+      { href: "/institutional", label: "التكامل المؤسسي", labelEn: "Institutional Integration", icon: ArrowUpDown, roles: ["admin", "supervisor"] },
+      { href: "/maintenance", label: "الملاحظات والتحسين", labelEn: "Feedback & Improvement", icon: Lightbulb, roles: ["admin", "supervisor", "teacher", "student"] },
       { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
     ],
   },

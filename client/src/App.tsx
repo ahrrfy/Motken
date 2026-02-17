@@ -36,6 +36,10 @@ import SmartAlertsPage from "@/pages/SmartAlertsPage";
 import CrisisManagementPage from "@/pages/CrisisManagementPage";
 import GraduationPage from "@/pages/GraduationPage";
 import InstitutionalPage from "@/pages/InstitutionalPage";
+import FamilySystemPage from "@/pages/FamilySystemPage";
+import KnowledgeBasePage from "@/pages/KnowledgeBasePage";
+import MaintenancePage from "@/pages/MaintenancePage";
+import EducationalContentPage from "@/pages/EducationalContentPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import PublicParentReportPage from "@/pages/PublicParentReportPage";
@@ -136,6 +140,10 @@ function App() {
         <Route path="/crisis-management" component={CrisisManagementPage} />
         <Route path="/graduation" component={GraduationPage} />
         <Route path="/institutional" component={InstitutionalPage} />
+        <Route path="/family-system" component={FamilySystemPage} />
+        <Route path="/knowledge-base" component={KnowledgeBasePage} />
+        <Route path="/maintenance" component={MaintenancePage} />
+        <Route path="/educational-content" component={EducationalContentPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">
