@@ -28,6 +28,32 @@ export async function registerRoutes(
 
   const messageSendTimes = new Map<string, number[]>();
 
+  const featureRouteMap: Record<string, string[]> = {
+    attendance: ["/api/attendance"],
+    messaging: ["/api/messages"],
+    points_rewards: ["/api/points", "/api/leaderboard"],
+    schedules: ["/api/schedules"],
+    parent_portal: ["/api/parent-portal"],
+    smart_alerts: ["/api/smart-alerts"],
+    competitions: ["/api/competitions"],
+    advanced_reports: ["/api/advanced-reports"],
+  };
+
+  app.use(async (req, res, next) => {
+    for (const [featureKey, prefixes] of Object.entries(featureRouteMap)) {
+      if (prefixes.some(prefix => req.path.startsWith(prefix))) {
+        try {
+          const enabled = await storage.isFeatureEnabled(featureKey);
+          if (!enabled) {
+            return res.status(403).json({ message: "هذه الميزة معطلة حالياً من قبل المدير" });
+          }
+        } catch {}
+        break;
+      }
+    }
+    next();
+  });
+
   // Auto-seed feature flags
   try {
     const existingFlags = await storage.getFeatureFlags();
@@ -1891,6 +1917,16 @@ export async function registerRoutes(
   app.get("/api/features/check/:key", requireAuth, async (req, res) => {
     try {
       const enabled = await storage.isFeatureEnabled(req.params.key);
+      res.json({ enabled });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/features/enabled", requireAuth, async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      const enabled = flags.filter(f => f.isEnabled).map(f => f.featureKey);
       res.json({ enabled });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ" });
