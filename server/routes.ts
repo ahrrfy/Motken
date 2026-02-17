@@ -10,7 +10,8 @@ import {
   mosques, users, assignments, attendance, courses, courseStudents, courseTeachers,
   certificates, notifications, messages, activityLogs, ratings, points, badges,
   competitions, competitionParticipants, schedules, parentReports, exams, examStudents,
-  featureFlags, bannedDevices,
+  featureFlags, bannedDevices, emergencySubstitutions, incidentRecords, graduates,
+  graduateFollowups, studentTransfers, familyLinks, feedback, tajweedRules, similarVerses,
 } from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
 import { filterTextFields } from "@shared/content-filter";
@@ -3673,6 +3674,647 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("Smart alerts error:", err);
       res.status(500).json({ message: "حدث خطأ في تحليل التنبيهات" });
+    }
+  });
+
+  // ==================== EMERGENCY SUBSTITUTIONS ====================
+  app.get("/api/emergency-substitutions", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      if (currentUser.role === "admin") {
+        const allMosques = await storage.getMosques();
+        let all: any[] = [];
+        for (const m of allMosques) {
+          const subs = await storage.getEmergencySubstitutionsByMosque(m.id);
+          all.push(...subs);
+        }
+        return res.json(all);
+      }
+      if (currentUser.mosqueId) {
+        const subs = await storage.getEmergencySubstitutionsByMosque(currentUser.mosqueId);
+        return res.json(subs);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/emergency-substitutions", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { absentTeacherId, substituteTeacherId, reason, date, notes } = req.body;
+      if (!absentTeacherId || !substituteTeacherId || !date) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const mosqueId = currentUser.role === "admin" ? (req.body.mosqueId || currentUser.mosqueId) : currentUser.mosqueId;
+      const absentTeacher = await storage.getUser(absentTeacherId);
+      const students = absentTeacher ? await storage.getUsersByTeacher(absentTeacherId) : [];
+      const sub = await storage.createEmergencySubstitution({
+        mosqueId, absentTeacherId, substituteTeacherId, reason, date: new Date(date), notes,
+        status: "active", studentsCount: students.length, createdBy: currentUser.id,
+      });
+      await storage.createNotification({
+        userId: substituteTeacherId, mosqueId,
+        title: "تكليف بالإنابة", message: `تم تكليفك كمعلم بديل عن ${absentTeacher?.name || "معلم غائب"}`,
+        type: "emergency",
+      });
+      await logActivity(currentUser, "إنشاء إنابة طارئة", "emergency_substitutions");
+      res.status(201).json(sub);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/emergency-substitutions/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const updated = await storage.updateEmergencySubstitution(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في التحديث" });
+    }
+  });
+
+  app.delete("/api/emergency-substitutions/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.deleteEmergencySubstitution(req.params.id);
+      res.json({ message: "تم الحذف بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في الحذف" });
+    }
+  });
+
+  app.post("/api/emergency-substitutions/auto-assign", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { absentTeacherId, reason, date } = req.body;
+      if (!absentTeacherId || !date) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const absentTeacher = await storage.getUser(absentTeacherId);
+      if (!absentTeacher || !absentTeacher.mosqueId) {
+        return res.status(404).json({ message: "المعلم غير موجود" });
+      }
+      const absentLevels = getTeacherLevelsArray(absentTeacher);
+      const allTeachers = await storage.getUsersByMosqueAndRole(absentTeacher.mosqueId, "teacher");
+      const availableTeachers = allTeachers.filter(t => {
+        if (t.id === absentTeacherId || !t.isActive) return false;
+        const tLevels = getTeacherLevelsArray(t);
+        return absentLevels.some(l => tLevels.includes(l));
+      });
+      if (availableTeachers.length === 0) {
+        return res.status(400).json({ message: "لا يوجد معلمون بديلون متاحون بنفس المستويات" });
+      }
+      const students = await storage.getUsersByTeacher(absentTeacherId);
+      const activeStudents = students.filter(s => s.isActive);
+      const created: any[] = [];
+      for (let i = 0; i < activeStudents.length; i++) {
+        const teacher = availableTeachers[i % availableTeachers.length];
+        const sub = await storage.createEmergencySubstitution({
+          mosqueId: absentTeacher.mosqueId, absentTeacherId, substituteTeacherId: teacher.id,
+          reason, date: new Date(date), status: "active", studentsCount: 1,
+          notes: `توزيع تلقائي - طالب: ${activeStudents[i].name}`, createdBy: currentUser.id,
+        });
+        created.push(sub);
+      }
+      const notifiedTeachers = new Set<string>();
+      for (const t of availableTeachers) {
+        if (!notifiedTeachers.has(t.id)) {
+          notifiedTeachers.add(t.id);
+          const assignedCount = created.filter(s => s.substituteTeacherId === t.id).length;
+          await storage.createNotification({
+            userId: t.id, mosqueId: absentTeacher.mosqueId,
+            title: "تكليف إنابة تلقائي",
+            message: `تم تكليفك بتدريس ${assignedCount} طالب بدلاً عن ${absentTeacher.name}`,
+            type: "emergency",
+          });
+        }
+      }
+      await logActivity(currentUser, `توزيع تلقائي لطلاب ${absentTeacher.name}`, "emergency_substitutions");
+      res.status(201).json({ created, totalStudents: activeStudents.length, totalTeachers: availableTeachers.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== INCIDENT RECORDS ====================
+  app.get("/api/incidents", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role === "admin") {
+        const allMosques = await storage.getMosques();
+        let all: any[] = [];
+        for (const m of allMosques) {
+          const records = await storage.getIncidentRecordsByMosque(m.id);
+          all.push(...records);
+        }
+        return res.json(all);
+      }
+      if (currentUser.mosqueId) {
+        const records = await storage.getIncidentRecordsByMosque(currentUser.mosqueId);
+        return res.json(records);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/incidents", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { title, description, severity } = req.body;
+      if (!title || !description) {
+        return res.status(400).json({ message: "العنوان والوصف مطلوبان" });
+      }
+      const record = await storage.createIncidentRecord({
+        mosqueId: currentUser.mosqueId, reportedBy: currentUser.id,
+        title, description, severity: severity || "medium", status: "open",
+      });
+      await logActivity(currentUser, `تسجيل حادثة: ${title}`, "incidents");
+      res.status(201).json(record);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/incidents/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const updated = await storage.updateIncidentRecord(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في التحديث" });
+    }
+  });
+
+  app.delete("/api/incidents/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.deleteIncidentRecord(req.params.id);
+      res.json({ message: "تم الحذف بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في الحذف" });
+    }
+  });
+
+  // ==================== GRADUATES ====================
+  app.get("/api/graduates", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role === "admin") {
+        const allMosques = await storage.getMosques();
+        let all: any[] = [];
+        for (const m of allMosques) {
+          const grads = await storage.getGraduatesByMosque(m.id);
+          all.push(...grads);
+        }
+        return res.json(all);
+      }
+      if (currentUser.mosqueId) {
+        const grads = await storage.getGraduatesByMosque(currentUser.mosqueId);
+        return res.json(grads);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/graduates", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { studentId, graduationDate, totalJuz, ijazahChain, ijazahTeacher, recitationStyle, finalGrade, certificateId, notes } = req.body;
+      if (!studentId || !graduationDate) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const mosqueId = currentUser.role === "admin" ? (req.body.mosqueId || currentUser.mosqueId) : currentUser.mosqueId;
+      const grad = await storage.createGraduate({
+        studentId, mosqueId, graduationDate: new Date(graduationDate),
+        totalJuz: totalJuz || 30, ijazahChain, ijazahTeacher, recitationStyle, finalGrade, certificateId, notes,
+      });
+      await logActivity(currentUser, "تسجيل تخرج طالب", "graduates");
+      res.status(201).json(grad);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/graduates/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const updated = await storage.updateGraduate(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في التحديث" });
+    }
+  });
+
+  app.delete("/api/graduates/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.deleteGraduate(req.params.id);
+      res.json({ message: "تم الحذف بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في الحذف" });
+    }
+  });
+
+  app.get("/api/graduates/:id/followups", requireAuth, async (req, res) => {
+    try {
+      const followups = await storage.getGraduateFollowupsByGraduate(req.params.id);
+      res.json(followups);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/graduates/:id/followups", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { followupDate, retentionLevel, juzReviewed, notes } = req.body;
+      if (!followupDate || !retentionLevel) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const graduate = await storage.getGraduate(req.params.id);
+      if (!graduate) return res.status(404).json({ message: "الخريج غير موجود" });
+      const followup = await storage.createGraduateFollowup({
+        graduateId: req.params.id, mosqueId: graduate.mosqueId,
+        followupDate: new Date(followupDate), retentionLevel, juzReviewed, notes,
+        contactedBy: currentUser.id,
+      });
+      res.status(201).json(followup);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== STUDENT TRANSFERS ====================
+  app.get("/api/student-transfers", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role === "admin") {
+        const allMosques = await storage.getMosques();
+        let all: any[] = [];
+        for (const m of allMosques) {
+          const transfers = await storage.getStudentTransfersByMosque(m.id);
+          all.push(...transfers);
+        }
+        return res.json(all);
+      }
+      if (currentUser.mosqueId) {
+        const transfers = await storage.getStudentTransfersByMosque(currentUser.mosqueId);
+        return res.json(transfers);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/student-transfers", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { studentId, fromMosqueId, toMosqueId, reason, transferData } = req.body;
+      if (!studentId || !toMosqueId) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const transfer = await storage.createStudentTransfer({
+        studentId, fromMosqueId: fromMosqueId || currentUser.mosqueId,
+        toMosqueId, reason, transferData, status: "pending",
+      });
+      await logActivity(currentUser, "طلب نقل طالب", "student_transfers");
+      res.status(201).json(transfer);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/student-transfers/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const transfer = await storage.getStudentTransfer(req.params.id);
+      if (!transfer) return res.status(404).json({ message: "طلب النقل غير موجود" });
+      const updateData: any = { ...req.body };
+      if (req.body.status === "approved") {
+        updateData.approvedBy = currentUser.id;
+        const student = await storage.getUser(transfer.studentId);
+        if (student) {
+          await storage.updateUser(student.id, { mosqueId: transfer.toMosqueId });
+        }
+      }
+      const updated = await storage.updateStudentTransfer(req.params.id, updateData);
+      await logActivity(currentUser, `تحديث طلب نقل: ${req.body.status}`, "student_transfers");
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في التحديث" });
+    }
+  });
+
+  // ==================== FAMILY LINKS ====================
+  app.get("/api/family-links", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const parentPhone = req.query.parentPhone as string;
+      if (parentPhone) {
+        const links = await storage.getFamilyLinksByParentPhone(parentPhone);
+        return res.json(links);
+      }
+      if (currentUser.role === "admin") {
+        const allMosques = await storage.getMosques();
+        let all: any[] = [];
+        for (const m of allMosques) {
+          const links = await storage.getFamilyLinksByMosque(m.id);
+          all.push(...links);
+        }
+        return res.json(all);
+      }
+      if (currentUser.mosqueId) {
+        const links = await storage.getFamilyLinksByMosque(currentUser.mosqueId);
+        return res.json(links);
+      }
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/family-links", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { parentPhone, studentId, relationship } = req.body;
+      if (!parentPhone || !studentId) {
+        return res.status(400).json({ message: "رقم ولي الأمر ومعرف الطالب مطلوبان" });
+      }
+      const mosqueId = currentUser.role === "admin" ? (req.body.mosqueId || currentUser.mosqueId) : currentUser.mosqueId;
+      const link = await storage.createFamilyLink({
+        parentPhone, studentId, mosqueId, relationship: relationship || "parent",
+      });
+      res.status(201).json(link);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/family-links/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.deleteFamilyLink(req.params.id);
+      res.json({ message: "تم الحذف بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في الحذف" });
+    }
+  });
+
+  app.get("/api/family-dashboard/:phone", async (req, res) => {
+    try {
+      const phone = req.params.phone;
+      const links = await storage.getFamilyLinksByParentPhone(phone);
+      if (links.length === 0) {
+        return res.json({ children: [] });
+      }
+      const children: any[] = [];
+      for (const link of links) {
+        const student = await storage.getUser(link.studentId);
+        if (!student) continue;
+        const studentAssignments = await storage.getAssignmentsByStudent(student.id);
+        const totalAssignments = studentAssignments.length;
+        const completedAssignments = studentAssignments.filter(a => a.status === "done").length;
+        const avgGrade = studentAssignments.filter(a => a.grade != null).reduce((sum, a) => sum + (a.grade || 0), 0) / (studentAssignments.filter(a => a.grade != null).length || 1);
+        children.push({
+          id: student.id, name: student.name, level: student.level,
+          relationship: link.relationship,
+          stats: { totalAssignments, completedAssignments, avgGrade: Math.round(avgGrade) },
+        });
+      }
+      res.json({ children });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  // ==================== FEEDBACK & SUGGESTIONS ====================
+  app.get("/api/feedback", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role === "admin") {
+        const all = await storage.getAllFeedback();
+        return res.json(all);
+      }
+      if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+        const fb = await storage.getFeedbackByMosque(currentUser.mosqueId);
+        return res.json(fb);
+      }
+      const fb = await storage.getFeedbackByUser(currentUser.id);
+      res.json(fb);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/feedback", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { type, title, description, priority, isAnonymous } = req.body;
+      if (!title || !description) {
+        return res.status(400).json({ message: "العنوان والوصف مطلوبان" });
+      }
+      const fb = await storage.createFeedback({
+        userId: isAnonymous ? null : currentUser.id,
+        mosqueId: currentUser.mosqueId,
+        type: type || "suggestion", title, description,
+        priority: priority || "medium", status: "open",
+        isAnonymous: isAnonymous || false,
+      });
+      await logActivity(currentUser, `إرسال ملاحظة: ${title}`, "feedback");
+      res.status(201).json(fb);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/feedback/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const updateData: any = { ...req.body };
+      if (req.body.response) {
+        updateData.respondedBy = currentUser.id;
+      }
+      const updated = await storage.updateFeedback(req.params.id, updateData);
+      if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في التحديث" });
+    }
+  });
+
+  app.delete("/api/feedback/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.deleteFeedback(req.params.id);
+      res.json({ message: "تم الحذف بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في الحذف" });
+    }
+  });
+
+  // ==================== TAJWEED RULES ====================
+  app.get("/api/tajweed-rules", requireAuth, async (req, res) => {
+    try {
+      const category = req.query.category as string;
+      if (category) {
+        const rules = await storage.getTajweedRulesByCategory(category);
+        return res.json(rules);
+      }
+      const rules = await storage.getAllTajweedRules();
+      res.json(rules);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/tajweed-rules", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { category, title, description, examples, surahReference, sortOrder } = req.body;
+      if (!category || !title || !description) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const rule = await storage.createTajweedRule({
+        category, title, description, examples, surahReference, sortOrder: sortOrder || 0,
+      });
+      res.status(201).json(rule);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/tajweed-rules/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const updated = await storage.updateTajweedRule(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في التحديث" });
+    }
+  });
+
+  app.delete("/api/tajweed-rules/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.deleteTajweedRule(req.params.id);
+      res.json({ message: "تم الحذف بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في الحذف" });
+    }
+  });
+
+  // ==================== SIMILAR VERSES ====================
+  app.get("/api/similar-verses", requireAuth, async (req, res) => {
+    try {
+      const verses = await storage.getAllSimilarVerses();
+      res.json(verses);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.post("/api/similar-verses", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { verse1Surah, verse1Number, verse1Text, verse2Surah, verse2Number, verse2Text, explanation, difficulty } = req.body;
+      if (!verse1Surah || !verse1Text || !verse2Surah || !verse2Text) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const verse = await storage.createSimilarVerse({
+        verse1Surah, verse1Number, verse1Text, verse2Surah, verse2Number, verse2Text,
+        explanation, difficulty: difficulty || "medium",
+      });
+      res.status(201).json(verse);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/similar-verses/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.deleteSimilarVerse(req.params.id);
+      res.json({ message: "تم الحذف بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في الحذف" });
     }
   });
 

@@ -401,3 +401,153 @@ export const parentReports = pgTable("parent_reports", {
 export const insertParentReportSchema = createInsertSchema(parentReports).omit({ id: true, createdAt: true });
 export type InsertParentReport = z.infer<typeof insertParentReportSchema>;
 export type ParentReport = typeof parentReports.$inferSelect;
+
+// ==================== EMERGENCY SUBSTITUTIONS (Crisis Management) ====================
+export const emergencySubstitutions = pgTable("emergency_substitutions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  absentTeacherId: varchar("absent_teacher_id").notNull().references(() => users.id),
+  substituteTeacherId: varchar("substitute_teacher_id").notNull().references(() => users.id),
+  reason: text("reason"),
+  date: timestamp("date").notNull(),
+  status: text("status").notNull().default("active"),
+  studentsCount: integer("students_count"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertEmergencySubstitutionSchema = createInsertSchema(emergencySubstitutions).omit({ id: true, createdAt: true });
+export type InsertEmergencySubstitution = z.infer<typeof insertEmergencySubstitutionSchema>;
+export type EmergencySubstitution = typeof emergencySubstitutions.$inferSelect;
+
+// ==================== INCIDENT RECORDS (Crisis Management) ====================
+export const incidentRecords = pgTable("incident_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  reportedBy: varchar("reported_by").references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  severity: text("severity").notNull().default("medium"),
+  actionTaken: text("action_taken"),
+  status: text("status").notNull().default("open"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertIncidentRecordSchema = createInsertSchema(incidentRecords).omit({ id: true, createdAt: true });
+export type InsertIncidentRecord = z.infer<typeof insertIncidentRecordSchema>;
+export type IncidentRecord = typeof incidentRecords.$inferSelect;
+
+// ==================== GRADUATES (Graduation & Follow-up) ====================
+export const graduates = pgTable("graduates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  graduationDate: timestamp("graduation_date").notNull(),
+  totalJuz: integer("total_juz").notNull().default(30),
+  ijazahChain: text("ijazah_chain"),
+  ijazahTeacher: text("ijazah_teacher"),
+  recitationStyle: text("recitation_style").default("hafs"),
+  finalGrade: text("final_grade"),
+  certificateId: varchar("certificate_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertGraduateSchema = createInsertSchema(graduates).omit({ id: true, createdAt: true });
+export type InsertGraduate = z.infer<typeof insertGraduateSchema>;
+export type Graduate = typeof graduates.$inferSelect;
+
+// ==================== GRADUATE FOLLOWUPS ====================
+export const graduateFollowups = pgTable("graduate_followups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  graduateId: varchar("graduate_id").notNull().references(() => graduates.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  followupDate: timestamp("followup_date").notNull(),
+  retentionLevel: text("retention_level").notNull(),
+  juzReviewed: integer("juz_reviewed"),
+  notes: text("notes"),
+  contactedBy: varchar("contacted_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertGraduateFollowupSchema = createInsertSchema(graduateFollowups).omit({ id: true, createdAt: true });
+export type InsertGraduateFollowup = z.infer<typeof insertGraduateFollowupSchema>;
+export type GraduateFollowup = typeof graduateFollowups.$inferSelect;
+
+// ==================== STUDENT TRANSFERS (Institutional Integration) ====================
+export const studentTransfers = pgTable("student_transfers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  fromMosqueId: varchar("from_mosque_id").references(() => mosques.id),
+  toMosqueId: varchar("to_mosque_id").references(() => mosques.id),
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"),
+  transferData: text("transfer_data"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertStudentTransferSchema = createInsertSchema(studentTransfers).omit({ id: true, createdAt: true });
+export type InsertStudentTransfer = z.infer<typeof insertStudentTransferSchema>;
+export type StudentTransfer = typeof studentTransfers.$inferSelect;
+
+// ==================== FAMILY ACCOUNTS ====================
+export const familyLinks = pgTable("family_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  parentPhone: text("parent_phone").notNull(),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  relationship: text("relationship").notNull().default("parent"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertFamilyLinkSchema = createInsertSchema(familyLinks).omit({ id: true, createdAt: true });
+export type InsertFamilyLink = z.infer<typeof insertFamilyLinkSchema>;
+export type FamilyLink = typeof familyLinks.$inferSelect;
+
+// ==================== FEEDBACK & SUGGESTIONS (Maintenance) ====================
+export const feedback = pgTable("feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  type: text("type").notNull().default("suggestion"),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  priority: text("priority").notNull().default("medium"),
+  status: text("status").notNull().default("open"),
+  response: text("response"),
+  respondedBy: varchar("responded_by").references(() => users.id),
+  isAnonymous: boolean("is_anonymous").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertFeedbackSchema = createInsertSchema(feedback).omit({ id: true, createdAt: true });
+export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
+export type Feedback = typeof feedback.$inferSelect;
+
+// ==================== TAJWEED RULES (Knowledge Management) ====================
+export const tajweedRules = pgTable("tajweed_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  examples: text("examples"),
+  surahReference: text("surah_reference"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertTajweedRuleSchema = createInsertSchema(tajweedRules).omit({ id: true, createdAt: true });
+export type InsertTajweedRule = z.infer<typeof insertTajweedRuleSchema>;
+export type TajweedRule = typeof tajweedRules.$inferSelect;
+
+// ==================== SIMILAR VERSES (Educational Content) ====================
+export const similarVerses = pgTable("similar_verses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  verse1Surah: text("verse1_surah").notNull(),
+  verse1Number: integer("verse1_number").notNull(),
+  verse1Text: text("verse1_text").notNull(),
+  verse2Surah: text("verse2_surah").notNull(),
+  verse2Number: integer("verse2_number").notNull(),
+  verse2Text: text("verse2_text").notNull(),
+  explanation: text("explanation"),
+  difficulty: text("difficulty").notNull().default("medium"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertSimilarVerseSchema = createInsertSchema(similarVerses).omit({ id: true, createdAt: true });
+export type InsertSimilarVerse = z.infer<typeof insertSimilarVerseSchema>;
+export type SimilarVerse = typeof similarVerses.$inferSelect;
