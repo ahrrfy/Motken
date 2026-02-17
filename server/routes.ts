@@ -3841,13 +3841,14 @@ export async function registerRoutes(
   app.post("/api/incidents", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
-      const { title, description, severity } = req.body;
-      if (!title || !description) {
-        return res.status(400).json({ message: "العنوان والوصف مطلوبان" });
+      const { title, description, severity, actionTaken } = req.body;
+      if (!title) {
+        return res.status(400).json({ message: "عنوان الحادثة مطلوب" });
       }
       const record = await storage.createIncidentRecord({
         mosqueId: currentUser.mosqueId, reportedBy: currentUser.id,
-        title, description, severity: severity || "medium", status: "open",
+        title, description: description || "", severity: severity || "medium", status: "open",
+        actionTaken: actionTaken || null,
       });
       await logActivity(currentUser, `تسجيل حادثة: ${title}`, "incidents");
       res.status(201).json(record);
