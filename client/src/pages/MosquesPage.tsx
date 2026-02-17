@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle, ImagePlus, X } from "lucide-react";
 import type { Mosque } from "@shared/schema";
 
 interface MosqueStats {
@@ -28,7 +28,7 @@ interface MosqueStats {
   students: number;
 }
 
-const emptyForm = { name: "", province: "", city: "", area: "", landmark: "", address: "", phone: "", managerName: "", description: "", adminNotes: "" };
+const emptyForm = { name: "", province: "", city: "", area: "", landmark: "", address: "", phone: "", managerName: "", description: "", adminNotes: "", image: "" };
 
 const statusLabels: Record<string, string> = {
   active: "نشط",
@@ -180,6 +180,47 @@ export default function MosquesPage() {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      toast({ title: "خطأ", description: "يرجى اختيار صورة بصيغة PNG أو JPG أو WebP", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSize = 200;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, w, h);
+        let quality = 0.8;
+        let base64 = canvas.toDataURL("image/jpeg", quality);
+        while (base64.length > 500 * 1024 * 1.37 && quality > 0.1) {
+          quality -= 0.1;
+          base64 = canvas.toDataURL("image/jpeg", quality);
+        }
+        if (base64.length > 500 * 1024 * 1.37) {
+          toast({ title: "خطأ", description: "حجم الصورة كبير جداً، يرجى اختيار صورة أصغر", variant: "destructive" });
+          return;
+        }
+        handleChange("image", base64);
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const openEditDialog = (mosque: Mosque) => {
     setEditingMosque(mosque);
     setForm({
@@ -193,6 +234,7 @@ export default function MosquesPage() {
       managerName: (mosque as any).managerName || "",
       description: mosque.description || "",
       adminNotes: (mosque as any).adminNotes || "",
+      image: mosque.image || "",
     });
     setEditOpen(true);
   };
@@ -230,6 +272,38 @@ export default function MosquesPage() {
 
   const renderForm = (isEdit: boolean = false) => (
     <div className="space-y-4" dir="rtl">
+      <div className="space-y-2">
+        <Label>شعار الجامع/المركز</Label>
+        <div className="flex items-center gap-4">
+          <div
+            className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors overflow-hidden bg-muted/30"
+            onClick={() => document.getElementById('mosque-logo-input')?.click()}
+            data-testid="button-upload-mosque-logo"
+          >
+            {form.image ? (
+              <img src={form.image} alt="شعار" className="w-full h-full object-cover rounded-lg" />
+            ) : (
+              <ImagePlus className="w-8 h-8 text-muted-foreground/40" />
+            )}
+          </div>
+          <div className="flex-1 space-y-1">
+            <p className="text-sm text-muted-foreground">اختر صورة شعار الجامع أو المركز</p>
+            <p className="text-xs text-muted-foreground/60">PNG أو JPG - الحد الأقصى 500 كيلوبايت</p>
+            {form.image && (
+              <Button variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => handleChange("image", "")} data-testid="button-remove-mosque-logo">
+                <X className="w-3 h-3 ml-1" /> إزالة الشعار
+              </Button>
+            )}
+          </div>
+          <input
+            id="mosque-logo-input"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+        </div>
+      </div>
       {formFields.map((f) => (
         <div key={f.key} className="space-y-2">
           <Label htmlFor={`field-${f.key}`}>
@@ -390,8 +464,12 @@ export default function MosquesPage() {
                 <CardContent className="p-3 sm:p-4 md:p-5 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Building2 className="w-5 h-5 text-primary" />
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                        {mosque.image ? (
+                          <img src={mosque.image} alt={mosque.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Building2 className="w-5 h-5 text-primary" />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-bold font-serif text-base truncate" data-testid={`text-mosque-name-${mosque.id}`}>

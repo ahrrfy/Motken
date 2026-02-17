@@ -3,8 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, UserX, Calendar, TrendingDown, Bell, AlertTriangle, AlertCircle, Info, Loader2, PartyPopper } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { getWhatsAppUrl } from "@/lib/phone-utils";
 
 interface AlertItem {
   id: string | number;
@@ -34,6 +36,7 @@ const defaultData: SmartAlertsData = {
 export default function SmartAlertsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [data, setData] = useState<SmartAlertsData>(defaultData);
   const [loading, setLoading] = useState(true);
 
@@ -88,7 +91,7 @@ export default function SmartAlertsPage() {
             <p className="font-medium text-sm truncate">{item.name}</p>
             {item.date && <p className="text-xs text-muted-foreground">آخر واجب: {item.date}</p>}
           </div>
-          <Button size="sm" variant="outline" className="shrink-0 text-xs" data-testid={`button-create-assignment-${item.id}`}>
+          <Button size="sm" variant="outline" className="shrink-0 text-xs" data-testid={`button-create-assignment-${item.id}`} onClick={() => setLocation(`/assignments?studentId=${item.id}&action=create`)}>
             إنشاء واجب
           </Button>
         </div>
@@ -110,7 +113,7 @@ export default function SmartAlertsPage() {
             <p className="font-medium text-sm truncate">{item.name}</p>
             {item.date && <p className="text-xs text-muted-foreground">آخر نشاط: {item.date}</p>}
           </div>
-          <Button size="sm" variant="outline" className="shrink-0 text-xs" data-testid={`button-send-message-${item.id}`}>
+          <Button size="sm" variant="outline" className="shrink-0 text-xs" data-testid={`button-send-message-${item.id}`} onClick={() => setLocation(`/messages?userId=${item.id}`)}>
             إرسال رسالة
           </Button>
         </div>
@@ -153,7 +156,13 @@ export default function SmartAlertsPage() {
             {item.grade !== undefined && <p className="text-xs text-muted-foreground">الدرجة: {item.grade}</p>}
             {item.subject && <p className="text-xs text-muted-foreground">المادة: {item.subject}</p>}
           </div>
-          <Button size="sm" variant="outline" className="shrink-0 text-xs" data-testid={`button-contact-parent-${item.id}`}>
+          <Button size="sm" variant="outline" className="shrink-0 text-xs" data-testid={`button-contact-parent-${item.id}`} onClick={() => {
+              if (item.parentPhone) {
+                window.open(getWhatsAppUrl(item.parentPhone, `تنبيه: درجة الطالب ${item.name} منخفضة (${item.grade})`), "_blank");
+              } else {
+                toast({ title: "تنبيه", description: "لا يوجد رقم هاتف لولي الأمر", variant: "destructive" });
+              }
+            }}>
             تواصل مع ولي الأمر
           </Button>
         </div>

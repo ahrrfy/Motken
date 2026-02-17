@@ -35,6 +35,7 @@ import SchedulesPage from "@/pages/SchedulesPage";
 import SmartAlertsPage from "@/pages/SmartAlertsPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import PublicParentReportPage from "@/pages/PublicParentReportPage";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 
@@ -53,6 +54,17 @@ function App() {
       stopNotificationPolling();
     };
   }, [user]);
+
+  if (window.location.pathname.startsWith("/parent-report/")) {
+    return (
+      <>
+        <Switch>
+          <Route path="/parent-report/:token" component={PublicParentReportPage} />
+        </Switch>
+        <Toaster />
+      </>
+    );
+  }
 
   if (loading) {
     return (
