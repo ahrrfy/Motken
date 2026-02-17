@@ -479,7 +479,7 @@ export default function AssignmentsExamsPage() {
     return true;
   });
 
-  const uniqueSurahNames = [...new Set(assignments.map(a => a.surahName))];
+  const uniqueSurahNames = Array.from(new Set(assignments.map(a => a.surahName)));
 
   const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
