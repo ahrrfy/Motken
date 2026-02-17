@@ -21,10 +21,21 @@ import {
   type Competition, type InsertCompetition,
   type CompetitionParticipant, type InsertCompetitionParticipant,
   type ParentReport, type InsertParentReport,
+  type EmergencySubstitution, type InsertEmergencySubstitution,
+  type IncidentRecord, type InsertIncidentRecord,
+  type Graduate, type InsertGraduate,
+  type GraduateFollowup, type InsertGraduateFollowup,
+  type StudentTransfer, type InsertStudentTransfer,
+  type FamilyLink, type InsertFamilyLink,
+  type Feedback, type InsertFeedback,
+  type TajweedRule, type InsertTajweedRule,
+  type SimilarVerse, type InsertSimilarVerse,
   users, mosques, assignments, activityLogs, notifications, ratings, exams, examStudents,
   courses, courseStudents, courseTeachers, certificates, bannedDevices,
   featureFlags, attendance, messages, points, badges, schedules, competitions,
   competitionParticipants, parentReports,
+  emergencySubstitutions, incidentRecords, graduates, graduateFollowups,
+  studentTransfers, familyLinks, feedback, tajweedRules, similarVerses,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, inArray, sum, count, asc } from "drizzle-orm";
@@ -177,6 +188,68 @@ export interface IStorage {
   getParentReportsByStudent(studentId: string): Promise<ParentReport[]>;
   createParentReport(pr: InsertParentReport): Promise<ParentReport>;
   deleteParentReport(id: string): Promise<void>;
+
+  getEmergencySubstitution(id: string): Promise<EmergencySubstitution | undefined>;
+  getEmergencySubstitutionsByMosque(mosqueId: string): Promise<EmergencySubstitution[]>;
+  createEmergencySubstitution(data: InsertEmergencySubstitution): Promise<EmergencySubstitution>;
+  updateEmergencySubstitution(id: string, data: Partial<InsertEmergencySubstitution>): Promise<EmergencySubstitution | undefined>;
+  deleteEmergencySubstitution(id: string): Promise<void>;
+
+  getIncidentRecord(id: string): Promise<IncidentRecord | undefined>;
+  getIncidentRecordsByMosque(mosqueId: string): Promise<IncidentRecord[]>;
+  createIncidentRecord(data: InsertIncidentRecord): Promise<IncidentRecord>;
+  updateIncidentRecord(id: string, data: Partial<InsertIncidentRecord>): Promise<IncidentRecord | undefined>;
+  deleteIncidentRecord(id: string): Promise<void>;
+
+  getGraduate(id: string): Promise<Graduate | undefined>;
+  getGraduatesByMosque(mosqueId: string): Promise<Graduate[]>;
+  getGraduatesByStudent(studentId: string): Promise<Graduate[]>;
+  createGraduate(data: InsertGraduate): Promise<Graduate>;
+  updateGraduate(id: string, data: Partial<InsertGraduate>): Promise<Graduate | undefined>;
+  deleteGraduate(id: string): Promise<void>;
+
+  getGraduateFollowup(id: string): Promise<GraduateFollowup | undefined>;
+  getGraduateFollowupsByMosque(mosqueId: string): Promise<GraduateFollowup[]>;
+  getGraduateFollowupsByGraduate(graduateId: string): Promise<GraduateFollowup[]>;
+  createGraduateFollowup(data: InsertGraduateFollowup): Promise<GraduateFollowup>;
+  updateGraduateFollowup(id: string, data: Partial<InsertGraduateFollowup>): Promise<GraduateFollowup | undefined>;
+  deleteGraduateFollowup(id: string): Promise<void>;
+
+  getStudentTransfer(id: string): Promise<StudentTransfer | undefined>;
+  getStudentTransfersByMosque(mosqueId: string): Promise<StudentTransfer[]>;
+  getStudentTransfersByStudent(studentId: string): Promise<StudentTransfer[]>;
+  createStudentTransfer(data: InsertStudentTransfer): Promise<StudentTransfer>;
+  updateStudentTransfer(id: string, data: Partial<InsertStudentTransfer>): Promise<StudentTransfer | undefined>;
+  deleteStudentTransfer(id: string): Promise<void>;
+
+  getFamilyLink(id: string): Promise<FamilyLink | undefined>;
+  getFamilyLinksByMosque(mosqueId: string): Promise<FamilyLink[]>;
+  getFamilyLinksByParentPhone(parentPhone: string): Promise<FamilyLink[]>;
+  getFamilyLinksByStudent(studentId: string): Promise<FamilyLink[]>;
+  createFamilyLink(data: InsertFamilyLink): Promise<FamilyLink>;
+  updateFamilyLink(id: string, data: Partial<InsertFamilyLink>): Promise<FamilyLink | undefined>;
+  deleteFamilyLink(id: string): Promise<void>;
+
+  getFeedback(id: string): Promise<Feedback | undefined>;
+  getFeedbackByMosque(mosqueId: string): Promise<Feedback[]>;
+  getFeedbackByUser(userId: string): Promise<Feedback[]>;
+  getAllFeedback(): Promise<Feedback[]>;
+  createFeedback(data: InsertFeedback): Promise<Feedback>;
+  updateFeedback(id: string, data: Partial<InsertFeedback>): Promise<Feedback | undefined>;
+  deleteFeedback(id: string): Promise<void>;
+
+  getTajweedRule(id: string): Promise<TajweedRule | undefined>;
+  getAllTajweedRules(): Promise<TajweedRule[]>;
+  getTajweedRulesByCategory(category: string): Promise<TajweedRule[]>;
+  createTajweedRule(data: InsertTajweedRule): Promise<TajweedRule>;
+  updateTajweedRule(id: string, data: Partial<InsertTajweedRule>): Promise<TajweedRule | undefined>;
+  deleteTajweedRule(id: string): Promise<void>;
+
+  getSimilarVerse(id: string): Promise<SimilarVerse | undefined>;
+  getAllSimilarVerses(): Promise<SimilarVerse[]>;
+  createSimilarVerse(data: InsertSimilarVerse): Promise<SimilarVerse>;
+  updateSimilarVerse(id: string, data: Partial<InsertSimilarVerse>): Promise<SimilarVerse | undefined>;
+  deleteSimilarVerse(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -819,6 +892,247 @@ export class DatabaseStorage implements IStorage {
 
   async deleteParentReport(id: string): Promise<void> {
     await db.delete(parentReports).where(eq(parentReports.id, id));
+  }
+
+  async getEmergencySubstitution(id: string): Promise<EmergencySubstitution | undefined> {
+    const [entry] = await db.select().from(emergencySubstitutions).where(eq(emergencySubstitutions.id, id));
+    return entry;
+  }
+
+  async getEmergencySubstitutionsByMosque(mosqueId: string): Promise<EmergencySubstitution[]> {
+    return db.select().from(emergencySubstitutions).where(eq(emergencySubstitutions.mosqueId, mosqueId)).orderBy(desc(emergencySubstitutions.createdAt));
+  }
+
+  async createEmergencySubstitution(data: InsertEmergencySubstitution): Promise<EmergencySubstitution> {
+    const [entry] = await db.insert(emergencySubstitutions).values(data).returning();
+    return entry;
+  }
+
+  async updateEmergencySubstitution(id: string, data: Partial<InsertEmergencySubstitution>): Promise<EmergencySubstitution | undefined> {
+    const [entry] = await db.update(emergencySubstitutions).set(data).where(eq(emergencySubstitutions.id, id)).returning();
+    return entry;
+  }
+
+  async deleteEmergencySubstitution(id: string): Promise<void> {
+    await db.delete(emergencySubstitutions).where(eq(emergencySubstitutions.id, id));
+  }
+
+  async getIncidentRecord(id: string): Promise<IncidentRecord | undefined> {
+    const [entry] = await db.select().from(incidentRecords).where(eq(incidentRecords.id, id));
+    return entry;
+  }
+
+  async getIncidentRecordsByMosque(mosqueId: string): Promise<IncidentRecord[]> {
+    return db.select().from(incidentRecords).where(eq(incidentRecords.mosqueId, mosqueId)).orderBy(desc(incidentRecords.createdAt));
+  }
+
+  async createIncidentRecord(data: InsertIncidentRecord): Promise<IncidentRecord> {
+    const [entry] = await db.insert(incidentRecords).values(data).returning();
+    return entry;
+  }
+
+  async updateIncidentRecord(id: string, data: Partial<InsertIncidentRecord>): Promise<IncidentRecord | undefined> {
+    const [entry] = await db.update(incidentRecords).set(data).where(eq(incidentRecords.id, id)).returning();
+    return entry;
+  }
+
+  async deleteIncidentRecord(id: string): Promise<void> {
+    await db.delete(incidentRecords).where(eq(incidentRecords.id, id));
+  }
+
+  async getGraduate(id: string): Promise<Graduate | undefined> {
+    const [entry] = await db.select().from(graduates).where(eq(graduates.id, id));
+    return entry;
+  }
+
+  async getGraduatesByMosque(mosqueId: string): Promise<Graduate[]> {
+    return db.select().from(graduates).where(eq(graduates.mosqueId, mosqueId)).orderBy(desc(graduates.createdAt));
+  }
+
+  async getGraduatesByStudent(studentId: string): Promise<Graduate[]> {
+    return db.select().from(graduates).where(eq(graduates.studentId, studentId)).orderBy(desc(graduates.createdAt));
+  }
+
+  async createGraduate(data: InsertGraduate): Promise<Graduate> {
+    const [entry] = await db.insert(graduates).values(data).returning();
+    return entry;
+  }
+
+  async updateGraduate(id: string, data: Partial<InsertGraduate>): Promise<Graduate | undefined> {
+    const [entry] = await db.update(graduates).set(data).where(eq(graduates.id, id)).returning();
+    return entry;
+  }
+
+  async deleteGraduate(id: string): Promise<void> {
+    await db.delete(graduates).where(eq(graduates.id, id));
+  }
+
+  async getGraduateFollowup(id: string): Promise<GraduateFollowup | undefined> {
+    const [entry] = await db.select().from(graduateFollowups).where(eq(graduateFollowups.id, id));
+    return entry;
+  }
+
+  async getGraduateFollowupsByMosque(mosqueId: string): Promise<GraduateFollowup[]> {
+    return db.select().from(graduateFollowups).where(eq(graduateFollowups.mosqueId, mosqueId)).orderBy(desc(graduateFollowups.createdAt));
+  }
+
+  async getGraduateFollowupsByGraduate(graduateId: string): Promise<GraduateFollowup[]> {
+    return db.select().from(graduateFollowups).where(eq(graduateFollowups.graduateId, graduateId)).orderBy(desc(graduateFollowups.createdAt));
+  }
+
+  async createGraduateFollowup(data: InsertGraduateFollowup): Promise<GraduateFollowup> {
+    const [entry] = await db.insert(graduateFollowups).values(data).returning();
+    return entry;
+  }
+
+  async updateGraduateFollowup(id: string, data: Partial<InsertGraduateFollowup>): Promise<GraduateFollowup | undefined> {
+    const [entry] = await db.update(graduateFollowups).set(data).where(eq(graduateFollowups.id, id)).returning();
+    return entry;
+  }
+
+  async deleteGraduateFollowup(id: string): Promise<void> {
+    await db.delete(graduateFollowups).where(eq(graduateFollowups.id, id));
+  }
+
+  async getStudentTransfer(id: string): Promise<StudentTransfer | undefined> {
+    const [entry] = await db.select().from(studentTransfers).where(eq(studentTransfers.id, id));
+    return entry;
+  }
+
+  async getStudentTransfersByMosque(mosqueId: string): Promise<StudentTransfer[]> {
+    return db.select().from(studentTransfers).where(
+      or(eq(studentTransfers.fromMosqueId, mosqueId), eq(studentTransfers.toMosqueId, mosqueId))
+    ).orderBy(desc(studentTransfers.createdAt));
+  }
+
+  async getStudentTransfersByStudent(studentId: string): Promise<StudentTransfer[]> {
+    return db.select().from(studentTransfers).where(eq(studentTransfers.studentId, studentId)).orderBy(desc(studentTransfers.createdAt));
+  }
+
+  async createStudentTransfer(data: InsertStudentTransfer): Promise<StudentTransfer> {
+    const [entry] = await db.insert(studentTransfers).values(data).returning();
+    return entry;
+  }
+
+  async updateStudentTransfer(id: string, data: Partial<InsertStudentTransfer>): Promise<StudentTransfer | undefined> {
+    const [entry] = await db.update(studentTransfers).set(data).where(eq(studentTransfers.id, id)).returning();
+    return entry;
+  }
+
+  async deleteStudentTransfer(id: string): Promise<void> {
+    await db.delete(studentTransfers).where(eq(studentTransfers.id, id));
+  }
+
+  async getFamilyLink(id: string): Promise<FamilyLink | undefined> {
+    const [entry] = await db.select().from(familyLinks).where(eq(familyLinks.id, id));
+    return entry;
+  }
+
+  async getFamilyLinksByMosque(mosqueId: string): Promise<FamilyLink[]> {
+    return db.select().from(familyLinks).where(eq(familyLinks.mosqueId, mosqueId)).orderBy(desc(familyLinks.createdAt));
+  }
+
+  async getFamilyLinksByParentPhone(parentPhone: string): Promise<FamilyLink[]> {
+    return db.select().from(familyLinks).where(eq(familyLinks.parentPhone, parentPhone)).orderBy(desc(familyLinks.createdAt));
+  }
+
+  async getFamilyLinksByStudent(studentId: string): Promise<FamilyLink[]> {
+    return db.select().from(familyLinks).where(eq(familyLinks.studentId, studentId)).orderBy(desc(familyLinks.createdAt));
+  }
+
+  async createFamilyLink(data: InsertFamilyLink): Promise<FamilyLink> {
+    const [entry] = await db.insert(familyLinks).values(data).returning();
+    return entry;
+  }
+
+  async updateFamilyLink(id: string, data: Partial<InsertFamilyLink>): Promise<FamilyLink | undefined> {
+    const [entry] = await db.update(familyLinks).set(data).where(eq(familyLinks.id, id)).returning();
+    return entry;
+  }
+
+  async deleteFamilyLink(id: string): Promise<void> {
+    await db.delete(familyLinks).where(eq(familyLinks.id, id));
+  }
+
+  async getFeedback(id: string): Promise<Feedback | undefined> {
+    const [entry] = await db.select().from(feedback).where(eq(feedback.id, id));
+    return entry;
+  }
+
+  async getFeedbackByMosque(mosqueId: string): Promise<Feedback[]> {
+    return db.select().from(feedback).where(eq(feedback.mosqueId, mosqueId)).orderBy(desc(feedback.createdAt));
+  }
+
+  async getFeedbackByUser(userId: string): Promise<Feedback[]> {
+    return db.select().from(feedback).where(eq(feedback.userId, userId)).orderBy(desc(feedback.createdAt));
+  }
+
+  async getAllFeedback(): Promise<Feedback[]> {
+    return db.select().from(feedback).orderBy(desc(feedback.createdAt));
+  }
+
+  async createFeedback(data: InsertFeedback): Promise<Feedback> {
+    const [entry] = await db.insert(feedback).values(data).returning();
+    return entry;
+  }
+
+  async updateFeedback(id: string, data: Partial<InsertFeedback>): Promise<Feedback | undefined> {
+    const [entry] = await db.update(feedback).set(data).where(eq(feedback.id, id)).returning();
+    return entry;
+  }
+
+  async deleteFeedback(id: string): Promise<void> {
+    await db.delete(feedback).where(eq(feedback.id, id));
+  }
+
+  async getTajweedRule(id: string): Promise<TajweedRule | undefined> {
+    const [entry] = await db.select().from(tajweedRules).where(eq(tajweedRules.id, id));
+    return entry;
+  }
+
+  async getAllTajweedRules(): Promise<TajweedRule[]> {
+    return db.select().from(tajweedRules).orderBy(asc(tajweedRules.sortOrder));
+  }
+
+  async getTajweedRulesByCategory(category: string): Promise<TajweedRule[]> {
+    return db.select().from(tajweedRules).where(eq(tajweedRules.category, category)).orderBy(asc(tajweedRules.sortOrder));
+  }
+
+  async createTajweedRule(data: InsertTajweedRule): Promise<TajweedRule> {
+    const [entry] = await db.insert(tajweedRules).values(data).returning();
+    return entry;
+  }
+
+  async updateTajweedRule(id: string, data: Partial<InsertTajweedRule>): Promise<TajweedRule | undefined> {
+    const [entry] = await db.update(tajweedRules).set(data).where(eq(tajweedRules.id, id)).returning();
+    return entry;
+  }
+
+  async deleteTajweedRule(id: string): Promise<void> {
+    await db.delete(tajweedRules).where(eq(tajweedRules.id, id));
+  }
+
+  async getSimilarVerse(id: string): Promise<SimilarVerse | undefined> {
+    const [entry] = await db.select().from(similarVerses).where(eq(similarVerses.id, id));
+    return entry;
+  }
+
+  async getAllSimilarVerses(): Promise<SimilarVerse[]> {
+    return db.select().from(similarVerses).orderBy(desc(similarVerses.createdAt));
+  }
+
+  async createSimilarVerse(data: InsertSimilarVerse): Promise<SimilarVerse> {
+    const [entry] = await db.insert(similarVerses).values(data).returning();
+    return entry;
+  }
+
+  async updateSimilarVerse(id: string, data: Partial<InsertSimilarVerse>): Promise<SimilarVerse | undefined> {
+    const [entry] = await db.update(similarVerses).set(data).where(eq(similarVerses.id, id)).returning();
+    return entry;
+  }
+
+  async deleteSimilarVerse(id: string): Promise<void> {
+    await db.delete(similarVerses).where(eq(similarVerses.id, id));
   }
 
   async resetSystemData(): Promise<void> {
