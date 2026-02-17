@@ -23,6 +23,14 @@ import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
 import CoursesPage from "@/pages/CoursesPage";
 import TeacherDailyPage from "@/pages/TeacherDailyPage";
 import OnlineUsersPage from "@/pages/OnlineUsersPage";
+import AttendancePage from "@/pages/AttendancePage";
+import CompetitionsPage from "@/pages/CompetitionsPage";
+import ParentPortalPage from "@/pages/ParentPortalPage";
+import FeatureControlPage from "@/pages/FeatureControlPage";
+import MessagesPage from "@/pages/MessagesPage";
+import PointsRewardsPage from "@/pages/PointsRewardsPage";
+import SchedulesPage from "@/pages/SchedulesPage";
+import SmartAlertsPage from "@/pages/SmartAlertsPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import { Toaster } from "@/components/ui/toaster";
@@ -99,6 +107,14 @@ function App() {
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/users" component={AllUsersPage} />
         <Route path="/online-users" component={OnlineUsersPage} />
+        <Route path="/attendance" component={AttendancePage} />
+        <Route path="/competitions" component={CompetitionsPage} />
+        <Route path="/parent-portal" component={ParentPortalPage} />
+        <Route path="/feature-control" component={FeatureControlPage} />
+        <Route path="/messages" component={MessagesPage} />
+        <Route path="/points-rewards" component={PointsRewardsPage} />
+        <Route path="/schedules" component={SchedulesPage} />
+        <Route path="/smart-alerts" component={SmartAlertsPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">
