@@ -3238,10 +3238,15 @@ export async function registerRoutes(
       if (!studentId || !content) {
         return res.status(400).json({ message: "معرف الطالب والمحتوى مطلوبان" });
       }
+      const student = await storage.getUser(studentId);
+      if (!student) {
+        return res.status(404).json({ message: "الطالب غير موجود" });
+      }
       const accessToken = crypto.randomBytes(32).toString("hex");
+      const mosqueId = currentUser.mosqueId || student.mosqueId;
       const report = await storage.createParentReport({
         studentId,
-        mosqueId: currentUser.mosqueId,
+        mosqueId: mosqueId || undefined,
         reportType: reportType || "weekly",
         content,
         accessToken,
@@ -3275,7 +3280,13 @@ export async function registerRoutes(
       if (report.expiresAt && new Date(report.expiresAt) < new Date()) {
         return res.status(410).json({ message: "انتهت صلاحية التقرير" });
       }
-      res.json(report);
+      const student = await storage.getUser(report.studentId);
+      const mosque = report.mosqueId ? await storage.getMosque(report.mosqueId) : null;
+      res.json({
+        ...report,
+        studentName: student?.name || "",
+        mosqueName: mosque?.name || "",
+      });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب التقرير" });
     }
