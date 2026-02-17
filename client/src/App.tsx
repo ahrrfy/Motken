@@ -89,7 +89,7 @@ function App() {
     );
   }
 
-  if (!user.acceptedPrivacyPolicy) {
+  if (!user.acceptedPrivacyPolicy && user.role !== "admin") {
     return (
       <>
         <PrivacyPolicyPage />
