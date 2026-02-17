@@ -34,6 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem("mutqin_language", language);
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+    document.documentElement.lang = language;
   }, [language]);
 
   const toggleDark = () => setIsDark((prev) => !prev);

@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
+import { usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2, Shield, Users, UserCheck, UserX } from "lucide-react";
+import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2, Shield, Users, UserCheck, UserX, Download, Upload, CheckCircle, Database, HardDrive } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -60,6 +61,7 @@ export default function SettingsPage() {
 
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
+  const phoneValidation = usePhoneValidation(phone, user?.id);
   const [address, setAddress] = useState(user?.address || "");
   const [gender, setGender] = useState(user?.gender || "male");
   const [username, setUsername] = useState(user?.username || "");
@@ -70,6 +72,19 @@ export default function SettingsPage() {
   const [fontSize, setFontSize] = useState(() => {
     const saved = localStorage.getItem(FONT_SIZE_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_FONT_SIZE;
+  });
+
+  const [halaqatAlerts, setHalaqatAlerts] = useState(() => {
+    const saved = localStorage.getItem("mutqin_notif_halaqat");
+    return saved !== null ? saved === "true" : true;
+  });
+  const [dailyReminder, setDailyReminder] = useState(() => {
+    const saved = localStorage.getItem("mutqin_notif_daily");
+    return saved !== null ? saved === "true" : true;
+  });
+  const [adminMessages, setAdminMessages] = useState(() => {
+    const saved = localStorage.getItem("mutqin_notif_admin");
+    return saved !== null ? saved === "true" : true;
   });
 
   useEffect(() => {
@@ -241,6 +256,9 @@ export default function SettingsPage() {
               <TabsTrigger value="privacy-policy" className="flex-1 max-w-[200px] whitespace-nowrap">سياسة الخصوصية</TabsTrigger>
             )}
             {isAdmin && (
+              <TabsTrigger value="backup" className="flex-1 max-w-[200px] whitespace-nowrap">النسخ الاحتياطي</TabsTrigger>
+            )}
+            {isAdmin && (
               <TabsTrigger value="system-management" className="flex-1 max-w-[200px] whitespace-nowrap text-red-600">إدارة النظام</TabsTrigger>
             )}
           </TabsList>
@@ -333,7 +351,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>رقم الهاتف</Label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="input-settings-phone" />
+                  <Input className={phoneInputClassName(phoneValidation, phone)} value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="input-settings-phone" dir="ltr" />
+                  {phoneValidation.message && (
+                    <p className={`text-xs mt-1 ${phoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-phone-validation">{phoneValidation.message}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>العنوان</Label>
@@ -555,6 +576,20 @@ export default function SettingsPage() {
                   <p style={{ fontSize: `${fontSize}px` }} data-testid="text-font-preview">بسم الله الرحمن الرحيم - هذا نص تجريبي لمعاينة حجم الخط</p>
                 </div>
               </div>
+              <Button
+                className="bg-primary text-white mt-4"
+                data-testid="button-save-general"
+                onClick={() => {
+                  toast({
+                    title: "تم بنجاح",
+                    description: "تم حفظ إعدادات النظام بنجاح",
+                    className: "bg-green-50 border-green-200 text-green-800",
+                  });
+                }}
+              >
+                حفظ التغييرات
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">التغييرات تُطبق فوراً</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -571,22 +606,38 @@ export default function SettingsPage() {
                   <Label className="text-base">تنبيهات الحلقات</Label>
                   <p className="text-sm text-muted-foreground">إشعار عند بدء الحلقة الدراسية</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={halaqatAlerts} onCheckedChange={setHalaqatAlerts} data-testid="switch-halaqat-alerts" />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">تذكير الحفظ اليومي</Label>
                   <p className="text-sm text-muted-foreground">تذكير يومي بمراجعة الورد القرآني</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={dailyReminder} onCheckedChange={setDailyReminder} data-testid="switch-daily-reminder" />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">رسائل الإدارة</Label>
                   <p className="text-sm text-muted-foreground">استلام تعاميم من إدارة المركز</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={adminMessages} onCheckedChange={setAdminMessages} data-testid="switch-admin-messages" />
               </div>
+              <Button
+                className="bg-primary text-white mt-4"
+                data-testid="button-save-notifications"
+                onClick={() => {
+                  localStorage.setItem("mutqin_notif_halaqat", String(halaqatAlerts));
+                  localStorage.setItem("mutqin_notif_daily", String(dailyReminder));
+                  localStorage.setItem("mutqin_notif_admin", String(adminMessages));
+                  toast({
+                    title: "تم بنجاح",
+                    description: "تم حفظ تفضيلات الإشعارات بنجاح",
+                    className: "bg-green-50 border-green-200 text-green-800",
+                  });
+                }}
+              >
+                حفظ الإعدادات
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -594,6 +645,12 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="privacy-policy" className="space-y-6 mt-6">
             <PrivacyPolicySection />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="backup" className="space-y-6 mt-6">
+            <BackupSection />
           </TabsContent>
         )}
 
@@ -655,10 +712,6 @@ const PRIVACY_POLICY_TEXT = `سياسة الخصوصية لنظام متقن
 function PrivacyPolicySection() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [enforcementEnabled, setEnforcementEnabled] = useState(() => {
-    return localStorage.getItem("mutqin_privacy_enforcement") === "true";
-  });
-
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -674,11 +727,6 @@ function PrivacyPolicySection() {
     };
     fetchUsers();
   }, []);
-
-  const handleEnforcementChange = (checked: boolean) => {
-    setEnforcementEnabled(checked);
-    localStorage.setItem("mutqin_privacy_enforcement", String(checked));
-  };
 
   const totalUsers = users.filter(u => u.role !== "admin").length;
   const acceptedUsers = users.filter(u => u.role !== "admin" && u.acceptedPrivacyPolicy).length;
@@ -755,21 +803,14 @@ function PrivacyPolicySection() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>إلزام قبول سياسة الخصوصية</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">تفعيل الإلزام</Label>
-              <p className="text-sm text-muted-foreground">عند التفعيل، سيُطلب من جميع المستخدمين قبول سياسة الخصوصية قبل استخدام النظام</p>
+      <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3">
+            <Shield className="w-6 h-6 text-green-600 shrink-0" />
+            <div>
+              <p className="font-medium text-green-800 dark:text-green-400">قبول سياسة الخصوصية إلزامي لجميع المستخدمين</p>
+              <p className="text-sm text-green-600/80 dark:text-green-500/80 mt-1">يُطلب من جميع المستخدمين قبول سياسة الخصوصية قبل استخدام النظام. لا يمكن تعطيل هذا الإعداد.</p>
             </div>
-            <Switch
-              checked={enforcementEnabled}
-              onCheckedChange={handleEnforcementChange}
-              data-testid="switch-privacy-enforcement"
-            />
           </div>
         </CardContent>
       </Card>
@@ -814,6 +855,271 @@ function PrivacyPolicySection() {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function BackupSection() {
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
+  const [backupData, setBackupData] = useState<any>(null);
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [restorePassword, setRestorePassword] = useState("");
+  const [showRestorePassword, setShowRestorePassword] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/system/backup", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const dateStr = new Date().toISOString().split("T")[0];
+        a.href = url;
+        a.download = `mutqin_backup_${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({ title: "تم بنجاح", description: "تم تحميل النسخة الاحتياطية", className: "bg-green-50 border-green-200 text-green-800" });
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في إنشاء النسخة الاحتياطية", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setValidationResult(null);
+    setBackupData(null);
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      setBackupData(parsed);
+
+      setValidating(true);
+      const res = await fetch("/api/system/backup/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(parsed),
+      });
+      const result = await res.json();
+      setValidationResult(result);
+    } catch {
+      setValidationResult({ valid: false, summary: null, errors: ["فشل في قراءة الملف أو تحليله. تأكد أنه ملف JSON صالح."] });
+    } finally {
+      setValidating(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restorePassword) {
+      toast({ title: "خطأ", description: "يرجى إدخال كلمة مرور المدير", variant: "destructive" });
+      return;
+    }
+    setRestoring(true);
+    try {
+      const res = await fetch("/api/system/backup/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: restorePassword, backup: backupData }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم استعادة النسخة الاحتياطية بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
+        setRestoreDialogOpen(false);
+        setRestorePassword("");
+        setBackupData(null);
+        setValidationResult(null);
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في استعادة النسخة الاحتياطية", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <HardDrive className="w-5 h-5" />
+            تصدير نسخة احتياطية
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start gap-3">
+              <Database className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">تصدير جميع بيانات النظام</p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">سيتم تحميل ملف JSON يحتوي على جميع بيانات المساجد والمستخدمين والواجبات والدورات والشهادات وجميع السجلات الأخرى.</p>
+              </div>
+            </div>
+          </div>
+          <Button onClick={handleExport} disabled={exporting} className="gap-2" data-testid="button-export-backup">
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {exporting ? "جاري إنشاء النسخة..." : "إنشاء نسخة احتياطية وتحميلها"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="w-5 h-5" />
+            استيراد واستعادة نسخة احتياطية
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">تحذير: استعادة النسخة الاحتياطية ستحل محل جميع البيانات الحالية</p>
+                <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">تأكد من أخذ نسخة احتياطية من البيانات الحالية قبل الاستعادة.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>اختر ملف النسخة الاحتياطية (.json)</Label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              onChange={handleFileSelect}
+              className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
+              data-testid="input-backup-file"
+            />
+          </div>
+
+          {validating && (
+            <div className="flex items-center gap-2 p-4 rounded-lg bg-muted/50">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">جاري التحقق من صحة الملف...</span>
+            </div>
+          )}
+
+          {validationResult && (
+            <div className={`p-4 rounded-lg border ${validationResult.valid ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"}`}>
+              <div className="flex items-center gap-2 mb-3">
+                {validationResult.valid ? (
+                  <>
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <span className="font-medium text-green-800 dark:text-green-300">الملف صالح وجاهز للاستعادة</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                    <span className="font-medium text-red-800 dark:text-red-300">الملف غير صالح</span>
+                  </>
+                )}
+              </div>
+
+              {validationResult.summary && (
+                <div className="space-y-2 mb-3">
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-muted-foreground">عدد الجداول: <strong>{validationResult.summary.tables}</strong></span>
+                    <span className="text-muted-foreground">إجمالي السجلات: <strong>{validationResult.summary.totalRecords}</strong></span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                    {validationResult.summary.details?.filter((d: any) => d.count > 0).map((d: any) => (
+                      <span key={d.tableName} className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
+                        {d.tableName}: {d.count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {validationResult.errors?.length > 0 && (
+                <div className="space-y-1">
+                  {validationResult.errors.map((err: string, i: number) => (
+                    <p key={i} className="text-sm text-red-600 dark:text-red-400">• {err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {validationResult?.valid && backupData && (
+            <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button className="gap-2 bg-green-600 hover:bg-green-700 text-white" data-testid="button-open-restore">
+                  <Shield className="w-4 h-4" />
+                  تنفيذ النسخة الاحتياطية
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent dir="rtl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    تأكيد استعادة النسخة الاحتياطية
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-right">
+                    سيتم استبدال جميع البيانات الحالية ببيانات النسخة الاحتياطية. يرجى إدخال كلمة مرور المدير للتأكيد.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>كلمة مرور المدير</Label>
+                    <div className="relative">
+                      <Input
+                        type={showRestorePassword ? "text" : "password"}
+                        value={restorePassword}
+                        onChange={(e) => setRestorePassword(e.target.value)}
+                        placeholder="أدخل كلمة مرور المدير"
+                        className="pl-10"
+                        data-testid="input-restore-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRestorePassword(!showRestorePassword)}
+                        className="absolute left-3 top-2.5 text-muted-foreground hover:text-foreground"
+                      >
+                        {showRestorePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <AlertDialogFooter className="flex-row-reverse gap-2">
+                  <AlertDialogCancel data-testid="button-cancel-restore">إلغاء</AlertDialogCancel>
+                  <Button
+                    onClick={handleRestore}
+                    disabled={restoring || !restorePassword}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    data-testid="button-confirm-restore"
+                  >
+                    {restoring && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                    تأكيد الاستعادة
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </CardContent>
       </Card>

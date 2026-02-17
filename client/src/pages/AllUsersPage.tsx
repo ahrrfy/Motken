@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download, PauseCircle, XCircle, FileText, MessageCircle } from "lucide-react";
-import { isValidIraqiPhone, getWhatsAppUrl } from "@/lib/phone-utils";
+import { isValidIraqiPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { openPrintWindow } from "@/lib/print-utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import UsernameInput from "@/components/UsernameInput";
@@ -91,6 +91,7 @@ export default function AllUsersPage() {
     phone: "",
   });
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string; mosqueName: string } | null>(null);
+  const phoneValidation = usePhoneValidation(form.phone, editingUser?.id);
 
   const fetchData = async () => {
     try {
@@ -426,9 +427,12 @@ export default function AllUsersPage() {
               )}
               <div>
                 <Label>رقم الهاتف <span className="text-red-500">*</span></Label>
-                <Input data-testid="input-user-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xxxxxxxxx" dir="ltr" required />
+                <Input data-testid="input-user-phone" className={phoneInputClassName(phoneValidation, form.phone)} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="07xxxxxxxxx" dir="ltr" required />
                 {form.phone && !isValidIraqiPhone(form.phone) && (
                   <p className="text-xs text-orange-500 mt-1" data-testid="text-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
+                )}
+                {phoneValidation.message && (
+                  <p className={`text-xs mt-1 ${phoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-phone-validation">{phoneValidation.message}</p>
                 )}
               </div>
               <Button className="w-full" onClick={handleSubmit} data-testid="button-submit-user">
