@@ -66,7 +66,15 @@ export default function MessagesPage() {
       const res = await fetch("/api/messages/conversations", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        setConversations(data);
+        const mapped = data.map((c: any) => ({
+          userId: c.user?.id || "",
+          userName: c.user?.name || "مستخدم",
+          userAvatar: c.user?.avatar,
+          lastMessage: c.lastMessage?.content || "",
+          lastMessageTime: c.lastMessage?.createdAt || "",
+          unreadCount: c.unreadCount || 0,
+        }));
+        setConversations(mapped);
       }
     } catch {}
   }, []);

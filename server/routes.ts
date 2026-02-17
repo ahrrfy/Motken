@@ -200,7 +200,17 @@ export async function registerRoutes(
           result = await storage.getUsers();
         }
       } else if (currentUser.role === "teacher") {
-        result = await storage.getUsersByTeacher(currentUser.id);
+        if (role === "student") {
+          result = await storage.getUsersByTeacher(currentUser.id);
+        } else if (currentUser.mosqueId) {
+          if (role) {
+            result = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role);
+          } else {
+            result = await storage.getUsersByMosque(currentUser.mosqueId);
+          }
+        } else {
+          result = await storage.getUsersByTeacher(currentUser.id);
+        }
       } else if (currentUser.mosqueId) {
         if (role) {
           result = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role);
