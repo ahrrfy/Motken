@@ -63,6 +63,7 @@ interface StatsData {
 interface Mosque {
   id: string;
   name: string;
+  image?: string | null;
 }
 
 interface Teacher {
@@ -79,6 +80,7 @@ export default function ReportsPage() {
   const [selectedMosque, setSelectedMosque] = useState<string>("");
   const [selectedTeacher, setSelectedTeacher] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [userMosqueData, setUserMosqueData] = useState<{ name?: string; image?: string | null }>({});
 
   const isAdmin = user?.role === "admin";
   const isSupervisor = user?.role === "supervisor";
@@ -86,13 +88,17 @@ export default function ReportsPage() {
   const isStudent = user?.role === "student";
 
   useEffect(() => {
-    if (isAdmin) {
-      fetch("/api/mosques", { credentials: "include" })
-        .then((r) => r.json())
-        .then(setMosques)
-        .catch(() => {});
-    }
-  }, [isAdmin]);
+    fetch("/api/mosques", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: any[]) => {
+        if (isAdmin) setMosques(data);
+        if (user?.mosqueId) {
+          const m = data.find((ms: any) => ms.id === user.mosqueId);
+          if (m) setUserMosqueData({ name: m.name, image: m.image });
+        }
+      })
+      .catch(() => {});
+  }, [isAdmin, user?.mosqueId]);
 
   useEffect(() => {
     if (isAdmin || isSupervisor) {
@@ -188,19 +194,21 @@ export default function ReportsPage() {
     exportMultiSheetExcel(sheets, "report.xlsx");
   };
 
+  const printOpts = { mosqueName: userMosqueData.name, mosqueImage: userMosqueData.image || undefined };
+
   const exportPDF = () => {
     const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
-    openPrintWindow("التقارير والإحصائيات", content);
+    openPrintWindow("التقارير والإحصائيات", content, printOpts);
   };
 
   const exportWord = () => {
     const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
-    openPrintWindow("التقارير والإحصائيات - تصدير", content);
+    openPrintWindow("التقارير والإحصائيات - تصدير", content, printOpts);
   };
 
   const handlePrint = () => {
     const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
-    openPrintWindow("التقارير والإحصائيات", content);
+    openPrintWindow("التقارير والإحصائيات", content, printOpts);
   };
 
   return (
