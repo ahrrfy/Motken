@@ -2654,7 +2654,7 @@ export async function registerRoutes(
       if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بعرض التنبيهات" });
       }
-      const alerts: any[] = [];
+
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const threeDaysFromNow = new Date();
@@ -2678,37 +2678,43 @@ export async function registerRoutes(
         assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
       }
 
+      const studentsWithoutAssignments: any[] = [];
+      const lowGrades: any[] = [];
+
       for (const student of students) {
+        if (!student.isActive) continue;
         const studentAssignments = assignmentsList.filter(a => a.studentId === student.id);
         const hasRecent = studentAssignments.some(a => new Date(a.createdAt) > sevenDaysAgo);
-        if (!hasRecent && student.isActive) {
-          alerts.push({
-            type: "no_assignments",
-            severity: "warning",
-            message: `الطالب ${student.name} لم يتلق واجبات منذ أكثر من 7 أيام`,
-            userId: student.id,
+        if (!hasRecent) {
+          const lastAssignment = studentAssignments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+          studentsWithoutAssignments.push({
+            id: student.id,
+            name: student.name,
+            date: lastAssignment ? new Date(lastAssignment.createdAt).toLocaleDateString("ar") : "لا يوجد",
           });
         }
-        const lowGrades = studentAssignments.filter(a => a.grade !== null && a.grade !== undefined && a.grade < 60);
-        if (lowGrades.length > 0) {
-          alerts.push({
-            type: "low_grades",
-            severity: "danger",
-            message: `الطالب ${student.name} لديه ${lowGrades.length} واجبات بدرجات أقل من 60`,
-            userId: student.id,
+        const lowGradeAssignments = studentAssignments.filter(a => a.grade !== null && a.grade !== undefined && Number(a.grade) < 60);
+        for (const a of lowGradeAssignments) {
+          lowGrades.push({
+            id: `${student.id}-${a.id}`,
+            name: student.name,
+            grade: a.grade,
+            subject: a.surahName || "واجب",
           });
         }
       }
 
+      const inactiveTeachers: any[] = [];
       for (const teacher of teachersList) {
+        if (!teacher.isActive) continue;
         const teacherAssignments = assignmentsList.filter(a => a.teacherId === teacher.id);
         const hasRecent = teacherAssignments.some(a => new Date(a.createdAt) > sevenDaysAgo);
-        if (!hasRecent && teacher.isActive) {
-          alerts.push({
-            type: "inactive_teacher",
-            severity: "info",
-            message: `الأستاذ ${teacher.name} لم يسجل أي نشاط منذ أكثر من 7 أيام`,
-            userId: teacher.id,
+        if (!hasRecent) {
+          const lastAssignment = teacherAssignments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+          inactiveTeachers.push({
+            id: teacher.id,
+            name: teacher.name,
+            date: lastAssignment ? new Date(lastAssignment.createdAt).toLocaleDateString("ar") : "لا يوجد نشاط",
           });
         }
       }
@@ -2726,20 +2732,28 @@ export async function registerRoutes(
         examsList = await storage.getExamsByMosque(currentUser.mosqueId);
       }
 
+      const upcomingExams: any[] = [];
       for (const exam of examsList) {
         const examDate = new Date(exam.examDate);
         if (examDate >= new Date() && examDate <= threeDaysFromNow) {
-          alerts.push({
-            type: "upcoming_exam",
-            severity: "info",
-            message: `اختبار قادم: ${exam.title} بتاريخ ${examDate.toLocaleDateString("ar")}`,
-            examId: exam.id,
+          upcomingExams.push({
+            id: exam.id,
+            examName: exam.title,
+            name: exam.title,
+            date: examDate.toLocaleDateString("ar"),
+            subject: exam.surahName || "",
           });
         }
       }
 
-      res.json(alerts);
+      res.json({
+        studentsWithoutAssignments,
+        inactiveTeachers,
+        upcomingExams,
+        lowGrades,
+      });
     } catch (err: any) {
+      console.error("Smart alerts error:", err);
       res.status(500).json({ message: "حدث خطأ في تحليل التنبيهات" });
     }
   });
