@@ -506,7 +506,7 @@ export default function MessagesPage() {
                             <MoreVertical className="w-3.5 h-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" dir="rtl">
+                        <DropdownMenuContent align="start">
                           <DropdownMenuItem
                             className="text-destructive gap-2"
                             onClick={(e) => { e.stopPropagation(); setDeleteConvoConfirm(conv.userId); }}
@@ -582,7 +582,7 @@ export default function MessagesPage() {
                     <MoreVertical className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" dir="rtl">
+                <DropdownMenuContent align="start">
                   <DropdownMenuItem
                     className="text-destructive gap-2"
                     onClick={() => setDeleteConvoConfirm(activeUserId)}
