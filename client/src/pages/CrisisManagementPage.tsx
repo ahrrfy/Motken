@@ -184,7 +184,7 @@ export default function CrisisManagementPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ absentTeacherId: autoAbsentTeacherId }),
+        body: JSON.stringify({ absentTeacherId: autoAbsentTeacherId, date: new Date().toISOString().split("T")[0] }),
       });
       if (res.ok) {
         toast({ title: "تم بنجاح", description: "تم التوزيع التلقائي بنجاح", className: "bg-green-50 border-green-200 text-green-800" });

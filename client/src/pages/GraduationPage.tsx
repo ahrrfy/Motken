@@ -188,9 +188,9 @@ export default function GraduationPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          date: followupDate,
+          followupDate: followupDate,
           retentionLevel: followupRetention,
-          juzReviewedCount: followupJuzCount ? parseInt(followupJuzCount) : null,
+          juzReviewed: followupJuzCount ? parseInt(followupJuzCount) : null,
           notes: followupNotes || null,
         }),
       });

@@ -104,7 +104,7 @@ export default function MaintenancePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title, description, type, priority, anonymous }),
+        body: JSON.stringify({ title, description, type, priority, isAnonymous: anonymous }),
       });
       if (res.ok) {
         toast({ title: "تم بنجاح", description: "تم إرسال ملاحظتك بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
