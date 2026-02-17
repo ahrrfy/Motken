@@ -26,6 +26,31 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
+  // Auto-seed feature flags
+  try {
+    const existingFlags = await storage.getFeatureFlags();
+    if (existingFlags.length === 0) {
+      const defaults = [
+        { featureKey: "attendance", featureName: "نظام الحضور والغياب", category: "management", isEnabled: true },
+        { featureKey: "messaging", featureName: "المحادثات الداخلية", category: "communication", isEnabled: true },
+        { featureKey: "points_rewards", featureName: "النقاط والمكافآت", category: "gamification", isEnabled: true },
+        { featureKey: "schedules", featureName: "جدولة الحلقات", category: "management", isEnabled: true },
+        { featureKey: "parent_portal", featureName: "بوابة ولي الأمر", category: "communication", isEnabled: true },
+        { featureKey: "mosque_map", featureName: "خريطة الجوامع", category: "visualization", isEnabled: false },
+        { featureKey: "backup_export", featureName: "النسخ الاحتياطي والتصدير", category: "data", isEnabled: true },
+        { featureKey: "smart_alerts", featureName: "التنبيهات الذكية", category: "automation", isEnabled: true },
+        { featureKey: "competitions", featureName: "المسابقات القرآنية", category: "gamification", isEnabled: true },
+        { featureKey: "advanced_reports", featureName: "التقارير المتقدمة", category: "analytics", isEnabled: true },
+      ];
+      for (const flag of defaults) {
+        await storage.createFeatureFlag(flag);
+      }
+      console.log("Feature flags seeded successfully");
+    }
+  } catch (err) {
+    console.error("Error seeding feature flags:", err);
+  }
+
   // Session tracking middleware
   app.use((req: any, res: any, next: any) => {
     if (req.isAuthenticated() && req.user && req.sessionID) {

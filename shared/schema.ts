@@ -267,9 +267,9 @@ export type FeatureFlag = typeof featureFlags.$inferSelect;
 // ==================== ATTENDANCE ====================
 export const attendance = pgTable("attendance", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  studentId: varchar("student_id").notNull().references(() => users.id),
-  teacherId: varchar("teacher_id").notNull().references(() => users.id),
-  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  studentId: varchar("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  teacherId: varchar("teacher_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
   date: timestamp("date").notNull(),
   status: text("status").notNull().default("present"),
   notes: text("notes"),
@@ -283,9 +283,9 @@ export type Attendance = typeof attendance.$inferSelect;
 // ==================== MESSAGES ====================
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  senderId: varchar("sender_id").notNull().references(() => users.id),
-  receiverId: varchar("receiver_id").notNull().references(() => users.id),
-  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  receiverId: varchar("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -298,8 +298,8 @@ export type Message = typeof messages.$inferSelect;
 // ==================== POINTS ====================
 export const points = pgTable("points", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
   amount: integer("amount").notNull(),
   reason: text("reason").notNull(),
   category: text("category").notNull().default("assignment"),
@@ -313,8 +313,8 @@ export type Point = typeof points.$inferSelect;
 // ==================== BADGES ====================
 export const badges = pgTable("badges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
   badgeType: text("badge_type").notNull(),
   badgeName: text("badge_name").notNull(),
   description: text("description"),
@@ -329,8 +329,8 @@ export type Badge = typeof badges.$inferSelect;
 // ==================== SCHEDULES ====================
 export const schedules = pgTable("schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  mosqueId: varchar("mosque_id").references(() => mosques.id),
-  teacherId: varchar("teacher_id").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
+  teacherId: varchar("teacher_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   dayOfWeek: integer("day_of_week").notNull(),
   startTime: text("start_time").notNull(),
@@ -347,8 +347,8 @@ export type Schedule = typeof schedules.$inferSelect;
 // ==================== COMPETITIONS ====================
 export const competitions = pgTable("competitions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  mosqueId: varchar("mosque_id").references(() => mosques.id),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   surahName: text("surah_name"),
@@ -366,8 +366,8 @@ export type Competition = typeof competitions.$inferSelect;
 // ==================== COMPETITION PARTICIPANTS ====================
 export const competitionParticipants = pgTable("competition_participants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  competitionId: varchar("competition_id").notNull().references(() => competitions.id),
-  studentId: varchar("student_id").notNull().references(() => users.id),
+  competitionId: varchar("competition_id").notNull().references(() => competitions.id, { onDelete: "cascade" }),
+  studentId: varchar("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   score: integer("score"),
   rank: integer("rank"),
   notes: text("notes"),
@@ -381,8 +381,8 @@ export type CompetitionParticipant = typeof competitionParticipants.$inferSelect
 // ==================== PARENT REPORTS ====================
 export const parentReports = pgTable("parent_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  studentId: varchar("student_id").notNull().references(() => users.id),
-  mosqueId: varchar("mosque_id").references(() => mosques.id),
+  studentId: varchar("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
   reportType: text("report_type").notNull().default("weekly"),
   content: text("content").notNull(),
   accessToken: text("access_token").notNull(),
