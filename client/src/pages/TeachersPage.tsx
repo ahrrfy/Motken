@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers } from "lucide-react";
 import { isValidIraqiPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -26,7 +27,21 @@ interface Teacher {
   address?: string;
   avatar?: string;
   gender?: string | null;
+  teacherLevels?: string | null;
   isActive: boolean;
+}
+
+const LEVEL_NAMES: Record<number, string> = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم", 4: "متميز", 5: "خاتم" };
+const LEVEL_COLORS: Record<number, string> = {
+  1: "bg-amber-100 text-amber-700",
+  2: "bg-blue-100 text-blue-700",
+  3: "bg-emerald-100 text-emerald-700",
+  4: "bg-purple-100 text-purple-700",
+  5: "bg-yellow-100 text-yellow-800",
+};
+function getTeacherLevels(t: Teacher): number[] {
+  if (!t.teacherLevels) return [1, 2, 3, 4, 5];
+  return t.teacherLevels.split(",").map(Number).filter(n => n >= 1 && n <= 5);
 }
 
 export default function TeachersPage() {
@@ -45,6 +60,9 @@ export default function TeachersPage() {
     username: "", password: "", name: "", phone: "", avatar: "", gender: "male"
   });
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
+  const [levelDialogOpen, setLevelDialogOpen] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
   const phoneValidation = usePhoneValidation(formData.phone);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,6 +185,40 @@ export default function TeachersPage() {
       }
     } catch {
       toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openLevelDialog = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setSelectedLevels(getTeacherLevels(teacher));
+    setLevelDialogOpen(true);
+  };
+
+  const handleSaveLevels = async () => {
+    if (!selectedTeacher || selectedLevels.length === 0) {
+      toast({ title: "خطأ", description: "يجب تحديد مستوى واحد على الأقل", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/levels/teacher/${selectedTeacher.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ levels: selectedLevels }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: `تم تحديث مستويات ${selectedTeacher.name}`, className: "bg-green-50 border-green-200 text-green-800" });
+        setLevelDialogOpen(false);
+        fetchTeachers();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -411,16 +463,28 @@ export default function TeachersPage() {
                     <TableHead className="text-right">الاسم</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الجنس</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">المستويات</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
-                    <TableHead className="text-right">تواصل</TableHead>
+                    <TableHead className="text-right">إجراءات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTeachers.map((teacher) => (
+                  {filteredTeachers.map((teacher) => {
+                    const levels = getTeacherLevels(teacher);
+                    return (
                     <TableRow key={teacher.id} data-testid={`row-teacher-${teacher.id}`}>
                       <TableCell className="font-medium" data-testid={`text-name-${teacher.id}`}>{teacher.name}</TableCell>
                       <TableCell className="hidden sm:table-cell" data-testid={`text-gender-${teacher.id}`}>{teacher.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${teacher.id}`}>{teacher.phone || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {levels.map(lv => (
+                            <Badge key={lv} variant="secondary" className={`text-xs ${LEVEL_COLORS[lv]}`}>
+                              {lv}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={teacher.isActive ? "default" : "secondary"}
@@ -431,28 +495,37 @@ export default function TeachersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-1 justify-end">
+                          {(user?.role === "supervisor" || user?.role === "admin") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs h-7"
+                              onClick={() => openLevelDialog(teacher)}
+                              title="إدارة المستويات"
+                              data-testid={`button-levels-${teacher.id}`}
+                            >
+                              <Layers className="w-3 h-3" />
+                              المستويات
+                            </Button>
+                          )}
                           {teacher.phone && (
-                            <>
-                              <Button variant="ghost" size="icon" data-testid={`button-phone-${teacher.id}`}>
-                                <Phone className="w-4 h-4 text-gray-500" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                onClick={() => window.open(getWhatsAppUrl(teacher.phone!), "_blank")}
-                                title="واتساب"
-                                data-testid={`button-whatsapp-${teacher.id}`}
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => window.open(getWhatsAppUrl(teacher.phone!), "_blank")}
+                              title="واتساب"
+                              data-testid={`button-whatsapp-${teacher.id}`}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -472,6 +545,64 @@ export default function TeachersPage() {
           mosqueName={user?.mosqueName || undefined}
         />
       )}
+
+      <Dialog open={levelDialogOpen} onOpenChange={setLevelDialogOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5" />
+              إدارة مستويات الأستاذ
+            </DialogTitle>
+          </DialogHeader>
+          {selectedTeacher && (
+            <div className="space-y-4 mt-2">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="font-bold text-sm">{selectedTeacher.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">حدد المستويات التي يمكن لهذا الأستاذ التعامل مع طلابها</p>
+              </div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map(lv => (
+                  <div key={lv} className="flex items-center gap-3 p-2 rounded-lg border hover:bg-muted/30 transition-colors">
+                    <Checkbox
+                      id={`level-${lv}`}
+                      checked={selectedLevels.includes(lv)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedLevels(prev => [...prev, lv].sort());
+                        else setSelectedLevels(prev => prev.filter(l => l !== lv));
+                      }}
+                      data-testid={`checkbox-level-${lv}`}
+                    />
+                    <label htmlFor={`level-${lv}`} className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className={`text-xs ${LEVEL_COLORS[lv]}`}>
+                          المستوى {lv}
+                        </Badge>
+                        <span className="text-sm font-medium">{LEVEL_NAMES[lv]}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {lv === 1 && "0-5 أجزاء محفوظة"}
+                        {lv === 2 && "6-10 أجزاء محفوظة"}
+                        {lv === 3 && "11-20 جزء محفوظة"}
+                        {lv === 4 && "21-28 جزء محفوظة"}
+                        {lv === 5 && "29-30 جزء (ختم القرآن)"}
+                      </p>
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveLevels} disabled={submitting || selectedLevels.length === 0} className="flex-1" data-testid="button-save-levels">
+                  {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                  حفظ المستويات
+                </Button>
+                <Button variant="outline" onClick={() => setLevelDialogOpen(false)} data-testid="button-cancel-levels">
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
