@@ -11,6 +11,7 @@ import { Loader2, FileText, Copy, Trash2, MessageCircle, Link, ClipboardCheck, U
 import { getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateAr } from "@/lib/utils";
 
 interface Student {
   id: string;
@@ -256,11 +257,7 @@ export default function ParentPortalPage() {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("ar-IQ", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatDateAr(dateStr);
   };
 
   const selectedStudent = getSelectedStudent();
