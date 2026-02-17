@@ -59,8 +59,8 @@ export default function ActivityLogsPage() {
     setFilterDateTo("");
   };
 
-  const uniqueModules = [...new Set(logs.map(l => l.module))];
-  const uniqueActions = [...new Set(logs.map(l => l.action))];
+  const uniqueModules = Array.from(new Set(logs.map(l => l.module)));
+  const uniqueActions = Array.from(new Set(logs.map(l => l.action)));
 
   const filteredLogs = logs.filter(log => {
     if (searchTerm && !log.userName.includes(searchTerm) && !log.action.includes(searchTerm) && !(log.details || "").includes(searchTerm)) return false;
