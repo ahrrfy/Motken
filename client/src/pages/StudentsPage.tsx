@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award } from "lucide-react";
 import { isValidIraqiPhone, getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
 import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
+import { formatDateAr } from "@/lib/utils";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
@@ -35,12 +37,29 @@ interface Student {
   isSpecialNeeds?: boolean;
   isOrphan?: boolean;
   isActive: boolean;
+  adminNotes?: string | null;
+  createdAt?: string | null;
 }
 
 interface Teacher {
   id: string;
   name: string;
   username: string;
+}
+
+interface ProfileStats {
+  attendance: { total: number; present: number; absent: number; rate: number };
+  points: { total: number };
+  assignments: { total: number; done: number; pending: number; completionRate: number };
+  badges: { total: number; list: any[] };
+}
+
+function getStudentLevel(student: Student): { label: string; color: string; level: string } {
+  const age = student.age || 0;
+  const edu = student.educationLevel || "";
+  if (edu === "postgraduate" || age >= 20) return { label: "متقدم", color: "bg-emerald-100 text-emerald-700", level: "advanced" };
+  if (edu === "university" || age >= 15) return { label: "متوسط", color: "bg-blue-100 text-blue-700", level: "intermediate" };
+  return { label: "مبتدئ", color: "bg-amber-100 text-amber-700", level: "beginner" };
 }
 
 export default function StudentsPage() {
@@ -68,6 +87,17 @@ export default function StudentsPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
 
+  const [sortBy, setSortBy] = useState("name");
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
+
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [profileStudent, setProfileStudent] = useState<Student | null>(null);
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [notesText, setNotesText] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -89,6 +119,7 @@ export default function StudentsPage() {
 
   const isSupervisor = user?.role === "supervisor";
   const isTeacher = user?.role === "teacher";
+  const isStudent = user?.role === "student";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,19 +185,28 @@ export default function StudentsPage() {
   useEffect(() => { fetchData(); }, []);
 
   const handleExport = () => {
+    const studentsToExport = selectedStudents.size > 0
+      ? filteredStudents.filter(s => selectedStudents.has(s.id))
+      : filteredStudents;
     exportJsonToExcel(
-      students.map(s => ({
-        الاسم: s.name,
-        الهاتف: s.phone || "",
-        العمر: s.age || "",
-        "هاتف ولي الأمر": s.parentPhone || "",
-        التلغرام: s.telegramId || "",
-        "المستوى الدراسي": s.educationLevel || "",
-        "ذوي الاحتياجات": s.isSpecialNeeds ? "نعم" : "لا",
-        يتيم: s.isOrphan ? "نعم" : "لا",
-        الأستاذ: getTeacherName(s.teacherId),
-        الحالة: s.isActive ? "نشط" : "متوقف"
-      })),
+      studentsToExport.map(s => {
+        const level = getStudentLevel(s);
+        return {
+          الاسم: s.name,
+          الهاتف: s.phone || "",
+          العمر: s.age || "",
+          "هاتف ولي الأمر": s.parentPhone || "",
+          التلغرام: s.telegramId || "",
+          "المستوى الدراسي": s.educationLevel || "",
+          "مستوى الطالب": level.label,
+          "ذوي الاحتياجات": s.isSpecialNeeds ? "نعم" : "لا",
+          يتيم: s.isOrphan ? "نعم" : "لا",
+          الأستاذ: getTeacherName(s.teacherId),
+          الحالة: s.isActive ? "نشط" : "متوقف",
+          "تاريخ التسجيل": formatDateAr(s.createdAt),
+          ملاحظات: s.adminNotes || "",
+        };
+      }),
       "Students",
       "students_list.xlsx",
     );
@@ -240,6 +280,112 @@ export default function StudentsPage() {
     }
   };
 
+  const handleArchive = async (student: Student) => {
+    try {
+      const res = await fetch(`/api/users/${student.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isActive: false }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: `تم أرشفة الطالب ${student.name}`, className: "bg-green-50 border-green-200 text-green-800" });
+        fetchData();
+      } else {
+        toast({ title: "خطأ", description: "فشل في أرشفة الطالب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    }
+  };
+
+  const handleRestore = async (student: Student) => {
+    try {
+      const res = await fetch(`/api/users/${student.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: `تم استعادة الطالب ${student.name}`, className: "bg-green-50 border-green-200 text-green-800" });
+        fetchData();
+      } else {
+        toast({ title: "خطأ", description: "فشل في استعادة الطالب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!profileStudent) return;
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`/api/users/${profileStudent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ adminNotes: notesText }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم حفظ الملاحظات", className: "bg-green-50 border-green-200 text-green-800" });
+        setStudents(prev => prev.map(s => s.id === profileStudent.id ? { ...s, adminNotes: notesText } : s));
+        setProfileStudent(prev => prev ? { ...prev, adminNotes: notesText } : null);
+      } else {
+        toast({ title: "خطأ", description: "فشل في حفظ الملاحظات", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const openProfileDialog = async (student: Student) => {
+    setProfileStudent(student);
+    setNotesText(student.adminNotes || "");
+    setProfileDialogOpen(true);
+    setProfileLoading(true);
+    setProfileStats(null);
+    try {
+      const [attendanceRes, pointsRes, assignmentsRes, badgesRes] = await Promise.all([
+        fetch(`/api/attendance?studentId=${student.id}`, { credentials: "include" }).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`/api/points?userId=${student.id}`, { credentials: "include" }).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`/api/assignments?studentId=${student.id}`, { credentials: "include" }).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`/api/badges?userId=${student.id}`, { credentials: "include" }).then(r => r.ok ? r.json() : []).catch(() => []),
+      ]);
+      const attendanceArr = Array.isArray(attendanceRes) ? attendanceRes : [];
+      const pointsArr = Array.isArray(pointsRes) ? pointsRes : [];
+      const assignmentsArr = Array.isArray(assignmentsRes) ? assignmentsRes : [];
+      const badgesArr = Array.isArray(badgesRes) ? badgesRes : [];
+      const present = attendanceArr.filter((a: any) => a.status === "present").length;
+      const absent = attendanceArr.filter((a: any) => a.status === "absent").length;
+      const totalPoints = pointsArr.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+      const doneAssignments = assignmentsArr.filter((a: any) => a.status === "done").length;
+      setProfileStats({
+        attendance: {
+          total: attendanceArr.length,
+          present,
+          absent,
+          rate: attendanceArr.length > 0 ? Math.round((present / attendanceArr.length) * 100) : 0,
+        },
+        points: { total: totalPoints },
+        assignments: {
+          total: assignmentsArr.length,
+          done: doneAssignments,
+          pending: assignmentsArr.filter((a: any) => a.status === "pending").length,
+          completionRate: assignmentsArr.length > 0 ? Math.round((doneAssignments / assignmentsArr.length) * 100) : 0,
+        },
+        badges: { total: badgesArr.length, list: badgesArr },
+      });
+    } catch {
+      setProfileStats(null);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   const getTeacherName = (teacherId?: string | null) => {
     if (!teacherId) return "غير محدد";
     const teacher = teachers.find(t => t.id === teacherId);
@@ -264,31 +410,95 @@ export default function StudentsPage() {
     setFilterDateTo("");
   };
 
-  const filteredStudents = students.filter(s => {
-    if (searchTerm && !s.name.includes(searchTerm) && !s.username.includes(searchTerm)) return false;
-    if (filterGender !== "all" && s.gender !== filterGender) return false;
-    if (filterStatus !== "all") {
-      if (filterStatus === "active" && !s.isActive) return false;
-      if (filterStatus === "inactive" && s.isActive) return false;
+  const filteredStudents = students
+    .filter(s => {
+      if (searchTerm && !s.name.includes(searchTerm) && !s.username.includes(searchTerm)) return false;
+      if (filterGender !== "all" && s.gender !== filterGender) return false;
+      if (filterStatus !== "all") {
+        if (filterStatus === "active" && !s.isActive) return false;
+        if (filterStatus === "inactive" && s.isActive) return false;
+      }
+      if (filterSpecialNeeds !== "all") {
+        if (filterSpecialNeeds === "yes" && !s.isSpecialNeeds) return false;
+        if (filterSpecialNeeds === "no" && s.isSpecialNeeds) return false;
+      }
+      if (filterOrphan !== "all") {
+        if (filterOrphan === "yes" && !s.isOrphan) return false;
+        if (filterOrphan === "no" && s.isOrphan) return false;
+      }
+      if (filterDateFrom && (s as any).createdAt) {
+        if (new Date((s as any).createdAt) < new Date(filterDateFrom)) return false;
+      }
+      if (filterDateTo && (s as any).createdAt) {
+        const toDate = new Date(filterDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (new Date((s as any).createdAt) > toDate) return false;
+      }
+      if (!showArchived && !s.isActive) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "name": return (a.name || "").localeCompare(b.name || "", "ar");
+        case "age_asc": return (a.age || 0) - (b.age || 0);
+        case "age_desc": return (b.age || 0) - (a.age || 0);
+        case "status": return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
+        case "recent": return new Date((b as any).createdAt || 0).getTime() - new Date((a as any).createdAt || 0).getTime();
+        default: return 0;
+      }
+    });
+
+  const toggleSelectStudent = (id: string) => {
+    setSelectedStudents(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudents.size === filteredStudents.length) {
+      setSelectedStudents(new Set());
+    } else {
+      setSelectedStudents(new Set(filteredStudents.map(s => s.id)));
     }
-    if (filterSpecialNeeds !== "all") {
-      if (filterSpecialNeeds === "yes" && !s.isSpecialNeeds) return false;
-      if (filterSpecialNeeds === "no" && s.isSpecialNeeds) return false;
+  };
+
+  const handleBatchWhatsApp = () => {
+    const selected = filteredStudents.filter(s => selectedStudents.has(s.id));
+    for (const s of selected) {
+      const phone = s.parentPhone || s.phone;
+      if (phone) {
+        window.open(getWhatsAppUrl(phone), "_blank");
+      }
     }
-    if (filterOrphan !== "all") {
-      if (filterOrphan === "yes" && !s.isOrphan) return false;
-      if (filterOrphan === "no" && s.isOrphan) return false;
-    }
-    if (filterDateFrom && (s as any).createdAt) {
-      if (new Date((s as any).createdAt) < new Date(filterDateFrom)) return false;
-    }
-    if (filterDateTo && (s as any).createdAt) {
-      const toDate = new Date(filterDateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (new Date((s as any).createdAt) > toDate) return false;
-    }
-    return true;
-  });
+  };
+
+  const handleBatchExport = () => {
+    const selected = filteredStudents.filter(s => selectedStudents.has(s.id));
+    exportJsonToExcel(
+      selected.map(s => {
+        const level = getStudentLevel(s);
+        return {
+          الاسم: s.name,
+          الهاتف: s.phone || "",
+          العمر: s.age || "",
+          "هاتف ولي الأمر": s.parentPhone || "",
+          "مستوى الطالب": level.label,
+          الأستاذ: getTeacherName(s.teacherId),
+          الحالة: s.isActive ? "نشط" : "متوقف",
+        };
+      }),
+      "Selected_Students",
+      "selected_students.xlsx",
+    );
+  };
+
+  const totalStudents = students.length;
+  const activeStudents = students.filter(s => s.isActive).length;
+  const specialNeedsStudents = students.filter(s => s.isSpecialNeeds).length;
+  const orphanStudents = students.filter(s => s.isOrphan).length;
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
@@ -466,10 +676,103 @@ export default function StudentsPage() {
         </div>
       </div>
 
+      {!isStudent && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="stats-cards">
+          <Card className="border-blue-200 bg-blue-50/50" data-testid="stat-total-students">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-700">{totalStudents}</p>
+                <p className="text-xs text-blue-600/80">إجمالي الطلاب</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-green-200 bg-green-50/50" data-testid="stat-active-students">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-700">{activeStudents}</p>
+                <p className="text-xs text-green-600/80">الطلاب النشطين</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-purple-200 bg-purple-50/50" data-testid="stat-special-needs">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                <Heart className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-700">{specialNeedsStudents}</p>
+                <p className="text-xs text-purple-600/80">ذوي الاحتياجات</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-200 bg-amber-50/50" data-testid="stat-orphan-students">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-700">{orphanStudents}</p>
+                <p className="text-xs text-amber-600/80">الأيتام</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {selectedStudents.size > 0 && !isStudent && (
+        <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg" data-testid="batch-actions-bar">
+          <CheckSquare className="w-5 h-5 text-primary" />
+          <span className="text-sm font-medium">تم تحديد {selectedStudents.size} طالب</span>
+          <div className="flex gap-2 mr-auto">
+            <Button variant="outline" size="sm" className="gap-1" onClick={handleBatchWhatsApp} data-testid="button-batch-whatsapp">
+              <MessageCircle className="w-3.5 h-3.5 text-green-600" />
+              واتساب جماعي
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1" onClick={handleBatchExport} data-testid="button-batch-export">
+              <Download className="w-3.5 h-3.5" />
+              تصدير المحدد
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedStudents(new Set())} data-testid="button-clear-selection">
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card dir="rtl">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <CardTitle className="text-lg">قائمة الطلاب ({filteredStudents.length})</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="show-archived"
+                  checked={showArchived}
+                  onCheckedChange={(v) => setShowArchived(!!v)}
+                  data-testid="checkbox-show-archived"
+                />
+                <Label htmlFor="show-archived" className="text-xs text-muted-foreground cursor-pointer">عرض المؤرشفين</Label>
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-36 h-8 text-xs" data-testid="select-sort">
+                  <SortAsc className="w-3.5 h-3.5 ml-1" />
+                  <SelectValue placeholder="الترتيب" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">الاسم (أبجدي)</SelectItem>
+                  <SelectItem value="age_asc">العمر (تصاعدي)</SelectItem>
+                  <SelectItem value="age_desc">العمر (تنازلي)</SelectItem>
+                  <SelectItem value="status">الحالة (النشط أولاً)</SelectItem>
+                  <SelectItem value="recent">الأحدث أولاً</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex flex-wrap items-end gap-3 mt-3">
             <div className="relative w-full sm:w-52">
@@ -571,88 +874,160 @@ export default function StudentsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {!isStudent && (
+                      <TableHead className="w-10 text-center">
+                        <Checkbox
+                          checked={selectedStudents.size === filteredStudents.length && filteredStudents.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                          data-testid="checkbox-select-all"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead className="text-right">الاسم</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الجنس</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">المستوى</TableHead>
                     {isSupervisor && <TableHead className="text-right hidden md:table-cell">الأستاذ</TableHead>}
                     <TableHead className="text-right">الحالة</TableHead>
-                    {isSupervisor && <TableHead className="text-center">إجراءات</TableHead>}
+                    {!isStudent && <TableHead className="text-center">إجراءات</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStudents.map((student) => (
-                    <TableRow key={student.id} data-testid={`row-student-${student.id}`}>
-                      <TableCell className="font-medium" data-testid={`text-name-${student.id}`}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                            {student.name?.charAt(0)}
+                  {filteredStudents.map((student) => {
+                    const level = getStudentLevel(student);
+                    return (
+                      <TableRow key={student.id} data-testid={`row-student-${student.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => openProfileDialog(student)}>
+                        {!isStudent && (
+                          <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedStudents.has(student.id)}
+                              onCheckedChange={() => toggleSelectStudent(student.id)}
+                              data-testid={`checkbox-student-${student.id}`}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell className="font-medium" data-testid={`text-name-${student.id}`}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                              {student.avatar ? (
+                                <img src={student.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+                              ) : (
+                                student.name?.charAt(0)
+                              )}
+                            </div>
+                            <div>
+                              <span>{student.name}</span>
+                              {student.isSpecialNeeds && <Heart className="w-3 h-3 text-purple-500 inline mr-1" />}
+                              {student.isOrphan && <Shield className="w-3 h-3 text-amber-500 inline mr-1" />}
+                            </div>
                           </div>
-                          {student.name}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell" data-testid={`text-gender-${student.id}`}>{student.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
-                      <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`}>
-                        <div className="flex items-center gap-1">
-                          <span>{student.phone || "—"}</span>
-                          {student.phone && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => window.open(getWhatsAppUrl(student.phone!), "_blank")}
-                              title="واتساب"
-                              data-testid={`button-whatsapp-${student.id}`}
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                          {student.parentPhone && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => window.open(getWhatsAppUrl(student.parentPhone!), "_blank")}
-                              title="واتساب ولي الأمر"
-                              data-testid={`button-whatsapp-parent-${student.id}`}
-                            >
-                              <MessageCircle className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                      {isSupervisor && (
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell" data-testid={`text-gender-${student.id}`}>{student.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
+                        <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${student.id}`} onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            <span>{student.phone || "—"}</span>
+                            {student.phone && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => window.open(getWhatsAppUrl(student.phone!), "_blank")}
+                                title="واتساب"
+                                data-testid={`button-whatsapp-${student.id}`}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            {student.parentPhone && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => window.open(getWhatsAppUrl(student.parentPhone!), "_blank")}
+                                title="واتساب ولي الأمر"
+                                data-testid={`button-whatsapp-parent-${student.id}`}
+                              >
+                                <MessageCircle className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <GraduationCap className="w-3.5 h-3.5" />
-                            {getTeacherName(student.teacherId)}
-                          </div>
+                          <Badge variant="secondary" className={`text-xs ${level.color}`} data-testid={`badge-level-${student.id}`}>
+                            {level.label}
+                          </Badge>
                         </TableCell>
-                      )}
-                      <TableCell>
-                        <Badge
-                          variant={student.isActive ? "default" : "destructive"}
-                          className={student.isActive ? "bg-green-100 text-green-700 hover:bg-green-200 border-none" : ""}
-                          data-testid={`status-active-${student.id}`}
-                        >
-                          {student.isActive ? "نشط" : "متوقف"}
-                        </Badge>
-                      </TableCell>
-                      {isSupervisor && (
-                        <TableCell className="text-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1 text-xs"
-                            onClick={() => openTransferDialog(student)}
-                            data-testid={`button-transfer-${student.id}`}
+                        {isSupervisor && (
+                          <TableCell className="hidden md:table-cell">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <GraduationCap className="w-3.5 h-3.5" />
+                              {getTeacherName(student.teacherId)}
+                            </div>
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <Badge
+                            variant={student.isActive ? "default" : "destructive"}
+                            className={student.isActive ? "bg-green-100 text-green-700 hover:bg-green-200 border-none" : ""}
+                            data-testid={`status-active-${student.id}`}
                           >
-                            <ArrowRightLeft className="w-3.5 h-3.5" />
-                            نقل
-                          </Button>
+                            {student.isActive ? "نشط" : "متوقف"}
+                          </Badge>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
+                        {!isStudent && (
+                          <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => openProfileDialog(student)}
+                                title="عرض الملف"
+                                data-testid={`button-view-${student.id}`}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+                              {isSupervisor && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 text-xs h-7"
+                                  onClick={() => openTransferDialog(student)}
+                                  data-testid={`button-transfer-${student.id}`}
+                                >
+                                  <ArrowRightLeft className="w-3 h-3" />
+                                  نقل
+                                </Button>
+                              )}
+                              {student.isActive ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={() => handleArchive(student)}
+                                  title="أرشفة"
+                                  data-testid={`button-archive-${student.id}`}
+                                >
+                                  <Archive className="w-3.5 h-3.5" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={() => handleRestore(student)}
+                                  title="استعادة"
+                                  data-testid={`button-restore-${student.id}`}
+                                >
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -695,6 +1070,161 @@ export default function StudentsPage() {
                 {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                 تأكيد النقل
               </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              الملف الشخصي للطالب
+            </DialogTitle>
+          </DialogHeader>
+          {profileStudent && (
+            <div className="space-y-4 mt-2">
+              <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold shrink-0 overflow-hidden">
+                  {profileStudent.avatar ? (
+                    <img src={profileStudent.avatar} alt="" className="w-full h-full object-cover" data-testid="img-profile-avatar" />
+                  ) : (
+                    profileStudent.name?.charAt(0)
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold" data-testid="text-profile-name">{profileStudent.name}</h3>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <Badge variant="secondary" className={getStudentLevel(profileStudent).color} data-testid="badge-profile-level">
+                      {getStudentLevel(profileStudent).label}
+                    </Badge>
+                    <Badge variant={profileStudent.isActive ? "default" : "destructive"} className={profileStudent.isActive ? "bg-green-100 text-green-700 border-none" : ""}>
+                      {profileStudent.isActive ? "نشط" : "متوقف"}
+                    </Badge>
+                    {profileStudent.isSpecialNeeds && <Badge variant="secondary" className="bg-purple-100 text-purple-700">ذوي احتياجات</Badge>}
+                    {profileStudent.isOrphan && <Badge variant="secondary" className="bg-amber-100 text-amber-700">يتيم</Badge>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">العمر</span>
+                  <p className="font-medium" data-testid="text-profile-age">{profileStudent.age || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">الجنس</span>
+                  <p className="font-medium" data-testid="text-profile-gender">{profileStudent.gender === "female" ? "أنثى" : "ذكر"}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">الهاتف</span>
+                  <p className="font-medium" dir="ltr" data-testid="text-profile-phone">{profileStudent.phone || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">هاتف ولي الأمر</span>
+                  <div className="flex items-center gap-1">
+                    <p className="font-medium" dir="ltr" data-testid="text-profile-parent-phone">{profileStudent.parentPhone || "—"}</p>
+                    {profileStudent.parentPhone && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-green-600"
+                        onClick={() => window.open(getWhatsAppUrl(profileStudent.parentPhone!), "_blank")}
+                        data-testid="button-profile-whatsapp-parent"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">المستوى الدراسي</span>
+                  <p className="font-medium" data-testid="text-profile-education">{profileStudent.educationLevel || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">الأستاذ</span>
+                  <p className="font-medium" data-testid="text-profile-teacher">
+                    <GraduationCap className="w-3.5 h-3.5 inline ml-1" />
+                    {getTeacherName(profileStudent.teacherId)}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">العنوان</span>
+                  <p className="font-medium" data-testid="text-profile-address">{profileStudent.address || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">تاريخ التسجيل</span>
+                  <p className="font-medium" data-testid="text-profile-created">{formatDateAr(profileStudent.createdAt)}</p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="font-bold text-sm mb-3 flex items-center gap-1">
+                  <BarChart3 className="w-4 h-4" />
+                  إحصائيات الطالب
+                </h4>
+                {profileLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary ml-2" />
+                    <span className="text-sm text-muted-foreground">جاري تحميل الإحصائيات...</span>
+                  </div>
+                ) : profileStats ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-lg bg-blue-50 border border-blue-100 text-center" data-testid="stat-profile-attendance">
+                      <TrendingUp className="w-4 h-4 text-blue-600 mx-auto mb-1" />
+                      <p className="text-lg font-bold text-blue-700">{profileStats.attendance.rate}%</p>
+                      <p className="text-xs text-blue-600">نسبة الحضور</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{profileStats.attendance.present}/{profileStats.attendance.total}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-50 border border-green-100 text-center" data-testid="stat-profile-points">
+                      <Star className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                      <p className="text-lg font-bold text-green-700">{profileStats.points.total}</p>
+                      <p className="text-xs text-green-600">النقاط</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-purple-50 border border-purple-100 text-center" data-testid="stat-profile-assignments">
+                      <FileText className="w-4 h-4 text-purple-600 mx-auto mb-1" />
+                      <p className="text-lg font-bold text-purple-700">{profileStats.assignments.completionRate}%</p>
+                      <p className="text-xs text-purple-600">إنجاز الواجبات</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{profileStats.assignments.done}/{profileStats.assignments.total}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-100 text-center" data-testid="stat-profile-badges">
+                      <Award className="w-4 h-4 text-amber-600 mx-auto mb-1" />
+                      <p className="text-lg font-bold text-amber-700">{profileStats.badges.total}</p>
+                      <p className="text-xs text-amber-600">الأوسمة</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">لا تتوفر إحصائيات</p>
+                )}
+              </div>
+
+              {!isStudent && (
+                <div className="border-t pt-4">
+                  <h4 className="font-bold text-sm mb-2 flex items-center gap-1">
+                    <FileText className="w-4 h-4" />
+                    ملاحظات المشرف
+                  </h4>
+                  <Textarea
+                    value={notesText}
+                    onChange={(e) => setNotesText(e.target.value)}
+                    placeholder="أضف ملاحظات حول الطالب..."
+                    className="min-h-[80px]"
+                    data-testid="textarea-admin-notes"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 gap-1"
+                    onClick={handleSaveNotes}
+                    disabled={savingNotes}
+                    data-testid="button-save-notes"
+                  >
+                    {savingNotes && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    حفظ الملاحظات
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
