@@ -36,9 +36,11 @@ interface ParentReport {
 interface Assignment {
   id: string;
   studentId: string;
-  title: string;
+  surahName: string;
+  fromVerse: number;
+  toVerse: number;
+  type?: string;
   grade?: number | null;
-  maxGrade?: number | null;
   status?: string;
 }
 
@@ -130,13 +132,13 @@ export default function ParentPortalPage() {
 
     const assignments = progressData.assignments;
     const totalAssignments = assignments.length;
-    const completedAssignments = assignments.filter(a => a.status === "completed" || a.grade !== null).length;
+    const completedAssignments = assignments.filter(a => a.status === "done" || a.grade !== null).length;
     const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
 
     const lastFive = assignments
       .filter(a => a.grade !== null)
       .slice(-5)
-      .map(a => `${a.title}: ${a.grade}${a.maxGrade ? `/${a.maxGrade}` : ""}`)
+      .map(a => `${a.surahName} (${a.fromVerse}-${a.toVerse}): ${a.grade}/100`)
       .join("\n");
 
     let progressDesc = "جيد";
@@ -263,7 +265,7 @@ export default function ParentPortalPage() {
   const selectedStudent = getSelectedStudent();
   const assignments = progressData?.assignments || [];
   const totalAssignments = assignments.length;
-  const completedAssignments = assignments.filter(a => a.status === "completed" || a.grade !== null).length;
+  const completedAssignments = assignments.filter(a => a.status === "done" || a.grade !== null).length;
 
   if (!["admin", "teacher", "supervisor"].includes(user?.role || "")) {
     return (

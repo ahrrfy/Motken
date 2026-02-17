@@ -89,12 +89,15 @@ export default function PublicParentReportPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2" data-testid="text-report-title">
                 <FileText className="w-5 h-5" />
-                تقرير تقدم الطالب
+                تقرير تقدم الطالب{report.studentName ? `: ${report.studentName}` : ""}
               </CardTitle>
               <Badge variant={report.reportType === "weekly" ? "default" : "secondary"} data-testid="badge-report-type">
                 {report.reportType === "weekly" ? "أسبوعي" : "شهري"}
               </Badge>
             </div>
+            {report.mosqueName && (
+              <p className="text-sm text-primary font-medium mt-1" data-testid="text-mosque-name">{report.mosqueName}</p>
+            )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
               <Calendar className="w-4 h-4" />
               <span data-testid="text-created-date">تاريخ الإنشاء: {formatDate(report.createdAt)}</span>
