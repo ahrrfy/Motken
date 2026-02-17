@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,16 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from "date-fns";
+import { Progress } from "@/components/ui/progress";
+import { format, differenceInHours, differenceInDays, isSameDay, isAfter, isBefore, startOfDay, endOfDay, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from "date-fns";
 import { ar } from "date-fns/locale";
 import { cn, formatDateAr } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import {
   CalendarIcon, Clock, CheckCircle2, User, BookOpen, Loader2,
-  Plus, Calendar as CalendarLucide, Users, FileText, Trash2, Search, X
+  Plus, Calendar as CalendarLucide, Users, FileText, Trash2, Search, X,
+  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight
 } from "lucide-react";
 
 interface Student {
@@ -37,6 +39,8 @@ interface Assignment {
   scheduledDate: string;
   status: string;
   type: string;
+  grade?: number | null;
+  notes?: string | null;
   seenByStudent: boolean;
   seenAt: string | null;
 }
@@ -69,6 +73,46 @@ interface Exam {
   students?: ExamStudent[];
 }
 
+function getDeadlineInfo(scheduledDate: string, status: string) {
+  const now = new Date();
+  const date = new Date(scheduledDate);
+  const diffHours = differenceInHours(date, now);
+  const diffDays = differenceInDays(date, now);
+
+  if (status === "done") {
+    return { label: "مكتمل", color: "text-green-600", bgColor: "bg-green-50", badgeVariant: "bg-green-100 text-green-700" as string };
+  }
+
+  if (isBefore(date, now)) {
+    return { label: "متأخر", color: "text-red-600", bgColor: "bg-red-50", badgeVariant: "bg-red-100 text-red-700" as string };
+  }
+
+  if (isSameDay(date, now)) {
+    return { label: `اليوم - بعد ${diffHours > 0 ? diffHours + " ساعة" : "قريباً"}`, color: "text-yellow-600", bgColor: "bg-yellow-50", badgeVariant: "bg-yellow-100 text-yellow-700" as string };
+  }
+
+  if (diffDays <= 3) {
+    return { label: `بعد ${diffDays} ${diffDays === 1 ? "يوم" : "أيام"}`, color: "text-yellow-600", bgColor: "bg-yellow-50", badgeVariant: "bg-yellow-100 text-yellow-700" as string };
+  }
+
+  return { label: `بعد ${diffDays} يوم`, color: "text-green-600", bgColor: "bg-green-50", badgeVariant: "bg-green-100 text-green-700" as string };
+}
+
+function getTypeBadge(type: string) {
+  switch (type) {
+    case "new": return { label: "جديد", className: "bg-green-100 text-green-700 border-green-200" };
+    case "review": return { label: "مراجعة", className: "bg-blue-100 text-blue-700 border-blue-200" };
+    case "test": return { label: "اختبار", className: "bg-purple-100 text-purple-700 border-purple-200" };
+    default: return { label: type, className: "bg-gray-100 text-gray-700 border-gray-200" };
+  }
+}
+
+function getGradeColor(grade: number) {
+  if (grade >= 80) return "bg-green-100 text-green-700 border-green-200";
+  if (grade >= 60) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+  return "bg-red-100 text-red-700 border-red-200";
+}
+
 export default function AssignmentsExamsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -85,6 +129,7 @@ export default function AssignmentsExamsPage() {
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [assignType, setAssignType] = useState("new");
 
   const assignCurrentSurah = surahs.find(s => String(s.number) === assignSelectedSurah);
 
@@ -119,11 +164,68 @@ export default function AssignmentsExamsPage() {
   const [isForAll, setIsForAll] = useState(true);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
+  const [assignGradeInput, setAssignGradeInput] = useState<Record<string, string>>({});
+  const [markingDone, setMarkingDone] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [notesInput, setNotesInput] = useState<Record<string, string>>({});
+  const [savingNotes, setSavingNotes] = useState<string | null>(null);
+  const [studentStatsDialog, setStudentStatsDialog] = useState<string | null>(null);
+
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelectedStudents, setBulkSelectedStudents] = useState<string[]>([]);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+
   const isTeacher = user?.role === "teacher";
   const isStudent = user?.role === "student";
   const isSupervisor = user?.role === "supervisor";
 
   const examCurrentSurah = surahs.find(s => s.number.toString() === examSelectedSurah);
+
+  const totalAssignments = assignments.length;
+  const pendingAssignments = assignments.filter(a => a.status === "pending").length;
+  const completedAssignments = assignments.filter(a => a.status === "done").length;
+  const totalExams = exams.length;
+
+  const studentCompletionRates = useMemo(() => {
+    const rates: Record<string, { total: number; done: number; avgGrade: number; grades: number[] }> = {};
+    assignments.forEach(a => {
+      if (!rates[a.studentId]) rates[a.studentId] = { total: 0, done: 0, avgGrade: 0, grades: [] };
+      rates[a.studentId].total++;
+      if (a.status === "done") {
+        rates[a.studentId].done++;
+        if (a.grade != null) rates[a.studentId].grades.push(a.grade);
+      }
+    });
+    Object.keys(rates).forEach(k => {
+      const g = rates[k].grades;
+      rates[k].avgGrade = g.length > 0 ? Math.round(g.reduce((a, b) => a + b, 0) / g.length) : 0;
+    });
+    return rates;
+  }, [assignments]);
+
+  const calendarDays = useMemo(() => {
+    const start = startOfMonth(calendarMonth);
+    const end = endOfMonth(calendarMonth);
+    const days = eachDayOfInterval({ start, end });
+    const firstDayOfWeek = getDay(start);
+    const paddingDays = firstDayOfWeek === 6 ? 0 : firstDayOfWeek + 1;
+    return { days, paddingDays };
+  }, [calendarMonth]);
+
+  const assignmentsByDate = useMemo(() => {
+    const map: Record<string, Assignment[]> = {};
+    assignments.forEach(a => {
+      if (a.scheduledDate) {
+        const key = format(new Date(a.scheduledDate), "yyyy-MM-dd");
+        if (!map[key]) map[key] = [];
+        map[key].push(a);
+      }
+    });
+    return map;
+  }, [assignments]);
 
   const fetchExams = async () => {
     try {
@@ -192,7 +294,13 @@ export default function AssignmentsExamsPage() {
   };
 
   const handleAssign = async () => {
-    if (!assignSelectedStudent || !assignDate || !assignTime || !assignSelectedSurah) {
+    const targetStudents = bulkMode ? bulkSelectedStudents : [assignSelectedStudent];
+
+    if (targetStudents.length === 0 || !targetStudents[0]) {
+      toast({ title: "خطأ في البيانات", description: "يرجى اختيار طالب واحد على الأقل", variant: "destructive" });
+      return;
+    }
+    if (!assignDate || !assignTime || !assignSelectedSurah) {
       toast({ title: "خطأ في البيانات", description: "يرجى تعبئة جميع الحقول المطلوبة", variant: "destructive" });
       return;
     }
@@ -202,31 +310,37 @@ export default function AssignmentsExamsPage() {
     const [hours, minutes] = assignTime.split(":");
     scheduledDate.setHours(parseInt(hours), parseInt(minutes));
 
-    setAssignSubmitting(true);
-    try {
-      const res = await fetch("/api/assignments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          studentId: assignSelectedStudent,
-          teacherId: user?.id,
-          mosqueId: user?.mosqueId || null,
-          surahName: surah?.name || "",
-          fromVerse: parseInt(assignFromVerse) || 1,
-          toVerse: parseInt(assignToVerse) || 10,
-          type: "new",
-          scheduledDate: scheduledDate.toISOString(),
-          status: "pending",
-        }),
-      });
+    if (bulkMode) setBulkSubmitting(true);
+    else setAssignSubmitting(true);
 
-      if (res.ok) {
-        const newAssignment = await res.json();
-        setAssignments(prev => [newAssignment, ...prev]);
+    try {
+      const results = await Promise.all(targetStudents.map(studentId =>
+        fetch("/api/assignments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            studentId,
+            teacherId: user?.id,
+            mosqueId: user?.mosqueId || null,
+            surahName: surah?.name || "",
+            fromVerse: parseInt(assignFromVerse) || 1,
+            toVerse: parseInt(assignToVerse) || 10,
+            type: assignType,
+            scheduledDate: scheduledDate.toISOString(),
+            status: "pending",
+          }),
+        }).then(res => res.ok ? res.json() : null)
+      ));
+
+      const newAssignments = results.filter(Boolean);
+      if (newAssignments.length > 0) {
+        setAssignments(prev => [...newAssignments, ...prev]);
         toast({
           title: "تم تحديد الواجب بنجاح",
-          description: `تم إرسال إشعار للطالب ${students.find(s => s.id === assignSelectedStudent)?.name} بموعد التسميع`,
+          description: bulkMode
+            ? `تم إنشاء ${newAssignments.length} واجب لـ ${newAssignments.length} طالب`
+            : `تم إرسال إشعار للطالب ${students.find(s => s.id === assignSelectedStudent)?.name} بموعد التسميع`,
           className: "bg-green-50 border-green-200 text-green-800"
         });
         setAssignSelectedStudent("");
@@ -235,14 +349,71 @@ export default function AssignmentsExamsPage() {
         setAssignToVerse("");
         setAssignTime("");
         setAssignDate(undefined);
+        setAssignType("new");
+        setBulkSelectedStudents([]);
+        setBulkMode(false);
       } else {
-        const err = await res.json();
-        toast({ title: "خطأ", description: err.message || "فشل في إنشاء الواجب", variant: "destructive" });
+        toast({ title: "خطأ", description: "فشل في إنشاء الواجب", variant: "destructive" });
       }
     } catch {
       toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
     } finally {
       setAssignSubmitting(false);
+      setBulkSubmitting(false);
+    }
+  };
+
+  const handleMarkDone = async (assignmentId: string) => {
+    const grade = parseInt(assignGradeInput[assignmentId] || "0");
+    if (isNaN(grade) || grade < 1 || grade > 100) {
+      toast({ title: "خطأ", description: "الدرجة يجب أن تكون بين 1 و 100", variant: "destructive" });
+      return;
+    }
+
+    setMarkingDone(assignmentId);
+    try {
+      const res = await fetch(`/api/assignments/${assignmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "done", grade }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, ...updated } : a));
+        toast({ title: "تم بنجاح", description: "تم تقييم الواجب", className: "bg-green-50 border-green-200 text-green-800" });
+        setAssignGradeInput(prev => { const n = { ...prev }; delete n[assignmentId]; return n; });
+      } else {
+        toast({ title: "خطأ", description: "فشل في تحديث الواجب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setMarkingDone(null);
+    }
+  };
+
+  const handleSaveNotes = async (assignmentId: string) => {
+    setSavingNotes(assignmentId);
+    try {
+      const res = await fetch(`/api/assignments/${assignmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ notes: notesInput[assignmentId] || "" }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, ...updated } : a));
+        toast({ title: "تم بنجاح", description: "تم حفظ الملاحظات", className: "bg-green-50 border-green-200 text-green-800" });
+        setEditingNotes(null);
+      } else {
+        toast({ title: "خطأ", description: "فشل في حفظ الملاحظات", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSavingNotes(null);
     }
   };
 
@@ -447,6 +618,12 @@ export default function AssignmentsExamsPage() {
     );
   };
 
+  const toggleBulkStudent = (studentId: string) => {
+    setBulkSelectedStudents(prev =>
+      prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]
+    );
+  };
+
   const getExamStudentName = (studentId: string) => {
     return students.find(s => s.id === studentId)?.name || studentId;
   };
@@ -483,6 +660,14 @@ export default function AssignmentsExamsPage() {
 
   const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
+  const selectedDateAssignments = useMemo(() => {
+    if (!selectedCalendarDate) return [];
+    const key = format(selectedCalendarDate, "yyyy-MM-dd");
+    return assignmentsByDate[key] || [];
+  }, [selectedCalendarDate, assignmentsByDate]);
+
+  const dayNames = ["سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة"];
+
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col gap-2">
@@ -492,13 +677,63 @@ export default function AssignmentsExamsPage() {
         <p className="text-muted-foreground">إدارة واجبات الطلاب والامتحانات في مكان واحد</p>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="stats-cards">
+        <Card className="border-t-4 border-t-blue-500" data-testid="stat-total-assignments">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-full text-blue-600">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-700">{totalAssignments}</p>
+              <p className="text-xs text-muted-foreground">إجمالي الواجبات</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-t-4 border-t-yellow-500" data-testid="stat-pending-assignments">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 rounded-full text-yellow-600">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-yellow-700">{pendingAssignments}</p>
+              <p className="text-xs text-muted-foreground">واجبات معلقة</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-t-4 border-t-green-500" data-testid="stat-completed-assignments">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-full text-green-600">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-700">{completedAssignments}</p>
+              <p className="text-xs text-muted-foreground">واجبات مكتملة</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-t-4 border-t-purple-500" data-testid="stat-total-exams">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-purple-700">{totalExams}</p>
+              <p className="text-xs text-muted-foreground">إجمالي الامتحانات</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs defaultValue="assignments" dir="rtl">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="assignments" className="gap-2" data-testid="tab-assignments">
             📝 الواجبات
           </TabsTrigger>
           <TabsTrigger value="exams" className="gap-2" data-testid="tab-exams">
             📋 الامتحانات
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-2" data-testid="tab-calendar">
+            📅 التقويم
           </TabsTrigger>
         </TabsList>
 
@@ -513,11 +748,41 @@ export default function AssignmentsExamsPage() {
                 <CardDescription>اختر الطالب وحدد الآيات والموعد</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <Label className="cursor-pointer flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    واجب جماعي (عدة طلاب)
+                  </Label>
+                  <Switch
+                    data-testid="switch-bulk-mode"
+                    checked={bulkMode}
+                    onCheckedChange={(v) => { setBulkMode(v); setBulkSelectedStudents([]); setAssignSelectedStudent(""); }}
+                  />
+                </div>
+
                 <div className="space-y-2">
-                  <Label>الطالب</Label>
+                  <Label>{bulkMode ? "الطلاب" : "الطالب"}</Label>
                   {loadingStudents ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="status-loading-students">
                       <Loader2 className="w-4 h-4 animate-spin" /> جاري التحميل...
+                    </div>
+                  ) : bulkMode ? (
+                    <div className="space-y-2 border rounded-lg p-3 max-h-40 overflow-y-auto">
+                      {students.map(s => (
+                        <div key={s.id} className="flex items-center gap-2">
+                          <Checkbox
+                            data-testid={`checkbox-bulk-student-${s.id}`}
+                            checked={bulkSelectedStudents.includes(s.id)}
+                            onCheckedChange={() => toggleBulkStudent(s.id)}
+                          />
+                          <span className="text-sm">{s.name}</span>
+                        </div>
+                      ))}
+                      {bulkSelectedStudents.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1" data-testid="text-bulk-selected-count">
+                          تم اختيار {bulkSelectedStudents.length} طالب
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <Select value={assignSelectedStudent} onValueChange={setAssignSelectedStudent}>
@@ -531,6 +796,20 @@ export default function AssignmentsExamsPage() {
                       </SelectContent>
                     </Select>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>نوع الواجب</Label>
+                  <Select value={assignType} onValueChange={setAssignType}>
+                    <SelectTrigger className="bg-white" data-testid="select-assign-type">
+                      <SelectValue placeholder="نوع الواجب" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">جديد (حفظ جديد)</SelectItem>
+                      <SelectItem value="review">مراجعة</SelectItem>
+                      <SelectItem value="test">اختبار</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -620,9 +899,9 @@ export default function AssignmentsExamsPage() {
                   </div>
                 </div>
 
-                <Button onClick={handleAssign} disabled={assignSubmitting} className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-11 mt-4" data-testid="button-submit-assignment">
-                  {assignSubmitting ? <Loader2 className="w-5 h-5 ml-2 animate-spin" /> : <CheckCircle2 className="w-5 h-5 ml-2" />}
-                  تأكيد وإرسال للطالب
+                <Button onClick={handleAssign} disabled={assignSubmitting || bulkSubmitting} className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-11 mt-4" data-testid="button-submit-assignment">
+                  {(assignSubmitting || bulkSubmitting) ? <Loader2 className="w-5 h-5 ml-2 animate-spin" /> : <CheckCircle2 className="w-5 h-5 ml-2" />}
+                  {bulkMode ? `تأكيد وإرسال لـ ${bulkSelectedStudents.length} طالب` : "تأكيد وإرسال للطالب"}
                 </Button>
               </CardContent>
             </Card>)}
@@ -705,7 +984,12 @@ export default function AssignmentsExamsPage() {
                       لا توجد واجبات
                     </div>
                   ) : (
-                    (isStudent ? filteredAssignments : filteredAssignments).map((task) => (
+                    (isStudent ? filteredAssignments : filteredAssignments).map((task) => {
+                      const deadline = getDeadlineInfo(task.scheduledDate, task.status);
+                      const typeBadge = getTypeBadge(task.type);
+                      const studentRate = studentCompletionRates[task.studentId];
+
+                      return (
                       <div key={task.id} className={`p-4 bg-white rounded-lg shadow-sm border border-slate-100 ${isStudent ? 'cursor-pointer hover:border-primary/30 transition-colors' : ''}`} data-testid={`card-assignment-${task.id}`} onClick={() => isStudent && fetchQuranVerses(task.id, task.surahName, task.fromVerse, task.toVerse)}>
                         <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -713,23 +997,66 @@ export default function AssignmentsExamsPage() {
                             <User className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="font-bold text-sm" data-testid={`text-assignment-student-${task.id}`}>{getAssignStudentName(task.studentId)}</p>
-                            <p className="text-xs text-muted-foreground">{task.surahName} ({task.fromVerse}-{task.toVerse})</p>
+                            <div className="flex items-center gap-2">
+                              <p
+                                className={cn("font-bold text-sm", (isTeacher || isSupervisor) && "cursor-pointer hover:text-primary")}
+                                data-testid={`text-assignment-student-${task.id}`}
+                                onClick={(e) => {
+                                  if (isTeacher || isSupervisor) {
+                                    e.stopPropagation();
+                                    setStudentStatsDialog(task.studentId);
+                                  }
+                                }}
+                              >
+                                {getAssignStudentName(task.studentId)}
+                              </p>
+                              {(isTeacher || isSupervisor) && studentRate && (
+                                <div className="flex items-center gap-1" data-testid={`progress-student-${task.studentId}`}>
+                                  <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-primary rounded-full transition-all"
+                                      style={{ width: `${studentRate.total > 0 ? (studentRate.done / studentRate.total) * 100 : 0}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {studentRate.total > 0 ? Math.round((studentRate.done / studentRate.total) * 100) : 0}%
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-xs text-muted-foreground">{task.surahName} ({task.fromVerse}-{task.toVerse})</p>
+                              <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", typeBadge.className)} data-testid={`badge-type-${task.id}`}>
+                                {typeBadge.label}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-left">
-                          <div className="flex items-center gap-1 text-sm font-bold text-primary mb-1">
+                        <div className="text-left space-y-1">
+                          <div className="flex items-center gap-1 text-sm font-bold text-primary">
                             <Clock className="w-3 h-3" />
                             {task.scheduledDate ? format(new Date(task.scheduledDate), "hh:mm a", { locale: ar }) : "—"}
                           </div>
-                          <span className={cn(
-                            "text-[10px] px-2 py-0.5 rounded-full",
-                            task.status === "done" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                          )} data-testid={`status-assignment-${task.id}`}>
-                            {task.status === "done" ? "تم التسميع" : "انتظار"}
-                          </span>
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
+                            <span className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-full",
+                              task.status === "done" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                            )} data-testid={`status-assignment-${task.id}`}>
+                              {task.status === "done" ? "تم التسميع" : "انتظار"}
+                            </span>
+                            {task.status === "done" && task.grade != null && (
+                              <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", getGradeColor(task.grade))} data-testid={`grade-badge-${task.id}`}>
+                                {task.grade}/100
+                              </span>
+                            )}
+                          </div>
+                          {task.status === "pending" && (
+                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full block text-center", deadline.badgeVariant)} data-testid={`deadline-badge-${task.id}`}>
+                              {deadline.label}
+                            </span>
+                          )}
                           {!isStudent && (
-                          <div className="flex items-center gap-1 mt-1" data-testid={`seen-status-${task.id}`}>
+                          <div className="flex items-center gap-1" data-testid={`seen-status-${task.id}`}>
                             {task.seenByStudent ? (
                               <span className="flex items-center gap-1 text-[10px] text-blue-600">
                                 <CheckCircle2 className="w-3 h-3" />
@@ -748,6 +1075,83 @@ export default function AssignmentsExamsPage() {
                           )}
                         </div>
                         </div>
+
+                        {isTeacher && task.status === "pending" && (
+                          <div className="mt-3 p-3 bg-blue-50/50 rounded-lg border border-blue-100" onClick={e => e.stopPropagation()} data-testid={`grading-section-${task.id}`}>
+                            <div className="flex items-center gap-2">
+                              <Award className="w-4 h-4 text-blue-600" />
+                              <span className="text-xs font-semibold text-blue-800">تقييم وإتمام</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                max={100}
+                                placeholder="الدرجة (1-100)"
+                                className="w-28 h-8 text-sm"
+                                value={assignGradeInput[task.id] || ""}
+                                onChange={e => setAssignGradeInput(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                data-testid={`input-assign-grade-${task.id}`}
+                              />
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs gap-1"
+                                disabled={markingDone === task.id}
+                                onClick={() => handleMarkDone(task.id)}
+                                data-testid={`button-mark-done-${task.id}`}
+                              >
+                                {markingDone === task.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                                تم التسميع
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {(isTeacher || isSupervisor) && (
+                          <div className="mt-2 flex items-start gap-2" onClick={e => e.stopPropagation()}>
+                            {editingNotes === task.id ? (
+                              <div className="flex-1 flex items-center gap-2" data-testid={`notes-edit-section-${task.id}`}>
+                                <Textarea
+                                  className="text-xs h-16 flex-1"
+                                  placeholder="أضف ملاحظات..."
+                                  value={notesInput[task.id] ?? (task.notes || "")}
+                                  onChange={e => setNotesInput(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                  data-testid={`input-notes-${task.id}`}
+                                />
+                                <div className="flex flex-col gap-1">
+                                  <Button size="sm" className="h-7 text-xs gap-1" disabled={savingNotes === task.id} onClick={() => handleSaveNotes(task.id)} data-testid={`button-save-notes-${task.id}`}>
+                                    {savingNotes === task.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                    حفظ
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingNotes(null)} data-testid={`button-cancel-notes-${task.id}`}>
+                                    إلغاء
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs gap-1 text-muted-foreground hover:text-primary"
+                                onClick={() => {
+                                  setEditingNotes(task.id);
+                                  setNotesInput(prev => ({ ...prev, [task.id]: task.notes || "" }));
+                                }}
+                                data-testid={`button-edit-notes-${task.id}`}
+                              >
+                                <Edit className="w-3 h-3" />
+                                {task.notes ? "تعديل الملاحظات" : "إضافة ملاحظات"}
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {task.notes && editingNotes !== task.id && (
+                          <div className="mt-1 text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1" data-testid={`text-notes-${task.id}`}>
+                            📝 {task.notes}
+                          </div>
+                        )}
+
                         {isStudent && expandedAssignmentId === task.id && (
                           <div className="mt-3 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-200/50" data-testid={`verses-display-${task.id}`}>
                             <div className="text-center mb-3">
@@ -773,7 +1177,7 @@ export default function AssignmentsExamsPage() {
                           </div>
                         )}
                       </div>
-                    ))
+                    );})
                   )}
                 </CardContent>
               </Card>
@@ -1098,7 +1502,158 @@ export default function AssignmentsExamsPage() {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="calendar" className="mt-6">
+          <Card data-testid="calendar-view">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" size="icon" onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))} data-testid="button-prev-month">
+                  <ChevronRight className="w-5 h-5" />
+                </Button>
+                <CardTitle className="text-lg" data-testid="text-calendar-month">
+                  {format(calendarMonth, "MMMM yyyy", { locale: ar })}
+                </CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))} data-testid="button-next-month">
+                  <ChevronLeft className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {dayNames.map(d => (
+                  <div key={d} className="text-center text-xs font-bold text-muted-foreground py-2">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: calendarDays.paddingDays }).map((_, i) => (
+                  <div key={`pad-${i}`} className="h-16" />
+                ))}
+                {calendarDays.days.map(day => {
+                  const key = format(day, "yyyy-MM-dd");
+                  const dayAssignments = assignmentsByDate[key] || [];
+                  const isSelected = selectedCalendarDate && isSameDay(day, selectedCalendarDate);
+                  const isToday = isSameDay(day, new Date());
+                  const hasPending = dayAssignments.some(a => a.status === "pending");
+                  const hasDone = dayAssignments.some(a => a.status === "done");
+
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        "h-16 rounded-lg border cursor-pointer transition-colors p-1 flex flex-col items-center",
+                        isSelected ? "border-primary bg-primary/5 ring-2 ring-primary" : "border-transparent hover:bg-muted/50",
+                        isToday && "bg-blue-50 border-blue-200"
+                      )}
+                      onClick={() => setSelectedCalendarDate(day)}
+                      data-testid={`calendar-day-${key}`}
+                    >
+                      <span className={cn("text-sm font-medium", isToday && "text-blue-600 font-bold")}>
+                        {format(day, "d")}
+                      </span>
+                      {dayAssignments.length > 0 && (
+                        <div className="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
+                          {hasPending && <div className="w-2 h-2 rounded-full bg-yellow-500" />}
+                          {hasDone && <div className="w-2 h-2 rounded-full bg-green-500" />}
+                          {dayAssignments.length > 2 && (
+                            <span className="text-[8px] text-muted-foreground">+{dayAssignments.length}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {selectedCalendarDate && (
+                <div className="mt-6 border-t pt-4" data-testid="calendar-day-details">
+                  <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+                    <CalendarLucide className="w-4 h-4 text-primary" />
+                    واجبات يوم {format(selectedCalendarDate, "EEEE d MMMM yyyy", { locale: ar })}
+                    <Badge variant="outline">{selectedDateAssignments.length}</Badge>
+                  </h3>
+                  {selectedDateAssignments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-day-assignments">لا توجد واجبات في هذا اليوم</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedDateAssignments.map(task => {
+                        const typeBadge = getTypeBadge(task.type);
+                        return (
+                          <div key={task.id} className="p-3 bg-white rounded-lg border flex items-center justify-between" data-testid={`calendar-assignment-${task.id}`}>
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-medium">{getAssignStudentName(task.studentId)}</span>
+                              <span className="text-xs text-muted-foreground">- {task.surahName} ({task.fromVerse}-{task.toVerse})</span>
+                              <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", typeBadge.className)}>
+                                {typeBadge.label}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {task.scheduledDate ? format(new Date(task.scheduledDate), "hh:mm a", { locale: ar }) : "—"}
+                              </span>
+                              <span className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-full",
+                                task.status === "done" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                              )}>
+                                {task.status === "done" ? "مكتمل" : "معلق"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      <Dialog open={!!studentStatsDialog} onOpenChange={(open) => !open && setStudentStatsDialog(null)}>
+        <DialogContent className="sm:max-w-md" dir="rtl" data-testid="dialog-student-stats">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              إحصائيات الطالب: {studentStatsDialog ? getAssignStudentName(studentStatsDialog) : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {studentStatsDialog && (() => {
+            const rate = studentCompletionRates[studentStatsDialog];
+            if (!rate) return <p className="text-sm text-muted-foreground py-4 text-center">لا توجد بيانات</p>;
+            const completionPct = rate.total > 0 ? Math.round((rate.done / rate.total) * 100) : 0;
+            return (
+              <div className="space-y-4 mt-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-blue-50 rounded-lg text-center" data-testid="stat-student-total">
+                    <p className="text-2xl font-bold text-blue-700">{rate.total}</p>
+                    <p className="text-xs text-blue-600">إجمالي الواجبات</p>
+                  </div>
+                  <div className="p-3 bg-green-50 rounded-lg text-center" data-testid="stat-student-done">
+                    <p className="text-2xl font-bold text-green-700">{rate.done}</p>
+                    <p className="text-xs text-green-600">مكتملة</p>
+                  </div>
+                  <div className="p-3 bg-yellow-50 rounded-lg text-center" data-testid="stat-student-pending">
+                    <p className="text-2xl font-bold text-yellow-700">{rate.total - rate.done}</p>
+                    <p className="text-xs text-yellow-600">معلقة</p>
+                  </div>
+                  <div className="p-3 bg-purple-50 rounded-lg text-center" data-testid="stat-student-avg-grade">
+                    <p className="text-2xl font-bold text-purple-700">{rate.avgGrade || "—"}</p>
+                    <p className="text-xs text-purple-600">متوسط الدرجات</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1"><TrendingUp className="w-4 h-4" /> نسبة الإنجاز</span>
+                    <span className="font-bold">{completionPct}%</span>
+                  </div>
+                  <Progress value={completionPct} className="h-3" data-testid="progress-student-completion" />
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
