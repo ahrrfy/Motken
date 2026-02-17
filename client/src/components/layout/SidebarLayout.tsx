@@ -14,18 +14,14 @@ import {
   Moon,
   Sun,
   Library,
-  CreditCard,
   QrCode,
-  Scan,
   CalendarCheck,
   Bell,
   Activity,
   UserCircle,
   Menu,
-  X,
   Building2,
   Star,
-  FileText,
   ClipboardList,
   Award,
   Wifi,
@@ -33,11 +29,18 @@ import {
   MessageSquare,
   Trophy,
   Clock,
-  Calendar,
   AlertTriangle,
   Shield,
   UserCog,
   Gift,
+  ChevronDown,
+  ChevronLeft,
+  Home,
+  UsersRound,
+  BookMarked,
+  Eye,
+  Megaphone,
+  Wrench,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -54,40 +57,135 @@ import {
   showLocalNotification,
 } from "@/lib/notifications";
 
-const navItems = [
-  { href: "/dashboard", label: "لوحة التحكم", labelEn: "Dashboard", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/daily", label: "واجبات اليوم", labelEn: "Daily Tasks", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/mosques", label: "الجوامع ومراكز التحفيظ", labelEn: "Mosques & Centers", icon: Building2, roles: ["admin"] },
-  { href: "/users", label: "جميع المستخدمين", labelEn: "All Users", icon: Users, roles: ["admin"] },
-  { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Statistics", icon: BarChart3, roles: ["admin", "supervisor"] },
-  { href: "/students", label: "الطلاب", labelEn: "Students", icon: Users, roles: ["admin", "teacher", "supervisor"] },
-  { href: "/supervisors", label: "المشرفون", labelEn: "Supervisors", icon: UserCircle, roles: ["admin"] },
-  { href: "/teachers", label: "الأساتذة", labelEn: "Teachers", icon: GraduationCap, roles: ["admin", "supervisor"] },
-  { href: "/assignments", label: "الواجبات والامتحانات", labelEn: "Assignments & Exams", icon: ClipboardList, roles: ["admin", "teacher", "supervisor", "student"] },
-  { href: "/ratings", label: "التقييمات والأوسمة", labelEn: "Ratings & Badges", icon: Star, roles: ["admin", "teacher", "supervisor", "student"] },
-  { href: "/courses", label: "الدورات والشهادات", labelEn: "Courses & Certificates", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
-  { href: "/quran", label: "المصحف والحفظ", labelEn: "Quran Tracker", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/library", label: "المكتبة الإسلامية", labelEn: "Islamic Library", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/attendance", label: "الحضور والغياب", labelEn: "Attendance", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"], featureKey: "attendance" },
-  { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "messaging" },
-  { href: "/points-rewards", label: "النقاط والمكافآت", labelEn: "Points & Rewards", icon: Gift, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "points_rewards" },
-  { href: "/schedules", label: "جدول الحلقات", labelEn: "Schedules", icon: Clock, roles: ["admin", "teacher", "supervisor"], featureKey: "schedules" },
-  { href: "/competitions", label: "المسابقات القرآنية", labelEn: "Competitions", icon: Trophy, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "competitions" },
-  { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
-  { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
-  { href: "/id-cards", label: "الهويات (QR)", labelEn: "ID Cards (QR)", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
-  { href: "/scan-qr", label: "مسح QR", labelEn: "Scan QR", icon: Scan, roles: ["admin", "supervisor", "teacher"] },
-  { href: "/teacher-activities", label: "أنشطة الأساتذة", labelEn: "Teacher Activities", icon: ClipboardList, roles: ["admin", "supervisor"] },
-  { href: "/online-users", label: "المتصلون الآن", labelEn: "Online Users", icon: Wifi, roles: ["admin"] },
-  { href: "/activity-logs", label: "سجّل الحركات", labelEn: "Activity Logs", icon: Activity, roles: ["admin"] },
-  { href: "/feature-control", label: "التحكم بالمميزات", labelEn: "Feature Control", icon: Shield, roles: ["admin"] },
-  { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
-  { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
+interface NavItem {
+  href: string;
+  label: string;
+  labelEn: string;
+  icon: any;
+  roles: string[];
+  featureKey?: string;
+  permission?: "canPrintIds";
+}
+
+interface NavCategory {
+  id: string;
+  label: string;
+  labelEn: string;
+  icon: any;
+  items: NavItem[];
+  defaultOpen?: boolean;
+}
+
+const navCategories: NavCategory[] = [
+  {
+    id: "main",
+    label: "الرئيسية",
+    labelEn: "Main",
+    icon: Home,
+    defaultOpen: true,
+    items: [
+      { href: "/dashboard", label: "لوحة التحكم", labelEn: "Dashboard", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/daily", label: "واجبات اليوم", labelEn: "Daily Tasks", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
+    ],
+  },
+  {
+    id: "people",
+    label: "إدارة المستخدمين",
+    labelEn: "People Management",
+    icon: UsersRound,
+    items: [
+      { href: "/students", label: "الطلاب", labelEn: "Students", icon: Users, roles: ["admin", "teacher", "supervisor"] },
+      { href: "/teachers", label: "الأساتذة", labelEn: "Teachers", icon: GraduationCap, roles: ["admin", "supervisor"] },
+      { href: "/supervisors", label: "المشرفون", labelEn: "Supervisors", icon: UserCircle, roles: ["admin"] },
+      { href: "/users", label: "جميع المستخدمين", labelEn: "All Users", icon: Users, roles: ["admin"] },
+    ],
+  },
+  {
+    id: "education",
+    label: "التعليم والحفظ",
+    labelEn: "Education & Memorization",
+    icon: BookMarked,
+    items: [
+      { href: "/assignments", label: "الواجبات والامتحانات", labelEn: "Assignments & Exams", icon: ClipboardList, roles: ["admin", "teacher", "supervisor", "student"] },
+      { href: "/quran", label: "المصحف والحفظ", labelEn: "Quran Tracker", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/courses", label: "الدورات والشهادات", labelEn: "Courses & Certificates", icon: Award, roles: ["admin", "teacher", "supervisor", "student"] },
+      { href: "/library", label: "المكتبة الإسلامية", labelEn: "Islamic Library", icon: Library, roles: ["admin", "teacher", "student", "supervisor"] },
+    ],
+  },
+  {
+    id: "tracking",
+    label: "المتابعة والتقييم",
+    labelEn: "Tracking & Evaluation",
+    icon: BarChart3,
+    items: [
+      { href: "/attendance", label: "الحضور والغياب", labelEn: "Attendance", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"], featureKey: "attendance" },
+      { href: "/points-rewards", label: "النقاط والمكافآت", labelEn: "Points & Rewards", icon: Gift, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "points_rewards" },
+      { href: "/ratings", label: "التقييمات والأوسمة", labelEn: "Ratings & Badges", icon: Star, roles: ["admin", "teacher", "supervisor", "student"] },
+      { href: "/schedules", label: "جدول الحلقات", labelEn: "Schedules", icon: Clock, roles: ["admin", "teacher", "supervisor"], featureKey: "schedules" },
+      { href: "/competitions", label: "المسابقات القرآنية", labelEn: "Competitions", icon: Trophy, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "competitions" },
+    ],
+  },
+  {
+    id: "communication",
+    label: "التواصل والإشعارات",
+    labelEn: "Communication",
+    icon: Megaphone,
+    items: [
+      { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "messaging" },
+      { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
+      { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
+    ],
+  },
+  {
+    id: "admin",
+    label: "الإدارة والمراقبة",
+    labelEn: "Administration",
+    icon: Wrench,
+    items: [
+      { href: "/mosques", label: "الجوامع والمراكز", labelEn: "Mosques & Centers", icon: Building2, roles: ["admin"] },
+      { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Stats", icon: BarChart3, roles: ["admin", "supervisor"] },
+      { href: "/id-cards", label: "الهويات ومسح QR", labelEn: "ID Cards & QR", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
+      { href: "/teacher-activities", label: "أنشطة الأساتذة", labelEn: "Teacher Activities", icon: ClipboardList, roles: ["admin", "supervisor"] },
+      { href: "/online-users", label: "المتصلون الآن", labelEn: "Online Users", icon: Wifi, roles: ["admin"] },
+      { href: "/activity-logs", label: "سجّل الحركات", labelEn: "Activity Logs", icon: Activity, roles: ["admin"] },
+      { href: "/feature-control", label: "التحكم بالمميزات", labelEn: "Feature Control", icon: Shield, roles: ["admin"] },
+      { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
+    ],
+  },
 ];
 
 function NavContent({ user, location, onNavigate, enabledFeatures }: { user: any; location: string; onNavigate?: () => void; enabledFeatures: string[] }) {
   const { language } = useTheme();
-  const filteredNav = navItems.filter((item) => {
+  const isEn = language === "en";
+
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    navCategories.forEach((cat) => {
+      if (cat.defaultOpen) {
+        initial[cat.id] = true;
+      } else {
+        const hasActiveItem = cat.items.some(item => location === item.href || (location.startsWith(item.href) && item.href !== '/'));
+        initial[cat.id] = hasActiveItem;
+      }
+    });
+    return initial;
+  });
+
+  useEffect(() => {
+    navCategories.forEach((cat) => {
+      const hasActiveItem = cat.items.some(item => location === item.href || (location.startsWith(item.href) && item.href !== '/'));
+      if (hasActiveItem) {
+        setOpenCategories(prev => ({ ...prev, [cat.id]: true }));
+      }
+    });
+  }, [location]);
+
+  const toggleCategory = (id: string) => {
+    setOpenCategories(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const filterItem = (item: NavItem) => {
     if (!item.roles.includes(user.role)) {
       if (item.permission === "canPrintIds" && user.canPrintIds) {
         return true;
@@ -98,26 +196,61 @@ function NavContent({ user, location, onNavigate, enabledFeatures }: { user: any
       return false;
     }
     return true;
-  });
+  };
 
   return (
-    <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-      {filteredNav.map((item) => (
-        <Link key={item.href} href={item.href}>
-          <div
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 group cursor-pointer text-sm",
-              location === item.href || (location.startsWith(item.href) && item.href !== '/')
-                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm translate-x-[-2px]"
-                : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground text-sidebar-foreground/80"
+    <div className="flex-1 py-3 px-2.5 space-y-1 overflow-y-auto scrollbar-thin">
+      {navCategories.map((category) => {
+        const visibleItems = category.items.filter(filterItem);
+        if (visibleItems.length === 0) return null;
+
+        const isOpen = openCategories[category.id] ?? false;
+        const hasActiveItem = visibleItems.some(item => location === item.href || (location.startsWith(item.href) && item.href !== '/'));
+
+        return (
+          <div key={category.id} className="mb-1">
+            <button
+              onClick={() => toggleCategory(category.id)}
+              className={cn(
+                "flex items-center gap-2 w-full px-2.5 py-2 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors duration-150",
+                hasActiveItem
+                  ? "text-accent"
+                  : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+              )}
+              data-testid={`category-${category.id}`}
+            >
+              <category.icon className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1 text-start truncate">{isEn ? category.labelEn : category.label}</span>
+              <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 transition-transform duration-200", isOpen ? "rotate-0" : (isEn ? "-rotate-90" : "rotate-90"))} />
+            </button>
+
+            {isOpen && (
+              <div className="mt-0.5 space-y-0.5 mr-1 ml-1">
+                {visibleItems.map((item) => {
+                  const isActive = location === item.href || (location.startsWith(item.href) && item.href !== '/');
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <div
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex items-center gap-2.5 px-3 py-2 rounded-md transition-all duration-150 group cursor-pointer text-[13px]",
+                          isActive
+                            ? "bg-accent/15 text-accent font-medium border-r-2 border-accent"
+                            : "hover:bg-sidebar-accent/40 text-sidebar-foreground/75 hover:text-sidebar-foreground"
+                        )}
+                        data-testid={`nav-${item.href.replace('/', '')}`}
+                      >
+                        <item.icon className={cn("w-4 h-4 shrink-0", isActive ? "text-accent" : "text-sidebar-foreground/50 group-hover:text-accent/70")} />
+                        <span className="truncate">{isEn ? item.labelEn : item.label}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             )}
-          >
-            <item.icon className={cn("w-5 h-5 shrink-0", location === item.href ? "text-accent" : "text-sidebar-foreground/60 group-hover:text-accent")} />
-            <span className="truncate">{language === "en" ? item.labelEn : item.label}</span>
           </div>
-        </Link>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -176,88 +309,95 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const dir = isEn ? "ltr" : "rtl";
 
   const SidebarHeader = () => (
-    <div className="p-4 sm:p-6 border-b border-sidebar-border/50 shrink-0">
+    <div className="p-4 border-b border-sidebar-border/30 shrink-0">
       <div className="flex items-center gap-3">
-        <img src="/logo.png" alt="مُتْقِن" className="w-11 h-11 rounded-xl shrink-0" />
+        <img src="/logo.png" alt="مُتْقِن" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="min-w-0 flex-1">
-          <h1 className="font-bold text-2xl leading-none">مُتْقِن</h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-1">{isEn ? "Quran Memorization System" : "نظام إدارة حلقات التحفيظ"}</p>
+          <h1 className="font-bold text-xl leading-none tracking-tight">مُتْقِن</h1>
+          <p className="text-[10px] text-sidebar-foreground/50 mt-0.5">{isEn ? "Quran Memorization System" : "نظام إدارة حلقات التحفيظ"}</p>
         </div>
       </div>
       {user?.mosqueName && (
-        <div className="mt-3 px-2 py-1.5 bg-accent/10 rounded-md border border-accent/20 flex items-center gap-2">
+        <div className="mt-2.5 px-2 py-1.5 bg-accent/8 rounded-md border border-accent/15 flex items-center gap-2">
           <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-          <span className="text-xs text-sidebar-foreground/80 truncate" data-testid="text-mosque-name">{user.mosqueName}</span>
+          <span className="text-[11px] text-sidebar-foreground/70 truncate" data-testid="text-mosque-name">{user.mosqueName}</span>
         </div>
       )}
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-2.5 flex items-center gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {user.avatar ? (
-            <img src={user.avatar} alt="User" className="w-8 h-8 rounded-full border border-sidebar-border shrink-0" />
+            <img src={user.avatar} alt="User" className="w-8 h-8 rounded-full border border-sidebar-border/50 shrink-0" />
           ) : (
-            <div className="w-8 h-8 rounded-full border border-sidebar-border shrink-0 bg-primary/20 flex items-center justify-center text-primary-foreground font-bold text-xs">
+            <div className="w-8 h-8 rounded-full shrink-0 bg-accent/20 flex items-center justify-center text-accent font-bold text-xs">
               {user.name?.charAt(0)}
             </div>
           )}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{user.name}</p>
-            <p className="text-xs text-sidebar-foreground/60 truncate">{
+            <p className="text-[10px] text-sidebar-foreground/50 truncate">{
               user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
               user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
               user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
             }</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={logout}
-          className="shrink-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
-          title={isEn ? "Logout" : "تسجيل الخروج"}
-          data-testid="button-logout-top"
-        >
-          <LogOut className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleDark}
+            className="w-7 h-7 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+            title={isDark ? (isEn ? "Light Mode" : "الوضع الفاتح") : (isEn ? "Dark Mode" : "الوضع الداكن")}
+          >
+            {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={logout}
+            className="w-7 h-7 text-red-400/70 hover:text-red-400 hover:bg-red-900/20"
+            title={isEn ? "Logout" : "تسجيل الخروج"}
+            data-testid="button-logout-top"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
 
   const SidebarFooter = () => (
-    <div className="p-3 sm:p-4 border-t border-sidebar-border/50 shrink-0 space-y-2">
+    <div className="p-2.5 border-t border-sidebar-border/30 shrink-0 space-y-1.5">
       {(user?.actualRole === "supervisor" || user?.role === "supervisor") && (
         <Button
           variant="outline"
           size="sm"
           onClick={switchRole}
-          className="w-full bg-amber-900/30 border-amber-700/50 text-amber-400 hover:bg-amber-800/40 hover:text-amber-300"
+          className="w-full h-8 text-xs bg-amber-900/20 border-amber-700/30 text-amber-400 hover:bg-amber-800/30 hover:text-amber-300"
           data-testid="button-switch-role"
         >
-          <ArrowLeftRight className="w-4 h-4 ml-2" />
+          <ArrowLeftRight className="w-3.5 h-3.5 ml-1.5" />
           {user?.role === "supervisor"
-            ? (isEn ? "Switch to Teacher Mode" : "التبديل إلى وضع الأستاذ")
-            : (isEn ? "Switch to Supervisor Mode" : "التبديل إلى وضع المشرف")}
+            ? (isEn ? "Teacher Mode" : "وضع الأستاذ")
+            : (isEn ? "Supervisor Mode" : "وضع المشرف")}
         </Button>
       )}
       <Button
         variant="outline"
         size="sm"
         onClick={togglePushNotifications}
-        className={`w-full border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${pushEnabled ? 'bg-green-900/30 border-green-700/50 text-green-400' : 'bg-sidebar-accent/20'}`}
+        className={cn(
+          "w-full h-8 text-xs border-sidebar-border/30",
+          pushEnabled
+            ? "bg-green-900/20 border-green-700/30 text-green-400 hover:bg-green-800/30"
+            : "bg-sidebar-accent/10 hover:bg-sidebar-accent/20 text-sidebar-foreground/60"
+        )}
         data-testid="button-toggle-push"
       >
-        {pushEnabled ? <Bell className="w-4 h-4 ml-2" /> : <Bell className="w-4 h-4 ml-2 opacity-50" />}
+        <Bell className={cn("w-3.5 h-3.5 ml-1.5", !pushEnabled && "opacity-50")} />
         {pushEnabled
-          ? (isEn ? "Push Notifications: On" : "الإشعارات الخارجية: مفعّلة")
-          : (isEn ? "Enable Push Notifications" : "تفعيل الإشعارات الخارجية")}
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={toggleDark}
-        className="w-full bg-sidebar-accent/20 border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      >
-        {isDark ? <Sun className="w-4 h-4 ml-2" /> : <Moon className="w-4 h-4 ml-2" />}
-        {isDark ? (isEn ? "Light Mode" : "الوضع الفاتح") : (isEn ? "Dark Mode" : "الوضع الداكن")}
+          ? (isEn ? "Push: On" : "الإشعارات: مفعّلة")
+          : (isEn ? "Enable Push" : "تفعيل الإشعارات")}
       </Button>
     </div>
   );
@@ -284,7 +424,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </Sheet>
       </div>
 
-      <aside className={`w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col ${isEn ? "border-r" : "border-l"} border-sidebar-border shadow-xl z-10 overflow-y-auto sticky top-0 h-screen`}>
+      <aside className={cn(
+        "w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col border-sidebar-border/50 shadow-xl z-10 overflow-y-auto sticky top-0 h-screen",
+        isEn ? "border-r" : "border-l"
+      )}>
         <SidebarHeader />
         <NavContent user={user} location={location} enabledFeatures={enabledFeatures} />
         <SidebarFooter />
