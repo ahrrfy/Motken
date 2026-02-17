@@ -47,6 +47,8 @@ export const users = pgTable("users", {
   telegramId: text("telegram_id"),
   parentPhone: text("parent_phone"),
   educationLevel: text("education_level"),
+  level: integer("level"),
+  teacherLevels: text("teacher_levels"),
   isSpecialNeeds: boolean("is_special_needs").notNull().default(false),
   isOrphan: boolean("is_orphan").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
