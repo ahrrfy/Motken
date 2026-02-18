@@ -168,7 +168,7 @@ const navCategories: NavCategory[] = [
   },
 ];
 
-function NavContent({ user, location, onNavigate, enabledFeatures }: { user: any; location: string; onNavigate?: () => void; enabledFeatures: string[] }) {
+function NavContent({ user, location, onNavigate, enabledFeatures, effectiveRole }: { user: any; location: string; onNavigate?: () => void; enabledFeatures: string[]; effectiveRole: string }) {
   const { language } = useTheme();
   const isEn = language === "en";
 
@@ -199,7 +199,7 @@ function NavContent({ user, location, onNavigate, enabledFeatures }: { user: any
   };
 
   const filterItem = (item: NavItem) => {
-    if (!item.roles.includes(user.role)) {
+    if (!item.roles.includes(effectiveRole)) {
       if (item.permission === "canPrintIds" && user.canPrintIds) {
         return true;
       }
@@ -270,7 +270,7 @@ function NavContent({ user, location, onNavigate, enabledFeatures }: { user: any
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout, switchRole, previewRole, stopPreview, effectiveRole } = useAuth();
   const { isDark, toggleDark, language } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
@@ -431,7 +431,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           </SheetTrigger>
           <SheetContent side={isEn ? "left" : "right"} className="w-72 p-0 bg-sidebar text-sidebar-foreground border-l-sidebar-border" dir={dir}>
             <SidebarHeader />
-            <NavContent user={user} location={location} onNavigate={() => setMobileOpen(false)} enabledFeatures={enabledFeatures} />
+            <NavContent user={user} location={location} onNavigate={() => setMobileOpen(false)} enabledFeatures={enabledFeatures} effectiveRole={effectiveRole || user.role} />
             <SidebarFooter />
           </SheetContent>
         </Sheet>
@@ -442,11 +442,42 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         isEn ? "border-r" : "border-l"
       )}>
         <SidebarHeader />
-        <NavContent user={user} location={location} enabledFeatures={enabledFeatures} />
+        <NavContent user={user} location={location} enabledFeatures={enabledFeatures} effectiveRole={effectiveRole || user.role} />
         <SidebarFooter />
       </aside>
 
       <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0 flex flex-col min-h-screen">
+        {previewRole && (
+          <div className={cn(
+            "flex items-center justify-between gap-3 px-4 py-2.5 text-white text-sm font-medium shadow-md z-20",
+            previewRole === "student" ? "bg-gradient-to-l from-blue-600 to-blue-500" :
+            previewRole === "teacher" ? "bg-gradient-to-l from-emerald-600 to-emerald-500" :
+            previewRole === "supervisor" ? "bg-gradient-to-l from-purple-600 to-purple-500" :
+            "bg-gradient-to-l from-amber-600 to-amber-500"
+          )} data-testid="preview-banner">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4" />
+              <span>
+                {isEn ? "Preview Mode: Viewing as " : "وضع المعاينة: تشاهد النظام كـ"}
+                <strong>
+                  {previewRole === "student" ? (isEn ? "Student" : "طالب") :
+                   previewRole === "teacher" ? (isEn ? "Teacher" : "أستاذ") :
+                   previewRole === "supervisor" ? (isEn ? "Supervisor" : "مشرف") : ""}
+                </strong>
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={stopPreview}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30 h-7 text-xs"
+              data-testid="button-stop-preview"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 ml-1" />
+              {isEn ? "Exit Preview" : "العودة للوضع العادي"}
+            </Button>
+          </div>
+        )}
         <DateTimePrayerBar />
         <div className="flex-1">
           {children}

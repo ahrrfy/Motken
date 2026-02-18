@@ -21,6 +21,8 @@ export interface User {
   privacyPolicyAcceptedAt?: string | null;
 }
 
+export type PreviewRole = UserRole | null;
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -28,6 +30,10 @@ interface AuthContextType {
   logout: () => Promise<void>;
   switchRole: () => void;
   refreshUser: () => Promise<void>;
+  previewRole: PreviewRole;
+  startPreview: (role: PreviewRole) => void;
+  stopPreview: () => void;
+  effectiveRole: UserRole | undefined;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +41,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [previewRole, setPreviewRole] = useState<PreviewRole>(null);
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -72,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    setPreviewRole(null);
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setUser(null);
     setLocation("/");
@@ -101,8 +109,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const startPreview = (role: PreviewRole) => {
+    setPreviewRole(role);
+    setLocation("/dashboard");
+  };
+
+  const stopPreview = () => {
+    setPreviewRole(null);
+    setLocation("/dashboard");
+  };
+
+  const effectiveRole = previewRole || user?.role;
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, switchRole, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, switchRole, refreshUser, previewRole, startPreview, stopPreview, effectiveRole }}>
       {children}
     </AuthContext.Provider>
   );
