@@ -5,7 +5,7 @@ import {
   Users, CheckCircle, TrendingUp, MapPin, ShieldAlert, Activity, GraduationCap,
   BookOpen, ClipboardList, CalendarCheck, Star, Gift, Clock, Trophy,
   MessageSquare, AlertTriangle, Building2, Award, UserCircle, ArrowLeft,
-  Wifi, ChevronLeft, BarChart3, UserCheck, UserX, Heart, Sparkles,
+  Wifi, ChevronLeft, BarChart3, UserCheck, UserX, Heart, Sparkles, Eye,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -42,7 +42,7 @@ interface RecentActivity {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, previewRole, startPreview, effectiveRole } = useAuth();
   const { language } = useTheme();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -50,8 +50,10 @@ export default function DashboardPage() {
 
   const isEn = language === "en";
 
+  const currentRole = effectiveRole || user?.role;
+
   useEffect(() => {
-    if (user?.role === "student") {
+    if (currentRole === "student") {
       setLoadingStats(false);
       return;
     }
@@ -60,10 +62,10 @@ export default function DashboardPage() {
       .then(data => { if (data) setStats(data); })
       .catch(() => {})
       .finally(() => setLoadingStats(false));
-  }, [user?.role]);
+  }, [currentRole]);
 
   useEffect(() => {
-    if (user?.role === "student") return;
+    if (currentRole === "student") return;
     const today = new Date().toISOString().split("T")[0];
     fetch(`/api/attendance?date=${today}`, { credentials: "include" })
       .then(res => res.ok ? res.json() : null)
@@ -77,12 +79,13 @@ export default function DashboardPage() {
         }
       })
       .catch(() => {});
-  }, [user?.role]);
+  }, [currentRole]);
 
-  const isAdmin = user?.role === 'admin';
-  const isSupervisor = user?.role === 'supervisor';
-  const isTeacher = user?.role === 'teacher';
-  const isStudent = user?.role === 'student';
+  const isAdmin = currentRole === 'admin';
+  const isSupervisor = currentRole === 'supervisor';
+  const isTeacher = currentRole === 'teacher';
+  const isStudent = currentRole === 'student';
+  const isRealAdmin = user?.role === 'admin' && !previewRole;
 
   const completionRate = stats?.totalAssignments
     ? Math.round(((stats.completedAssignments ?? 0) / stats.totalAssignments) * 100)
@@ -105,7 +108,13 @@ export default function DashboardPage() {
     { href: "/competitions", label: "المسابقات", labelEn: "Competitions", icon: Trophy, color: "from-orange-500 to-orange-600", roles: ["admin", "teacher", "supervisor", "student"] },
     { href: "/reports", label: "التقارير", labelEn: "Reports", icon: BarChart3, color: "from-rose-500 to-rose-600", roles: ["admin", "supervisor"] },
     { href: "/teachers", label: "الأساتذة", labelEn: "Teachers", icon: GraduationCap, color: "from-lime-500 to-lime-600", roles: ["admin", "supervisor"] },
-  ].filter(l => l.roles.includes(user?.role ?? ""));
+  ].filter(l => l.roles.includes(currentRole ?? ""));
+
+  const previewButtons = [
+    { role: "student" as const, label: "معاينة كطالب", labelEn: "View as Student", icon: Users, color: "from-blue-500 to-blue-600", desc: "شاهد ما يراه الطالب", descEn: "See what students see" },
+    { role: "teacher" as const, label: "معاينة كأستاذ", labelEn: "View as Teacher", icon: GraduationCap, color: "from-emerald-500 to-emerald-600", desc: "شاهد ما يراه الأستاذ", descEn: "See what teachers see" },
+    { role: "supervisor" as const, label: "معاينة كمشرف", labelEn: "View as Supervisor", icon: UserCircle, color: "from-purple-500 to-purple-600", desc: "شاهد ما يراه المشرف", descEn: "See what supervisors see" },
+  ];
 
   return (
     <div className="p-4 md:p-6 space-y-5" data-testid="dashboard-page">
@@ -128,6 +137,41 @@ export default function DashboardPage() {
           </Badge>
         </div>
       </div>
+
+      {isRealAdmin && (
+        <Card className="border shadow-sm border-accent/20 bg-gradient-to-l from-accent/3 to-transparent" data-testid="card-preview-roles">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Eye className="w-5 h-5 text-accent" />
+              {isEn ? "Role Preview" : "معاينة الأدوار"}
+              <Badge variant="secondary" className="text-[10px] px-2 py-0">{isEn ? "Admin Only" : "للمدير فقط"}</Badge>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isEn ? "Preview the system from different user perspectives" : "شاهد النظام من منظور المستخدمين المختلفين"}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {previewButtons.map((pb) => (
+                <button
+                  key={pb.role}
+                  onClick={() => startPreview(pb.role)}
+                  className="flex items-center gap-3 p-3 rounded-xl border bg-card hover:shadow-md hover:scale-[1.01] transition-all duration-200 group text-start"
+                  data-testid={`button-preview-${pb.role}`}
+                >
+                  <div className={`p-2.5 rounded-xl bg-gradient-to-br ${pb.color} text-white shadow-sm group-hover:shadow-md transition-shadow shrink-0`}>
+                    <pb.icon className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{isEn ? pb.labelEn : pb.label}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{isEn ? pb.descEn : pb.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!isStudent && stats && (
         <>
