@@ -320,7 +320,7 @@ export async function registerRoutes(
       } else if (currentUser.role === "teacher") {
         if (role === "student" && currentUser.mosqueId) {
           const allStudents = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
-          result = allStudents.filter(s => canTeacherAccessStudent(currentUser, s));
+          result = allStudents.filter(s => canTeacherAccessStudent(currentUser, s) && !s.pendingApproval);
         } else if (currentUser.mosqueId) {
           if (role) {
             result = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role);
@@ -328,17 +328,37 @@ export async function registerRoutes(
             result = await storage.getUsersByMosque(currentUser.mosqueId);
           }
         } else {
-          result = await storage.getUsersByTeacher(currentUser.id);
+          result = (await storage.getUsersByTeacher(currentUser.id)).filter(s => !s.pendingApproval);
         }
       } else if (currentUser.mosqueId) {
         if (role) {
-          result = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role);
+          result = (await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role)).filter(s => role === "student" ? !s.pendingApproval : true);
         } else {
           result = await storage.getUsersByMosque(currentUser.mosqueId);
         }
       }
 
       const safe = result.map(({ password, ...u }) => u);
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.get("/api/users/pending-approval", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      let allUsers: User[] = [];
+      if (currentUser.role === "admin") {
+        allUsers = await storage.getUsers();
+      } else if (currentUser.mosqueId) {
+        allUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+      }
+      const pending = allUsers.filter(u => u.pendingApproval);
+      const safe = pending.map(({ password, ...u }) => u);
       res.json(safe);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
@@ -381,7 +401,8 @@ export async function registerRoutes(
         req.body.role = "student";
         req.body.mosqueId = currentUser.mosqueId;
         req.body.teacherId = currentUser.id;
-        req.body.isActive = true;
+        req.body.isActive = false;
+        req.body.pendingApproval = true;
         delete req.body.canPrintIds;
       } else {
         return res.status(403).json({ message: "غير مصرح بإنشاء حسابات" });
@@ -439,10 +460,26 @@ export async function registerRoutes(
         phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan,
         level: req.body.role === "student" ? (level || 1) : undefined,
         teacherLevels: req.body.role === "teacher" ? (teacherLevels || "1,2,3,4,5,6") : undefined,
+        pendingApproval: req.body.pendingApproval || false,
       };
       const user = await storage.createUser(data);
       const { password, ...safe } = user;
       await logActivity(currentUser, `إنشاء حساب: ${user.name} (${targetRole})`, "users");
+
+      if (currentUser.role === "teacher" && user.pendingApproval && currentUser.mosqueId) {
+        const supervisors = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "supervisor");
+        for (const supervisor of supervisors) {
+          await storage.createNotification({
+            userId: supervisor.id,
+            mosqueId: currentUser.mosqueId,
+            title: "طالب جديد بانتظار الموافقة",
+            message: `قام الأستاذ ${currentUser.name} بإضافة الطالب ${user.name} - يرجى الموافقة أو الرفض`,
+            type: "info",
+            isRead: false,
+          });
+        }
+      }
+
       res.status(201).json(safe);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -565,6 +602,80 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== STUDENT APPROVAL ====================
+  app.post("/api/users/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
+      if (!user.pendingApproval) {
+        return res.status(400).json({ message: "هذا المستخدم ليس بانتظار الموافقة" });
+      }
+      if (currentUser.role === "supervisor" && user.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      await storage.updateUser(req.params.id, { pendingApproval: false, isActive: true });
+      if (user.teacherId) {
+        await storage.createNotification({
+          userId: user.teacherId,
+          mosqueId: user.mosqueId,
+          title: "تمت الموافقة على الطالب",
+          message: `تمت الموافقة على تسجيل الطالب ${user.name} في النظام`,
+          type: "success",
+          isRead: false,
+        });
+      }
+      await storage.createNotification({
+        userId: req.params.id,
+        mosqueId: user.mosqueId,
+        title: "تمت الموافقة",
+        message: "تمت الموافقة على تسجيلك في النظام",
+        type: "success",
+        isRead: false,
+      });
+      await logActivity(currentUser, `الموافقة على الطالب: ${user.name}`, "users");
+      res.json({ message: "تمت الموافقة بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.post("/api/users/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
+      if (!user.pendingApproval) {
+        return res.status(400).json({ message: "هذا المستخدم ليس بانتظار الموافقة" });
+      }
+      if (currentUser.role === "supervisor" && user.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { reason } = req.body;
+      await storage.updateUser(req.params.id, { pendingApproval: false, isActive: false });
+      if (user.teacherId) {
+        await storage.createNotification({
+          userId: user.teacherId,
+          mosqueId: user.mosqueId,
+          title: "تم رفض الطالب",
+          message: `تم رفض تسجيل الطالب ${user.name}${reason ? ` - السبب: ${reason}` : ''}`,
+          type: "warning",
+          isRead: false,
+        });
+      }
+      await logActivity(currentUser, `رفض الطالب: ${user.name}`, "users", reason || undefined);
+      res.json({ message: "تم الرفض بنجاح" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
   // ==================== TOGGLE PRINT PERMISSION ====================
   app.post("/api/users/:id/toggle-print", requireRole("admin"), async (req, res) => {
     try {
@@ -612,7 +723,7 @@ export async function registerRoutes(
           const mosqueAssignments = await storage.getAssignmentsByMosque(currentUser.mosqueId);
           const teacherLevels = getTeacherLevelsArray(currentUser);
           const mosqueStudents = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
-          const levelStudentIds = new Set(mosqueStudents.filter(s => teacherLevels.includes(s.level || 1)).map(s => s.id));
+          const levelStudentIds = new Set(mosqueStudents.filter(s => !s.pendingApproval && teacherLevels.includes(s.level || 1)).map(s => s.id));
           result = mosqueAssignments.filter(a => levelStudentIds.has(a.studentId));
         } else {
           result = await storage.getAssignmentsByTeacher(currentUser.id);
@@ -1013,12 +1124,12 @@ export async function registerRoutes(
       let myStudents: any[];
       if (currentUser.role === "supervisor" && currentUser.mosqueId) {
         const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
-        myStudents = mosqueUsers.filter(u => u.role === "student");
+        myStudents = mosqueUsers.filter(u => u.role === "student" && !u.pendingApproval);
       } else if (currentUser.mosqueId) {
         const allStudents = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
-        myStudents = allStudents.filter(s => canTeacherAccessStudent(currentUser, s));
+        myStudents = allStudents.filter(s => canTeacherAccessStudent(currentUser, s) && !s.pendingApproval);
       } else {
-        myStudents = await storage.getUsersByTeacher(currentUser.id);
+        myStudents = (await storage.getUsersByTeacher(currentUser.id)).filter(s => !s.pendingApproval);
       }
       const myStudentIds = new Set(myStudents.map(s => s.id));
 
@@ -1211,7 +1322,7 @@ export async function registerRoutes(
       if (currentUser.role !== "admin" && currentUser.mosqueId !== mosqueId) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const students = await storage.getUsersByMosqueAndRole(mosqueId, "student");
+      const students = (await storage.getUsersByMosqueAndRole(mosqueId, "student")).filter(s => !s.pendingApproval);
       const teachers = await storage.getUsersByMosqueAndRole(mosqueId, "teacher");
       const levelStats: Record<number, { students: number; teachers: string[] }> = {};
       for (let i = 1; i <= 6; i++) {
@@ -1925,7 +2036,7 @@ export async function registerRoutes(
     }
 
     if (currentUser.role === "teacher") {
-      const myStudents = await storage.getUsersByTeacher(currentUser.id);
+      const myStudents = (await storage.getUsersByTeacher(currentUser.id)).filter(s => !s.pendingApproval);
       const myAssignments = await storage.getAssignmentsByTeacher(currentUser.id);
       return res.json({
         totalStudents: myStudents.length,
@@ -3501,12 +3612,12 @@ export async function registerRoutes(
       if (currentUser.role === "admin") {
         const mosqueId = req.query.mosqueId as string | undefined;
         if (mosqueId) {
-          students = await storage.getUsersByMosqueAndRole(mosqueId, "student");
+          students = (await storage.getUsersByMosqueAndRole(mosqueId, "student")).filter(s => !s.pendingApproval);
         } else {
-          students = await storage.getUsersByRole("student");
+          students = (await storage.getUsersByRole("student")).filter(s => !s.pendingApproval);
         }
       } else if (currentUser.mosqueId) {
-        students = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
+        students = (await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student")).filter(s => !s.pendingApproval);
       }
       const exported = students.map(({ password, ...s }) => s);
       res.json(exported);
@@ -3587,15 +3698,15 @@ export async function registerRoutes(
       let assignmentsList: Assignment[] = [];
 
       if (currentUser.role === "admin") {
-        students = await storage.getUsersByRole("student");
+        students = (await storage.getUsersByRole("student")).filter(s => !s.pendingApproval);
         teachersList = await storage.getUsersByRole("teacher");
         assignmentsList = await storage.getAssignments();
       } else if (currentUser.role === "teacher") {
-        students = await storage.getUsersByTeacher(currentUser.id);
+        students = (await storage.getUsersByTeacher(currentUser.id)).filter(s => !s.pendingApproval);
         assignmentsList = await storage.getAssignmentsByTeacher(currentUser.id);
       } else if (currentUser.mosqueId) {
         const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
-        students = mosqueUsers.filter(u => u.role === "student");
+        students = mosqueUsers.filter(u => u.role === "student" && !u.pendingApproval);
         teachersList = mosqueUsers.filter(u => u.role === "teacher");
         assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
       }

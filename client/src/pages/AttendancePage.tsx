@@ -25,6 +25,7 @@ interface Student {
   mosqueId?: string | null;
   parentPhone?: string | null;
   phone?: string | null;
+  level?: number;
 }
 
 interface AttendanceEntry {
@@ -84,6 +85,7 @@ export default function AttendancePage() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSearch, setFilterSearch] = useState("");
+  const [filterLevel, setFilterLevel] = useState("all");
 
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
@@ -409,6 +411,10 @@ export default function AttendancePage() {
 
   const filteredHistory = history.filter((record) => {
     if (filterSearch && !record.studentName?.includes(filterSearch)) return false;
+    if (filterLevel !== "all") {
+      const student = students.find(s => s.id === record.studentId);
+      if (student && String(student.level || 1) !== filterLevel) return false;
+    }
     return true;
   });
 
@@ -625,7 +631,7 @@ export default function AttendancePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {students.map((student, index) => {
+                        {students.filter(s => filterLevel === "all" || String(s.level || 1) === filterLevel).map((student, index) => {
                           const entry = attendanceData[student.id];
                           const showReason = entry?.status === "absent" || entry?.status === "excused";
                           const isAbsent = entry?.status === "absent";
@@ -790,6 +796,22 @@ export default function AttendancePage() {
                       <SelectItem value="absent">غائب</SelectItem>
                       <SelectItem value="late">متأخر</SelectItem>
                       <SelectItem value="excused">معذور</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-36">
+                  <Select value={filterLevel} onValueChange={setFilterLevel}>
+                    <SelectTrigger data-testid="select-filter-level">
+                      <SelectValue placeholder="المستوى" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">المستوى - الكل</SelectItem>
+                      <SelectItem value="1">مبتدئ (الجزء 30-26)</SelectItem>
+                      <SelectItem value="2">متوسط (الجزء 25-21)</SelectItem>
+                      <SelectItem value="3">متقدم (الجزء 20-16)</SelectItem>
+                      <SelectItem value="4">متميز (الجزء 15-11)</SelectItem>
+                      <SelectItem value="5">خبير (الجزء 10-6)</SelectItem>
+                      <SelectItem value="6">حافظ (الجزء 5-1)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

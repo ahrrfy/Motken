@@ -156,6 +156,7 @@ export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterLevel, setFilterLevel] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -1356,6 +1357,20 @@ export default function CoursesPage() {
                 {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterLevel} onValueChange={setFilterLevel}>
+              <SelectTrigger className="w-full md:w-40" data-testid="select-filter-level">
+                <SelectValue placeholder="المستوى" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">المستوى - الكل</SelectItem>
+                <SelectItem value="1">مبتدئ (الجزء 30-26)</SelectItem>
+                <SelectItem value="2">متوسط (الجزء 25-21)</SelectItem>
+                <SelectItem value="3">متقدم (الجزء 20-16)</SelectItem>
+                <SelectItem value="4">متميز (الجزء 15-11)</SelectItem>
+                <SelectItem value="5">خبير (الجزء 10-6)</SelectItem>
+                <SelectItem value="6">حافظ (الجزء 5-1)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
