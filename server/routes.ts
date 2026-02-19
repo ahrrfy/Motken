@@ -30,8 +30,8 @@ async function logActivity(user: any, action: string, module: string, details?: 
 }
 
 function getTeacherLevelsArray(teacher: any): number[] {
-  if (!teacher.teacherLevels) return [1, 2, 3, 4, 5];
-  return teacher.teacherLevels.split(",").map(Number).filter((n: number) => n >= 1 && n <= 5);
+  if (!teacher.teacherLevels) return [1, 2, 3, 4, 5, 6];
+  return teacher.teacherLevels.split(",").map(Number).filter((n: number) => n >= 1 && n <= 6);
 }
 
 function canTeacherAccessStudent(teacher: any, student: any): boolean {
@@ -47,8 +47,9 @@ function canTeacherAccessAssignment(teacher: any, assignment: any, student: any)
 }
 
 function calculateStudentLevel(juzCount: number): number {
-  if (juzCount >= 29) return 5;
-  if (juzCount >= 21) return 4;
+  if (juzCount >= 26) return 6;
+  if (juzCount >= 21) return 5;
+  if (juzCount >= 16) return 4;
   if (juzCount >= 11) return 3;
   if (juzCount >= 6) return 2;
   return 1;
@@ -59,7 +60,8 @@ const LEVEL_NAMES: Record<number, { ar: string; en: string }> = {
   2: { ar: "متوسط", en: "Intermediate" },
   3: { ar: "متقدم", en: "Advanced" },
   4: { ar: "متميز", en: "Distinguished" },
-  5: { ar: "خاتم", en: "Hafiz" },
+  5: { ar: "خبير", en: "Expert" },
+  6: { ar: "حافظ", en: "Hafiz" },
 };
 
 export async function registerRoutes(
@@ -436,7 +438,7 @@ export async function registerRoutes(
         role: req.body.role, mosqueId: req.body.mosqueId, teacherId,
         phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan,
         level: req.body.role === "student" ? (level || 1) : undefined,
-        teacherLevels: req.body.role === "teacher" ? (teacherLevels || "1,2,3,4,5") : undefined,
+        teacherLevels: req.body.role === "teacher" ? (teacherLevels || "1,2,3,4,5,6") : undefined,
       };
       const user = await storage.createUser(data);
       const { password, ...safe } = user;
@@ -1100,11 +1102,12 @@ export async function registerRoutes(
     res.json({
       levels: LEVEL_NAMES,
       description: {
-        1: "0-5 أجزاء",
-        2: "6-10 أجزاء",
-        3: "11-20 جزء",
-        4: "21-28 جزء",
-        5: "29-30 جزء",
+        1: "الجزء 30-26 (5 أجزاء)",
+        2: "الجزء 25-21 (5 أجزاء)",
+        3: "الجزء 20-16 (5 أجزاء)",
+        4: "الجزء 15-11 (5 أجزاء)",
+        5: "الجزء 10-6 (5 أجزاء)",
+        6: "الجزء 5-1 (5 أجزاء)",
       },
     });
   });
@@ -1154,7 +1157,7 @@ export async function registerRoutes(
       if (!levels || !Array.isArray(levels) || levels.length === 0) {
         return res.status(400).json({ message: "يجب تحديد مستوى واحد على الأقل" });
       }
-      const validLevels = levels.filter((l: number) => l >= 1 && l <= 5);
+      const validLevels = levels.filter((l: number) => l >= 1 && l <= 6);
       if (validLevels.length === 0) return res.status(400).json({ message: "المستويات غير صحيحة" });
       const teacherLevels = validLevels.sort().join(",");
       await storage.updateUser(req.params.teacherId, { teacherLevels });
@@ -1180,7 +1183,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "غير مصرح" });
       }
       const { level } = req.body;
-      if (!level || level < 1 || level > 5) return res.status(400).json({ message: "المستوى يجب أن يكون بين 1 و 5" });
+      if (!level || level < 1 || level > 6) return res.status(400).json({ message: "المستوى يجب أن يكون بين 1 و 6" });
       const oldLevel = student.level || 1;
       await storage.updateUser(req.params.studentId, { level });
       if (oldLevel !== level) {
@@ -1211,7 +1214,7 @@ export async function registerRoutes(
       const students = await storage.getUsersByMosqueAndRole(mosqueId, "student");
       const teachers = await storage.getUsersByMosqueAndRole(mosqueId, "teacher");
       const levelStats: Record<number, { students: number; teachers: string[] }> = {};
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 6; i++) {
         levelStats[i] = { students: 0, teachers: [] };
       }
       for (const s of students) {

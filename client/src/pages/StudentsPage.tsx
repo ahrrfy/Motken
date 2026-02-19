@@ -55,15 +55,16 @@ interface ProfileStats {
   badges: { total: number; list: any[] };
 }
 
-const LEVEL_NAMES: Record<number, string> = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم", 4: "متميز", 5: "خاتم" };
+const LEVEL_NAMES: Record<number, string> = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم", 4: "متميز", 5: "خبير", 6: "حافظ" };
 const LEVEL_COLORS: Record<number, string> = {
   1: "bg-amber-100 text-amber-700",
   2: "bg-blue-100 text-blue-700",
   3: "bg-emerald-100 text-emerald-700",
   4: "bg-purple-100 text-purple-700",
-  5: "bg-yellow-100 text-yellow-800",
+  5: "bg-orange-100 text-orange-700",
+  6: "bg-yellow-100 text-yellow-800",
 };
-const LEVEL_RANGES: Record<number, string> = { 1: "0-5 أجزاء", 2: "6-10 أجزاء", 3: "11-20 جزء", 4: "21-28 جزء", 5: "29-30 جزء" };
+const LEVEL_RANGES: Record<number, string> = { 1: "الجزء 30-26", 2: "الجزء 25-21", 3: "الجزء 20-16", 4: "الجزء 15-11", 5: "الجزء 10-6", 6: "الجزء 5-1" };
 
 function getStudentLevel(student: Student): { label: string; color: string; level: number } {
   const lv = student.level || 1;
@@ -674,11 +675,12 @@ export default function StudentsPage() {
                         <SelectValue placeholder="اختر مستوى الحفظ" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">المستوى 1 - مبتدئ (0-5 أجزاء)</SelectItem>
-                        <SelectItem value="2">المستوى 2 - متوسط (6-10 أجزاء)</SelectItem>
-                        <SelectItem value="3">المستوى 3 - متقدم (11-20 جزء)</SelectItem>
-                        <SelectItem value="4">المستوى 4 - متميز (21-28 جزء)</SelectItem>
-                        <SelectItem value="5">المستوى 5 - خاتم (29-30 جزء)</SelectItem>
+                        <SelectItem value="1">المستوى 1 - مبتدئ (الجزء 30-26)</SelectItem>
+                        <SelectItem value="2">المستوى 2 - متوسط (الجزء 25-21)</SelectItem>
+                        <SelectItem value="3">المستوى 3 - متقدم (الجزء 20-16)</SelectItem>
+                        <SelectItem value="4">المستوى 4 - متميز (الجزء 15-11)</SelectItem>
+                        <SelectItem value="5">المستوى 5 - خبير (الجزء 10-6)</SelectItem>
+                        <SelectItem value="6">المستوى 6 - حافظ (الجزء 5-1)</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">يحدد المستوى أي الأساتذة يمكنهم التعامل مع هذا الطالب</p>
@@ -876,11 +878,12 @@ export default function StudentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">المستوى - الكل</SelectItem>
-                  <SelectItem value="1">مبتدئ (0-5 أجزاء)</SelectItem>
-                  <SelectItem value="2">متوسط (6-10 أجزاء)</SelectItem>
-                  <SelectItem value="3">متقدم (11-20 جزء)</SelectItem>
-                  <SelectItem value="4">متميز (21-28 جزء)</SelectItem>
-                  <SelectItem value="5">خاتم (29-30 جزء)</SelectItem>
+                  <SelectItem value="1">مبتدئ (الجزء 30-26)</SelectItem>
+                  <SelectItem value="2">متوسط (الجزء 25-21)</SelectItem>
+                  <SelectItem value="3">متقدم (الجزء 20-16)</SelectItem>
+                  <SelectItem value="4">متميز (الجزء 15-11)</SelectItem>
+                  <SelectItem value="5">خبير (الجزء 10-6)</SelectItem>
+                  <SelectItem value="6">حافظ (الجزء 5-1)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
