@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { isValidIraqiPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -110,6 +110,12 @@ export default function StudentsPage() {
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
 
+  const [pendingStudents, setPendingStudents] = useState<any[]>([]);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectStudentId, setRejectStudentId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [pendingActionLoading, setPendingActionLoading] = useState<string | null>(null);
+
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -194,7 +200,62 @@ export default function StudentsPage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchPendingStudents = async () => {
+    if (!isSupervisor) return;
+    try {
+      const res = await fetch("/api/users/pending-approval", { credentials: "include" });
+      if (res.ok) setPendingStudents(await res.json());
+    } catch {}
+  };
+
+  const handleApprove = async (id: string) => {
+    setPendingActionLoading(id);
+    try {
+      const res = await fetch(`/api/users/${id}/approve`, { method: "POST", credentials: "include" });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تمت الموافقة على الطالب", className: "bg-green-50 border-green-200 text-green-800" });
+        fetchPendingStudents();
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في الموافقة", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setPendingActionLoading(null);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectStudentId) return;
+    setPendingActionLoading(rejectStudentId);
+    try {
+      const res = await fetch(`/api/users/${rejectStudentId}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reason: rejectReason }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم رفض الطالب", className: "bg-red-50 border-red-200 text-red-800" });
+        setRejectDialogOpen(false);
+        setRejectStudentId(null);
+        setRejectReason("");
+        fetchPendingStudents();
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في الرفض", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setPendingActionLoading(null);
+    }
+  };
+
+  useEffect(() => { fetchData(); fetchPendingStudents(); }, []);
 
   const handleExport = () => {
     const studentsToExport = selectedStudents.size > 0
@@ -762,6 +823,97 @@ export default function StudentsPage() {
           </Card>
         </div>
       )}
+
+      {isSupervisor && pendingStudents.length > 0 && (
+        <Card className="border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-md" data-testid="pending-students-section">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-amber-100">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <CardTitle className="text-lg text-amber-800" data-testid="text-pending-count">
+                  طلاب بانتظار الموافقة ({pendingStudents.length})
+                </CardTitle>
+                <p className="text-sm text-amber-600">يرجى مراجعة الطلبات والموافقة عليها أو رفضها</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendingStudents.map((ps) => (
+                <div key={ps.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-white/80 border border-amber-200 rounded-lg" data-testid={`pending-student-${ps.id}`}>
+                  <div className="flex-1 space-y-1">
+                    <p className="font-bold text-amber-900" data-testid={`pending-name-${ps.id}`}>{ps.name}</p>
+                    <div className="flex flex-wrap gap-3 text-sm text-amber-700">
+                      {ps.phone && <span>📱 {ps.phone}</span>}
+                      {ps.parentPhone && <span>👨‍👩‍👦 {ps.parentPhone}</span>}
+                      {ps.teacherId && <span>👨‍🏫 {teachers.find(t => t.id === ps.teacherId)?.name || "غير محدد"}</span>}
+                      <Badge className={LEVEL_COLORS[ps.level || 1] || LEVEL_COLORS[1]}>
+                        {LEVEL_NAMES[ps.level || 1] || "مبتدئ"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleApprove(ps.id)}
+                      disabled={pendingActionLoading === ps.id}
+                      data-testid={`button-approve-${ps.id}`}
+                    >
+                      {pendingActionLoading === ps.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                      موافقة
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 border-red-300 text-red-600 hover:bg-red-50"
+                      onClick={() => { setRejectStudentId(ps.id); setRejectReason(""); setRejectDialogOpen(true); }}
+                      disabled={pendingActionLoading === ps.id}
+                      data-testid={`button-reject-${ps.id}`}
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      رفض
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>سبب الرفض</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>يرجى كتابة سبب رفض الطالب</Label>
+              <Textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="سبب الرفض..."
+                data-testid="input-reject-reason"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setRejectDialogOpen(false)} data-testid="button-cancel-reject">إلغاء</Button>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={pendingActionLoading !== null}
+                data-testid="button-confirm-reject"
+              >
+                {pendingActionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
+                تأكيد الرفض
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {selectedStudents.size > 0 && !isStudent && (
         <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg" data-testid="batch-actions-bar">
