@@ -28,6 +28,7 @@ interface Student {
   id: string;
   name: string;
   username?: string;
+  level?: number;
 }
 
 interface Assignment {
@@ -153,6 +154,7 @@ export default function AssignmentsExamsPage() {
   const [assignFilterSurah, setAssignFilterSurah] = useState("all");
   const [assignFilterDateFrom, setAssignFilterDateFrom] = useState("");
   const [assignFilterDateTo, setAssignFilterDateTo] = useState("");
+  const [filterLevel, setFilterLevel] = useState("all");
 
   const [examTitle, setExamTitle] = useState("");
   const [examSelectedSurah, setExamSelectedSurah] = useState("");
@@ -628,7 +630,7 @@ export default function AssignmentsExamsPage() {
     return students.find(s => s.id === studentId)?.name || studentId;
   };
 
-  const assignHasActiveFilters = assignSearchTerm || assignFilterStatus !== "all" || assignFilterSurah !== "all" || assignFilterDateFrom || assignFilterDateTo;
+  const assignHasActiveFilters = assignSearchTerm || assignFilterStatus !== "all" || assignFilterSurah !== "all" || assignFilterDateFrom || assignFilterDateTo || filterLevel !== "all";
 
   const clearAssignFilters = () => {
     setAssignSearchTerm("");
@@ -636,6 +638,7 @@ export default function AssignmentsExamsPage() {
     setAssignFilterSurah("all");
     setAssignFilterDateFrom("");
     setAssignFilterDateTo("");
+    setFilterLevel("all");
   };
 
   const filteredAssignments = assignments.filter(a => {
@@ -645,6 +648,10 @@ export default function AssignmentsExamsPage() {
     }
     if (assignFilterStatus !== "all" && a.status !== assignFilterStatus) return false;
     if (assignFilterSurah !== "all" && a.surahName !== assignFilterSurah) return false;
+    if (filterLevel !== "all") {
+      const student = students.find(s => s.id === a.studentId);
+      if (student && String(student.level || 1) !== filterLevel) return false;
+    }
     if (assignFilterDateFrom && a.scheduledDate) {
       if (new Date(a.scheduledDate) < new Date(assignFilterDateFrom)) return false;
     }
@@ -944,6 +951,22 @@ export default function AssignmentsExamsPage() {
                           {uniqueSurahNames.map(name => (
                             <SelectItem key={name} value={name}>{name}</SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-full sm:w-36">
+                      <Select value={filterLevel} onValueChange={setFilterLevel}>
+                        <SelectTrigger data-testid="select-filter-level">
+                          <SelectValue placeholder="المستوى" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">المستوى - الكل</SelectItem>
+                          <SelectItem value="1">مبتدئ (الجزء 30-26)</SelectItem>
+                          <SelectItem value="2">متوسط (الجزء 25-21)</SelectItem>
+                          <SelectItem value="3">متقدم (الجزء 20-16)</SelectItem>
+                          <SelectItem value="4">متميز (الجزء 15-11)</SelectItem>
+                          <SelectItem value="5">خبير (الجزء 10-6)</SelectItem>
+                          <SelectItem value="6">حافظ (الجزء 5-1)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

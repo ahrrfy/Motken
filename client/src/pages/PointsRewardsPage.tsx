@@ -51,6 +51,7 @@ interface StudentUser {
   id: string;
   name: string;
   username: string;
+  level?: number;
 }
 
 const POINT_CATEGORIES = [
@@ -169,6 +170,7 @@ export default function PointsRewardsPage() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterLevel, setFilterLevel] = useState("all");
   const [filterDateTo, setFilterDateTo] = useState("");
 
   const isStudent = user?.role === "student";
@@ -361,6 +363,10 @@ export default function PointsRewardsPage() {
       if (filterCategory !== "all" && p.category !== filterCategory) return false;
       if (filterType === "positive" && p.amount < 0) return false;
       if (filterType === "negative" && p.amount >= 0) return false;
+      if (filterLevel !== "all") {
+        const student = students.find(s => s.id === p.userId);
+        if (student && String(student.level || 1) !== filterLevel) return false;
+      }
       if (filterDateFrom) {
         const from = new Date(filterDateFrom);
         if (new Date(p.createdAt) < from) return false;
@@ -372,7 +378,7 @@ export default function PointsRewardsPage() {
       }
       return true;
     });
-  }, [points, searchQuery, filterCategory, filterType, filterDateFrom, filterDateTo, students]);
+  }, [points, searchQuery, filterCategory, filterType, filterDateFrom, filterDateTo, filterLevel, students]);
 
   const studentPointsSummary = useMemo(() => {
     const map: Record<string, { name: string; total: number; categories: Record<string, number>; thisWeek: number; lastWeek: number }> = {};
@@ -717,7 +723,7 @@ export default function PointsRewardsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
                 <Input
                   placeholder="بحث باسم الطالب..."
                   value={searchQuery}
@@ -743,6 +749,20 @@ export default function PointsRewardsPage() {
                     <SelectItem value="all">الكل</SelectItem>
                     <SelectItem value="positive">منح (موجب)</SelectItem>
                     <SelectItem value="negative">خصم (سالب)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterLevel} onValueChange={setFilterLevel}>
+                  <SelectTrigger data-testid="select-filter-level">
+                    <SelectValue placeholder="المستوى" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">المستوى - الكل</SelectItem>
+                    <SelectItem value="1">مبتدئ (الجزء 30-26)</SelectItem>
+                    <SelectItem value="2">متوسط (الجزء 25-21)</SelectItem>
+                    <SelectItem value="3">متقدم (الجزء 20-16)</SelectItem>
+                    <SelectItem value="4">متميز (الجزء 15-11)</SelectItem>
+                    <SelectItem value="5">خبير (الجزء 10-6)</SelectItem>
+                    <SelectItem value="6">حافظ (الجزء 5-1)</SelectItem>
                   </SelectContent>
                 </Select>
                 <Input

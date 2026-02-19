@@ -19,6 +19,7 @@ interface RatingUser {
   name: string;
   username: string;
   role: string;
+  level?: number;
 }
 
 interface Rating {
@@ -50,6 +51,7 @@ export default function RatingsPage() {
 
   const [ratingSearchTerm, setRatingSearchTerm] = useState("");
   const [filterStars, setFilterStars] = useState("all");
+  const [filterLevel, setFilterLevel] = useState("all");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
 
@@ -289,11 +291,12 @@ export default function RatingsPage() {
     toast({ title: "تم التصدير", description: "تم تصدير التقييمات بنجاح" });
   };
 
-  const ratingsHasActiveFilters = ratingSearchTerm || filterStars !== "all" || filterDateFrom || filterDateTo;
+  const ratingsHasActiveFilters = ratingSearchTerm || filterStars !== "all" || filterLevel !== "all" || filterDateFrom || filterDateTo;
 
   const clearRatingFilters = () => {
     setRatingSearchTerm("");
     setFilterStars("all");
+    setFilterLevel("all");
     setFilterDateFrom("");
     setFilterDateTo("");
   };
@@ -304,6 +307,7 @@ export default function RatingsPage() {
       const avg = getAverageStars(u.id);
       if (Math.round(avg) !== parseInt(filterStars)) return false;
     }
+    if (filterLevel !== "all" && String(u.level || 1) !== filterLevel) return false;
     return true;
   });
 
@@ -506,6 +510,22 @@ export default function RatingsPage() {
                   <SelectItem value="3">3 نجوم</SelectItem>
                   <SelectItem value="2">نجمتان</SelectItem>
                   <SelectItem value="1">نجمة واحدة</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterLevel} onValueChange={setFilterLevel}>
+                <SelectTrigger data-testid="select-filter-level">
+                  <SelectValue placeholder="المستوى" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">المستوى - الكل</SelectItem>
+                  <SelectItem value="1">مبتدئ (الجزء 30-26)</SelectItem>
+                  <SelectItem value="2">متوسط (الجزء 25-21)</SelectItem>
+                  <SelectItem value="3">متقدم (الجزء 20-16)</SelectItem>
+                  <SelectItem value="4">متميز (الجزء 15-11)</SelectItem>
+                  <SelectItem value="5">خبير (الجزء 10-6)</SelectItem>
+                  <SelectItem value="6">حافظ (الجزء 5-1)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
