@@ -721,7 +721,7 @@ export default function QuranTracker() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
-        <TabsList className="w-full grid grid-cols-6 h-11">
+        <TabsList className="w-full grid grid-cols-7 h-11">
           <TabsTrigger value="mushaf" className="gap-1 text-[10px] sm:text-sm" data-testid="tab-mushaf">
             <BookOpen className="w-4 h-4" />
             <span className="hidden sm:inline">المصحف</span>
@@ -741,6 +741,10 @@ export default function QuranTracker() {
           <TabsTrigger value="surah-map" className="gap-1 text-[10px] sm:text-sm" data-testid="tab-surah-map">
             <BarChart3 className="w-4 h-4" />
             <span className="hidden sm:inline">خريطة السور</span>
+          </TabsTrigger>
+          <TabsTrigger value="heatmap" data-testid="tab-heatmap" className="gap-1.5 text-[10px] sm:text-sm">
+            <MapIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">الخريطة الحرارية</span>
           </TabsTrigger>
           <TabsTrigger value="activity" className="gap-1 text-[10px] sm:text-sm" data-testid="tab-activity">
             <Clock className="w-4 h-4" />
@@ -1340,6 +1344,152 @@ export default function QuranTracker() {
               {!assignmentsLoading && filteredSurahs.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground" data-testid="no-results">
                   لا توجد نتائج للبحث
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="heatmap" className="mt-4 space-y-4">
+          <Card data-testid="quran-heatmap-card">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapIcon className="w-5 h-5" />
+                خريطة المصحف الحرارية
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                عرض بصري لتقدم الحفظ عبر أجزاء القرآن الكريم
+              </p>
+              <div className="flex flex-wrap gap-4 text-xs mt-2">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500"></span> حفظ متقن (&gt;80%)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-300"></span> حفظ جيد (60-80%)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-400"></span> قيد المراجعة (30-60%)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-200"></span> بداية (1-30%)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-slate-200 dark:bg-slate-700"></span> لم يبدأ (0%)</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {assignmentsLoading ? (
+                <div className="flex items-center justify-center h-40">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="overflow-x-auto">
+                    <svg width="100%" viewBox="0 0 620 220" className="mx-auto" data-testid="svg-heatmap">
+                      {Array.from({ length: 30 }, (_, i) => {
+                        const juzNum = i + 1;
+                        const col = i % 10;
+                        const row = Math.floor(i / 10);
+                        const x = col * 60 + 10;
+                        const y = row * 70 + 30;
+
+                        const juzSurahs = quranSurahs.filter(s => surahMeta[s.number]?.juz === juzNum);
+                        let juzTotalVerses = 0;
+                        let juzMemorizedVerses = 0;
+                        juzSurahs.forEach(s => {
+                          juzTotalVerses += s.versesCount;
+                          const entry = surahAssignmentMap[s.name];
+                          if (entry) juzMemorizedVerses += entry.versesMemorized.size;
+                        });
+                        const juzPercent = juzTotalVerses > 0 ? Math.round((juzMemorizedVerses / juzTotalVerses) * 100) : 0;
+
+                        const fillColor = juzPercent > 80 ? "#10b981" :
+                                          juzPercent > 60 ? "#6ee7b7" :
+                                          juzPercent > 30 ? "#fbbf24" :
+                                          juzPercent > 0 ? "#fde68a" :
+                                          "#e2e8f0";
+
+                        return (
+                          <g key={juzNum} data-testid={`heatmap-juz-${juzNum}`}>
+                            <rect
+                              x={x} y={y} width={50} height={50} rx={8}
+                              fill={fillColor}
+                              stroke={juzPercent > 0 ? "#059669" : "#cbd5e1"}
+                              strokeWidth={juzPercent > 80 ? 2 : 1}
+                              className="transition-all duration-300 cursor-pointer hover:opacity-80"
+                            />
+                            <text x={x + 25} y={y + 22} textAnchor="middle" fontSize="12" fontWeight="bold" fill={juzPercent > 30 ? "#fff" : "#64748b"}>
+                              {juzNum}
+                            </text>
+                            <text x={x + 25} y={y + 38} textAnchor="middle" fontSize="9" fill={juzPercent > 30 ? "rgba(255,255,255,0.8)" : "#94a3b8"}>
+                              {juzPercent}%
+                            </text>
+                            {col === 0 && (
+                              <text x={0} y={y + 30} fontSize="10" fill="#94a3b8" textAnchor="start">
+                                {row === 0 ? "١-١٠" : row === 1 ? "١١-٢٠" : "٢١-٣٠"}
+                              </text>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      خريطة تفصيلية للسور (114 سورة)
+                    </h3>
+                    <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(20px, 1fr))" }} data-testid="surah-heatmap-grid">
+                      {quranSurahs.map((surah) => {
+                        const entry = surahAssignmentMap[surah.name];
+                        const totalVerses = surah.versesCount;
+                        const memorizedVerses = entry ? entry.versesMemorized.size : 0;
+                        const pct = totalVerses > 0 ? Math.round((memorizedVerses / totalVerses) * 100) : 0;
+
+                        const bg = pct > 80 ? "bg-emerald-500" :
+                                   pct > 60 ? "bg-emerald-300" :
+                                   pct > 30 ? "bg-amber-400" :
+                                   pct > 0 ? "bg-amber-200" :
+                                   "bg-slate-200 dark:bg-slate-700";
+
+                        return (
+                          <button
+                            key={surah.number}
+                            onClick={() => {
+                              setSelectedSurah(String(surah.number));
+                              setActiveTab("mushaf");
+                            }}
+                            className={`w-full aspect-square rounded-sm ${bg} transition-all duration-200 hover:scale-125 hover:z-10 hover:shadow-lg relative group cursor-pointer`}
+                            title={`${surah.name} - ${pct}%`}
+                            data-testid={`heatmap-surah-${surah.number}`}
+                          >
+                            <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                              {surah.name} ({pct}%)
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-emerald-600">
+                        {quranSurahs.filter(s => { const e = surahAssignmentMap[s.name]; return e && e.versesMemorized.size >= s.versesCount * 0.8; }).length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">سورة متقنة</p>
+                    </div>
+                    <div className="bg-emerald-50/60 dark:bg-emerald-950/20 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-emerald-500">
+                        {quranSurahs.filter(s => { const e = surahAssignmentMap[s.name]; const pct = e ? (e.versesMemorized.size / s.versesCount) * 100 : 0; return pct >= 30 && pct < 80; }).length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">قيد التقدم</p>
+                    </div>
+                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-amber-600">
+                        {quranSurahs.filter(s => { const e = surahAssignmentMap[s.name]; return e && e.versesMemorized.size > 0 && e.versesMemorized.size < s.versesCount * 0.3; }).length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">بداية الحفظ</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-950/30 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-slate-500">
+                        {quranSurahs.filter(s => { const e = surahAssignmentMap[s.name]; return !e || e.versesMemorized.size === 0; }).length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">لم يبدأ</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
