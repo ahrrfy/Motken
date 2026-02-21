@@ -721,7 +721,7 @@ export default function QuranTracker() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
-        <TabsList className="w-full grid grid-cols-7 h-11">
+        <TabsList className="h-11">
           <TabsTrigger value="mushaf" className="gap-1 text-[10px] sm:text-sm" data-testid="tab-mushaf">
             <BookOpen className="w-4 h-4" />
             <span className="hidden sm:inline">المصحف</span>

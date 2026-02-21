@@ -732,7 +732,7 @@ export default function AssignmentsExamsPage() {
       </div>
 
       <Tabs defaultValue="assignments" dir="rtl">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList>
           <TabsTrigger value="assignments" className="gap-2" data-testid="tab-assignments">
             📝 الواجبات
           </TabsTrigger>

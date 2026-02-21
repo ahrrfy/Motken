@@ -368,7 +368,7 @@ export default function OnlineUsersPage() {
       </div>
 
       <Tabs defaultValue="sessions" className="w-full">
-        <TabsList className="w-full sm:w-auto">
+        <TabsList>
           <TabsTrigger value="sessions" data-testid="tab-sessions" className="flex-1 sm:flex-none gap-2">
             <Globe className="w-4 h-4" />
             الجلسات النشطة
