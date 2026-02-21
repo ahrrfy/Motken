@@ -164,7 +164,7 @@ export default function DashboardPage() {
   const currentHadith = authenticHadiths[hadithIndex];
 
   return (
-    <div className="p-4 md:p-6 space-y-5" data-testid="dashboard-page">
+    <div className="p-4 md:p-6 space-y-5 page-transition" data-testid="dashboard-page">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-gradient-to-l from-accent/5 to-transparent p-4 md:p-5 rounded-xl border border-accent/10">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground" data-testid="text-page-title">
@@ -222,7 +222,7 @@ export default function DashboardPage() {
 
       {!isStudent && stats && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 stagger-children">
             {isAdmin && (
               <>
                 <StatCard
@@ -492,7 +492,7 @@ export default function DashboardPage() {
           <Sparkles className="w-5 h-5 text-accent" />
           {isEn ? "Quick Access" : "وصول سريع"}
         </h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3 stagger-children">
           {quickLinks.map((link) => (
             <Link key={link.href} href={link.href}>
               <div

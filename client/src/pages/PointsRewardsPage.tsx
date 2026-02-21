@@ -458,7 +458,7 @@ export default function PointsRewardsPage() {
   const totalMyPoints = points.reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 page-transition" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-emerald-700" data-testid="text-page-title">
