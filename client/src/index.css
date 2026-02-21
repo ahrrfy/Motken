@@ -194,8 +194,46 @@
 
 /* Print styles */
 @media print {
-  .no-print {
+  .no-print,
+  [data-testid="tabs-id-cards-qr"],
+  [data-testid="text-idcards-title"],
+  [data-testid="select-filter-role-trigger"],
+  [data-testid="button-print-idcard"],
+  [data-testid="button-export-pdf"],
+  [data-testid="checkbox-select-all"],
+  [data-testid="badge-selected-count"],
+  nav, header, aside, footer,
+  .sidebar, .no-print {
     display: none !important;
+  }
+
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  [data-testid="print-area"] {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    padding: 0 !important;
+  }
+
+  [data-testid^="card-idcard-"] {
+    width: 9cm !important;
+    height: 6cm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #d1d5db !important;
+    margin: 4px !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
   }
 }
 
