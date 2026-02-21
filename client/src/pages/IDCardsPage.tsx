@@ -23,6 +23,22 @@ interface UserData {
   avatar?: string;
   isActive?: boolean;
   createdAt?: string;
+  level?: number | null;
+}
+
+const levelNames = ["مبتدئ", "متوسط", "متقدم", "متميز", "خبير", "حافظ"];
+const levelColors = [
+  { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-300", hex: "#3b82f6", hexBg: "#dbeafe" },
+  { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-300", hex: "#10b981", hexBg: "#d1fae5" },
+  { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-300", hex: "#8b5cf6", hexBg: "#ede9fe" },
+  { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-300", hex: "#f59e0b", hexBg: "#fef3c7" },
+  { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-300", hex: "#f97316", hexBg: "#ffedd5" },
+  { bg: "bg-red-100", text: "text-red-700", border: "border-red-300", hex: "#ef4444", hexBg: "#fee2e2" },
+];
+
+function getLevelInfo(level?: number | null) {
+  if (!level || level < 1 || level > 6) return null;
+  return { name: levelNames[level - 1], colors: levelColors[level - 1] };
 }
 
 interface Mosque {
@@ -65,28 +81,42 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
   const roleLabel = roleTranslations[user.role] || user.role;
   const formattedId = formatUserId(user.id);
   const joinDate = formatDate(user.createdAt);
+  const levelInfo = getLevelInfo(user.level);
   const avatarSection = user.avatar
     ? `<img src="${user.avatar}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;" />`
-    : `<span style="font-size:22px;font-weight:bold;color:#16213e;">${user.name.charAt(0)}</span>`;
+    : `<span style="font-size:24px;font-weight:bold;color:#16213e;">${user.name.charAt(0)}</span>`;
 
   const mosqueLogoSection = mosqueImage
-    ? `<div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);overflow:hidden;">
-        <img src="${mosqueImage}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" />
+    ? `<div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+        <img src="${mosqueImage}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
       </div>`
     : "";
 
   const headerTitle = mosqueName
-    ? `<h2 style="font-size:11px;font-weight:bold;margin:0;line-height:1.2;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${mosqueName}</h2>`
-    : `<h2 style="font-size:14px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;">مُتْقِن</h2>`;
+    ? `<h2 style="font-size:12px;font-weight:bold;margin:0;line-height:1.2;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${mosqueName}</h2>`
+    : `<h2 style="font-size:14px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,0.3);">مُتْقِن</h2>`;
+
+  const levelBadgeHtml = levelInfo
+    ? `<span style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9999px;background:${levelInfo.colors.hexBg};color:${levelInfo.colors.hex};font-size:9px;font-weight:600;border:1px solid ${levelInfo.colors.hex}30;">${levelInfo.name}</span>`
+    : "";
+
+  const levelRowHtml = levelInfo
+    ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <span style="color:#9ca3af;font-size:10px;">المستوى</span>
+        <span style="font-weight:500;font-size:10px;color:${levelInfo.colors.hex};">${levelInfo.name}</span>
+      </div>`
+    : "";
 
   return `
-    <div style="width:9cm;height:6cm;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;background:white;display:inline-flex;flex-direction:column;margin:8px;page-break-inside:avoid;font-family:'Tajawal',sans-serif;" dir="rtl">
-      <div style="height:55px;background:#16213e;position:relative;overflow:hidden;flex-shrink:0;">
+    <div style="width:9cm;height:6cm;border-radius:12px;overflow:hidden;border:2px solid #e5e7eb;background:white;display:inline-flex;flex-direction:column;margin:8px;page-break-inside:avoid;font-family:'Tajawal',sans-serif;position:relative;" dir="rtl">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(to left,#3b82f6,#8b5cf6,#ec4899);"></div>
+      <div style="height:60px;background:linear-gradient(to left,#16213e,#1a1a2e,#0f3460);position:relative;overflow:hidden;flex-shrink:0;">
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;opacity:0.1;">
           <defs>
             <pattern id="p-${user.id}" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="white" stroke-width="0.5"/>
               <circle cx="20" cy="20" r="8" fill="none" stroke="white" stroke-width="0.5"/>
+              <circle cx="20" cy="20" r="3" fill="none" stroke="white" stroke-width="0.3"/>
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#p-${user.id})"/>
@@ -99,47 +129,49 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
               <p style="font-size:8px;opacity:0.8;margin:0;">لإدارة حلقات القرآن الكريم</p>
             </div>
           </div>
-          <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);">
-            <img src="/logo.png" style="width:24px;height:24px;border-radius:50%;object-fit:contain;" />
+          <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+            <img src="/logo.png" style="width:28px;height:28px;border-radius:50%;object-fit:contain;" />
           </div>
         </div>
       </div>
-      <div style="display:flex;flex:1;padding:6px 10px 4px;gap:8px;align-items:stretch;">
+      <div style="display:flex;flex:1;padding:8px 10px 4px;gap:10px;align-items:stretch;">
         <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;justify-content:center;">
-          <div style="width:50px;height:50px;border-radius:50%;border:2px solid rgba(22,33,62,0.2);overflow:hidden;background:rgba(22,33,62,0.05);display:flex;align-items:center;justify-content:center;margin-bottom:4px;">
+          <div style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(22,33,62,0.2);overflow:hidden;background:linear-gradient(135deg,rgba(22,33,62,0.1),rgba(22,33,62,0.05));display:flex;align-items:center;justify-content:center;margin-bottom:4px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
             ${avatarSection}
           </div>
-          <h3 style="font-size:14px;font-weight:bold;color:#1f2937;text-align:center;margin:0;line-height:1.2;">${user.name}</h3>
+          <h3 style="font-size:13px;font-weight:bold;color:#1f2937;text-align:center;margin:0;line-height:1.2;">${user.name}</h3>
           <span style="display:inline-block;margin-top:2px;padding:1px 8px;border-radius:9999px;background:#f3f4f6;color:#4b5563;font-size:10px;">${roleLabel}</span>
+          ${levelBadgeHtml}
         </div>
         <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
-          <div style="padding:4px 6px;background:#f9fafb;border-radius:6px;border:1px solid #f3f4f6;font-size:11px;color:#4b5563;">
+          <div style="padding:5px 8px;background:linear-gradient(135deg,#f9fafb,#f1f5f9);border-radius:8px;border:1px solid #e2e8f0;font-size:11px;color:#4b5563;box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="color:#9ca3af;">رقم الهوية</span>
-              <span style="font-family:monospace;font-weight:600;color:#16213e;font-size:10px;">${formattedId}</span>
+              <span style="color:#9ca3af;font-size:10px;">رقم الهوية</span>
+              <span style="font-family:monospace;font-weight:600;color:#16213e;font-size:10px;background:rgba(22,33,62,0.05);padding:1px 4px;border-radius:4px;">${formattedId}</span>
             </div>
             ${mosqueName ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="color:#9ca3af;">الجامع/المركز</span>
+              <span style="color:#9ca3af;font-size:10px;">الجامع/المركز</span>
               <span style="font-weight:500;font-size:10px;">${mosqueName}</span>
             </div>` : ""}
+            ${levelRowHtml}
             ${user.phone ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="color:#9ca3af;">الهاتف</span>
+              <span style="color:#9ca3af;font-size:10px;">الهاتف</span>
               <span dir="ltr" style="font-size:10px;">${user.phone}</span>
             </div>` : ""}
             <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="color:#9ca3af;">الانضمام</span>
+              <span style="color:#9ca3af;font-size:10px;">الانضمام</span>
               <span style="font-size:10px;">${joinDate}</span>
             </div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:center;margin-top:4px;gap:4px;">
-            <div style="padding:3px;background:white;border:1px solid #e5e7eb;border-radius:6px;">
-              <img src="${qrDataUrl}" style="width:60px;height:60px;" alt="QR" />
+          <div style="display:flex;align-items:center;justify-content:center;margin-top:5px;gap:4px;">
+            <div style="padding:3px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+              <img src="${qrDataUrl}" style="width:58px;height:58px;" alt="QR" />
             </div>
             <p style="font-size:7px;color:#9ca3af;writing-mode:vertical-rl;transform:rotate(180deg);">امسح للتحقق</p>
           </div>
         </div>
       </div>
-      <div style="width:100%;height:4px;background:rgba(22,33,62,0.8);flex-shrink:0;"></div>
+      <div style="width:100%;height:5px;background:linear-gradient(to left,#3b82f6,#8b5cf6,#ec4899);flex-shrink:0;"></div>
     </div>
   `;
 }
@@ -160,19 +192,24 @@ function QRCodeImage({ value, size }: { value: string; size: number }) {
 }
 
 function IDCard({ user, mosqueName, mosqueImage }: { user: UserData; mosqueName: string; mosqueImage?: string }) {
+  const levelInfo = getLevelInfo(user.level);
+
   return (
     <div
-      className="bg-white w-[340px] rounded-2xl shadow-xl overflow-hidden border border-gray-200 print:shadow-none print:border print:border-gray-300 flex flex-col"
+      className="bg-white w-[340px] rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 print:shadow-none print:border print:border-gray-300 flex flex-col relative"
       dir="rtl"
       data-testid={`card-idcard-${user.id}`}
     >
-      <div className="h-[55px] bg-primary relative overflow-hidden shrink-0">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-l from-blue-500 via-purple-500 to-pink-500" data-testid={`decorative-border-top-${user.id}`} />
+
+      <div className="h-[60px] bg-gradient-to-l from-[#16213e] via-[#1a1a2e] to-[#0f3460] relative overflow-hidden shrink-0" data-testid={`card-header-${user.id}`}>
         <div className="absolute inset-0 opacity-10">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id={`islamic-${user.id}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
                 <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="white" strokeWidth="0.5" />
                 <circle cx="20" cy="20" r="8" fill="none" stroke="white" strokeWidth="0.5" />
+                <circle cx="20" cy="20" r="3" fill="none" stroke="white" strokeWidth="0.3" />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill={`url(#islamic-${user.id})`} />
@@ -181,68 +218,82 @@ function IDCard({ user, mosqueName, mosqueImage }: { user: UserData; mosqueName:
         <div className="absolute inset-0 flex items-center justify-between text-white z-10 px-3">
           <div className="flex items-center gap-2">
             {mosqueImage ? (
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 overflow-hidden">
-                <img src={mosqueImage} className="w-7 h-7 rounded-full object-cover" />
+              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 overflow-hidden shadow-lg">
+                <img src={mosqueImage} className="w-8 h-8 rounded-full object-cover" />
               </div>
             ) : null}
             <div>
-              {mosqueName && <h2 className="font-serif text-[11px] font-bold leading-tight truncate max-w-[140px]">{mosqueName}</h2>}
-              {!mosqueName && <h2 className="font-serif text-sm font-bold tracking-wide leading-tight">مُتْقِن</h2>}
+              {mosqueName && <h2 className="font-serif text-[12px] font-bold leading-tight truncate max-w-[150px] drop-shadow-sm">{mosqueName}</h2>}
+              {!mosqueName && <h2 className="font-serif text-sm font-bold tracking-wide leading-tight drop-shadow-sm">مُتْقِن</h2>}
               <p className="text-[8px] opacity-80">لإدارة حلقات القرآن الكريم</p>
             </div>
           </div>
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0">
-            <img src="/logo.png" className="w-6 h-6 rounded-full object-contain" />
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 shadow-lg">
+            <img src="/logo.png" className="w-7 h-7 rounded-full object-contain" />
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1 px-3 py-1.5 gap-2">
+      <div className="flex flex-1 px-3 py-2 gap-3">
         <div className="flex flex-col items-center shrink-0 justify-center">
-          <div className="w-[50px] h-[50px] rounded-full border-2 border-primary/20 shadow-md overflow-hidden bg-primary/5 flex items-center justify-center mb-1">
+          <div className="w-[56px] h-[56px] rounded-full border-3 border-primary/30 shadow-lg overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-1.5 ring-2 ring-primary/10 ring-offset-1" data-testid={`avatar-container-${user.id}`}>
             {user.avatar ? (
               <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" data-testid={`img-avatar-${user.id}`} />
             ) : (
-              <span className="text-xl font-bold text-primary" data-testid={`text-avatar-letter-${user.id}`}>
+              <span className="text-2xl font-bold text-primary" data-testid={`text-avatar-letter-${user.id}`}>
                 {user.name.charAt(0)}
               </span>
             )}
           </div>
-          <h3 className="text-sm font-bold text-gray-800 text-center leading-tight" data-testid={`text-user-name-${user.id}`}>{user.name}</h3>
+          <h3 className="text-[13px] font-bold text-gray-800 text-center leading-tight" data-testid={`text-user-name-${user.id}`}>{user.name}</h3>
           <Badge variant="secondary" className="mt-0.5 text-[10px] px-2 py-0" data-testid={`badge-role-${user.id}`}>
             {roleTranslations[user.role] || user.role}
           </Badge>
+          {levelInfo && (
+            <span
+              className={`mt-1 text-[9px] px-2 py-0.5 rounded-full font-semibold border ${levelInfo.colors.bg} ${levelInfo.colors.text} ${levelInfo.colors.border}`}
+              data-testid={`badge-level-${user.id}`}
+            >
+              {levelInfo.name}
+            </span>
+          )}
         </div>
 
         <div className="flex-1 flex flex-col justify-center">
-          <div className="space-y-1 text-[11px] text-gray-600 bg-gray-50 rounded-md p-2 border border-gray-100">
+          <div className="space-y-1.5 text-[11px] text-gray-600 bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-2.5 border border-gray-100 shadow-sm" data-testid={`info-section-${user.id}`}>
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 shrink-0">رقم الهوية</span>
-              <span className="font-mono font-semibold text-primary text-[10px]" data-testid={`text-userid-${user.id}`}>{formatUserId(user.id)}</span>
+              <span className="text-gray-400 shrink-0 text-[10px]">رقم الهوية</span>
+              <span className="font-mono font-semibold text-primary text-[10px] bg-primary/5 px-1.5 py-0.5 rounded" data-testid={`text-userid-${user.id}`}>{formatUserId(user.id)}</span>
             </div>
             {mosqueName && (
               <div className="flex justify-between items-center">
-                <span className="text-gray-400 shrink-0">الجامع/المركز</span>
+                <span className="text-gray-400 shrink-0 text-[10px]">الجامع/المركز</span>
                 <span className="font-medium text-[10px] truncate max-w-[120px] text-left" data-testid={`text-mosque-${user.id}`}>{mosqueName}</span>
+              </div>
+            )}
+            {levelInfo && (
+              <div className="flex justify-between items-center" data-testid={`row-level-${user.id}`}>
+                <span className="text-gray-400 shrink-0 text-[10px]">المستوى</span>
+                <span className="font-medium text-[10px]" style={{ color: levelInfo.colors.hex }}>{levelInfo.name}</span>
               </div>
             )}
             {user.phone && (
               <div className="flex justify-between items-center">
-                <span className="text-gray-400 shrink-0">الهاتف</span>
+                <span className="text-gray-400 shrink-0 text-[10px]">الهاتف</span>
                 <span dir="ltr" className="text-[10px]" data-testid={`text-phone-${user.id}`}>{user.phone}</span>
               </div>
             )}
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 shrink-0">الانضمام</span>
+              <span className="text-gray-400 shrink-0 text-[10px]">الانضمام</span>
               <span className="text-[10px]" data-testid={`text-joindate-${user.id}`}>{formatDate(user.createdAt)}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-center mt-1 gap-1">
-            <div className="p-1 bg-white border rounded-md shadow-sm">
+          <div className="flex items-center justify-center mt-1.5 gap-1">
+            <div className="p-1 bg-white border border-gray-200 rounded-lg shadow-sm">
               <QRCodeImage
                 value={JSON.stringify({ id: user.id, name: user.name, role: user.role })}
-                size={60}
+                size={58}
               />
             </div>
             <p className="text-[7px] text-gray-400 writing-vertical-rl" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>امسح للتحقق</p>
@@ -250,7 +301,7 @@ function IDCard({ user, mosqueName, mosqueImage }: { user: UserData; mosqueName:
         </div>
       </div>
 
-      <div className="w-full h-1 bg-primary/80 shrink-0"></div>
+      <div className="w-full h-1.5 bg-gradient-to-l from-blue-500 via-purple-500 to-pink-500 shrink-0" data-testid={`decorative-border-bottom-${user.id}`} />
     </div>
   );
 }
@@ -437,7 +488,7 @@ export default function IDCardsPage() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary flex items-center gap-2" data-testid="text-idcards-title">
             <CreditCard className="w-7 h-7" />
@@ -509,7 +560,7 @@ export default function IDCardsPage() {
         </Card>
       ) : (
         <>
-          <Card>
+          <Card className="print:hidden">
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-3 mb-3">
                 <Checkbox
@@ -580,8 +631,8 @@ export default function IDCardsPage() {
           </Card>
 
           {selectedUsers.length > 0 && (
-            <div className="bg-muted/20 rounded-xl p-3 sm:p-4 md:p-6" data-testid="preview-section">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <div className="bg-muted/20 rounded-xl p-3 sm:p-4 md:p-6 print:bg-white print:p-0 print:rounded-none" data-testid="preview-section">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 print:hidden">
                 <CreditCard className="w-5 h-5 text-primary" />
                 معاينة البطاقات ({selectedUsers.length})
               </h2>

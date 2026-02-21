@@ -36,7 +36,7 @@ The system is built with a modern web stack:
 - **MonitoringPage**: Combines Online Users + Activity Logs + Teacher Activities in tabs (`/monitoring`)
 
 -   **Core Features**:
-    -   **Dashboard**: Enhanced with visual statistics (SVG progress rings), quick access grid, assignment completion rate, today's attendance summary, student breakdown (active/archived/special needs/orphans).
+    -   **Dashboard**: Enhanced with visual statistics (SVG progress rings), quick access grid, assignment completion rate, today's attendance summary, student breakdown (active/archived/special needs/orphans). GitHub-style activity heatmap, star of the week golden card, student attendance streaks with flame animation, performance prediction with completion date forecast, smart review suggestions (spaced repetition), rotating motivational hadith ticker.
     -   **Students Management**: Stats cards, profile summary dialog with aggregated data (attendance/points/assignments/badges), sort options, batch actions (WhatsApp/export), archive/restore, student notes, level display, enhanced export.
     -   **Assignments & Exams**: Stats cards, grading system (1-100 with color-coded badges), deadline tracking with overdue alerts, assignment type badges, visual calendar tab, completion rate per student, bulk assignment to multiple students, notes editing, quick stats summary per student.
     -   **Attendance**: Stats cards, mark-all quick actions, consecutive absence alerts, monthly calendar view with color-coded dots, statistics tab with SVG progress indicators and per-student bar charts, printable attendance sheet, absence reason dropdown, parent WhatsApp notification, pre-fill existing records.
@@ -48,12 +48,26 @@ The system is built with a modern web stack:
     -   **User Management**: Comprehensive student, teacher, and supervisor management with detailed profiles (including special needs, orphan status), credential sharing via WhatsApp, and transfer capabilities.
     -   **Internal Islamic Library**: Offline-capable reader with 50+ books, chapters, bookmarking, and progress tracking.
     -   **Activity & Monitoring**: Combined monitoring page with tabs for online users, activity logs, and teacher activities. Session management (kick/suspend/ban).
-    -   **Reporting & Analytics**: Tracking of student progress, attendance, points, and generation of ID cards and reports with print/export capabilities.
+    -   **Reporting & Analytics**: Tracking of student progress, attendance, points, and generation of ID cards and reports with print/export capabilities. Tabbed reports interface (Statistics, Quran Passport, Infographic). Quran Passport printable student journey document. Mosque infographic with visual charts.
+    -   **Smart Alerts**: Complete dynamic alert generation from live data - consecutive absence detection, low performance warnings, overdue assignment tracking, streak milestones, level-up opportunities. Filterable by severity with WhatsApp parent contact integration.
+    -   **Parent Portal**: Visual progress charts with weekly trends, attendance summary with rate indicators, enhanced report content (level/attendance/badges info), 4 quick WhatsApp message templates, student info card with level badges.
+    -   **Competitions**: Tabbed interface (Competitions, Star of Week, Mosque Rankings), mosque leaderboard with scores, star of week golden card, competition statistics cards.
+    -   **ID Cards**: Professional card design with gradient headers, level badges, and improved print support.
+    -   **UI/Animations**: 8 CSS animations (fadeInUp, slideIn, pulse-glow, shimmer, float, streak-fire), staggered children animations, page transitions, card hover effects, gradient text, custom scrollbar.
     -   **Communication**: Internal messaging system, automated notifications for key events, smart alerts, and a rotating Hadith ticker.
     -   **Security**: Scrypt password hashing, session security, rate limiting, IP banning, IDOR prevention, and comprehensive input validation.
+    -   **Smart Analytics API**: 6 dedicated endpoints - student-streaks, activity-heatmap, star-of-week, prediction, smart-review, mosque-rankings.
     -   **Performance**: Response compression (gzip/brotli), static asset caching, and service worker for offline capabilities.
 
 ## Recent Changes
+-   **Feb 21, 2026**: Creative Dashboard Enhancement - Added GitHub-style activity heatmap, star of the week display with golden card, student attendance streaks with flame animation, performance prediction with completion date forecast, smart review suggestions (spaced repetition), and rotating motivational hadith ticker.
+-   **Feb 21, 2026**: Smart Analytics Backend - Added 6 new API endpoints: student-streaks, activity-heatmap, star-of-week, prediction, smart-review, mosque-rankings.
+-   **Feb 21, 2026**: Enhanced Parent Portal - Added visual progress charts with weekly trends, attendance summary with rate indicators, enhanced report content (level/attendance/badges info), 4 quick WhatsApp message templates, student info card with level badges.
+-   **Feb 21, 2026**: Institutional Competition - Enhanced competitions page with tabbed interface (Competitions, Star of Week, Mosque Rankings), mosque leaderboard with scores, star of week golden card, competition statistics cards.
+-   **Feb 21, 2026**: Creative UI Animations - Added 8 CSS animations (fadeInUp, slideIn, pulse-glow, shimmer, float, streak-fire), staggered children animations, page transitions across all pages, card hover effects, gradient text, custom scrollbar.
+-   **Feb 21, 2026**: Smart Alerts System - Complete rewrite of SmartAlertsPage with dynamic alert generation from live data (consecutive absence detection, low performance warnings, overdue assignment tracking, streak milestones, level-up opportunities). Filterable by severity with WhatsApp parent contact.
+-   **Feb 21, 2026**: Visual Reports - Added Quran Passport (printable student journey document), mosque infographic with charts, tabbed reports interface (Statistics, Quran Passport, Infographic).
+-   **Feb 21, 2026**: Enhanced ID Cards - Professional card design with gradient headers, level badges, and improved print support.
 -   **Feb 19, 2026**: Teacher student approval system - teachers can add students but they require supervisor approval. Supervisors get notified and can approve/reject with reason. Pending students shown in amber section at top of students page.
 -   **Feb 19, 2026**: Added level filter dropdown to all major pages with filter bars (Attendance, Assignments, Points, Ratings, Courses).
 -   **Feb 19, 2026**: Converted 5-level system to 6-level reverse-order (military-style) system. Each level covers 5 juz: Level 1 (Juz 30-26), Level 2 (Juz 25-21), Level 3 (Juz 20-16), Level 4 (Juz 15-11), Level 5 (Juz 10-6), Level 6 (Juz 5-1). Updated names: مبتدئ/متوسط/متقدم/متميز/خبير/حافظ.
