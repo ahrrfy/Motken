@@ -6,11 +6,14 @@ import {
   BookOpen, ClipboardList, CalendarCheck, Star, Gift, Clock, Trophy,
   MessageSquare, AlertTriangle, Building2, Award, UserCircle, ArrowLeft,
   Wifi, ChevronLeft, BarChart3, UserCheck, UserX, Heart, Sparkles, Eye,
+  Flame, ArrowUpRight, ArrowDownRight, Minus, Brain, Target, Medal,
+  Crown, Zap, BookMarked,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { Link } from "wouter";
+import { authenticHadiths } from "@shared/hadiths";
 
 interface Stats {
   totalStudents?: number;
@@ -32,13 +35,43 @@ interface AttendanceSummary {
   total: number;
 }
 
-interface RecentActivity {
-  type: string;
-  text: string;
-  textEn: string;
-  time: string;
-  icon: any;
-  color: string;
+interface HeatmapEntry {
+  date: string;
+  count: number;
+}
+
+interface StarOfWeek {
+  star: {
+    student: { id: string; name: string; level: number; avatar?: string };
+    score: number;
+    details: { attendance: number; assignments: number; points: number };
+  } | null;
+  topStudents: {
+    student: { id: string; name: string; level: number; avatar?: string };
+    score: number;
+  }[];
+}
+
+interface StreaksData {
+  currentStreak: number;
+  maxStreak: number;
+  totalPresent: number;
+  totalRecords: number;
+}
+
+interface PredictionData {
+  prediction: {
+    progressPercent: number;
+    versesPerWeek: number;
+    predictedCompletionDate: string;
+    trend: string;
+    avgGrade: number;
+  } | null;
+}
+
+interface SmartReviewData {
+  todayReview: { surah: string; ayahRange: string; urgency: string; lastReviewed?: string }[];
+  weakSpots: { surah: string; issue: string }[];
 }
 
 export default function DashboardPage() {
@@ -47,9 +80,10 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
+  const [hadithIndex, setHadithIndex] = useState(() => Math.floor(Math.random() * authenticHadiths.length));
+  const [hadithFade, setHadithFade] = useState(true);
 
   const isEn = language === "en";
-
   const currentRole = effectiveRole || user?.role;
 
   useEffect(() => {
@@ -80,6 +114,17 @@ export default function DashboardPage() {
       })
       .catch(() => {});
   }, [currentRole]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHadithFade(false);
+      setTimeout(() => {
+        setHadithIndex(prev => (prev + 1) % authenticHadiths.length);
+        setHadithFade(true);
+      }, 500);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isAdmin = currentRole === 'admin';
   const isSupervisor = currentRole === 'supervisor';
@@ -115,6 +160,8 @@ export default function DashboardPage() {
     { role: "teacher" as const, label: "معاينة كأستاذ", labelEn: "View as Teacher", icon: GraduationCap, color: "from-emerald-500 to-emerald-600", desc: "شاهد ما يراه الأستاذ", descEn: "See what teachers see" },
     { role: "supervisor" as const, label: "معاينة كمشرف", labelEn: "View as Supervisor", icon: UserCircle, color: "from-purple-500 to-purple-600", desc: "شاهد ما يراه المشرف", descEn: "See what supervisors see" },
   ];
+
+  const currentHadith = authenticHadiths[hadithIndex];
 
   return (
     <div className="p-4 md:p-6 space-y-5" data-testid="dashboard-page">
@@ -404,7 +451,33 @@ export default function DashboardPage() {
         </>
       )}
 
-      {isStudent && (
+      {!isStudent && user?.id && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <HeatmapCard userId={user.id} isEn={isEn} />
+          <StarOfWeekCard isEn={isEn} />
+        </div>
+      )}
+
+      {isStudent && user?.id && (
+        <div className="space-y-4">
+          <Card className="shadow-sm border bg-gradient-to-l from-accent/5 to-transparent">
+            <CardContent className="p-6 md:p-8 text-center">
+              <BookOpen className="w-14 h-14 mx-auto mb-4 text-accent/40" />
+              <p className="text-xl font-semibold">{isEn ? "Welcome to Mutqin" : "مرحباً بك في نظام مُتْقِن"}</p>
+              <p className="text-sm mt-2 text-muted-foreground">{isEn ? "Track your assignments and progress from the sidebar" : "تابع واجباتك وتقدمك من القائمة الجانبية"}</p>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <StreaksCard userId={user.id} isEn={isEn} />
+            <PredictionCard userId={user.id} isEn={isEn} />
+          </div>
+
+          <SmartReviewCard userId={user.id} isEn={isEn} />
+        </div>
+      )}
+
+      {isStudent && !user?.id && (
         <Card className="shadow-sm border bg-gradient-to-l from-accent/5 to-transparent">
           <CardContent className="p-6 md:p-8 text-center">
             <BookOpen className="w-14 h-14 mx-auto mb-4 text-accent/40" />
@@ -435,7 +508,410 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      <Card className="border-0 shadow-none bg-gradient-to-r from-emerald-900/10 via-emerald-800/10 to-emerald-900/10 dark:from-emerald-900/30 dark:via-emerald-800/30 dark:to-emerald-900/30 overflow-hidden" data-testid="card-hadith-ticker">
+        <CardContent className="p-4">
+          <div className={`flex items-center justify-center gap-3 transition-opacity duration-500 ${hadithFade ? 'opacity-100' : 'opacity-0'}`} dir="rtl">
+            <BookMarked className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">«{currentHadith.text}»</p>
+              <p className="text-[11px] text-muted-foreground mt-1">— {currentHadith.source}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function HeatmapCard({ userId, isEn }: { userId: string; isEn: boolean }) {
+  const [data, setData] = useState<HeatmapEntry[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/activity-heatmap/${userId}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(setData)
+      .catch(() => {});
+  }, [userId]);
+
+  const today = new Date();
+  const days: { date: string; count: number; dayOfWeek: number }[] = [];
+  for (let i = 364; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    const found = data.find(x => x.date === dateStr);
+    days.push({ date: dateStr, count: found?.count || 0, dayOfWeek: d.getDay() });
+  }
+
+  const weeks: typeof days[] = [];
+  let currentWeek: typeof days = [];
+  days.forEach((day, i) => {
+    currentWeek.push(day);
+    if (day.dayOfWeek === 6 || i === days.length - 1) {
+      weeks.push(currentWeek);
+      currentWeek = [];
+    }
+  });
+
+  const getColor = (count: number) => {
+    if (count === 0) return "bg-muted/30 dark:bg-muted/20";
+    if (count <= 2) return "bg-emerald-200 dark:bg-emerald-800";
+    if (count <= 4) return "bg-emerald-400 dark:bg-emerald-600";
+    return "bg-emerald-600 dark:bg-emerald-400";
+  };
+
+  const totalActivity = data.reduce((sum, d) => sum + d.count, 0);
+
+  return (
+    <Card data-testid="card-activity-heatmap">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <Activity className="w-4 h-4" />
+          {isEn ? "Activity Map" : "خريطة النشاط"}
+          <Badge variant="secondary" className="text-[10px] px-2 py-0 ms-auto">
+            {totalActivity} {isEn ? "actions" : "نشاط"}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-[2px] overflow-x-auto pb-2" dir="ltr">
+          {weeks.map((week, wi) => (
+            <div key={wi} className="flex flex-col gap-[2px]">
+              {week.map((day, di) => (
+                <div
+                  key={di}
+                  className={`w-3 h-3 rounded-sm ${getColor(day.count)} transition-colors`}
+                  title={`${day.date}: ${day.count} ${isEn ? "actions" : "نشاط"}`}
+                  data-testid={`heatmap-cell-${day.date}`}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground" dir="ltr">
+          <span>{isEn ? "Less" : "أقل"}</span>
+          <div className="w-3 h-3 rounded-sm bg-muted/30" />
+          <div className="w-3 h-3 rounded-sm bg-emerald-200 dark:bg-emerald-800" />
+          <div className="w-3 h-3 rounded-sm bg-emerald-400 dark:bg-emerald-600" />
+          <div className="w-3 h-3 rounded-sm bg-emerald-600 dark:bg-emerald-400" />
+          <span>{isEn ? "More" : "أكثر"}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StarOfWeekCard({ isEn }: { isEn: boolean }) {
+  const [data, setData] = useState<StarOfWeek | null>(null);
+
+  useEffect(() => {
+    fetch("/api/star-of-week", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => {});
+  }, []);
+
+  const medalColors = ["text-yellow-500", "text-gray-400", "text-amber-700"];
+  const medalLabels = [isEn ? "Gold" : "ذهبي", isEn ? "Silver" : "فضي", isEn ? "Bronze" : "برونزي"];
+
+  return (
+    <Card className="bg-gradient-to-br from-amber-50/50 to-yellow-50/30 dark:from-amber-950/20 dark:to-yellow-950/10 border-amber-200/50 dark:border-amber-800/30" data-testid="card-star-of-week">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-amber-700 dark:text-amber-400 flex items-center gap-2">
+          <Crown className="w-4 h-4" />
+          {isEn ? "Star of the Week" : "نجم الأسبوع"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data?.star ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-100/60 to-yellow-100/40 dark:from-amber-900/20 dark:to-yellow-900/10 border border-amber-200/50 dark:border-amber-700/30">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                {data.star.student.name.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm truncate" data-testid="text-star-name">{data.star.student.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">
+                    {isEn ? `Level ${data.star.student.level}` : `المستوى ${data.star.student.level}`}
+                  </Badge>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">{data.star.score} {isEn ? "pts" : "نقطة"}</span>
+                </div>
+              </div>
+              <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-2 rounded-md bg-card border">
+                <p className="text-xs text-muted-foreground">{isEn ? "Attendance" : "الحضور"}</p>
+                <p className="text-sm font-bold text-emerald-600">{data.star.details.attendance}%</p>
+              </div>
+              <div className="p-2 rounded-md bg-card border">
+                <p className="text-xs text-muted-foreground">{isEn ? "Tasks" : "الواجبات"}</p>
+                <p className="text-sm font-bold text-blue-600">{data.star.details.assignments}</p>
+              </div>
+              <div className="p-2 rounded-md bg-card border">
+                <p className="text-xs text-muted-foreground">{isEn ? "Points" : "النقاط"}</p>
+                <p className="text-sm font-bold text-purple-600">{data.star.details.points}</p>
+              </div>
+            </div>
+
+            {data.topStudents && data.topStudents.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[11px] text-muted-foreground font-medium">{isEn ? "Top Students" : "أفضل الطلاب"}</p>
+                {data.topStudents.slice(0, 3).map((s, i) => (
+                  <div key={s.student.id} className="flex items-center gap-2 text-xs" data-testid={`star-top-${i}`}>
+                    <Medal className={`w-3.5 h-3.5 ${medalColors[i] || "text-muted-foreground"}`} />
+                    <span className="truncate flex-1">{s.student.name}</span>
+                    <span className="text-muted-foreground font-medium">{s.score}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-4 text-muted-foreground text-sm">
+            <Star className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p>{isEn ? "No star data this week" : "لا توجد بيانات هذا الأسبوع"}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StreaksCard({ userId, isEn }: { userId: string; isEn: boolean }) {
+  const [data, setData] = useState<StreaksData | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/student-streaks/${userId}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => {});
+  }, [userId]);
+
+  const attendancePercent = data && data.totalRecords > 0
+    ? Math.round((data.totalPresent / data.totalRecords) * 100)
+    : 0;
+
+  return (
+    <Card className="border shadow-sm bg-gradient-to-br from-orange-50/50 to-red-50/30 dark:from-orange-950/20 dark:to-red-950/10 border-orange-200/50 dark:border-orange-800/30" data-testid="card-streaks">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-400 flex items-center gap-2">
+          <Flame className="w-4 h-4" />
+          {isEn ? "Attendance Streak" : "سلسلة الحضور"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-6">
+              <div className="text-center">
+                <div className="relative">
+                  <Flame className="w-12 h-12 text-orange-500 mx-auto" />
+                  <span className="absolute inset-0 flex items-center justify-center font-bold text-lg text-white pt-1" data-testid="text-current-streak">
+                    {data.currentStreak}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{isEn ? "Current" : "الحالية"}</p>
+              </div>
+              <div className="h-12 w-px bg-border" />
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <Trophy className="w-5 h-5 text-amber-500" />
+                  <span className="text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-max-streak">{data.maxStreak}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{isEn ? "Best" : "الأفضل"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{isEn ? "Attendance Rate" : "نسبة الحضور"}</span>
+                <span className="font-medium">{attendancePercent}%</span>
+              </div>
+              <div className="w-full bg-muted/30 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-orange-400 to-red-500 h-2 rounded-full transition-all duration-700"
+                  style={{ width: `${attendancePercent}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>{data.totalPresent} {isEn ? "present" : "حضور"}</span>
+                <span>{data.totalRecords} {isEn ? "total" : "إجمالي"}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-4 text-muted-foreground text-sm">
+            <Flame className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p>{isEn ? "No streak data yet" : "لا توجد بيانات بعد"}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PredictionCard({ userId, isEn }: { userId: string; isEn: boolean }) {
+  const [data, setData] = useState<PredictionData | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/prediction/${userId}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => {});
+  }, [userId]);
+
+  const prediction = data?.prediction;
+
+  const TrendIcon = prediction?.trend === "up" ? ArrowUpRight
+    : prediction?.trend === "down" ? ArrowDownRight
+    : Minus;
+
+  const trendColor = prediction?.trend === "up" ? "text-emerald-500"
+    : prediction?.trend === "down" ? "text-red-500"
+    : "text-muted-foreground";
+
+  const trendLabel = prediction?.trend === "up" ? (isEn ? "Improving" : "تحسّن")
+    : prediction?.trend === "down" ? (isEn ? "Declining" : "تراجع")
+    : (isEn ? "Stable" : "مستقر");
+
+  return (
+    <Card className="border shadow-sm bg-gradient-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/20 dark:to-indigo-950/10 border-blue-200/50 dark:border-blue-800/30" data-testid="card-prediction">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-400 flex items-center gap-2">
+          <Target className="w-4 h-4" />
+          {isEn ? "Performance Prediction" : "توقع الأداء"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {prediction ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{isEn ? "Quran Progress" : "تقدم الحفظ"}</span>
+                <span className="font-medium" data-testid="text-progress-percent">{prediction.progressPercent}%</span>
+              </div>
+              <div className="w-full bg-muted/30 rounded-full h-2.5">
+                <div
+                  className="bg-gradient-to-r from-blue-400 to-indigo-500 h-2.5 rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(prediction.progressPercent, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-2 rounded-md bg-card border text-center">
+                <p className="text-[10px] text-muted-foreground">{isEn ? "Verses/Week" : "آيات/أسبوع"}</p>
+                <p className="text-sm font-bold text-blue-600 dark:text-blue-400" data-testid="text-verses-per-week">{prediction.versesPerWeek}</p>
+              </div>
+              <div className="p-2 rounded-md bg-card border text-center">
+                <p className="text-[10px] text-muted-foreground">{isEn ? "Avg Grade" : "متوسط الدرجة"}</p>
+                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{prediction.avgGrade}%</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-md bg-card border">
+              <div>
+                <p className="text-[10px] text-muted-foreground">{isEn ? "Predicted Completion" : "تاريخ الإتمام المتوقع"}</p>
+                <p className="text-xs font-medium" data-testid="text-predicted-date">
+                  {prediction.predictedCompletionDate ? new Date(prediction.predictedCompletionDate).toLocaleDateString(isEn ? "en-US" : "ar-IQ", { year: "numeric", month: "short" }) : (isEn ? "N/A" : "غير محدد")}
+                </p>
+              </div>
+              <div className={`flex items-center gap-1 ${trendColor}`}>
+                <TrendIcon className="w-4 h-4" />
+                <span className="text-xs font-medium">{trendLabel}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-4 text-muted-foreground text-sm">
+            <Target className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p>{isEn ? "Not enough data for prediction" : "لا توجد بيانات كافية للتوقع"}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SmartReviewCard({ userId, isEn }: { userId: string; isEn: boolean }) {
+  const [data, setData] = useState<SmartReviewData | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/smart-review/${userId}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => {});
+  }, [userId]);
+
+  const urgencyColor = (urgency: string) => {
+    if (urgency === "high") return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    if (urgency === "medium") return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+  };
+
+  const urgencyLabel = (urgency: string) => {
+    if (urgency === "high") return isEn ? "Urgent" : "عاجل";
+    if (urgency === "medium") return isEn ? "Medium" : "متوسط";
+    return isEn ? "Low" : "منخفض";
+  };
+
+  return (
+    <Card className="border shadow-sm" data-testid="card-smart-review">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <Brain className="w-4 h-4" />
+          {isEn ? "Smart Review Suggestions" : "اقتراحات المراجعة الذكية"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data && (data.todayReview?.length > 0 || data.weakSpots?.length > 0) ? (
+          <div className="space-y-3">
+            {data.todayReview?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">{isEn ? "Today's Review" : "مراجعة اليوم"}</p>
+                {data.todayReview.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted/20 border" data-testid={`review-item-${i}`}>
+                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{item.surah} ({item.ayahRange})</p>
+                      {item.lastReviewed && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {isEn ? "Last reviewed: " : "آخر مراجعة: "}{item.lastReviewed}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 shrink-0 ${urgencyColor(item.urgency)}`}>
+                      {urgencyLabel(item.urgency)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {data.weakSpots?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">{isEn ? "Weak Spots" : "نقاط الضعف"}</p>
+                {data.weakSpots.map((spot, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs p-2 rounded-md bg-red-50/50 dark:bg-red-950/10 border border-red-200/30 dark:border-red-800/20" data-testid={`weak-spot-${i}`}>
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                    <span className="truncate">{spot.surah}: {spot.issue}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-4 text-muted-foreground text-sm">
+            <Brain className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p>{isEn ? "No review suggestions yet" : "لا توجد اقتراحات مراجعة بعد"}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -455,22 +931,21 @@ function StatCard({ title, value, icon: Icon, color, loading, subtitle }: {
     amber: { bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-600 dark:text-amber-400", ring: "ring-amber-200 dark:ring-amber-800" },
     teal: { bg: "bg-teal-50 dark:bg-teal-950/30", text: "text-teal-600 dark:text-teal-400", ring: "ring-teal-200 dark:ring-teal-800" },
     orange: { bg: "bg-orange-50 dark:bg-orange-950/30", text: "text-orange-600 dark:text-orange-400", ring: "ring-orange-200 dark:ring-orange-800" },
-    red: { bg: "bg-red-50 dark:bg-red-950/30", text: "text-red-600 dark:text-red-400", ring: "ring-red-200 dark:ring-red-800" },
   };
 
   const c = colorMap[color] || colorMap.blue;
 
   return (
-    <Card className="border shadow-sm hover:shadow-md transition-shadow" data-testid={`stat-${title}`}>
+    <Card className={`border shadow-sm hover:shadow-md transition-shadow`} data-testid={`stat-card-${title}`}>
       <CardContent className="p-3 md:p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] md:text-xs font-medium text-muted-foreground truncate">{title}</p>
-            <h3 className="text-xl md:text-2xl font-bold mt-1">{loading ? "..." : value.toLocaleString("ar-IQ")}</h3>
-            {subtitle && <p className="text-[10px] md:text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+            <p className="text-xs text-muted-foreground truncate">{title}</p>
+            <p className="text-xl md:text-2xl font-bold mt-1">{loading ? "..." : value}</p>
+            {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
           </div>
-          <div className={`p-2 rounded-lg ${c.bg} shrink-0`}>
-            <Icon className={`w-4 h-4 md:w-5 md:h-5 ${c.text}`} />
+          <div className={`p-2 rounded-lg ${c.bg} ${c.text} shrink-0`}>
+            <Icon className="w-4 h-4" />
           </div>
         </div>
       </CardContent>

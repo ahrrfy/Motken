@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, Copy, Trash2, MessageCircle, Link, ClipboardCheck, Users } from "lucide-react";
+import { Loader2, FileText, Copy, Trash2, MessageCircle, Link, ClipboardCheck, Users, BookOpen, CheckCircle, Star, Calendar, TrendingUp, Award, Phone, Heart, AlertTriangle, Send } from "lucide-react";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,9 @@ interface Student {
   phone?: string;
   parentPhone?: string | null;
   mosqueId?: string | null;
+  level?: number | null;
+  isSpecialNeeds?: boolean;
+  isOrphan?: boolean;
 }
 
 interface ParentReport {
@@ -42,11 +45,49 @@ interface Assignment {
   type?: string;
   grade?: number | null;
   status?: string;
+  createdAt?: string;
 }
 
 interface PointTotal {
   totalPoints: number;
+  total?: number;
 }
+
+interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  status: string;
+  date: string;
+  notes?: string;
+}
+
+interface BadgeRecord {
+  id: string;
+  userId: string;
+  badgeType: string;
+  badgeName: string;
+  description?: string;
+  earnedAt: string;
+}
+
+interface PointRecord {
+  id: string;
+  userId: string;
+  amount: number;
+  reason: string;
+  category: string;
+  createdAt: string;
+}
+
+const LEVEL_NAMES = ["مبتدئ", "متوسط", "متقدم", "متميز", "خبير", "حافظ"];
+const LEVEL_COLORS = [
+  "bg-gray-100 text-gray-700 border-gray-300",
+  "bg-blue-100 text-blue-700 border-blue-300",
+  "bg-green-100 text-green-700 border-green-300",
+  "bg-purple-100 text-purple-700 border-purple-300",
+  "bg-amber-100 text-amber-700 border-amber-300",
+  "bg-emerald-100 text-emerald-700 border-emerald-300",
+];
 
 export default function ParentPortalPage() {
   const { user } = useAuth();
@@ -66,6 +107,9 @@ export default function ParentPortalPage() {
     totalPoints: number;
   } | null>(null);
   const [progressLoading, setProgressLoading] = useState(false);
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [badgesData, setBadgesData] = useState<BadgeRecord[]>([]);
+  const [pointsData, setPointsData] = useState<PointRecord[]>([]);
 
   useEffect(() => {
     fetchStudents();
@@ -78,6 +122,9 @@ export default function ParentPortalPage() {
     } else {
       setReports([]);
       setProgressData(null);
+      setAttendanceData([]);
+      setBadgesData([]);
+      setPointsData([]);
     }
   }, [selectedStudentId]);
 
@@ -107,24 +154,81 @@ export default function ParentPortalPage() {
   const fetchProgress = async (studentId: string) => {
     setProgressLoading(true);
     try {
-      const [assignmentsRes, pointsRes] = await Promise.all([
+      const [assignmentsRes, pointsRes, attendanceRes, badgesRes, pointsDetailRes] = await Promise.all([
         fetch(`/api/assignments?studentId=${studentId}`, { credentials: "include" }),
         fetch(`/api/points/total/${studentId}`, { credentials: "include" }),
+        fetch(`/api/attendance?studentId=${studentId}`, { credentials: "include" }),
+        fetch(`/api/badges?userId=${studentId}`, { credentials: "include" }),
+        fetch(`/api/points?userId=${studentId}`, { credentials: "include" }),
       ]);
       const assignments = assignmentsRes.ok ? await assignmentsRes.json() : [];
-      const pointsData: PointTotal = pointsRes.ok ? await pointsRes.json() : { totalPoints: 0 };
+      const pointsTotalData: PointTotal = pointsRes.ok ? await pointsRes.json() : { totalPoints: 0 };
+      const attendanceRecords = attendanceRes.ok ? await attendanceRes.json() : [];
+      const badgesRecords = badgesRes.ok ? await badgesRes.json() : [];
+      const pointsRecords = pointsDetailRes.ok ? await pointsDetailRes.json() : [];
       setProgressData({
         assignments: Array.isArray(assignments) ? assignments : [],
-        totalPoints: pointsData.totalPoints || 0,
+        totalPoints: pointsTotalData.totalPoints || pointsTotalData.total || 0,
       });
+      setAttendanceData(Array.isArray(attendanceRecords) ? attendanceRecords : []);
+      setBadgesData(Array.isArray(badgesRecords) ? badgesRecords : []);
+      setPointsData(Array.isArray(pointsRecords) ? pointsRecords : []);
     } catch {
       setProgressData({ assignments: [], totalPoints: 0 });
+      setAttendanceData([]);
+      setBadgesData([]);
+      setPointsData([]);
     } finally {
       setProgressLoading(false);
     }
   };
 
   const getSelectedStudent = () => students.find(s => s.id === selectedStudentId);
+
+  const getAttendanceCounts = () => {
+    const present = attendanceData.filter(a => a.status === "present").length;
+    const absent = attendanceData.filter(a => a.status === "absent").length;
+    const late = attendanceData.filter(a => a.status === "late").length;
+    const total = attendanceData.length;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+    return { present, absent, late, total, rate };
+  };
+
+  const getLevelName = (level?: number | null) => {
+    if (!level || level < 1 || level > 6) return "غير محدد";
+    return LEVEL_NAMES[level - 1];
+  };
+
+  const getLevelColor = (level?: number | null) => {
+    if (!level || level < 1 || level > 6) return "bg-gray-100 text-gray-600 border-gray-300";
+    return LEVEL_COLORS[level - 1];
+  };
+
+  const getPointsByCategory = () => {
+    const categories: Record<string, number> = {};
+    pointsData.forEach(p => {
+      const cat = p.category || "أخرى";
+      categories[cat] = (categories[cat] || 0) + p.amount;
+    });
+    return categories;
+  };
+
+  const getWeeklyTrend = () => {
+    const now = new Date();
+    const weeks: number[] = [0, 0, 0, 0];
+    const assignments = progressData?.assignments || [];
+    assignments.forEach(a => {
+      if (a.createdAt && (a.status === "done" || a.grade !== null)) {
+        const assignDate = new Date(a.createdAt);
+        const diffDays = Math.floor((now.getTime() - assignDate.getTime()) / (1000 * 60 * 60 * 24));
+        const weekIndex = Math.floor(diffDays / 7);
+        if (weekIndex >= 0 && weekIndex < 4) {
+          weeks[weekIndex]++;
+        }
+      }
+    });
+    return weeks.reverse();
+  };
 
   const generateReportContent = () => {
     const student = getSelectedStudent();
@@ -149,9 +253,14 @@ export default function ParentPortalPage() {
     else progressDesc = "يحتاج تحسين";
 
     const reportTypeLabel = reportType === "weekly" ? "أسبوعي" : "شهري";
+    const attendanceCounts = getAttendanceCounts();
+    const levelName = getLevelName(student.level);
+    const categoryPoints = getPointsByCategory();
 
     const lines = [
       `📋 تقرير ${reportTypeLabel} - ${student.name}`,
+      ``,
+      `🎓 المستوى: ${levelName}`,
       ``,
       `📊 إحصائيات الواجبات:`,
       `- إجمالي الواجبات: ${totalAssignments}`,
@@ -166,8 +275,32 @@ export default function ParentPortalPage() {
       lines.push(``);
     }
 
-    lines.push(`⭐ إجمالي النقاط: ${progressData.totalPoints}`);
+    lines.push(`📅 ملخص الحضور:`);
+    lines.push(`- حاضر: ${attendanceCounts.present}`);
+    lines.push(`- غائب: ${attendanceCounts.absent}`);
+    lines.push(`- متأخر: ${attendanceCounts.late}`);
+    lines.push(`- نسبة الحضور: ${attendanceCounts.rate}%`);
     lines.push(``);
+
+    lines.push(`⭐ إجمالي النقاط: ${progressData.totalPoints}`);
+
+    if (Object.keys(categoryPoints).length > 0) {
+      lines.push(`📊 النقاط حسب الفئة:`);
+      Object.entries(categoryPoints).forEach(([cat, amount]) => {
+        const catLabel = cat === "assignment" ? "واجبات" : cat === "attendance" ? "حضور" : cat === "behavior" ? "سلوك" : cat === "quran" ? "قرآن" : cat;
+        lines.push(`  - ${catLabel}: ${amount}`);
+      });
+      lines.push(``);
+    }
+
+    if (badgesData.length > 0) {
+      lines.push(`🏅 الأوسمة المكتسبة (${badgesData.length}):`);
+      badgesData.slice(-5).forEach(b => {
+        lines.push(`  - ${b.badgeName}`);
+      });
+      lines.push(``);
+    }
+
     lines.push(`📈 التقدم العام: ${progressDesc}`);
 
     return lines.join("\n");
@@ -258,6 +391,24 @@ export default function ParentPortalPage() {
     window.open(url, "_blank");
   };
 
+  const sendWhatsAppTemplate = (templateKey: string) => {
+    const student = getSelectedStudent();
+    if (!student) return;
+    const phone = student.parentPhone || student.phone || "";
+    const attendanceCounts = getAttendanceCounts();
+
+    const templates: Record<string, string> = {
+      attendance_reminder: `السلام عليكم ورحمة الله وبركاته\n\nتذكير بحضور الطالب: ${student.name}\n\nنذكركم بأهمية الحضور المنتظم لحلقات التحفيظ.\nنسبة الحضور الحالية: ${attendanceCounts.rate}%\n\nبارك الله فيكم 🤲`,
+      achievement: `السلام عليكم ورحمة الله وبركاته\n\n🎉 تهنئة بالإنجاز!\n\nيسعدنا إبلاغكم بتميز الطالب: ${student.name}\n⭐ إجمالي النقاط: ${progressData?.totalPoints || 0}\n🏅 الأوسمة: ${badgesData.length}\n\nنسأل الله له التوفيق والسداد 🤲`,
+      absence_alert: `السلام عليكم ورحمة الله وبركاته\n\n⚠️ تنبيه غياب\n\nنود إبلاغكم بغياب الطالب: ${student.name}\nعدد مرات الغياب: ${attendanceCounts.absent}\n\nنرجو التواصل معنا لمعرفة السبب.\nبارك الله فيكم 🤲`,
+      weekly_update: `السلام عليكم ورحمة الله وبركاته\n\n📋 تقرير أسبوعي - ${student.name}\n\n📊 الواجبات: ${completedAssignments}/${totalAssignments}\n📅 الحضور: ${attendanceCounts.rate}%\n⭐ النقاط: ${progressData?.totalPoints || 0}\n\nبارك الله فيكم 🤲`,
+    };
+
+    const message = templates[templateKey] || "";
+    const url = phone ? getWhatsAppUrl(phone, message) : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  };
+
   const formatDate = (dateStr: string) => {
     return formatDateAr(dateStr);
   };
@@ -266,6 +417,10 @@ export default function ParentPortalPage() {
   const assignments = progressData?.assignments || [];
   const totalAssignments = assignments.length;
   const completedAssignments = assignments.filter(a => a.status === "done" || a.grade !== null).length;
+  const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
+  const attendanceCounts = getAttendanceCounts();
+  const weeklyTrend = getWeeklyTrend();
+  const maxWeekly = Math.max(...weeklyTrend, 1);
 
   if (!["admin", "teacher", "supervisor"].includes(user?.role || "")) {
     return (
@@ -329,10 +484,72 @@ export default function ParentPortalPage() {
         </CardContent>
       </Card>
 
+      {selectedStudentId && selectedStudent && (
+        <Card dir="rtl" data-testid="card-student-info">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              بطاقة الطالب
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg" data-testid="avatar-student">
+                  {selectedStudent.name.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg" data-testid="text-student-name">{selectedStudent.name}</h3>
+                  <p className="text-sm text-muted-foreground" data-testid="text-student-username">@{selectedStudent.username}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getLevelColor(selectedStudent.level)}`} data-testid="badge-student-level">
+                  🎓 {getLevelName(selectedStudent.level)}
+                </span>
+
+                {selectedStudent.isSpecialNeeds && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-violet-100 text-violet-700 border border-violet-300" data-testid="badge-special-needs">
+                    <Heart className="w-3.5 h-3.5" />
+                    احتياجات خاصة
+                  </span>
+                )}
+
+                {selectedStudent.isOrphan && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-700 border border-rose-300" data-testid="badge-orphan">
+                    <Heart className="w-3.5 h-3.5" />
+                    يتيم
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mr-auto">
+                {selectedStudent.phone && (
+                  <span className="flex items-center gap-1" data-testid="text-student-phone">
+                    <Phone className="w-4 h-4" />
+                    {selectedStudent.phone}
+                  </span>
+                )}
+                {selectedStudent.parentPhone && (
+                  <span className="flex items-center gap-1" data-testid="text-parent-phone">
+                    <Phone className="w-4 h-4 text-green-600" />
+                    ولي الأمر: {selectedStudent.parentPhone}
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {selectedStudentId && (
         <Card dir="rtl">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">ملخص تقدم الطالب: {selectedStudent?.name}</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              ملخص تقدم الطالب: {selectedStudent?.name}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {progressLoading ? (
@@ -341,21 +558,196 @@ export default function ParentPortalPage() {
                 <span className="mr-2 text-muted-foreground">جاري تحميل البيانات...</span>
               </div>
             ) : progressData ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 text-center" data-testid="stat-total-assignments">
-                  <p className="text-sm text-muted-foreground">إجمالي الواجبات</p>
-                  <p className="text-2xl font-bold text-blue-600">{totalAssignments}</p>
+              <div className="space-y-6">
+                <div className="space-y-2" data-testid="progress-bar-section">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-medium">نسبة إنجاز الواجبات</span>
+                    <span className="font-bold text-lg" data-testid="text-completion-rate">{completionRate}%</span>
+                  </div>
+                  <div className="w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" data-testid="progress-bar">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${completionRate}%`,
+                        background: completionRate >= 75
+                          ? "linear-gradient(90deg, #10b981, #059669)"
+                          : completionRate >= 50
+                            ? "linear-gradient(90deg, #f59e0b, #d97706)"
+                            : "linear-gradient(90deg, #ef4444, #dc2626)",
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 text-center" data-testid="stat-completed-assignments">
-                  <p className="text-sm text-muted-foreground">الواجبات المكتملة</p>
-                  <p className="text-2xl font-bold text-green-600">{completedAssignments}</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 text-center" data-testid="stat-total-assignments">
+                    <BookOpen className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+                    <p className="text-sm text-muted-foreground">إجمالي الواجبات</p>
+                    <p className="text-2xl font-bold text-blue-600">{totalAssignments}</p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 text-center" data-testid="stat-completed-assignments">
+                    <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                    <p className="text-sm text-muted-foreground">الواجبات المكتملة</p>
+                    <p className="text-2xl font-bold text-green-600">{completedAssignments}</p>
+                  </div>
+                  <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4 text-center" data-testid="stat-total-points">
+                    <Star className="w-8 h-8 mx-auto mb-2 text-amber-500" />
+                    <p className="text-sm text-muted-foreground">إجمالي النقاط</p>
+                    <p className="text-2xl font-bold text-amber-600">{progressData.totalPoints}</p>
+                  </div>
                 </div>
-                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4 text-center" data-testid="stat-total-points">
-                  <p className="text-sm text-muted-foreground">إجمالي النقاط</p>
-                  <p className="text-2xl font-bold text-amber-600">{progressData.totalPoints}</p>
+
+                <div className="bg-muted/30 rounded-lg p-4" data-testid="weekly-trend-chart">
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    اتجاه الإنجاز الأسبوعي (آخر 4 أسابيع)
+                  </h4>
+                  <div className="flex items-end gap-3 h-24">
+                    {weeklyTrend.map((count, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <span className="text-xs font-medium text-muted-foreground">{count}</span>
+                        <div
+                          className="w-full rounded-t-md transition-all duration-500"
+                          style={{
+                            height: `${Math.max((count / maxWeekly) * 80, 4)}px`,
+                            background: `linear-gradient(180deg, #6366f1, #818cf8)`,
+                          }}
+                          data-testid={`trend-bar-${i}`}
+                        />
+                        <span className="text-xs text-muted-foreground">أسبوع {i + 1}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : null}
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedStudentId && attendanceData.length > 0 && (
+        <Card dir="rtl" data-testid="card-attendance-summary">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              ملخص الحضور
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200" data-testid="badge-present-count">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-xs text-green-600">حاضر</p>
+                  <p className="text-lg font-bold text-green-700">{attendanceCounts.present}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200" data-testid="badge-absent-count">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <div>
+                  <p className="text-xs text-red-600">غائب</p>
+                  <p className="text-lg font-bold text-red-700">{attendanceCounts.absent}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200" data-testid="badge-late-count">
+                <Calendar className="w-5 h-5 text-amber-600" />
+                <div>
+                  <p className="text-xs text-amber-600">متأخر</p>
+                  <p className="text-lg font-bold text-amber-700">{attendanceCounts.late}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/50 border mr-auto" data-testid="text-attendance-rate">
+                <div>
+                  <p className="text-xs text-muted-foreground">نسبة الحضور</p>
+                  <p className={`text-2xl font-bold ${attendanceCounts.rate >= 80 ? "text-green-600" : attendanceCounts.rate >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                    {attendanceCounts.rate}%
+                  </p>
+                </div>
+                <div
+                  className={`w-3 h-3 rounded-full ${attendanceCounts.rate >= 80 ? "bg-green-500" : attendanceCounts.rate >= 60 ? "bg-amber-500" : "bg-red-500"}`}
+                  data-testid="indicator-attendance-rate"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedStudentId && selectedStudent && (
+        <Card dir="rtl" data-testid="card-whatsapp-templates">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-green-600" />
+              رسائل واتساب سريعة
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-green-50/50 dark:bg-green-950/20 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-green-600" />
+                  <span className="font-medium text-sm">تذكير بالحضور</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 text-green-600 hover:text-green-700 border-green-300"
+                  onClick={() => sendWhatsAppTemplate("attendance_reminder")}
+                  data-testid="button-whatsapp-attendance-reminder"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  إرسال
+                </Button>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-600" />
+                  <span className="font-medium text-sm">تهنئة بالإنجاز</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 text-amber-600 hover:text-amber-700 border-amber-300"
+                  onClick={() => sendWhatsAppTemplate("achievement")}
+                  data-testid="button-whatsapp-achievement"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  إرسال
+                </Button>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-red-50/50 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                  <span className="font-medium text-sm">تنبيه غياب</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 text-red-600 hover:text-red-700 border-red-300"
+                  onClick={() => sendWhatsAppTemplate("absence_alert")}
+                  data-testid="button-whatsapp-absence-alert"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  إرسال
+                </Button>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-sm">تقرير أسبوعي</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 text-blue-600 hover:text-blue-700 border-blue-300"
+                  onClick={() => sendWhatsAppTemplate("weekly_update")}
+                  data-testid="button-whatsapp-weekly-update"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  إرسال
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
