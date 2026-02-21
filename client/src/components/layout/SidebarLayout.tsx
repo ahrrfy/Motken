@@ -50,6 +50,7 @@ import {
   Sparkles,
   MapPin,
   Pen,
+  Download,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -279,6 +280,31 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
+  const [canInstall, setCanInstall] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone) {
+      setIsInstalled(true);
+      return;
+    }
+    const onReady = () => setCanInstall(true);
+    window.addEventListener("pwaInstallReady", onReady);
+    if ((window as any).__pwaInstallPrompt?.()) setCanInstall(true);
+    return () => window.removeEventListener("pwaInstallReady", onReady);
+  }, []);
+
+  const handleInstall = useCallback(async () => {
+    const prompt = (window as any).__pwaInstallPrompt?.();
+    if (!prompt) return;
+    prompt.prompt();
+    const result = await prompt.userChoice;
+    if (result.outcome === "accepted") {
+      setCanInstall(false);
+      setIsInstalled(true);
+      (window as any).__clearPwaPrompt?.();
+    }
+  }, []);
 
   useEffect(() => {
     async function loadFeatures() {
@@ -416,6 +442,23 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           ? (isEn ? "Push: On" : "الإشعارات: مفعّلة")
           : (isEn ? "Enable Push" : "تفعيل الإشعارات")}
       </Button>
+      {canInstall && !isInstalled && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleInstall}
+          className="w-full h-8 text-xs bg-blue-900/20 border-blue-700/30 text-blue-400 hover:bg-blue-800/30 hover:text-blue-300 animate-pulse"
+          data-testid="button-install-pwa"
+        >
+          <Download className="w-3.5 h-3.5 ml-1.5" />
+          {isEn ? "Install App" : "تثبيت التطبيق"}
+        </Button>
+      )}
+      {isInstalled && (
+        <div className="text-center text-[10px] text-green-400/70 py-0.5" data-testid="text-installed">
+          {isEn ? "App installed" : "التطبيق مثبّت"}
+        </div>
+      )}
     </div>
   );
 
