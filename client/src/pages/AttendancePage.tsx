@@ -541,7 +541,7 @@ export default function AttendancePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl" data-testid="tabs-attendance">
+        <TabsList className="max-w-2xl" data-testid="tabs-attendance">
           <TabsTrigger value="mark" className="gap-1 text-xs sm:text-sm" data-testid="tab-mark-attendance">
             <ClipboardList className="w-4 h-4" />
             <span className="hidden sm:inline">تسجيل الحضور</span>

@@ -516,7 +516,7 @@ export default function PointsRewardsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl">
-        <TabsList className="w-full grid grid-cols-4" data-testid="tabs-list">
+        <TabsList data-testid="tabs-list">
           <TabsTrigger value="leaderboard" data-testid="tab-leaderboard">
             <Trophy className="w-4 h-4 ml-1" />
             <span className="hidden sm:inline">لوحة الشرف</span>

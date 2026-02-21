@@ -12,7 +12,7 @@ export default function MonitoringPage() {
     <div dir="rtl" data-testid="page-monitoring">
       <Tabs defaultValue="online-users" className="w-full">
         <div className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6">
-          <TabsList className="w-full sm:w-auto" data-testid="tabs-monitoring">
+          <TabsList data-testid="tabs-monitoring">
             <TabsTrigger value="online-users" className="flex-1 sm:flex-none gap-2" data-testid="tab-online-users">
               {isEn ? "Online Users" : "المتصلون الآن"}
             </TabsTrigger>

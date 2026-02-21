@@ -560,7 +560,7 @@ export default function RatingsPage() {
       {/* Main Content Tabs for supervisor/teacher */}
       {(isSupervisor || isTeacher) && (
         <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl">
-          <TabsList className="w-full sm:w-auto">
+          <TabsList>
             <TabsTrigger value="ratings" className="gap-1" data-testid="tab-ratings">
               <Star className="w-4 h-4" />
               التقييمات

@@ -11,7 +11,7 @@ export default function IDCardsQRPage() {
     <div dir="rtl" data-testid="page-id-cards-qr">
       <Tabs defaultValue="id-cards" className="w-full">
         <div className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6">
-          <TabsList className="w-full sm:w-auto" data-testid="tabs-id-cards-qr">
+          <TabsList data-testid="tabs-id-cards-qr">
             <TabsTrigger value="id-cards" className="flex-1 sm:flex-none gap-2" data-testid="tab-id-cards">
               {isEn ? "ID Cards" : "بطاقات الهوية"}
             </TabsTrigger>

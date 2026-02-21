@@ -285,7 +285,7 @@ export default function EducationalContentPage() {
       </div>
 
       <Tabs defaultValue="similar" dir="rtl">
-        <TabsList className="w-full sm:w-auto" data-testid="tabs-educational">
+        <TabsList data-testid="tabs-educational">
           <TabsTrigger value="similar" data-testid="tab-similar">المتشابهات</TabsTrigger>
           <TabsTrigger value="exercises" data-testid="tab-exercises">تدريبات التجويد</TabsTrigger>
         </TabsList>
