@@ -330,7 +330,7 @@ export default function CrisisManagementPage() {
       </div>
 
       <Tabs defaultValue="substitutions" dir="rtl">
-        <TabsList className="grid w-full grid-cols-2" data-testid="tabs-crisis">
+        <TabsList data-testid="tabs-crisis">
           <TabsTrigger value="substitutions" data-testid="tab-substitutions">الاستبدال الطارئ</TabsTrigger>
           <TabsTrigger value="incidents" data-testid="tab-incidents">سجل الحوادث</TabsTrigger>
         </TabsList>

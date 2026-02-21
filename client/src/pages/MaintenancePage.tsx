@@ -216,7 +216,7 @@ export default function MaintenancePage() {
       </div>
 
       <Tabs defaultValue="list" dir="rtl">
-        <TabsList className="w-full sm:w-auto" data-testid="tabs-feedback">
+        <TabsList data-testid="tabs-feedback">
           <TabsTrigger value="list" data-testid="tab-list">الملاحظات</TabsTrigger>
           <TabsTrigger value="submit" data-testid="tab-submit">إرسال ملاحظة</TabsTrigger>
         </TabsList>

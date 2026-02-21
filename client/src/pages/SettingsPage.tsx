@@ -242,7 +242,7 @@ export default function SettingsPage() {
       
       <Tabs defaultValue={defaultTab} className="w-full">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className="w-max md:w-full justify-start h-12 bg-muted/50 p-1">
+          <TabsList className="h-12 bg-muted/50 p-1">
             {!isAdmin && (
               <TabsTrigger value="mosque" className="flex-1 max-w-[200px] whitespace-nowrap">بيانات الجامع/المركز</TabsTrigger>
             )}

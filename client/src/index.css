@@ -381,3 +381,74 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* Scrollable tabs - thin scrollbar on hover, hidden by default */
+.scrollbar-tabs {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-tabs:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+.scrollbar-tabs::-webkit-scrollbar {
+  height: 3px;
+}
+.scrollbar-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-tabs::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+.scrollbar-tabs:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+}
+
+/* Auto-scale responsive containers */
+@media (max-width: 640px) {
+  .responsive-auto-scale {
+    font-size: 14px;
+  }
+  [data-testid*="stat-"] .text-2xl,
+  [data-testid*="stat-"] .text-3xl {
+    font-size: 1.25rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .responsive-auto-scale {
+    font-size: 15px;
+  }
+}
+
+/* Responsive cards grid */
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .stats-grid > * {
+    min-width: 0;
+  }
+}
+
+/* Responsive dialog sizing */
+@media (max-width: 640px) {
+  [role="dialog"] [class*="DialogContent"],
+  [role="dialog"] > div {
+    max-width: 95vw !important;
+    max-height: 90dvh;
+    margin: 8px;
+  }
+}
+
+/* Smooth scroll for tab containers */
+@media (max-width: 768px) {
+  [role="tablist"] {
+    scroll-snap-type: x mandatory;
+    scroll-padding: 4px;
+  }
+  [role="tab"] {
+    scroll-snap-align: start;
+  }
+}

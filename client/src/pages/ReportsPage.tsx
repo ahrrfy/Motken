@@ -601,7 +601,7 @@ export default function ReportsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" data-testid="reports-tabs">
-        <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex" data-testid="reports-tabs-list">
+        <TabsList className="" data-testid="reports-tabs-list">
           <TabsTrigger value="statistics" data-testid="tab-statistics">
             <BarChart3 className="w-4 h-4 ml-2" />
             الإحصائيات
