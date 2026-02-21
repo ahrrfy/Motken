@@ -60,6 +60,7 @@ The system is built with a modern web stack:
     -   **Performance**: Response compression (gzip/brotli), static asset caching, and service worker for offline capabilities.
 
 ## Recent Changes
+-   **Feb 21, 2026**: Advanced Visual Features - Interactive Quran Heatmap (SVG 30-juz grid + 114-surah detailed grid with 5-tier color coding), Visual Floor Plan page (SVG mosque layout with room management, active session indicators, pulse animations, day selector), Interactive Whiteboard page (Canvas API with drawing tools, Quran verse insertion, tajweed marks, undo/redo, save/load/export), Enhanced Schedules timeline view (6AM-10PM visual timeline bars with proportional positioning, conflict detection).
 -   **Feb 21, 2026**: Creative Dashboard Enhancement - Added GitHub-style activity heatmap, star of the week display with golden card, student attendance streaks with flame animation, performance prediction with completion date forecast, smart review suggestions (spaced repetition), and rotating motivational hadith ticker.
 -   **Feb 21, 2026**: Smart Analytics Backend - Added 6 new API endpoints: student-streaks, activity-heatmap, star-of-week, prediction, smart-review, mosque-rankings.
 -   **Feb 21, 2026**: Enhanced Parent Portal - Added visual progress charts with weekly trends, attendance summary with rate indicators, enhanced report content (level/attendance/badges info), 4 quick WhatsApp message templates, student info card with level badges.
