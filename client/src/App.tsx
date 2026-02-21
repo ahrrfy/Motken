@@ -40,6 +40,8 @@ import FamilySystemPage from "@/pages/FamilySystemPage";
 import KnowledgeBasePage from "@/pages/KnowledgeBasePage";
 import MaintenancePage from "@/pages/MaintenancePage";
 import EducationalContentPage from "@/pages/EducationalContentPage";
+import FloorPlanPage from "@/pages/FloorPlanPage";
+import WhiteboardPage from "@/pages/WhiteboardPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import PublicParentReportPage from "@/pages/PublicParentReportPage";
@@ -144,6 +146,8 @@ function App() {
         <Route path="/knowledge-base" component={KnowledgeBasePage} />
         <Route path="/maintenance" component={MaintenancePage} />
         <Route path="/educational-content" component={EducationalContentPage} />
+        <Route path="/floor-plan" component={FloorPlanPage} />
+        <Route path="/whiteboard" component={WhiteboardPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">

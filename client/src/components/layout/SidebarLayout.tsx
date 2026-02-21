@@ -48,6 +48,8 @@ import {
   FileText,
   Brain,
   Sparkles,
+  MapPin,
+  Pen,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -146,6 +148,7 @@ const navCategories: NavCategory[] = [
       { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
       { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
       { href: "/family-system", label: "نظام الأسرة", labelEn: "Family System", icon: HeartHandshake, roles: ["admin", "supervisor", "teacher"] },
+      { href: "/whiteboard", label: "السبورة التفاعلية", labelEn: "Interactive Whiteboard", icon: Pen, roles: ["admin", "supervisor", "teacher"] },
     ],
   },
   {
@@ -155,6 +158,7 @@ const navCategories: NavCategory[] = [
     icon: Wrench,
     items: [
       { href: "/mosques", label: "الجوامع والمراكز", labelEn: "Mosques & Centers", icon: Building2, roles: ["admin"] },
+      { href: "/floor-plan", label: "المخطط البصري", labelEn: "Floor Plan", icon: MapPin, roles: ["admin", "supervisor", "teacher"] },
       { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Stats", icon: BarChart3, roles: ["admin", "supervisor"] },
       { href: "/id-cards", label: "الهويات ومسح QR", labelEn: "ID Cards & QR", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const },
       { href: "/monitoring", label: "المراقبة والأمان", labelEn: "Monitoring & Security", icon: Eye, roles: ["admin"] },
