@@ -776,8 +776,8 @@ export default function StudentsPage() {
       </div>
 
       {!isStudent && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="stats-cards">
-          <Card className="border-blue-200 bg-blue-50/50" data-testid="stat-total-students">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger-children" data-testid="stats-cards">
+          <Card className="border-blue-200 bg-blue-50/50 card-hover" data-testid="stat-total-students">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <Users className="w-5 h-5 text-blue-600" />
@@ -788,7 +788,7 @@ export default function StudentsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-green-200 bg-green-50/50" data-testid="stat-active-students">
+          <Card className="border-green-200 bg-green-50/50 card-hover" data-testid="stat-active-students">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                 <UserCheck className="w-5 h-5 text-green-600" />
@@ -799,7 +799,7 @@ export default function StudentsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-purple-200 bg-purple-50/50" data-testid="stat-special-needs">
+          <Card className="border-purple-200 bg-purple-50/50 card-hover" data-testid="stat-special-needs">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
                 <Heart className="w-5 h-5 text-purple-600" />
@@ -810,7 +810,7 @@ export default function StudentsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-amber-200 bg-amber-50/50" data-testid="stat-orphan-students">
+          <Card className="border-amber-200 bg-amber-50/50 card-hover" data-testid="stat-orphan-students">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                 <Shield className="w-5 h-5 text-amber-600" />

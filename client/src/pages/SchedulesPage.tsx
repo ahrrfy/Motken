@@ -410,7 +410,7 @@ export default function SchedulesPage() {
   }
 
   return (
-    <div className="space-y-6" dir="rtl" data-testid="schedules-page">
+    <div className="space-y-6 page-transition" dir="rtl" data-testid="schedules-page">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <CalendarDays className="h-7 w-7 text-primary" />
