@@ -4433,5 +4433,286 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== STUDENT STREAKS ====================
+  app.get("/api/student-streaks/:studentId", requireAuth, async (req, res) => {
+    try {
+      const studentId = req.params.studentId;
+      const allAttendance = await storage.getAttendanceByStudent(studentId);
+
+      const sorted = allAttendance.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      let currentStreak = 0;
+      let maxStreak = 0;
+      let tempStreak = 0;
+
+      for (const record of sorted) {
+        if (record.status === "present" || record.status === "late") {
+          tempStreak++;
+          if (tempStreak > maxStreak) maxStreak = tempStreak;
+        } else {
+          if (currentStreak === 0) currentStreak = tempStreak;
+          tempStreak = 0;
+        }
+      }
+      if (currentStreak === 0) currentStreak = tempStreak;
+      if (tempStreak > maxStreak) maxStreak = tempStreak;
+
+      const totalPresent = allAttendance.filter(a => a.status === "present" || a.status === "late").length;
+
+      res.json({ currentStreak, maxStreak, totalPresent, totalRecords: allAttendance.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== ACTIVITY HEATMAP ====================
+  app.get("/api/activity-heatmap/:userId", requireAuth, async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const now = new Date();
+      const yearAgo = new Date(now);
+      yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+
+      const [attendanceData, assignmentsData, pointsData] = await Promise.all([
+        storage.getAttendanceByStudent(userId),
+        storage.getAssignmentsByStudent(userId),
+        storage.getPointsByUser(userId),
+      ]);
+
+      const dayMap: Record<string, number> = {};
+
+      attendanceData.forEach(a => {
+        const day = new Date(a.date).toISOString().split("T")[0];
+        dayMap[day] = (dayMap[day] || 0) + 1;
+      });
+
+      assignmentsData.forEach(a => {
+        if (a.status === "done") {
+          const day = new Date(a.createdAt).toISOString().split("T")[0];
+          dayMap[day] = (dayMap[day] || 0) + 1;
+        }
+      });
+
+      pointsData.forEach(p => {
+        const day = new Date(p.createdAt).toISOString().split("T")[0];
+        dayMap[day] = (dayMap[day] || 0) + 1;
+      });
+
+      const heatmapData = Object.entries(dayMap).map(([date, count]) => ({ date, count }));
+
+      res.json(heatmapData);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== STAR OF THE WEEK ====================
+  app.get("/api/star-of-week", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const mosqueId = currentUser.mosqueId;
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+
+      const students = mosqueId
+        ? (await storage.getUsersByMosqueAndRole(mosqueId, "student")).filter(s => s.isActive && !s.pendingApproval)
+        : [];
+
+      if (students.length === 0) {
+        return res.json({ star: null });
+      }
+
+      const studentScores: { student: any; score: number; details: any }[] = [];
+
+      for (const student of students) {
+        let score = 0;
+        const details: any = { attendance: 0, assignments: 0, points: 0 };
+
+        const attendance = await storage.getAttendanceByStudent(student.id);
+        const weekAttendance = attendance.filter(a => new Date(a.date) >= weekStart);
+        details.attendance = weekAttendance.filter(a => a.status === "present").length;
+        score += details.attendance * 10;
+
+        const assignments = await storage.getAssignmentsByStudent(student.id);
+        const weekAssignments = assignments.filter(a => new Date(a.createdAt) >= weekStart && a.status === "done");
+        details.assignments = weekAssignments.length;
+        score += weekAssignments.reduce((sum, a) => sum + (a.grade || 0), 0);
+
+        const points = await storage.getPointsByUser(student.id);
+        const weekPoints = points.filter(p => new Date(p.createdAt) >= weekStart);
+        details.points = weekPoints.reduce((sum, p) => sum + p.amount, 0);
+        score += details.points;
+
+        studentScores.push({ student: { id: student.id, name: student.name, level: student.level, avatar: student.avatar }, score, details });
+      }
+
+      studentScores.sort((a, b) => b.score - a.score);
+
+      const top3 = studentScores.slice(0, 3);
+
+      res.json({ star: top3[0] || null, topStudents: top3 });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== PREDICTION ====================
+  app.get("/api/prediction/:studentId", requireAuth, async (req, res) => {
+    try {
+      const studentId = req.params.studentId;
+      const student = await storage.getUser(studentId);
+      if (!student) return res.status(404).json({ message: "Student not found" });
+
+      const assignments = await storage.getAssignmentsByStudent(studentId);
+      const completedAssignments = assignments.filter(a => a.status === "done");
+
+      if (completedAssignments.length < 2) {
+        return res.json({ prediction: null, message: "Not enough data" });
+      }
+
+      const totalMemorizedVerses = completedAssignments.reduce((sum, a) => sum + (a.toVerse - a.fromVerse + 1), 0);
+
+      const totalQuranVerses = 6236;
+      const remainingVerses = totalQuranVerses - totalMemorizedVerses;
+
+      const sortedByDate = completedAssignments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      const firstDate = new Date(sortedByDate[0].createdAt);
+      const lastDate = new Date(sortedByDate[sortedByDate.length - 1].createdAt);
+      const weeks = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      const versesPerWeek = totalMemorizedVerses / weeks;
+
+      const remainingWeeks = versesPerWeek > 0 ? remainingVerses / versesPerWeek : 0;
+      const predictedDate = new Date();
+      predictedDate.setDate(predictedDate.getDate() + (remainingWeeks * 7));
+
+      const grades = completedAssignments.filter(a => a.grade !== null).map(a => a.grade!);
+      const avgGrade = grades.length > 0 ? Math.round(grades.reduce((s, g) => s + g, 0) / grades.length) : 0;
+
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const lastWeekAssignments = completedAssignments.filter(a => new Date(a.createdAt) >= oneWeekAgo).length;
+      const prevWeekAssignments = completedAssignments.filter(a => new Date(a.createdAt) >= twoWeeksAgo && new Date(a.createdAt) < oneWeekAgo).length;
+
+      const trend = lastWeekAssignments > prevWeekAssignments ? "improving" : lastWeekAssignments < prevWeekAssignments ? "declining" : "stable";
+
+      res.json({
+        prediction: {
+          totalMemorizedVerses,
+          totalQuranVerses,
+          progressPercent: Math.round((totalMemorizedVerses / totalQuranVerses) * 100),
+          versesPerWeek: Math.round(versesPerWeek * 10) / 10,
+          remainingWeeks: Math.round(remainingWeeks),
+          predictedCompletionDate: predictedDate.toISOString(),
+          avgGrade,
+          trend,
+          lastWeekAssignments,
+          prevWeekAssignments,
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== SMART REVIEW ====================
+  app.get("/api/smart-review/:studentId", requireAuth, async (req, res) => {
+    try {
+      const studentId = req.params.studentId;
+      const assignments = await storage.getAssignmentsByStudent(studentId);
+      const completed = assignments.filter(a => a.status === "done" && a.grade !== null);
+
+      const surahPerformance: Record<string, { avgGrade: number; lastReviewed: Date; count: number; grades: number[] }> = {};
+
+      completed.forEach(a => {
+        if (!surahPerformance[a.surahName]) {
+          surahPerformance[a.surahName] = { avgGrade: 0, lastReviewed: new Date(a.createdAt), count: 0, grades: [] };
+        }
+        surahPerformance[a.surahName].grades.push(a.grade!);
+        surahPerformance[a.surahName].count++;
+        const d = new Date(a.createdAt);
+        if (d > surahPerformance[a.surahName].lastReviewed) {
+          surahPerformance[a.surahName].lastReviewed = d;
+        }
+      });
+
+      Object.keys(surahPerformance).forEach(surah => {
+        const sp = surahPerformance[surah];
+        sp.avgGrade = Math.round(sp.grades.reduce((s, g) => s + g, 0) / sp.grades.length);
+      });
+
+      const now = new Date();
+      const needsReview = Object.entries(surahPerformance)
+        .map(([surah, data]) => {
+          const daysSinceReview = Math.floor((now.getTime() - data.lastReviewed.getTime()) / (24 * 60 * 60 * 1000));
+          const reviewInterval = data.avgGrade >= 90 ? 30 : data.avgGrade >= 75 ? 14 : data.avgGrade >= 60 ? 7 : 3;
+          const urgency = daysSinceReview / reviewInterval;
+          return { surah, avgGrade: data.avgGrade, daysSinceReview, reviewInterval, urgency, needsReview: urgency >= 1 };
+        })
+        .sort((a, b) => b.urgency - a.urgency);
+
+      const weakSpots = Object.entries(surahPerformance)
+        .filter(([_, data]) => data.avgGrade < 70)
+        .map(([surah, data]) => ({ surah, avgGrade: data.avgGrade, count: data.count }))
+        .sort((a, b) => a.avgGrade - b.avgGrade);
+
+      const todayReview = needsReview.filter(r => r.needsReview).slice(0, 5);
+
+      res.json({ todayReview, weakSpots, allSurahs: needsReview });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== MOSQUE RANKINGS ====================
+  app.get("/api/mosque-rankings", requireAuth, async (req, res) => {
+    try {
+      const allMosques = await storage.getMosques();
+      const activeMosques = allMosques.filter(m => m.isActive);
+
+      const rankings = await Promise.all(activeMosques.map(async (mosque) => {
+        const students = (await storage.getUsersByMosqueAndRole(mosque.id, "student")).filter(s => s.isActive && !s.pendingApproval);
+        const teachers = (await storage.getUsersByMosqueAndRole(mosque.id, "teacher")).filter(t => t.isActive);
+
+        let totalPoints = 0;
+        let totalAssignments = 0;
+        let completedAssignments = 0;
+
+        for (const student of students) {
+          const pts = await storage.getPointsByUser(student.id);
+          totalPoints += pts.reduce((sum, p) => sum + p.amount, 0);
+          const studentAssignments = await storage.getAssignmentsByStudent(student.id);
+          totalAssignments += studentAssignments.length;
+          completedAssignments += studentAssignments.filter(a => a.status === "done").length;
+        }
+
+        const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
+
+        return {
+          mosqueId: mosque.id,
+          mosqueName: mosque.name,
+          province: mosque.province,
+          studentsCount: students.length,
+          teachersCount: teachers.length,
+          totalPoints,
+          completionRate,
+          score: totalPoints + (completionRate * 10) + (students.length * 5),
+        };
+      }));
+
+      rankings.sort((a, b) => b.score - a.score);
+
+      const ranked = rankings.map((r, i) => ({ ...r, rank: i + 1 }));
+
+      res.json(ranked);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }
