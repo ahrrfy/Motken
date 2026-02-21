@@ -86,7 +86,7 @@ export default function SchedulesPage() {
   const [location, setLocation] = useState("");
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
 
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "timeline">("grid");
   const [showInactive, setShowInactive] = useState(true);
   const [filterTeacherId, setFilterTeacherId] = useState<string>("all");
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -440,6 +440,16 @@ export default function SchedulesPage() {
               data-testid="button-view-list"
             >
               <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "timeline" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("timeline")}
+              className="gap-1.5 text-xs"
+              data-testid="btn-timeline-view"
+            >
+              <CalendarDays className="w-4 h-4" />
+              جدول زمني
             </Button>
           </div>
 
@@ -1048,6 +1058,149 @@ export default function SchedulesPage() {
                   ))}
               </tbody>
             </table>
+          </CardContent>
+        </Card>
+      )}
+
+      {viewMode === "timeline" && (
+        <Card className="shadow-md" data-testid="timeline-view">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5" />
+              الجدول الزمني البصري
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {DAY_NAMES.map((dayName, dayIdx) => {
+                const daySchedules = filteredSchedules
+                  .filter(s => s.dayOfWeek === dayIdx)
+                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                
+                if (daySchedules.length === 0) return null;
+                
+                return (
+                  <div key={dayIdx} className={`space-y-2 ${dayIdx === todayDayOfWeek ? "ring-2 ring-amber-300 rounded-xl p-3 bg-amber-50/30" : ""}`} data-testid={`timeline-day-${dayIdx}`}>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-sm">{dayName}</h3>
+                      {dayIdx === todayDayOfWeek && (
+                        <Badge variant="outline" className="text-[10px] bg-amber-100 border-amber-300">اليوم</Badge>
+                      )}
+                      <Badge variant="secondary" className="text-[10px]">{daySchedules.length} حلقة</Badge>
+                    </div>
+                    
+                    {/* Timeline bar */}
+                    <div className="relative" dir="ltr">
+                      {/* Time axis - 6AM to 10PM */}
+                      <div className="flex justify-between text-[9px] text-muted-foreground mb-1 px-1">
+                        {["6ص", "8ص", "10ص", "12م", "2م", "4م", "6م", "8م", "10م"].map((t, i) => (
+                          <span key={i}>{t}</span>
+                        ))}
+                      </div>
+                      <div className="relative h-12 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                        {/* Background hour lines */}
+                        {Array.from({ length: 17 }, (_, i) => (
+                          <div
+                            key={i}
+                            className="absolute top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-700"
+                            style={{ left: `${(i / 16) * 100}%` }}
+                          />
+                        ))}
+                        
+                        {/* Schedule blocks */}
+                        {daySchedules.map(schedule => {
+                          const startHour = parseInt(schedule.startTime.split(":")[0]);
+                          const startMin = parseInt(schedule.startTime.split(":")[1] || "0");
+                          const endHour = parseInt(schedule.endTime.split(":")[0]);
+                          const endMin = parseInt(schedule.endTime.split(":")[1] || "0");
+                          
+                          const startPercent = ((startHour - 6 + startMin / 60) / 16) * 100;
+                          const endPercent = ((endHour - 6 + endMin / 60) / 16) * 100;
+                          const widthPercent = endPercent - startPercent;
+                          
+                          const colorClass = getTeacherColor(schedule.teacherId);
+                          const bgColor = colorClass.includes("blue") ? "#3b82f6" :
+                                          colorClass.includes("green") ? "#10b981" :
+                                          colorClass.includes("purple") ? "#8b5cf6" :
+                                          colorClass.includes("orange") ? "#f97316" :
+                                          colorClass.includes("pink") ? "#ec4899" :
+                                          colorClass.includes("teal") ? "#14b8a6" :
+                                          colorClass.includes("indigo") ? "#6366f1" :
+                                          colorClass.includes("yellow") ? "#eab308" :
+                                          colorClass.includes("red") ? "#ef4444" :
+                                          "#06b6d4";
+                          
+                          return (
+                            <div
+                              key={schedule.id}
+                              className="absolute top-1 bottom-1 rounded-md flex items-center px-2 text-white text-[10px] font-medium truncate cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                              style={{
+                                left: `${Math.max(0, startPercent)}%`,
+                                width: `${Math.max(3, widthPercent)}%`,
+                                backgroundColor: bgColor,
+                                opacity: schedule.isActive ? 1 : 0.5,
+                              }}
+                              title={`${schedule.title} | ${getTeacherName(schedule.teacherId)} | ${schedule.startTime}-${schedule.endTime}`}
+                              onClick={() => canManage && openEditDialog(schedule)}
+                              data-testid={`timeline-block-${schedule.id}`}
+                            >
+                              <span className="truncate">
+                                {schedule.title} - {getTeacherName(schedule.teacherId)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Conflict detection */}
+            {(() => {
+              const conflicts: { day: string; schedule1: string; schedule2: string; time: string }[] = [];
+              DAY_NAMES.forEach((dayName, dayIdx) => {
+                const daySchedules = filteredSchedules
+                  .filter(s => s.dayOfWeek === dayIdx && s.isActive)
+                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                
+                for (let i = 0; i < daySchedules.length; i++) {
+                  for (let j = i + 1; j < daySchedules.length; j++) {
+                    const a = daySchedules[i];
+                    const b = daySchedules[j];
+                    if (a.location && b.location && a.location === b.location) {
+                      if (a.endTime > b.startTime && a.startTime < b.endTime) {
+                        conflicts.push({
+                          day: dayName,
+                          schedule1: a.title,
+                          schedule2: b.title,
+                          time: `${a.startTime}-${a.endTime} & ${b.startTime}-${b.endTime}`,
+                        });
+                      }
+                    }
+                  }
+                }
+              });
+              
+              if (conflicts.length === 0) return null;
+              
+              return (
+                <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800" data-testid="timeline-conflicts">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500" />
+                    <span className="font-bold text-sm text-red-600">تعارضات مكتشفة ({conflicts.length})</span>
+                  </div>
+                  <div className="space-y-1">
+                    {conflicts.map((c, i) => (
+                      <p key={i} className="text-xs text-red-600">
+                        {c.day}: "{c.schedule1}" و "{c.schedule2}" - {c.time}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
