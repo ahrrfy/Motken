@@ -1,5 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -7,7 +9,47 @@ import { createIndexes } from "./db";
 
 const app = express();
 
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      connectSrc: ["'self'", "https://api.alquran.cloud", "https://wa.me"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "same-origin" },
+}));
+
 app.use(compression());
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "عدد الطلبات كبير جداً. يرجى المحاولة لاحقاً" },
+  validate: { xForwardedForHeader: false, default: true },
+});
+app.use("/api/", apiLimiter);
+
+const publicEndpointLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "عدد الطلبات كبير جداً. يرجى المحاولة لاحقاً" },
+  validate: { xForwardedForHeader: false, default: true },
+});
+app.use("/api/family-dashboard/", publicEndpointLimiter);
+app.use("/api/parent-report/", publicEndpointLimiter);
+app.use("/api/certificates/verify/", publicEndpointLimiter);
 
 app.use((req, res, next) => {
   if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
@@ -25,14 +67,14 @@ declare module "http" {
 
 app.use(
   express.json({
-    limit: '1mb',
+    limit: '500kb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: '500kb' }));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
