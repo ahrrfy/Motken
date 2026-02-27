@@ -49,7 +49,7 @@ The system is built with a modern web stack:
 -   **Parent Portal**: Visual progress charts, attendance summary, enhanced report content, WhatsApp message templates, student info card.
 -   **Competitions**: Tabbed interface (Competitions, Star of Week, Mosque Rankings), mosque leaderboard.
 -   **ID Cards**: Professional card design with gradient headers and improved print support.
--   **Security**: Helmet HTTP security headers, Scrypt password hashing, session security, login/API rate limiting, IP banning, IDOR prevention, request body size limits, random default passwords, input validation. Includes security hardening against privilege escalation and unauthorized access.
+-   **Security**: Helmet HTTP security headers, Scrypt password hashing, session security, login/API rate limiting, IP banning, IDOR prevention, request body size limits, random default passwords, input validation. Includes security hardening against privilege escalation and unauthorized access. Deep security audit: mosque isolation on schedules/competitions/leaderboard/messages/points, mass assignment protection on emergency-substitutions/incidents, role gating on courses, XSS sanitization in print utilities.
 -   **Smart Analytics API**: 6 dedicated endpoints for student-streaks, activity-heatmap, star-of-week, prediction, smart-review, mosque-rankings.
 -   **Performance**: Response compression, static asset caching, service worker for offline capabilities.
 -   **Institutional Systems**: Crisis Management, Graduation & Follow-up, Institutional Integration, Integrated Family System, Knowledge Management, Maintenance & Improvement, Educational Content.
