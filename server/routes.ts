@@ -1700,6 +1700,9 @@ export async function registerRoutes(
   app.patch("/api/courses/:id", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
+      if (currentUser.role === "student") {
+        return res.status(403).json({ message: "غير مصرح بتعديل الدورات" });
+      }
       const course = await storage.getCourse(req.params.id);
       if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
 
@@ -1729,6 +1732,9 @@ export async function registerRoutes(
   app.delete("/api/courses/:id", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
+      if (currentUser.role === "student") {
+        return res.status(403).json({ message: "غير مصرح بحذف الدورات" });
+      }
       const course = await storage.getCourse(req.params.id);
       if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
 
@@ -3121,6 +3127,9 @@ export async function registerRoutes(
       if (!content) return res.status(400).json({ message: "المحتوى مطلوب" });
       const receiver = await storage.getUser(receiverId);
       if (!receiver) return res.status(404).json({ message: "المستلم غير موجود" });
+      if (req.user!.role !== "admin" && receiver.mosqueId !== req.user!.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بمراسلة مستخدم من جامع آخر" });
+      }
       if (receiver.suspendedUntil && new Date(receiver.suspendedUntil) > new Date()) {
         return res.status(403).json({ message: "هذا المستخدم موقوف" });
       }
@@ -3264,7 +3273,11 @@ export async function registerRoutes(
 
   app.get("/api/points/leaderboard", requireAuth, async (req, res) => {
     try {
-      const mosqueId = req.query.mosqueId as string | undefined;
+      const currentUser = req.user!;
+      let mosqueId = req.query.mosqueId as string | undefined;
+      if (currentUser.role !== "admin") {
+        mosqueId = currentUser.mosqueId || undefined;
+      }
       const leaderboard = await storage.getLeaderboard(mosqueId);
       res.json(leaderboard);
     } catch (err: any) {
@@ -3281,6 +3294,11 @@ export async function registerRoutes(
       const { userId, amount, reason, category } = req.body;
       if (!userId || !amount || !reason) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const targetStudent = await storage.getUser(userId);
+      if (!targetStudent) return res.status(404).json({ message: "المستخدم غير موجود" });
+      if (currentUser.role !== "admin" && targetStudent.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بمنح نقاط لطالب من جامع آخر" });
       }
       const point = await storage.createPoint({
         userId,
@@ -3343,16 +3361,24 @@ export async function registerRoutes(
   // ==================== SCHEDULES ====================
   app.get("/api/schedules", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
       const { mosqueId, teacherId } = req.query;
       if (mosqueId) {
+        if (currentUser.role !== "admin" && mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "غير مصرح بالوصول لجداول جامع آخر" });
+        }
         const scheds = await storage.getSchedulesByMosque(mosqueId as string);
         return res.json(scheds);
       }
       if (teacherId) {
+        if (currentUser.role !== "admin" && currentUser.role !== "supervisor") {
+          if (currentUser.id !== teacherId) {
+            return res.status(403).json({ message: "غير مصرح بالوصول لجداول معلم آخر" });
+          }
+        }
         const scheds = await storage.getSchedulesByTeacher(teacherId as string);
         return res.json(scheds);
       }
-      const currentUser = req.user!;
       if (currentUser.role === "teacher") {
         const scheds = await storage.getSchedulesByTeacher(currentUser.id);
         return res.json(scheds);
@@ -3399,6 +3425,11 @@ export async function registerRoutes(
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بتعديل الجدول" });
       }
+      const existingSchedule = await storage.getSchedule(req.params.id);
+      if (!existingSchedule) return res.status(404).json({ message: "الجدول غير موجود" });
+      if (currentUser.role !== "admin" && existingSchedule.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بتعديل جدول جامع آخر" });
+      }
       const updateData: any = {};
       if (req.body.title !== undefined) updateData.title = req.body.title;
       if (req.body.dayOfWeek !== undefined) updateData.dayOfWeek = Number(req.body.dayOfWeek);
@@ -3421,6 +3452,11 @@ export async function registerRoutes(
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بحذف الجدول" });
       }
+      const schedToDelete = await storage.getSchedule(req.params.id);
+      if (!schedToDelete) return res.status(404).json({ message: "الجدول غير موجود" });
+      if (currentUser.role !== "admin" && schedToDelete.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بحذف جدول جامع آخر" });
+      }
       await storage.deleteSchedule(req.params.id);
       await logActivity(currentUser, "حذف جدول", "schedules");
       res.json({ message: "تم حذف الجدول" });
@@ -3432,12 +3468,15 @@ export async function registerRoutes(
   // ==================== COMPETITIONS ====================
   app.get("/api/competitions", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
       const mosqueId = req.query.mosqueId as string | undefined;
       if (mosqueId) {
+        if (currentUser.role !== "admin" && mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "غير مصرح بالوصول لمسابقات جامع آخر" });
+        }
         const comps = await storage.getCompetitionsByMosque(mosqueId);
         return res.json(comps);
       }
-      const currentUser = req.user!;
       if (currentUser.role === "admin") {
         const comps = await storage.getCompetitions();
         return res.json(comps);
@@ -3454,8 +3493,12 @@ export async function registerRoutes(
 
   app.get("/api/competitions/:id", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
       const comp = await storage.getCompetition(req.params.id);
       if (!comp) return res.status(404).json({ message: "المسابقة غير موجودة" });
+      if (currentUser.role !== "admin" && comp.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذه المسابقة" });
+      }
       const participants = await storage.getCompetitionParticipants(req.params.id);
       res.json({ ...comp, participants });
     } catch (err: any) {
@@ -3496,6 +3539,11 @@ export async function registerRoutes(
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بتعديل المسابقة" });
       }
+      const existingComp = await storage.getCompetition(req.params.id);
+      if (!existingComp) return res.status(404).json({ message: "المسابقة غير موجودة" });
+      if (currentUser.role !== "admin" && existingComp.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بتعديل مسابقة جامع آخر" });
+      }
       const updateData: any = {};
       if (req.body.title !== undefined) updateData.title = req.body.title;
       if (req.body.description !== undefined) updateData.description = req.body.description;
@@ -3518,6 +3566,11 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بحذف المسابقة" });
+      }
+      const compToDelete = await storage.getCompetition(req.params.id);
+      if (!compToDelete) return res.status(404).json({ message: "المسابقة غير موجودة" });
+      if (currentUser.role !== "admin" && compToDelete.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بحذف مسابقة جامع آخر" });
       }
       await storage.deleteCompetition(req.params.id);
       await logActivity(currentUser, "حذف مسابقة", "competitions");
@@ -3906,7 +3959,12 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
-      const updated = await storage.updateEmergencySubstitution(req.params.id, req.body);
+      const allowedFields: Record<string, boolean> = { status: true, notes: true, endDate: true };
+      const safeData: any = {};
+      for (const key of Object.keys(req.body)) {
+        if (allowedFields[key]) safeData[key] = req.body[key];
+      }
+      const updated = await storage.updateEmergencySubstitution(req.params.id, safeData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
@@ -4037,7 +4095,12 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
-      const updated = await storage.updateIncidentRecord(req.params.id, req.body);
+      const incidentAllowed: Record<string, boolean> = { title: true, description: true, severity: true, status: true, actionTaken: true, resolution: true };
+      const safeIncidentData: any = {};
+      for (const key of Object.keys(req.body)) {
+        if (incidentAllowed[key]) safeIncidentData[key] = req.body[key];
+      }
+      const updated = await storage.updateIncidentRecord(req.params.id, safeIncidentData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
