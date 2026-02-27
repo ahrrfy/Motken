@@ -423,7 +423,7 @@ export async function registerRoutes(
       if (!name || typeof name !== "string" || name.length > 200) {
         return res.status(400).json({ message: "الاسم مطلوب ويجب ألا يتجاوز 200 حرف" });
       }
-      const rawPassword = req.body.password || "123456";
+      const rawPassword = req.body.password || crypto.randomBytes(4).toString("hex");
       if (req.body.password && (typeof req.body.password !== "string" || req.body.password.length < 6)) {
         return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
       }
@@ -2188,7 +2188,7 @@ export async function registerRoutes(
 
       const sup1 = await storage.createUser({
         username: "supervisor1",
-        password: await hashPassword("super123"),
+        password: await hashPassword("Sup3r!vis0r#1"),
         name: "المشرف أحمد",
         role: "supervisor",
         mosqueId: mosque1.id,
@@ -2198,7 +2198,7 @@ export async function registerRoutes(
 
       const sup2 = await storage.createUser({
         username: "supervisor2",
-        password: await hashPassword("super123"),
+        password: await hashPassword("Sup3r!vis0r#2"),
         name: "المشرف خالد",
         role: "supervisor",
         mosqueId: mosque2.id,
@@ -2208,7 +2208,7 @@ export async function registerRoutes(
 
       const teacher1 = await storage.createUser({
         username: "teacher1",
-        password: await hashPassword("teacher123"),
+        password: await hashPassword("T3ach!ng#Q1"),
         name: "الشيخ أحمد",
         role: "teacher",
         mosqueId: mosque1.id,
@@ -2218,7 +2218,7 @@ export async function registerRoutes(
 
       const teacher2 = await storage.createUser({
         username: "teacher2",
-        password: await hashPassword("teacher123"),
+        password: await hashPassword("T3ach!ng#Q2"),
         name: "الشيخ عبد الله",
         role: "teacher",
         mosqueId: mosque1.id,
@@ -2228,7 +2228,7 @@ export async function registerRoutes(
 
       const teacher3 = await storage.createUser({
         username: "teacher3",
-        password: await hashPassword("teacher123"),
+        password: await hashPassword("T3ach!ng#Q3"),
         name: "الشيخ محمد",
         role: "teacher",
         mosqueId: mosque2.id,
@@ -2236,11 +2236,11 @@ export async function registerRoutes(
         isActive: true,
       });
 
-      const s1 = await storage.createUser({ username: "student1", password: await hashPassword("student123"), name: "عمر خالد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07901234567", isActive: true });
-      const s2 = await storage.createUser({ username: "student2", password: await hashPassword("student123"), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07911234567", isActive: true });
-      const s3 = await storage.createUser({ username: "student3", password: await hashPassword("student123"), name: "يوسف علي", role: "student", mosqueId: mosque1.id, teacherId: teacher2.id, phone: "07921234567", isActive: true });
-      const s4 = await storage.createUser({ username: "student4", password: await hashPassword("student123"), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07931234567", isActive: true });
-      const s5 = await storage.createUser({ username: "student5", password: await hashPassword("student123"), name: "كريم محمود", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07941234567", isActive: true });
+      const s1 = await storage.createUser({ username: "student1", password: await hashPassword("Stud3nt!Q1"), name: "عمر خالد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07901234567", isActive: true });
+      const s2 = await storage.createUser({ username: "student2", password: await hashPassword("Stud3nt!Q2"), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07911234567", isActive: true });
+      const s3 = await storage.createUser({ username: "student3", password: await hashPassword("Stud3nt!Q3"), name: "يوسف علي", role: "student", mosqueId: mosque1.id, teacherId: teacher2.id, phone: "07921234567", isActive: true });
+      const s4 = await storage.createUser({ username: "student4", password: await hashPassword("Stud3nt!Q4"), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07931234567", isActive: true });
+      const s5 = await storage.createUser({ username: "student5", password: await hashPassword("Stud3nt!Q5"), name: "كريم محمود", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07941234567", isActive: true });
 
       await storage.createAssignment({
         studentId: s1.id, teacherId: teacher1.id, mosqueId: mosque1.id,
@@ -3933,6 +3933,9 @@ export async function registerRoutes(
   app.get("/api/incidents", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
       if (currentUser.role === "admin") {
         const allMosques = await storage.getMosques();
         let all: any[] = [];
@@ -3955,6 +3958,9 @@ export async function registerRoutes(
   app.post("/api/incidents", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
       const { title, description, severity, actionTaken } = req.body;
       if (!title) {
         return res.status(400).json({ message: "عنوان الحادثة مطلوب" });
@@ -4231,9 +4237,22 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/family-dashboard/:phone", async (req, res) => {
+  app.get("/api/family-dashboard/:phone", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
       const phone = req.params.phone;
+      if (currentUser.role === "student") {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
+        const requestedPhone = cleanDigits(phone);
+        const myStudents = await storage.getUsersByTeacher(currentUser.id);
+        const hasAccess = myStudents.some(s => cleanDigits(s.parentPhone || "") === requestedPhone);
+        if (!hasAccess) {
+          return res.status(403).json({ message: "غير مصرح بالوصول لهذا الرقم" });
+        }
+      }
       const links = await storage.getFamilyLinksByParentPhone(phone);
       if (links.length === 0) {
         return res.json({ children: [] });
@@ -4242,6 +4261,7 @@ export async function registerRoutes(
       for (const link of links) {
         const student = await storage.getUser(link.studentId);
         if (!student) continue;
+        if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId) continue;
         const studentAssignments = await storage.getAssignmentsByStudent(student.id);
         const totalAssignments = studentAssignments.length;
         const completedAssignments = studentAssignments.filter(a => a.status === "done").length;
