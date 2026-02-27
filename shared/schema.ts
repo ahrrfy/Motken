@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, pgEnum, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -59,7 +59,11 @@ export const users = pgTable("users", {
   adminNotes: text("admin_notes"),
   suspendedUntil: timestamp("suspended_until"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_users_mosque_id").on(table.mosqueId),
+  index("idx_users_teacher_id").on(table.teacherId),
+  index("idx_users_role").on(table.role),
+]);
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -82,7 +86,11 @@ export const assignments = pgTable("assignments", {
   seenByStudent: boolean("seen_by_student").notNull().default(false),
   seenAt: timestamp("seen_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_assignments_student_id").on(table.studentId),
+  index("idx_assignments_teacher_id").on(table.teacherId),
+  index("idx_assignments_mosque_id").on(table.mosqueId),
+]);
 
 export const insertAssignmentSchema = createInsertSchema(assignments).omit({ id: true, createdAt: true });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
@@ -99,7 +107,11 @@ export const ratings = pgTable("ratings", {
   comment: text("comment"),
   type: text("type").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_ratings_from_user_id").on(table.fromUserId),
+  index("idx_ratings_to_user_id").on(table.toUserId),
+  index("idx_ratings_mosque_id").on(table.mosqueId),
+]);
 
 export const insertRatingSchema = createInsertSchema(ratings).omit({ id: true, createdAt: true });
 export type InsertRating = z.infer<typeof insertRatingSchema>;
@@ -119,7 +131,10 @@ export const exams = pgTable("exams", {
   description: text("description"),
   isForAll: boolean("is_for_all").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_exams_teacher_id").on(table.teacherId),
+  index("idx_exams_mosque_id").on(table.mosqueId),
+]);
 
 export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true });
 export type InsertExam = z.infer<typeof insertExamSchema>;
@@ -133,7 +148,10 @@ export const examStudents = pgTable("exam_students", {
   grade: integer("grade"),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_exam_students_exam_id").on(table.examId),
+  index("idx_exam_students_student_id").on(table.studentId),
+]);
 
 export const insertExamStudentSchema = createInsertSchema(examStudents).omit({ id: true, createdAt: true });
 export type InsertExamStudent = z.infer<typeof insertExamStudentSchema>;
@@ -152,7 +170,10 @@ export const activityLogs = pgTable("activity_logs", {
   ipAddress: text("ip_address"),
   status: text("status").notNull().default("success"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_activity_logs_user_id").on(table.userId),
+  index("idx_activity_logs_mosque_id").on(table.mosqueId),
+]);
 
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
@@ -168,7 +189,10 @@ export const notifications = pgTable("notifications", {
   type: text("type").notNull().default("info"),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_notifications_user_id").on(table.userId),
+  index("idx_notifications_mosque_id").on(table.mosqueId),
+]);
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
@@ -191,7 +215,10 @@ export const courses = pgTable("courses", {
   maxStudents: integer("max_students"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_courses_mosque_id").on(table.mosqueId),
+  index("idx_courses_created_by").on(table.createdBy),
+]);
 
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
@@ -206,7 +233,10 @@ export const courseStudents = pgTable("course_students", {
   graduatedAt: timestamp("graduated_at"),
   graduationGrade: text("graduation_grade"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_course_students_course_id").on(table.courseId),
+  index("idx_course_students_student_id").on(table.studentId),
+]);
 
 export const insertCourseStudentSchema = createInsertSchema(courseStudents).omit({ id: true, createdAt: true });
 export type InsertCourseStudent = z.infer<typeof insertCourseStudentSchema>;
@@ -218,7 +248,10 @@ export const courseTeachers = pgTable("course_teachers", {
   courseId: varchar("course_id").notNull().references(() => courses.id),
   teacherId: varchar("teacher_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_course_teachers_course_id").on(table.courseId),
+  index("idx_course_teachers_teacher_id").on(table.teacherId),
+]);
 
 export const insertCourseTeacherSchema = createInsertSchema(courseTeachers).omit({ id: true, createdAt: true });
 export type InsertCourseTeacher = z.infer<typeof insertCourseTeacherSchema>;
@@ -236,7 +269,12 @@ export const certificates = pgTable("certificates", {
   graduationGrade: text("graduation_grade"),
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_certificates_course_id").on(table.courseId),
+  index("idx_certificates_student_id").on(table.studentId),
+  index("idx_certificates_issued_by").on(table.issuedBy),
+  index("idx_certificates_mosque_id").on(table.mosqueId),
+]);
 
 export const insertCertificateSchema = createInsertSchema(certificates).omit({ id: true, createdAt: true });
 export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
@@ -251,7 +289,9 @@ export const bannedDevices = pgTable("banned_devices", {
   reason: text("reason"),
   bannedBy: varchar("banned_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_banned_devices_banned_by").on(table.bannedBy),
+]);
 
 export const insertBannedDeviceSchema = createInsertSchema(bannedDevices).omit({ id: true, createdAt: true });
 export type InsertBannedDevice = z.infer<typeof insertBannedDeviceSchema>;
@@ -283,7 +323,11 @@ export const attendance = pgTable("attendance", {
   status: text("status").notNull().default("present"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_attendance_student_id").on(table.studentId),
+  index("idx_attendance_teacher_id").on(table.teacherId),
+  index("idx_attendance_mosque_id").on(table.mosqueId),
+]);
 
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true, createdAt: true });
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
@@ -298,7 +342,11 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_messages_sender_id").on(table.senderId),
+  index("idx_messages_receiver_id").on(table.receiverId),
+  index("idx_messages_mosque_id").on(table.mosqueId),
+]);
 
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
@@ -313,7 +361,10 @@ export const points = pgTable("points", {
   reason: text("reason").notNull(),
   category: text("category").notNull().default("assignment"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_points_user_id").on(table.userId),
+  index("idx_points_mosque_id").on(table.mosqueId),
+]);
 
 export const insertPointSchema = createInsertSchema(points).omit({ id: true, createdAt: true });
 export type InsertPoint = z.infer<typeof insertPointSchema>;
@@ -329,7 +380,10 @@ export const badges = pgTable("badges", {
   description: text("description"),
   earnedAt: timestamp("earned_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_badges_user_id").on(table.userId),
+  index("idx_badges_mosque_id").on(table.mosqueId),
+]);
 
 export const insertBadgeSchema = createInsertSchema(badges).omit({ id: true, createdAt: true });
 export type InsertBadge = z.infer<typeof insertBadgeSchema>;
@@ -347,7 +401,10 @@ export const schedules = pgTable("schedules", {
   location: text("location"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_schedules_mosque_id").on(table.mosqueId),
+  index("idx_schedules_teacher_id").on(table.teacherId),
+]);
 
 export const insertScheduleSchema = createInsertSchema(schedules).omit({ id: true, createdAt: true });
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
@@ -366,7 +423,10 @@ export const competitions = pgTable("competitions", {
   competitionDate: timestamp("competition_date").notNull(),
   status: text("status").notNull().default("upcoming"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_competitions_mosque_id").on(table.mosqueId),
+  index("idx_competitions_created_by").on(table.createdBy),
+]);
 
 export const insertCompetitionSchema = createInsertSchema(competitions).omit({ id: true, createdAt: true });
 export type InsertCompetition = z.infer<typeof insertCompetitionSchema>;
@@ -381,7 +441,10 @@ export const competitionParticipants = pgTable("competition_participants", {
   rank: integer("rank"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_competition_participants_competition_id").on(table.competitionId),
+  index("idx_competition_participants_student_id").on(table.studentId),
+]);
 
 export const insertCompetitionParticipantSchema = createInsertSchema(competitionParticipants).omit({ id: true, createdAt: true });
 export type InsertCompetitionParticipant = z.infer<typeof insertCompetitionParticipantSchema>;
@@ -397,7 +460,10 @@ export const parentReports = pgTable("parent_reports", {
   accessToken: text("access_token").notNull(),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_parent_reports_student_id").on(table.studentId),
+  index("idx_parent_reports_mosque_id").on(table.mosqueId),
+]);
 
 export const insertParentReportSchema = createInsertSchema(parentReports).omit({ id: true, createdAt: true });
 export type InsertParentReport = z.infer<typeof insertParentReportSchema>;
@@ -416,7 +482,12 @@ export const emergencySubstitutions = pgTable("emergency_substitutions", {
   notes: text("notes"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_emergency_substitutions_mosque_id").on(table.mosqueId),
+  index("idx_emergency_substitutions_absent_teacher_id").on(table.absentTeacherId),
+  index("idx_emergency_substitutions_substitute_teacher_id").on(table.substituteTeacherId),
+  index("idx_emergency_substitutions_created_by").on(table.createdBy),
+]);
 export const insertEmergencySubstitutionSchema = createInsertSchema(emergencySubstitutions).omit({ id: true, createdAt: true });
 export type InsertEmergencySubstitution = z.infer<typeof insertEmergencySubstitutionSchema>;
 export type EmergencySubstitution = typeof emergencySubstitutions.$inferSelect;
@@ -433,7 +504,10 @@ export const incidentRecords = pgTable("incident_records", {
   status: text("status").notNull().default("open"),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_incident_records_mosque_id").on(table.mosqueId),
+  index("idx_incident_records_reported_by").on(table.reportedBy),
+]);
 export const insertIncidentRecordSchema = createInsertSchema(incidentRecords).omit({ id: true, createdAt: true });
 export type InsertIncidentRecord = z.infer<typeof insertIncidentRecordSchema>;
 export type IncidentRecord = typeof incidentRecords.$inferSelect;
@@ -452,7 +526,10 @@ export const graduates = pgTable("graduates", {
   certificateId: varchar("certificate_id"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_graduates_student_id").on(table.studentId),
+  index("idx_graduates_mosque_id").on(table.mosqueId),
+]);
 export const insertGraduateSchema = createInsertSchema(graduates).omit({ id: true, createdAt: true });
 export type InsertGraduate = z.infer<typeof insertGraduateSchema>;
 export type Graduate = typeof graduates.$inferSelect;
@@ -468,7 +545,11 @@ export const graduateFollowups = pgTable("graduate_followups", {
   notes: text("notes"),
   contactedBy: varchar("contacted_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_graduate_followups_graduate_id").on(table.graduateId),
+  index("idx_graduate_followups_mosque_id").on(table.mosqueId),
+  index("idx_graduate_followups_contacted_by").on(table.contactedBy),
+]);
 export const insertGraduateFollowupSchema = createInsertSchema(graduateFollowups).omit({ id: true, createdAt: true });
 export type InsertGraduateFollowup = z.infer<typeof insertGraduateFollowupSchema>;
 export type GraduateFollowup = typeof graduateFollowups.$inferSelect;
@@ -484,7 +565,12 @@ export const studentTransfers = pgTable("student_transfers", {
   transferData: text("transfer_data"),
   approvedBy: varchar("approved_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_student_transfers_student_id").on(table.studentId),
+  index("idx_student_transfers_from_mosque_id").on(table.fromMosqueId),
+  index("idx_student_transfers_to_mosque_id").on(table.toMosqueId),
+  index("idx_student_transfers_approved_by").on(table.approvedBy),
+]);
 export const insertStudentTransferSchema = createInsertSchema(studentTransfers).omit({ id: true, createdAt: true });
 export type InsertStudentTransfer = z.infer<typeof insertStudentTransferSchema>;
 export type StudentTransfer = typeof studentTransfers.$inferSelect;
@@ -497,7 +583,10 @@ export const familyLinks = pgTable("family_links", {
   mosqueId: varchar("mosque_id").references(() => mosques.id),
   relationship: text("relationship").notNull().default("parent"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_family_links_student_id").on(table.studentId),
+  index("idx_family_links_mosque_id").on(table.mosqueId),
+]);
 export const insertFamilyLinkSchema = createInsertSchema(familyLinks).omit({ id: true, createdAt: true });
 export type InsertFamilyLink = z.infer<typeof insertFamilyLinkSchema>;
 export type FamilyLink = typeof familyLinks.$inferSelect;
@@ -516,7 +605,11 @@ export const feedback = pgTable("feedback", {
   respondedBy: varchar("responded_by").references(() => users.id),
   isAnonymous: boolean("is_anonymous").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_feedback_user_id").on(table.userId),
+  index("idx_feedback_mosque_id").on(table.mosqueId),
+  index("idx_feedback_responded_by").on(table.respondedBy),
+]);
 export const insertFeedbackSchema = createInsertSchema(feedback).omit({ id: true, createdAt: true });
 export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type Feedback = typeof feedback.$inferSelect;
