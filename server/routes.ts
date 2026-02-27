@@ -1258,6 +1258,9 @@ export async function registerRoutes(
       if (!studentId) return res.status(400).json({ message: "معرف الطالب مطلوب" });
       const student = await storage.getUser(studentId);
       if (!student || student.role !== "student") return res.status(404).json({ message: "الطالب غير موجود" });
+      if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بتعديل مستوى طالب من جامع آخر" });
+      }
       const newLevel = calculateStudentLevel(juzCount || 0);
       const oldLevel = student.level || 1;
       await storage.updateUser(studentId, { level: newLevel });
@@ -3098,6 +3101,13 @@ export async function registerRoutes(
 
   app.get("/api/messages/conversation/:userId", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin") {
+        const otherUser = await storage.getUser(req.params.userId);
+        if (otherUser && otherUser.mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "غير مصرح بالوصول لمحادثات مستخدم من جامع آخر" });
+        }
+      }
       const msgs = await storage.getConversation(req.user!.id, req.params.userId);
       res.json(msgs);
     } catch (err: any) {
@@ -3316,7 +3326,14 @@ export async function registerRoutes(
 
   app.get("/api/badges", requireAuth, async (req, res) => {
     try {
-      const userId = (req.query.userId as string) || req.user!.id;
+      const currentUser = req.user!;
+      let userId = (req.query.userId as string) || currentUser.id;
+      if (userId !== currentUser.id && currentUser.role !== "admin") {
+        const targetUser = await storage.getUser(userId);
+        if (targetUser && targetUser.mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "غير مصرح بالوصول لأوسمة مستخدم من جامع آخر" });
+        }
+      }
       const userBadges = await storage.getBadgesByUser(userId);
       res.json(userBadges);
     } catch (err: any) {
@@ -3333,6 +3350,11 @@ export async function registerRoutes(
       const { userId, badgeType, badgeName, description } = req.body;
       if (!userId || !badgeType || !badgeName) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const badgeTarget = await storage.getUser(userId);
+      if (!badgeTarget) return res.status(404).json({ message: "المستخدم غير موجود" });
+      if (currentUser.role !== "admin" && badgeTarget.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بمنح أوسمة لمستخدم من جامع آخر" });
       }
       const badge = await storage.createBadge({
         userId,
@@ -3398,6 +3420,10 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بإنشاء جدول" });
+      }
+      const schedTextCheck = filterTextFields(req.body, ["title", "location"]);
+      if (schedTextCheck.blocked) {
+        return res.status(400).json({ message: schedTextCheck.reason });
       }
       const { teacherId, title, dayOfWeek, startTime, endTime, location } = req.body;
       if (!title || dayOfWeek === undefined || !startTime || !endTime) {
@@ -3511,6 +3537,10 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بإنشاء مسابقة" });
+      }
+      const compTextCheck = filterTextFields(req.body, ["title", "description"]);
+      if (compTextCheck.blocked) {
+        return res.status(400).json({ message: compTextCheck.reason });
       }
       const { title, description, surahName, fromVerse, toVerse, competitionDate } = req.body;
       if (!title || !competitionDate) {
