@@ -506,6 +506,20 @@ export async function registerRoutes(
       return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
     }
 
+    const safeFields = ["name", "phone", "address", "gender", "avatar", "teacherId", "age", "telegramId", "parentPhone", "educationLevel", "isSpecialNeeds", "isOrphan", "level", "teacherLevels", "password"];
+    const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil"];
+    const receivedKeys = Object.keys(req.body);
+    const forbiddenKeys = receivedKeys.filter(k => !safeFields.includes(k) && !adminOnlyFields.includes(k));
+    if (forbiddenKeys.length > 0) {
+      return res.status(400).json({ message: `حقول غير مسموحة: ${forbiddenKeys.join(", ")}` });
+    }
+    if (currentUser.role !== "admin") {
+      const attemptedAdminFields = receivedKeys.filter(k => adminOnlyFields.includes(k));
+      if (attemptedAdminFields.length > 0) {
+        return res.status(403).json({ message: "غير مصرح بتعديل هذه الحقول" });
+      }
+    }
+
     const updateData: any = {};
     const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels } = req.body;
 
@@ -556,11 +570,22 @@ export async function registerRoutes(
       if (typeof req.body.password !== "string" || req.body.password.length < 6) {
         return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
       }
+      if (currentUser.id !== req.params.id && currentUser.role !== "admin") {
+        if (!["supervisor", "teacher"].includes(currentUser.role)) {
+          return res.status(403).json({ message: "غير مصرح بتغيير كلمة المرور" });
+        }
+      }
       updateData.password = await hashPassword(req.body.password);
     }
 
     if (currentUser.role === "admin") {
-      if (req.body.role !== undefined) updateData.role = req.body.role;
+      if (req.body.role !== undefined) {
+        const validRoles = ["admin", "supervisor", "teacher", "student"];
+        if (!validRoles.includes(req.body.role)) {
+          return res.status(400).json({ message: "دور غير صالح" });
+        }
+        updateData.role = req.body.role;
+      }
       if (req.body.mosqueId !== undefined) updateData.mosqueId = req.body.mosqueId;
       if (req.body.isActive !== undefined) {
         if (targetUser.role === "admin" && req.body.isActive === false) {
@@ -2134,6 +2159,10 @@ export async function registerRoutes(
           return res.status(403).json({ message: "البيانات موجودة مسبقًا" });
         }
       }
+      const allUsers = await storage.getUsers();
+      if (allUsers.length > 0 && !existing) {
+        return res.status(403).json({ message: "النظام يحتوي بيانات بالفعل. لا يمكن تشغيل Seed" });
+      }
 
       const mosque1 = await storage.createMosque({
         name: "جامع النور الكبير",
@@ -2495,6 +2524,31 @@ export async function registerRoutes(
       }
 
       const { data } = backup;
+
+      const allowedTables = [
+        "mosques", "users", "assignments", "attendance", "courses", "courseStudents",
+        "courseTeachers", "certificates", "notifications", "messages", "activityLogs",
+        "ratings", "points", "badges", "competitions", "competitionParticipants",
+        "schedules", "parentReports", "exams", "examStudents", "featureFlags", "bannedDevices"
+      ];
+      const dataKeys = Object.keys(data);
+      const invalidKeys = dataKeys.filter(k => !allowedTables.includes(k));
+      if (invalidKeys.length > 0) {
+        return res.status(400).json({ message: `جداول غير معروفة في النسخة الاحتياطية: ${invalidKeys.join(", ")}` });
+      }
+
+      if (data.users?.length) {
+        const validRoles = ["admin", "supervisor", "teacher", "student"];
+        for (const u of data.users) {
+          if (u.role && !validRoles.includes(u.role)) {
+            return res.status(400).json({ message: `دور غير صالح في بيانات المستخدمين: ${u.role}` });
+          }
+        }
+        const currentAdmin = data.users.find((u: any) => u.id === req.user!.id && u.role === "admin");
+        if (!currentAdmin) {
+          return res.status(400).json({ message: "النسخة الاحتياطية يجب أن تحتوي على حساب المدير الحالي" });
+        }
+      }
 
       const { pool } = await import("./db");
       const client = await pool.connect();
