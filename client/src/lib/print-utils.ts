@@ -1,3 +1,7 @@
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
 export function openPrintWindow(title: string, contentHtml: string, options?: { landscape?: boolean; mosqueName?: string; mosqueImage?: string }) {
   const printWindow = window.open("", "_blank");
   if (!printWindow) return;
@@ -9,7 +13,7 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
     <html dir="rtl" lang="ar">
     <head>
       <meta charset="UTF-8">
-      <title>${title} - مُتْقِن</title>
+      <title>${escapeHtml(title)} - مُتْقِن</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
 
@@ -181,12 +185,12 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
       <div class="content-area">
         <div class="header">
           <div class="logo" style="display:flex;align-items:center;justify-content:center;gap:12px;">
-            ${options?.mosqueImage ? `<img src="${options.mosqueImage}" style="width:50px;height:50px;border-radius:12px;object-fit:cover;" alt="شعار المركز" />` : ""}
+            ${options?.mosqueImage ? `<img src="${escapeHtml(options.mosqueImage)}" style="width:50px;height:50px;border-radius:12px;object-fit:cover;" alt="شعار المركز" />` : ""}
             <img src="/logo.png" style="width:60px;height:60px;border-radius:12px;" alt="مُتْقِن" />
           </div>
-          <div style="font-size:32px;font-weight:700;color:#16213e;margin:4px 0;">${options?.mosqueName || "مُتْقِن"}</div>
+          <div style="font-size:32px;font-weight:700;color:#16213e;margin:4px 0;">${escapeHtml(options?.mosqueName || "مُتْقِن")}</div>
           <div class="subtitle">نظام إدارة حلقات القرآن الكريم</div>
-          <div class="report-title">${title}</div>
+          <div class="report-title">${escapeHtml(title)}</div>
           <div class="date">${(() => { const d = new Date(); const day = String(d.getDate()).padStart(2, "0"); const month = String(d.getMonth() + 1).padStart(2, "0"); const year = d.getFullYear(); return day + "/" + month + "/" + year; })()}</div>
         </div>
         ${contentHtml}
@@ -236,11 +240,11 @@ export function generateUsersTableHtml(users: any[]): string {
         ${users.map((u: any, i: number) => `
           <tr>
             <td>${i + 1}</td>
-            <td>${u.name}</td>
-            <td>${roleMap[u.role] || u.role}</td>
-            <td>${u.username}</td>
+            <td>${escapeHtml(u.name || "")}</td>
+            <td>${escapeHtml(roleMap[u.role] || u.role || "")}</td>
+            <td>${escapeHtml(u.username || "")}</td>
             <td>${u.isActive ? "نشط" : "غير نشط"}</td>
-            <td>${u.phone || "—"}</td>
+            <td>${escapeHtml(u.phone || "—")}</td>
           </tr>
         `).join("")}
       </tbody>
