@@ -112,7 +112,10 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
-      done(null, user || null);
+      if (!user) return done(null, null);
+      if (!user.isActive) return done(null, null);
+      if (user.suspendedUntil && new Date(user.suspendedUntil) > new Date()) return done(null, null);
+      done(null, user);
     } catch (err) {
       done(err);
     }
