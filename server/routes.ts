@@ -3025,6 +3025,11 @@ export async function registerRoutes(
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بحذف الحضور" });
       }
+      const record = await storage.getAttendance(req.params.id);
+      if (!record) return res.status(404).json({ message: "سجل الحضور غير موجود" });
+      if (currentUser.role !== "admin" && record.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
+      }
       await storage.deleteAttendance(req.params.id);
       await logActivity(currentUser, "حذف سجل حضور", "attendance");
       res.json({ message: "تم حذف سجل الحضور" });
@@ -3238,11 +3243,16 @@ export async function registerRoutes(
 
   app.delete("/api/messages/conversation/:userId", requireAuth, async (req, res) => {
     try {
-      const conv = await storage.getConversation(req.user!.id, req.params.userId);
+      const currentUser = req.user!;
+      const otherUser = await storage.getUser(req.params.userId);
+      if (otherUser && currentUser.role !== "admin" && otherUser.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذه المحادثة" });
+      }
+      const conv = await storage.getConversation(currentUser.id, req.params.userId);
       for (const msg of conv) {
         await storage.deleteMessage(msg.id);
       }
-      await logActivity(req.user!, "حذف محادثة", "messages");
+      await logActivity(currentUser, "حذف محادثة", "messages");
       res.json({ message: "تم حذف المحادثة" });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في حذف المحادثة" });
@@ -3648,8 +3658,17 @@ export async function registerRoutes(
 
   app.delete("/api/competitions/:id/participants/:participantId", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بإزالة المشاركين" });
+      }
+      const competition = await storage.getCompetition(req.params.id);
+      if (!competition) return res.status(404).json({ message: "المسابقة غير موجودة" });
+      if (currentUser.role !== "admin" && competition.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذه المسابقة" });
+      }
       await storage.deleteCompetitionParticipant(req.params.participantId);
-      await logActivity(req.user!, "إزالة مشارك من مسابقة", "competitions");
+      await logActivity(currentUser, "إزالة مشارك من مسابقة", "competitions");
       res.json({ message: "تم إزالة المشارك" });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في إزالة المشارك" });
@@ -3710,6 +3729,11 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بحذف التقرير" });
+      }
+      const report = await storage.getParentReport(req.params.id);
+      if (!report) return res.status(404).json({ message: "التقرير غير موجود" });
+      if (currentUser.role !== "admin" && report.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا التقرير" });
       }
       await storage.deleteParentReport(req.params.id);
       await logActivity(currentUser, "حذف تقرير ولي أمر", "parent_reports");
@@ -4008,6 +4032,11 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
+      const sub = await storage.getEmergencySubstitution(req.params.id);
+      if (!sub) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && sub.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
+      }
       await storage.deleteEmergencySubstitution(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
@@ -4144,6 +4173,11 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
+      const incident = await storage.getIncidentRecord(req.params.id);
+      if (!incident) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && incident.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
+      }
       await storage.deleteIncidentRecord(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
@@ -4202,7 +4236,14 @@ export async function registerRoutes(
       if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
-      const updated = await storage.updateGraduate(req.params.id, req.body);
+      const allowedFields = ["graduationDate", "totalJuz", "ijazahChain", "ijazahTeacher", "recitationStyle", "finalGrade", "certificateId", "notes"];
+      const updateData: any = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          updateData[key] = req.body[key];
+        }
+      }
+      const updated = await storage.updateGraduate(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
@@ -4215,6 +4256,11 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const grad = await storage.getGraduate(req.params.id);
+      if (!grad) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && grad.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
       }
       await storage.deleteGraduate(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
@@ -4307,7 +4353,13 @@ export async function registerRoutes(
       }
       const transfer = await storage.getStudentTransfer(req.params.id);
       if (!transfer) return res.status(404).json({ message: "طلب النقل غير موجود" });
-      const updateData: any = { ...req.body };
+      const allowedFields = ["status", "reason", "transferData"];
+      const updateData: any = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          updateData[key] = req.body[key];
+        }
+      }
       if (req.body.status === "approved") {
         updateData.approvedBy = currentUser.id;
         const student = await storage.getUser(transfer.studentId);
@@ -4376,6 +4428,11 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const link = await storage.getFamilyLink(req.params.id);
+      if (!link) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && link.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
       }
       await storage.deleteFamilyLink(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
@@ -4471,7 +4528,13 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
-      const updateData: any = { ...req.body };
+      const allowedFields = ["status", "response", "priority"];
+      const updateData: any = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          updateData[key] = req.body[key];
+        }
+      }
       if (req.body.response) {
         updateData.respondedBy = currentUser.id;
       }
