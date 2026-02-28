@@ -13,6 +13,7 @@ import {
   competitions, competitionParticipants, schedules, parentReports, exams, examStudents,
   featureFlags, bannedDevices, emergencySubstitutions, incidentRecords, graduates,
   graduateFollowups, studentTransfers, familyLinks, feedback, tajweedRules, similarVerses,
+  messageTemplates, communicationLogs,
 } from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
 import { filterTextFields } from "@shared/content-filter";
@@ -926,8 +927,7 @@ export async function registerRoutes(
             mosqueId: assignment.mosqueId,
             amount: autoPoints,
             category: "assignment",
-            description: `نقاط تلقائية - درجة ${g} في ${assignment.surahName || "واجب"}`,
-            awardedBy: currentUser.id,
+            reason: `نقاط تلقائية - درجة ${g} في ${assignment.surahName || "واجب"}`,
           });
         }
         if (g < 60 && assignment.surahName) {
@@ -3101,8 +3101,7 @@ export async function registerRoutes(
             mosqueId: currentUser.mosqueId,
             amount: 5,
             category: "attendance",
-            description: "نقاط حضور تلقائية",
-            awardedBy: currentUser.id,
+            reason: "نقاط حضور تلقائية",
           });
           const allAttendance = await storage.getAttendanceByStudent(record.studentId);
           const sorted = allAttendance.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -3117,8 +3116,7 @@ export async function registerRoutes(
               mosqueId: currentUser.mosqueId,
               amount: streak === 7 ? 25 : streak === 14 ? 50 : 100,
               category: "attendance",
-              description: `مكافأة سلسلة حضور ${streak} يوم متتالي`,
-              awardedBy: currentUser.id,
+              reason: `مكافأة سلسلة حضور ${streak} يوم متتالي`,
             });
           }
         } catch {}
@@ -5391,6 +5389,396 @@ export async function registerRoutes(
       res.json(weakSurahs);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== TEACHER PERFORMANCE METRICS ====================
+  app.get("/api/teacher-performance/:teacherId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const teacher = await storage.getUser(req.params.teacherId);
+      if (!teacher || teacher.role !== "teacher") return res.status(404).json({ message: "المعلم غير موجود" });
+      if (currentUser.role === "supervisor" && teacher.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const teacherAssignments = await storage.getAssignmentsByTeacher(req.params.teacherId);
+      const students = await storage.getUsersByTeacher(req.params.teacherId);
+      const activeStudents = students.filter(s => s.isActive);
+
+      const graded = teacherAssignments.filter(a => a.status === "done" && a.grade !== null);
+      const avgGrade = graded.length > 0 ? Math.round(graded.reduce((s, a) => s + Number(a.grade), 0) / graded.length) : 0;
+
+      const gradingSpeeds: number[] = [];
+      for (const a of graded) {
+        if (a.scheduledDate) {
+          const scheduled = new Date(a.scheduledDate).getTime();
+          const created = new Date(a.createdAt).getTime();
+          const days = Math.max(0, Math.ceil((created - scheduled) / (1000 * 60 * 60 * 24)));
+          gradingSpeeds.push(days);
+        }
+      }
+      const avgGradingDays = gradingSpeeds.length > 0 ? Math.round(gradingSpeeds.reduce((s, d) => s + d, 0) / gradingSpeeds.length) : 0;
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentAssignments = teacherAssignments.filter(a => new Date(a.createdAt) > thirtyDaysAgo);
+      const weeklyAssignmentRate = Math.round((recentAssignments.length / 4.3) * 10) / 10;
+
+      const pendingCount = teacherAssignments.filter(a => a.status === "pending").length;
+
+      res.json({
+        teacherId: req.params.teacherId,
+        teacherName: teacher.name,
+        totalStudents: students.length,
+        activeStudents: activeStudents.length,
+        totalAssignments: teacherAssignments.length,
+        gradedAssignments: graded.length,
+        pendingAssignments: pendingCount,
+        avgStudentGrade: avgGrade,
+        avgGradingDays,
+        weeklyAssignmentRate,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/teacher-comparison", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      let teachers: User[] = [];
+      if (currentUser.role === "admin") {
+        teachers = await storage.getUsersByRole("teacher");
+      } else if (currentUser.mosqueId) {
+        teachers = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "teacher");
+      }
+
+      const comparison = await Promise.all(teachers.filter(t => t.isActive).map(async (teacher) => {
+        const assignments = await storage.getAssignmentsByTeacher(teacher.id);
+        const students = await storage.getUsersByTeacher(teacher.id);
+        const graded = assignments.filter(a => a.status === "done" && a.grade !== null);
+        const avgGrade = graded.length > 0 ? Math.round(graded.reduce((s, a) => s + Number(a.grade), 0) / graded.length) : 0;
+        const pending = assignments.filter(a => a.status === "pending").length;
+
+        return {
+          id: teacher.id,
+          name: teacher.name,
+          studentsCount: students.length,
+          assignmentsCount: assignments.length,
+          avgGrade,
+          pendingCount: pending,
+          completionRate: assignments.length > 0 ? Math.round((graded.length / assignments.length) * 100) : 0,
+        };
+      }));
+
+      comparison.sort((a, b) => b.avgGrade - a.avgGrade);
+      res.json(comparison);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/teaching-recommendations/:teacherId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      if (currentUser.role === "teacher" && currentUser.id !== req.params.teacherId) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const assignments = await storage.getAssignmentsByTeacher(req.params.teacherId);
+      const graded = assignments.filter(a => a.status === "done" && a.grade !== null && a.surahName);
+
+      const surahPerformance: Record<string, { total: number; sum: number; low: number }> = {};
+      for (const a of graded) {
+        const name = a.surahName!;
+        if (!surahPerformance[name]) surahPerformance[name] = { total: 0, sum: 0, low: 0 };
+        surahPerformance[name].total++;
+        surahPerformance[name].sum += Number(a.grade);
+        if (Number(a.grade) < 70) surahPerformance[name].low++;
+      }
+
+      const recommendations: any[] = [];
+      for (const [surah, stats] of Object.entries(surahPerformance)) {
+        const avg = Math.round(stats.sum / stats.total);
+        if (stats.total >= 2 && avg < 75) {
+          recommendations.push({
+            type: "weak_surah",
+            surahName: surah,
+            avgGrade: avg,
+            studentsAffected: stats.low,
+            suggestion: `طلابك يحتاجون تركيز أكثر على سورة ${surah} (متوسط الدرجات: ${avg})`,
+          });
+        }
+      }
+
+      const students = await storage.getUsersByTeacher(req.params.teacherId);
+      const pending = assignments.filter(a => a.status === "pending");
+      if (pending.length > students.length * 2) {
+        recommendations.push({
+          type: "grading_backlog",
+          count: pending.length,
+          suggestion: `لديك ${pending.length} واجب بحاجة للتصحيح - حاول تصحيحها لتحفيز الطلاب`,
+        });
+      }
+
+      const inactiveStudents = students.filter(s => {
+        const studentAssignments = assignments.filter(a => a.studentId === s.id);
+        const lastWeek = new Date();
+        lastWeek.setDate(lastWeek.getDate() - 14);
+        return !studentAssignments.some(a => new Date(a.createdAt) > lastWeek);
+      });
+
+      if (inactiveStudents.length > 0) {
+        recommendations.push({
+          type: "inactive_students",
+          count: inactiveStudents.length,
+          students: inactiveStudents.map(s => ({ id: s.id, name: s.name })),
+          suggestion: `${inactiveStudents.length} طالب لم يحصلوا على واجبات منذ أسبوعين`,
+        });
+      }
+
+      recommendations.sort((a, b) => {
+        const order: Record<string, number> = { grading_backlog: 0, weak_surah: 1, inactive_students: 2 };
+        return (order[a.type] || 3) - (order[b.type] || 3);
+      });
+
+      res.json(recommendations);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== STUDENT TIMELINE & ACHIEVEMENTS ====================
+  app.get("/api/student-timeline/:studentId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role === "student" && currentUser.id !== req.params.studentId) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const student = await storage.getUser(req.params.studentId);
+      if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
+
+      const assignments = await storage.getAssignmentsByStudent(req.params.studentId);
+      const allPoints = await storage.getPointsByUser(req.params.studentId);
+      const allBadges = await storage.getBadgesByUser(req.params.studentId);
+      const attendance = await storage.getAttendanceByStudent(req.params.studentId);
+
+      const timeline: any[] = [];
+
+      const doneAssignments = assignments.filter(a => a.status === "done").sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      const surahs = new Set<string>();
+      for (const a of doneAssignments) {
+        if (a.surahName && !surahs.has(a.surahName)) {
+          surahs.add(a.surahName);
+          timeline.push({ type: "new_surah", date: a.createdAt, title: `بدء حفظ سورة ${a.surahName}`, icon: "book" });
+        }
+        if (a.grade !== null && Number(a.grade) >= 95) {
+          timeline.push({ type: "excellent_grade", date: a.createdAt, title: `درجة ممتازة (${a.grade}) في ${a.surahName || "واجب"}`, icon: "star" });
+        }
+      }
+
+      for (const b of allBadges) {
+        timeline.push({ type: "badge", date: b.createdAt, title: `حصل على شارة: ${b.badgeName}`, icon: "award" });
+      }
+
+      const streakMilestones = [7, 14, 30, 60, 100];
+      let streak = 0;
+      const sortedAtt = attendance.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      for (const a of sortedAtt) {
+        if (a.status === "present" || a.status === "late") {
+          streak++;
+          if (streakMilestones.includes(streak)) {
+            timeline.push({ type: "streak", date: a.date, title: `سلسلة حضور ${streak} يوم`, icon: "flame" });
+          }
+        } else {
+          streak = 0;
+        }
+      }
+
+      const milestones = [{ count: 10, label: "10 سور" }, { count: 20, label: "20 سورة" }, { count: 50, label: "50 سورة" }, { count: 100, label: "100 سورة" }];
+      let surahCount = 0;
+      const surahsSeen = new Set<string>();
+      for (const a of doneAssignments) {
+        if (a.surahName && !surahsSeen.has(a.surahName)) {
+          surahsSeen.add(a.surahName);
+          surahCount++;
+          const milestone = milestones.find(m => m.count === surahCount);
+          if (milestone) {
+            timeline.push({ type: "milestone", date: a.createdAt, title: `إنجاز: حفظ ${milestone.label}`, icon: "trophy" });
+          }
+        }
+      }
+
+      timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      res.json(timeline.slice(0, 50));
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/student-titles/:studentId", requireAuth, async (req, res) => {
+    try {
+      const student = await storage.getUser(req.params.studentId);
+      if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
+
+      const assignments = await storage.getAssignmentsByStudent(req.params.studentId);
+      const attendance = await storage.getAttendanceByStudent(req.params.studentId);
+      const allPoints = await storage.getPointsByUser(req.params.studentId);
+      const allBadges = await storage.getBadgesByUser(req.params.studentId);
+
+      const titles: any[] = [];
+
+      const graded = assignments.filter(a => a.status === "done" && a.grade !== null);
+      const avgGrade = graded.length > 0 ? graded.reduce((s, a) => s + Number(a.grade), 0) / graded.length : 0;
+      if (avgGrade >= 90 && graded.length >= 5) titles.push({ title: "الحافظ المتميز", icon: "crown", color: "gold" });
+      if (avgGrade >= 80 && graded.length >= 10) titles.push({ title: "المجتهد", icon: "zap", color: "blue" });
+
+      const recentAtt = attendance.filter(a => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        return new Date(a.date) > d;
+      });
+      const presentRate = recentAtt.length > 0 ? recentAtt.filter(a => a.status === "present" || a.status === "late").length / recentAtt.length : 0;
+      if (presentRate >= 0.95 && recentAtt.length >= 15) titles.push({ title: "بطل الحضور", icon: "flame", color: "orange" });
+
+      const totalPoints = allPoints.reduce((s, p) => s + p.amount, 0);
+      if (totalPoints >= 500) titles.push({ title: "جامع النقاط", icon: "coins", color: "emerald" });
+      if (allBadges.length >= 3) titles.push({ title: "صاحب الشارات", icon: "award", color: "purple" });
+
+      const surahs = new Set(graded.filter(a => a.surahName).map(a => a.surahName));
+      if (surahs.size >= 30) titles.push({ title: "المثابر", icon: "mountain", color: "indigo" });
+
+      res.json(titles);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/student-challenges", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "student") {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      // Generate or fetch weekly challenges
+      // For now, return static challenges based on current date
+      const now = new Date();
+      const weekNumber = Math.floor(now.getDate() / 7);
+      
+      const challenges = [
+        { id: "c1", title: "حافظ الأسبوع", description: "احفظ 10 آيات جديدة هذا الأسبوع", target: 10, current: 0, type: "memorization", reward: 50 },
+        { id: "c2", title: "المواظب", description: "احضر 5 أيام متتالية", target: 5, current: 0, type: "attendance", reward: 30 },
+        { id: "c3", title: "نجم التجويد", description: "احصل على درجة 95+ في تسميع واحد", target: 1, current: 0, type: "grade", reward: 40 }
+      ];
+
+      res.json(challenges);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== MESSAGE TEMPLATES ====================
+  app.get("/api/message-templates", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const allTemplates = await db.select().from(messageTemplates);
+      const filtered = allTemplates.filter(t =>
+        !t.mosqueId || t.mosqueId === currentUser.mosqueId || currentUser.role === "admin"
+      );
+      res.json(filtered);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.post("/api/message-templates", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { category, title, content } = req.body;
+      if (!category || !title || !content) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const [template] = await db.insert(messageTemplates).values({
+        mosqueId: currentUser.mosqueId,
+        category,
+        title,
+        content,
+        createdBy: currentUser.id,
+      }).returning();
+      res.status(201).json(template);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/message-templates/:id", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { eq } = await import("drizzle-orm");
+      await db.delete(messageTemplates).where(eq(messageTemplates.id, req.params.id));
+      res.json({ message: "تم الحذف" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== COMMUNICATION LOG ====================
+  app.get("/api/communication-log/:studentId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { eq } = await import("drizzle-orm");
+      const logs = await db.select().from(communicationLogs).where(eq(communicationLogs.studentId, req.params.studentId));
+      logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json(logs);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.post("/api/communication-log", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { studentId, method, subject, notes, parentPhone } = req.body;
+      if (!studentId || !method || !subject) {
+        return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const [log] = await db.insert(communicationLogs).values({
+        studentId,
+        mosqueId: currentUser.mosqueId,
+        contactedBy: currentUser.id,
+        method,
+        subject,
+        notes,
+        parentPhone,
+      }).returning();
+      res.status(201).json(log);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 

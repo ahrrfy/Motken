@@ -87,6 +87,54 @@ export default function SettingsPage() {
     return saved !== null ? saved === "true" : true;
   });
 
+  const [shortcutsEnabled, setShortcutsEnabled] = useState(() => {
+    const saved = localStorage.getItem("mutqin_shortcuts_enabled");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("mutqin_shortcuts_enabled", String(shortcutsEnabled));
+  }, [shortcutsEnabled]);
+
+  useEffect(() => {
+    if (!shortcutsEnabled) return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if typing in an input or textarea
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA" ||
+        (document.activeElement as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      // Alt + S for Settings
+      if (e.altKey && e.key === "s") {
+        e.preventDefault();
+        window.location.hash = "/settings";
+      }
+      // Alt + D for Dashboard
+      if (e.altKey && e.key === "d") {
+        e.preventDefault();
+        window.location.hash = "/";
+      }
+      // Alt + M for Messages
+      if (e.altKey && e.key === "m") {
+        e.preventDefault();
+        window.location.hash = "/messages";
+      }
+      // Alt + Q for Quran Tracker
+      if (e.altKey && e.key === "q") {
+        e.preventDefault();
+        window.location.hash = "/quran-tracker";
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [shortcutsEnabled]);
+
   useEffect(() => {
     document.documentElement.style.fontSize = `${fontSize}px`;
     localStorage.setItem(FONT_SIZE_KEY, String(fontSize));
@@ -460,6 +508,13 @@ export default function SettingsPage() {
               <CardTitle>المظهر واللغة</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base font-bold">اختصارات لوحة المفاتيح</Label>
+                  <p className="text-sm text-muted-foreground">تفعيل اختصارات Alt + (S, D, M, Q) للتنقل السريع</p>
+                </div>
+                <Switch checked={shortcutsEnabled} onCheckedChange={setShortcutsEnabled} data-testid="switch-shortcuts" />
+              </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">الوضع الليلي</Label>

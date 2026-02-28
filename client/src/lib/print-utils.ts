@@ -228,26 +228,155 @@ export function generateStatsHtml(stats: Record<string, any>, isAdmin: boolean):
 }
 
 export function generateUsersTableHtml(users: any[]): string {
-  if (!users || users.length === 0) return "";
-  const roleMap: Record<string, string> = { admin: "مدير", supervisor: "مشرف", teacher: "أستاذ", student: "طالب" };
+  if (!users || users.length === 0) return "<p>لا يوجد بيانات</p>";
   return `
-    <h3 class="section-title">قائمة المستخدمين</h3>
-    <table>
+    <table style="width:100%;border-collapse:collapse;margin-top:20px;">
       <thead>
-        <tr><th>#</th><th>الاسم</th><th>الدور</th><th>اسم المستخدم</th><th>الحالة</th><th>الهاتف</th></tr>
+        <tr style="background:#f0f0f0;">
+          <th style="border:1px solid #ccc;padding:8px;text-align:right;">#</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:right;">الاسم</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:right;">الدور</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:right;">المستوى</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:right;">الحالة</th>
+        </tr>
       </thead>
       <tbody>
-        ${users.map((u: any, i: number) => `
+        ${users.map((u, i) => `
           <tr>
-            <td>${i + 1}</td>
-            <td>${escapeHtml(u.name || "")}</td>
-            <td>${escapeHtml(roleMap[u.role] || u.role || "")}</td>
-            <td>${escapeHtml(u.username || "")}</td>
-            <td>${u.isActive ? "نشط" : "غير نشط"}</td>
-            <td>${escapeHtml(u.phone || "—")}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${i + 1}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${u.name || ""}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${u.role || ""}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${u.level || ""}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${u.isActive ? "نشط" : "غير نشط"}</td>
           </tr>
         `).join("")}
       </tbody>
     </table>
+  `;
+}
+
+export function generateSemesterReportHtml(student: any, grades: any[], mosqueName: string): string {
+  const avgGrade = grades.length > 0 
+    ? Math.round(grades.reduce((sum, g) => sum + (g.grade || 0), 0) / grades.length) 
+    : 0;
+
+  return `
+    <div style="padding: 20px;">
+      <h3 style="text-align: center; color: #16213e; margin-bottom: 30px;">تقرير الدرجات الفصلي</h3>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <div><strong>اسم الطالب:</strong> ${student.name}</div>
+        <div><strong>المركز:</strong> ${mosqueName}</div>
+        <div><strong>المستوى:</strong> ${student.level || "—"}</div>
+        <div><strong>المعدل العام:</strong> ${avgGrade}%</div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>السورة</th>
+            <th>من آية</th>
+            <th>إلى آية</th>
+            <th>الدرجة</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${grades.map(g => `
+            <tr>
+              <td>${new Date(g.createdAt).toLocaleDateString("ar-SA")}</td>
+              <td>${g.surahName}</td>
+              <td>${g.fromVerse}</td>
+              <td>${g.toVerse}</td>
+              <td style="font-weight: bold; color: ${g.grade >= 90 ? '#059669' : g.grade >= 75 ? '#2563eb' : '#dc2626'}">${g.grade}%</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+
+      <div style="margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; text-align: center;">
+        <div>
+          <p>ختم المشرف</p>
+          <div style="margin-top: 40px; border-bottom: 1px dashed #ccc; width: 150px; margin-left: auto; margin-right: auto;"></div>
+        </div>
+        <div>
+          <p>توقيع المدرس</p>
+          <div style="margin-top: 40px; border-bottom: 1px dashed #ccc; width: 150px; margin-left: auto; margin-right: auto;"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function generateAnnualSummaryHtml(stats: any, topStudents: any[], mosqueName: string): string {
+  return `
+    <div style="padding: 20px;">
+      <h3 style="text-align: center; color: #16213e; margin-bottom: 30px;">التقرير السنوي للمركز</h3>
+      
+      <div class="stats-grid">
+        <div class="stat-card"><div class="value">${stats.totalStudents || 0}</div><div class="label">إجمالي الطلاب</div></div>
+        <div class="stat-card"><div class="value">${stats.completedAssignments || 0}</div><div class="label">تسميعات مكتملة</div></div>
+        <div class="stat-card"><div class="value">${stats.totalTeachers || 0}</div><div class="label">عدد المعلمين</div></div>
+        <div class="stat-card"><div class="value">${stats.activeStudents || 0}</div><div class="label">طلاب نشطين</div></div>
+      </div>
+
+      <h4 class="section-title">أوائل الطلبة</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>الترتيب</th>
+            <th>اسم الطالب</th>
+            <th>إجمالي النقاط</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${topStudents.map((s, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${s.userName || s.name}</td>
+              <td>${s.totalPoints || s.points}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+
+      <div style="margin-top: 40px; line-height: 1.8;">
+        <p>الحمد لله الذي بنعمته تتم الصالحات، يسرنا في <strong>${mosqueName}</strong> أن نضع بين أيديكم هذا التقرير الذي يبرز جهود أبنائنا وبناتنا في حفظ كتاب الله تعالى خلال العام المنصرم.</p>
+      </div>
+    </div>
+  `;
+}
+
+export function generateCertificateHtml(cert: any, studentName: string, courseName: string, mosqueName: string): string {
+  return `
+    <div style="padding: 40px; border: 15px double #c9a84c; background: #fff; position: relative; min-height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+      <div style="position: absolute; top: 20px; right: 20px; font-size: 12px; color: #999;">رقم الشهادة: ${cert.certificateNumber}</div>
+      
+      <h1 style="font-size: 48px; color: #16213e; margin-bottom: 10px;">شهادة إنجاز</h1>
+      <h2 style="font-size: 24px; color: #c9a84c; margin-bottom: 40px;">نظام مُتْقِن لإدارة حلقات القرآن</h2>
+
+      <p style="font-size: 20px; margin-bottom: 20px;">يتشرف <strong>${mosqueName}</strong> بأن يشهد بأن:</p>
+      <h3 style="font-size: 36px; color: #16213e; margin-bottom: 20px; border-bottom: 2px solid #c9a84c; padding-bottom: 10px; min-width: 300px;">${studentName}</h3>
+      
+      <p style="font-size: 20px; margin-bottom: 20px;">قد أتم بنجاح دورة:</p>
+      <h4 style="font-size: 28px; color: #16213e; margin-bottom: 20px;">${courseName}</h4>
+      
+      <p style="font-size: 18px; margin-bottom: 40px;">بتقدير: <strong>${cert.graduationGrade || "ممتاز"}</strong></p>
+
+      <div style="display: flex; justify-content: space-around; width: 100%; margin-top: 40px;">
+        <div style="text-align: center;">
+          <p>ختم المركز</p>
+          <div style="width: 100px; height: 100px; border: 1px solid #eee; border-radius: 50%; margin: 10px auto;"></div>
+        </div>
+        <div style="text-align: center;">
+          <p>تاريخ الإصدار</p>
+          <p style="font-weight: bold;">${new Date(cert.issuedAt).toLocaleDateString("ar-SA")}</p>
+        </div>
+        <div style="text-align: center;">
+          <p>توقيع المشرف</p>
+          <div style="width: 120px; border-bottom: 1px solid #333; margin: 50px auto 0;"></div>
+        </div>
+      </div>
+    </div>
   `;
 }
