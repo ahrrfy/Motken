@@ -23,9 +23,10 @@ const categoryLabels: Record<string, string> = {
   data: "البيانات",
   automation: "الأتمتة",
   analytics: "التحليلات",
+  education: "التعليم والمحتوى",
 };
 
-const categoryOrder = ["management", "communication", "gamification", "visualization", "data", "automation", "analytics"];
+const categoryOrder = ["management", "education", "communication", "gamification", "visualization", "data", "automation", "analytics"];
 
 export default function FeatureControlPage() {
   const { user } = useAuth();
