@@ -1,7 +1,8 @@
 import { useAuth } from "@/lib/auth-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Route, Switch } from "wouter";
 import { registerServiceWorker, startNotificationPolling, stopNotificationPolling, isNotificationsEnabled } from "@/lib/notifications";
+import { startUpdateChecker, stopUpdateChecker, onUpdateAvailable, applyUpdate } from "@/lib/update-checker";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import StudentsPage from "@/pages/StudentsPage";
@@ -49,11 +50,49 @@ import RegisterMosquePage from "@/pages/RegisterMosquePage";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 
+function UpdateBanner() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const unsub = onUpdateAvailable(() => setShow(true));
+    return unsub;
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <div
+      data-testid="update-banner"
+      className="fixed top-0 left-0 right-0 z-[9999] bg-primary text-primary-foreground px-4 py-3 flex items-center justify-center gap-4 shadow-lg animate-in slide-in-from-top"
+      dir="rtl"
+    >
+      <span className="text-sm font-medium">يتوفر تحديث جديد للنظام</span>
+      <button
+        data-testid="button-apply-update"
+        onClick={applyUpdate}
+        className="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+      >
+        تحديث الآن
+      </button>
+      <button
+        data-testid="button-dismiss-update"
+        onClick={() => setShow(false)}
+        className="text-white/70 hover:text-white text-lg leading-none transition-colors"
+        aria-label="إغلاق"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function App() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
     registerServiceWorker();
+    startUpdateChecker();
+    return () => stopUpdateChecker();
   }, []);
 
   useEffect(() => {
@@ -68,6 +107,7 @@ function App() {
   if (window.location.pathname.startsWith("/parent-report/")) {
     return (
       <>
+        <UpdateBanner />
         <Switch>
           <Route path="/parent-report/:token" component={PublicParentReportPage} />
         </Switch>
@@ -79,6 +119,7 @@ function App() {
   if (window.location.pathname.startsWith("/register-mosque")) {
     return (
       <>
+        <UpdateBanner />
         <Switch>
           <Route path="/register-mosque" component={RegisterMosquePage} />
         </Switch>
@@ -104,6 +145,7 @@ function App() {
   if (!user) {
     return (
       <>
+        <UpdateBanner />
         <LoginPage />
         <Toaster />
       </>
@@ -121,6 +163,7 @@ function App() {
 
   return (
     <SidebarLayout>
+      <UpdateBanner />
       <Switch>
         <Route path="/daily" component={TeacherDailyPage} />
         <Route path="/dashboard" component={DashboardPage} />

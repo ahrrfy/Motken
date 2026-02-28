@@ -151,6 +151,12 @@ app.use((req, res, next) => {
   next();
 });
 
+const BUILD_VERSION = Date.now().toString();
+
+app.get("/api/version", (_req, res) => {
+  res.json({ version: BUILD_VERSION, timestamp: new Date().toISOString() });
+});
+
 app.get("/_health", async (_req, res) => {
   try {
     const report = await getDetailedHealthReport();
