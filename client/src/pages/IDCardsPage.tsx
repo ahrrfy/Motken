@@ -77,23 +77,29 @@ async function generateQRDataURL(data: string): Promise<string> {
   return QRCode.toDataURL(data, { width: 80, margin: 1 });
 }
 
+function esc(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
 function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: string, mosqueImage?: string): string {
   const roleLabel = roleTranslations[user.role] || user.role;
   const formattedId = formatUserId(user.id);
   const joinDate = formatDate(user.createdAt);
   const levelInfo = getLevelInfo(user.level);
+  const safeName = esc(user.name || "");
+  const safeMosqueName = esc(mosqueName || "");
   const avatarSection = user.avatar
-    ? `<img src="${user.avatar}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;" />`
-    : `<span style="font-size:24px;font-weight:bold;color:#16213e;">${user.name.charAt(0)}</span>`;
+    ? `<img src="${esc(user.avatar)}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover;" />`
+    : `<span style="font-size:24px;font-weight:bold;color:#16213e;">${safeName.charAt(0)}</span>`;
 
   const mosqueLogoSection = mosqueImage
     ? `<div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
-        <img src="${mosqueImage}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
+        <img src="${esc(mosqueImage)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
       </div>`
     : "";
 
-  const headerTitle = mosqueName
-    ? `<h2 style="font-size:12px;font-weight:bold;margin:0;line-height:1.2;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${mosqueName}</h2>`
+  const headerTitle = safeMosqueName
+    ? `<h2 style="font-size:12px;font-weight:bold;margin:0;line-height:1.2;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${safeMosqueName}</h2>`
     : `<h2 style="font-size:14px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,0.3);">مُتْقِن</h2>`;
 
   const levelBadgeHtml = levelInfo
@@ -139,7 +145,7 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
           <div style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(22,33,62,0.2);overflow:hidden;background:linear-gradient(135deg,rgba(22,33,62,0.1),rgba(22,33,62,0.05));display:flex;align-items:center;justify-content:center;margin-bottom:4px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
             ${avatarSection}
           </div>
-          <h3 style="font-size:13px;font-weight:bold;color:#1f2937;text-align:center;margin:0;line-height:1.2;">${user.name}</h3>
+          <h3 style="font-size:13px;font-weight:bold;color:#1f2937;text-align:center;margin:0;line-height:1.2;">${safeName}</h3>
           <span style="display:inline-block;margin-top:2px;padding:1px 8px;border-radius:9999px;background:#f3f4f6;color:#4b5563;font-size:10px;">${roleLabel}</span>
           ${levelBadgeHtml}
         </div>
@@ -149,14 +155,14 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
               <span style="color:#9ca3af;font-size:10px;">رقم الهوية</span>
               <span style="font-family:monospace;font-weight:600;color:#16213e;font-size:10px;background:rgba(22,33,62,0.05);padding:1px 4px;border-radius:4px;">${formattedId}</span>
             </div>
-            ${mosqueName ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+            ${safeMosqueName ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
               <span style="color:#9ca3af;font-size:10px;">الجامع/المركز</span>
-              <span style="font-weight:500;font-size:10px;">${mosqueName}</span>
+              <span style="font-weight:500;font-size:10px;">${safeMosqueName}</span>
             </div>` : ""}
             ${levelRowHtml}
             ${user.phone ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
               <span style="color:#9ca3af;font-size:10px;">الهاتف</span>
-              <span dir="ltr" style="font-size:10px;">${user.phone}</span>
+              <span dir="ltr" style="font-size:10px;">${esc(user.phone)}</span>
             </div>` : ""}
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <span style="color:#9ca3af;font-size:10px;">الانضمام</span>
@@ -392,7 +398,8 @@ export default function IDCardsPage() {
       const cardHtml = generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl, getMosqueImage(u.mosqueId));
       const win = window.open("", "_blank");
       if (!win) return;
-      win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>هوية - ${u.name}</title><style>
+      const safeName = (u.name || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>هوية - ${safeName}</title><style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Tajawal', sans-serif; display: flex; justify-content: center; align-items: flex-start; padding: 10px; background: white; }

@@ -244,9 +244,9 @@ export function generateUsersTableHtml(users: any[]): string {
         ${users.map((u, i) => `
           <tr>
             <td style="border:1px solid #ccc;padding:8px;">${i + 1}</td>
-            <td style="border:1px solid #ccc;padding:8px;">${u.name || ""}</td>
-            <td style="border:1px solid #ccc;padding:8px;">${u.role || ""}</td>
-            <td style="border:1px solid #ccc;padding:8px;">${u.level || ""}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${escapeHtml(u.name || "")}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${escapeHtml(u.role || "")}</td>
+            <td style="border:1px solid #ccc;padding:8px;">${escapeHtml(String(u.level || ""))}</td>
             <td style="border:1px solid #ccc;padding:8px;">${u.isActive ? "نشط" : "غير نشط"}</td>
           </tr>
         `).join("")}
@@ -265,9 +265,9 @@ export function generateSemesterReportHtml(student: any, grades: any[], mosqueNa
       <h3 style="text-align: center; color: #16213e; margin-bottom: 30px;">تقرير الدرجات الفصلي</h3>
       
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-        <div><strong>اسم الطالب:</strong> ${student.name}</div>
-        <div><strong>المركز:</strong> ${mosqueName}</div>
-        <div><strong>المستوى:</strong> ${student.level || "—"}</div>
+        <div><strong>اسم الطالب:</strong> ${escapeHtml(student.name || "")}</div>
+        <div><strong>المركز:</strong> ${escapeHtml(mosqueName || "")}</div>
+        <div><strong>المستوى:</strong> ${escapeHtml(String(student.level || "—"))}</div>
         <div><strong>المعدل العام:</strong> ${avgGrade}%</div>
       </div>
 
@@ -285,7 +285,7 @@ export function generateSemesterReportHtml(student: any, grades: any[], mosqueNa
           ${grades.map(g => `
             <tr>
               <td>${new Date(g.createdAt).toLocaleDateString("ar-SA")}</td>
-              <td>${g.surahName}</td>
+              <td>${escapeHtml(g.surahName || "")}</td>
               <td>${g.fromVerse}</td>
               <td>${g.toVerse}</td>
               <td style="font-weight: bold; color: ${g.grade >= 90 ? '#059669' : g.grade >= 75 ? '#2563eb' : '#dc2626'}">${g.grade}%</td>
@@ -333,7 +333,7 @@ export function generateAnnualSummaryHtml(stats: any, topStudents: any[], mosque
           ${topStudents.map((s, i) => `
             <tr>
               <td>${i + 1}</td>
-              <td>${s.userName || s.name}</td>
+              <td>${escapeHtml(s.userName || s.name || "")}</td>
               <td>${s.totalPoints || s.points}</td>
             </tr>
           `).join("")}
@@ -341,7 +341,7 @@ export function generateAnnualSummaryHtml(stats: any, topStudents: any[], mosque
       </table>
 
       <div style="margin-top: 40px; line-height: 1.8;">
-        <p>الحمد لله الذي بنعمته تتم الصالحات، يسرنا في <strong>${mosqueName}</strong> أن نضع بين أيديكم هذا التقرير الذي يبرز جهود أبنائنا وبناتنا في حفظ كتاب الله تعالى خلال العام المنصرم.</p>
+        <p>الحمد لله الذي بنعمته تتم الصالحات، يسرنا في <strong>${escapeHtml(mosqueName || "")}</strong> أن نضع بين أيديكم هذا التقرير الذي يبرز جهود أبنائنا وبناتنا في حفظ كتاب الله تعالى خلال العام المنصرم.</p>
       </div>
     </div>
   `;
@@ -350,18 +350,18 @@ export function generateAnnualSummaryHtml(stats: any, topStudents: any[], mosque
 export function generateCertificateHtml(cert: any, studentName: string, courseName: string, mosqueName: string): string {
   return `
     <div style="padding: 40px; border: 15px double #c9a84c; background: #fff; position: relative; min-height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-      <div style="position: absolute; top: 20px; right: 20px; font-size: 12px; color: #999;">رقم الشهادة: ${cert.certificateNumber}</div>
+      <div style="position: absolute; top: 20px; right: 20px; font-size: 12px; color: #999;">رقم الشهادة: ${escapeHtml(cert.certificateNumber || "")}</div>
       
       <h1 style="font-size: 48px; color: #16213e; margin-bottom: 10px;">شهادة إنجاز</h1>
       <h2 style="font-size: 24px; color: #c9a84c; margin-bottom: 40px;">نظام مُتْقِن لإدارة حلقات القرآن</h2>
 
-      <p style="font-size: 20px; margin-bottom: 20px;">يتشرف <strong>${mosqueName}</strong> بأن يشهد بأن:</p>
-      <h3 style="font-size: 36px; color: #16213e; margin-bottom: 20px; border-bottom: 2px solid #c9a84c; padding-bottom: 10px; min-width: 300px;">${studentName}</h3>
+      <p style="font-size: 20px; margin-bottom: 20px;">يتشرف <strong>${escapeHtml(mosqueName || "")}</strong> بأن يشهد بأن:</p>
+      <h3 style="font-size: 36px; color: #16213e; margin-bottom: 20px; border-bottom: 2px solid #c9a84c; padding-bottom: 10px; min-width: 300px;">${escapeHtml(studentName || "")}</h3>
       
       <p style="font-size: 20px; margin-bottom: 20px;">قد أتم بنجاح دورة:</p>
-      <h4 style="font-size: 28px; color: #16213e; margin-bottom: 20px;">${courseName}</h4>
+      <h4 style="font-size: 28px; color: #16213e; margin-bottom: 20px;">${escapeHtml(courseName || "")}</h4>
       
-      <p style="font-size: 18px; margin-bottom: 40px;">بتقدير: <strong>${cert.graduationGrade || "ممتاز"}</strong></p>
+      <p style="font-size: 18px; margin-bottom: 40px;">بتقدير: <strong>${escapeHtml(cert.graduationGrade || "ممتاز")}</strong></p>
 
       <div style="display: flex; justify-content: space-around; width: 100%; margin-top: 40px;">
         <div style="text-align: center;">
