@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
-import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
+import { setupAuth, requireAuth, requireRole, requirePrivacyPolicy, hashPassword } from "./auth";
 import { quranSurahs } from "@shared/quran-surahs";
 import { db } from "./db";
 import {
@@ -131,6 +131,17 @@ export async function registerRoutes(
       sessionTracker.updateSession(req.sessionID, req.user, req);
     }
     next();
+  });
+
+  const privacyExemptPaths = [
+    "/api/auth/",
+    "/api/privacy-policy/",
+  ];
+  app.use((req: any, res: any, next: any) => {
+    if (!req.path.startsWith("/api/")) return next();
+    if (privacyExemptPaths.some(p => req.path.startsWith(p))) return next();
+    if (req.path === "/api/auth/me") return next();
+    requirePrivacyPolicy(req, res, next);
   });
 
   // ==================== PRIVACY POLICY ====================
