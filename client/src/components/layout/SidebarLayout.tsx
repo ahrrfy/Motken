@@ -371,17 +371,37 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           {user.avatar ? (
             <img src={user.avatar} alt="User" className="w-8 h-8 rounded-full border border-sidebar-border/50 shrink-0" />
           ) : (
-            <div className="w-8 h-8 rounded-full shrink-0 bg-accent/20 flex items-center justify-center text-accent font-bold text-xs">
+            <div className={cn(
+              "w-8 h-8 rounded-full shrink-0 flex items-center justify-center font-bold text-xs",
+              previewRole
+                ? previewRole === "student" ? "bg-blue-500/20 text-blue-400"
+                : previewRole === "teacher" ? "bg-emerald-500/20 text-emerald-400"
+                : previewRole === "supervisor" ? "bg-purple-500/20 text-purple-400"
+                : "bg-accent/20 text-accent"
+                : "bg-accent/20 text-accent"
+            )}>
               {user.name?.charAt(0)}
             </div>
           )}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{user.name}</p>
-            <p className="text-[10px] text-sidebar-foreground/50 truncate">{
-              user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
-              user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
-              user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
-            }</p>
+            {previewRole ? (
+              <p className={cn("text-[10px] truncate font-medium",
+                previewRole === "student" ? "text-blue-400" :
+                previewRole === "teacher" ? "text-emerald-400" :
+                previewRole === "supervisor" ? "text-purple-400" : "text-sidebar-foreground/50"
+              )}>
+                {previewRole === "student" ? (isEn ? "Preview: Student" : "معاينة: طالب") :
+                 previewRole === "teacher" ? (isEn ? "Preview: Teacher" : "معاينة: أستاذ") :
+                 previewRole === "supervisor" ? (isEn ? "Preview: Supervisor" : "معاينة: مشرف") : ""}
+              </p>
+            ) : (
+              <p className="text-[10px] text-sidebar-foreground/50 truncate">{
+                user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
+                user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
+                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
+              }</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
@@ -411,7 +431,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const SidebarFooter = () => (
     <div className="p-2.5 border-t border-sidebar-border/30 shrink-0 space-y-1.5">
-      {(user?.actualRole === "supervisor" || user?.role === "supervisor") && (
+      {!previewRole && (user?.actualRole === "supervisor" || user?.role === "supervisor") && (
         <Button
           variant="outline"
           size="sm"
@@ -423,6 +443,22 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           {user?.role === "supervisor"
             ? (isEn ? "Teacher Mode" : "وضع الأستاذ")
             : (isEn ? "Supervisor Mode" : "وضع المشرف")}
+        </Button>
+      )}
+      {previewRole && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={stopPreview}
+          className={cn("w-full h-8 text-xs",
+            previewRole === "student" ? "bg-blue-900/20 border-blue-700/30 text-blue-400 hover:bg-blue-800/30" :
+            previewRole === "teacher" ? "bg-emerald-900/20 border-emerald-700/30 text-emerald-400 hover:bg-emerald-800/30" :
+            "bg-purple-900/20 border-purple-700/30 text-purple-400 hover:bg-purple-800/30"
+          )}
+          data-testid="button-stop-preview-footer"
+        >
+          <ArrowLeftRight className="w-3.5 h-3.5 ml-1.5" />
+          {isEn ? "Exit Preview" : "العودة للوضع العادي"}
         </Button>
       )}
       <Button
@@ -503,13 +539,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             "bg-gradient-to-l from-amber-600 to-amber-500"
           )} data-testid="preview-banner">
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4" />
+              <Eye className="w-4 h-4 animate-pulse" />
               <span>
-                {isEn ? "Preview Mode: Viewing as " : "وضع المعاينة: تشاهد النظام كـ"}
-                <strong>
-                  {previewRole === "student" ? (isEn ? "Student" : "طالب") :
-                   previewRole === "teacher" ? (isEn ? "Teacher" : "أستاذ") :
-                   previewRole === "supervisor" ? (isEn ? "Supervisor" : "مشرف") : ""}
+                {isEn ? "Preview Mode: Viewing system as " : "وضع المعاينة: تشاهد النظام كما يراه "}
+                <strong className="bg-white/20 px-2 py-0.5 rounded text-white">
+                  {previewRole === "student" ? (isEn ? "Student" : "الطالب") :
+                   previewRole === "teacher" ? (isEn ? "Teacher" : "الأستاذ") :
+                   previewRole === "supervisor" ? (isEn ? "Supervisor" : "المشرف") : ""}
                 </strong>
               </span>
             </div>
@@ -521,7 +557,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               data-testid="button-stop-preview"
             >
               <ArrowLeftRight className="w-3.5 h-3.5 ml-1" />
-              {isEn ? "Exit Preview" : "العودة للوضع العادي"}
+              {isEn ? "Exit Preview" : "إنهاء المعاينة"}
             </Button>
           </div>
         )}
