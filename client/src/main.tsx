@@ -13,7 +13,14 @@ import { queryClient } from "./lib/queryClient";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      if (reg) {
+        setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);
+      }
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        window.location.reload();
+      });
+    }).catch(() => {});
   });
 }
 
