@@ -574,17 +574,17 @@ export default function AllUsersPage() {
             <div className="text-center py-8 text-muted-foreground">لا توجد نتائج</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
                 <thead>
                   <tr className="border-b text-muted-foreground">
-                    <th className="text-right py-3 px-2 font-medium">الاسم</th>
-                    <th className="text-right py-3 px-2 font-medium hidden sm:table-cell">اسم المستخدم</th>
-                    <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجنس</th>
-                    <th className="text-right py-3 px-2 font-medium">الدور</th>
-                    <th className="text-right py-3 px-2 font-medium hidden md:table-cell">الجامع/المركز</th>
-                    <th className="text-right py-3 px-2 font-medium hidden lg:table-cell">الهاتف</th>
-                    <th className="text-center py-3 px-2 font-medium hidden lg:table-cell">الحالة</th>
-                    <th className="text-center py-3 px-2 font-medium">إجراءات</th>
+                    <th className="text-right py-3 px-4 font-medium w-[20%]">الاسم</th>
+                    <th className="text-right py-3 px-4 font-medium hidden sm:table-cell w-[12%]">اسم المستخدم</th>
+                    <th className="text-right py-3 px-4 font-medium hidden md:table-cell w-[8%]">الجنس</th>
+                    <th className="text-right py-3 px-4 font-medium w-[10%]">الدور</th>
+                    <th className="text-right py-3 px-4 font-medium hidden md:table-cell w-[15%]">الجامع/المركز</th>
+                    <th className="text-right py-3 px-4 font-medium hidden lg:table-cell w-[12%]">الهاتف</th>
+                    <th className="text-right py-3 px-4 font-medium hidden lg:table-cell w-[8%]">الحالة</th>
+                    <th className="text-center py-3 px-4 font-medium w-[15%]">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -593,7 +593,7 @@ export default function AllUsersPage() {
                     const isAdmin = u.role === "admin";
                     return (
                       <tr key={u.id} className="border-b hover:bg-muted/50 transition-colors" data-testid={`row-user-${u.id}`}>
-                        <td className="py-3 px-2">
+                        <td className="py-3 px-4 text-right">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
                               {u.name?.charAt(0)}
@@ -604,23 +604,25 @@ export default function AllUsersPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-2 text-muted-foreground hidden sm:table-cell" dir="ltr">{u.username}</td>
-                        <td className="py-3 px-2 hidden md:table-cell" data-testid={`text-gender-${u.id}`}>{u.gender === "female" ? "أنثى" : "ذكر"}</td>
-                        <td className="py-3 px-2">
+                        <td className="py-3 px-4 text-right text-muted-foreground hidden sm:table-cell">
+                          <span dir="ltr" className="inline-block">{u.username}</span>
+                        </td>
+                        <td className="py-3 px-4 text-right hidden md:table-cell" data-testid={`text-gender-${u.id}`}>{u.gender === "female" ? "أنثى" : "ذكر"}</td>
+                        <td className="py-3 px-4 text-right">
                           <Badge variant="secondary" className={`${roleColors[u.role]} text-xs gap-1`}>
                             <RoleIcon className="w-3 h-3" />
                             {roleLabels[u.role]}
                           </Badge>
                         </td>
-                        <td className="py-3 px-2 hidden md:table-cell">
+                        <td className="py-3 px-4 text-right hidden md:table-cell">
                           <div className="flex items-center gap-1 text-muted-foreground text-xs">
                             <Building2 className="w-3 h-3" />
                             {getMosqueName(u.mosqueId)}
                           </div>
                         </td>
-                        <td className="py-3 px-2 hidden lg:table-cell text-muted-foreground" dir="ltr">
+                        <td className="py-3 px-4 text-right hidden lg:table-cell text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <span>{u.phone || "—"}</span>
+                            <span dir="ltr" className="inline-block">{u.phone || "—"}</span>
                             {u.phone && (
                               <Button
                                 variant="ghost"
@@ -635,7 +637,7 @@ export default function AllUsersPage() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-2 text-center hidden lg:table-cell">
+                        <td className="py-3 px-4 text-right hidden lg:table-cell">
                           {u.isActive !== false ? (
                             <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs">
                               نشط
@@ -646,7 +648,7 @@ export default function AllUsersPage() {
                             </Badge>
                           )}
                         </td>
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1">
                             {isAdmin ? (
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
