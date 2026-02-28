@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, RefreshCw, BookOpen, Loader2, Search, Calendar, Award, TrendingUp, Clock, Star, BarChart3, Flame, Target, Map as MapIcon, Bookmark, TreePine, Sparkles, Crown, Medal, Filter, ChevronDown, ChevronUp, SortAsc } from "lucide-react";
+import { CheckCircle, RefreshCw, BookOpen, Loader2, Search, Calendar, Award, TrendingUp, Clock, Star, BarChart3, Flame, Target, Map as MapIcon, Bookmark, TreePine, Sparkles, Crown, Medal, Filter, ChevronDown, ChevronUp, SortAsc, Trophy } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn, formatDateAr } from "@/lib/utils";
 import { quranSurahs } from "@shared/quran-surahs";
@@ -288,6 +288,9 @@ export default function QuranTracker() {
   const [surahSearch, setSurahSearch] = useState("");
   const [activeTab, setActiveTab] = useState("mushaf");
 
+  const [titlesOpen, setTitlesOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [juzFilter, setJuzFilter] = useState<string>("all");
   const [sortOption, setSortOption] = useState<string>("number");
@@ -322,9 +325,32 @@ export default function QuranTracker() {
 
   const [surahDetailOpen, setSurahDetailOpen] = useState(false);
   const [detailSurahNum, setDetailSurahNum] = useState<number>(1);
+  const [timeline, setTimeline] = useState<any[]>([]);
+  const [titles, setTitles] = useState<any[]>([]);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
 
   const surahNumber = parseInt(selectedSurah);
   const currentSurah = quranSurahs.find(s => s.number === surahNumber);
+
+  useEffect(() => {
+    if (user?.id) {
+      setLoadingTimeline(true);
+      Promise.all([
+        apiGet(`/api/student-timeline/${user.id}`),
+        apiGet(`/api/student-titles/${user.id}`),
+        user.role === "student" ? apiGet("/api/student-challenges") : Promise.resolve([])
+      ]).then(([timelineData, titlesData, challengesData]) => {
+        setTimeline(timelineData);
+        setTitles(titlesData);
+        setChallenges(challengesData);
+      }).catch(err => {
+        console.error("Error fetching achievements:", err);
+      }).finally(() => {
+        setLoadingTimeline(false);
+      });
+    }
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     async function fetchAssignments() {
@@ -625,6 +651,18 @@ export default function QuranTracker() {
     return count;
   }, [assignments]);
 
+  const timelineIcons: Record<string, any> = {
+    new_surah: BookOpen,
+    excellent_grade: Star,
+    badge: Award,
+    streak: Flame,
+    milestone: Trophy,
+  };
+
+  const getTimelineIcon = (type: string) => {
+    return timelineIcons[type] || Target;
+  };
+
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto" data-testid="quran-tracker-page" dir="rtl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -749,6 +787,10 @@ export default function QuranTracker() {
           <TabsTrigger value="activity" className="gap-1 text-[10px] sm:text-sm" data-testid="tab-activity">
             <Clock className="w-4 h-4" />
             <span className="hidden sm:inline">النشاط</span>
+          </TabsTrigger>
+          <TabsTrigger value="achievements" className="gap-1 text-[10px] sm:text-sm" data-testid="tab-achievements">
+            <Award className="w-4 h-4" />
+            <span className="hidden sm:inline">الإنجازات</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1581,6 +1623,121 @@ export default function QuranTracker() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="achievements" className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="md:col-span-2" data-testid="timeline-card">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  رحلة الحفظ والإنجازات
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingTimeline ? (
+                  <div className="flex items-center justify-center h-40">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : timeline.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>ابدأ رحلتك لتسجيل إنجازاتك هنا</p>
+                  </div>
+                ) : (
+                  <div className="relative pr-4">
+                    <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-muted" />
+                    <div className="space-y-6">
+                      {timeline.map((item, idx) => {
+                        const Icon = getTimelineIcon(item.type);
+                        return (
+                          <div key={idx} className="relative pr-8" data-testid={`timeline-item-${idx}`}>
+                            <div className="absolute right-[-4px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-background" />
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-full bg-primary/10 text-primary">
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold leading-none">{item.title}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {formatDate(item.date)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <Card data-testid="titles-card">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-yellow-500" />
+                    ألقابي
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {titles.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground text-xs">
+                      اجتهد للحصول على ألقابك الأولى
+                    </div>
+                  ) : (
+                    titles.map((t, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-l from-yellow-50 to-transparent border border-yellow-100"
+                        data-testid={`title-item-${idx}`}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+                          <Crown className="w-5 h-5 text-yellow-600" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-yellow-900">{t.title}</p>
+                          <p className="text-[10px] text-yellow-700/70">لقب فخري</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {user?.role === "student" && (
+                <Card data-testid="challenges-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Target className="w-5 h-5 text-blue-500" />
+                      تحديات الأسبوع
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {challenges.map((c, idx) => (
+                      <div key={idx} className="space-y-2" data-testid={`challenge-item-${idx}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-sm font-bold">{c.title}</p>
+                            <p className="text-[10px] text-muted-foreground">{c.description}</p>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px] shrink-0">
+                            +{c.reward} نقطة
+                          </Badge>
+                        </div>
+                        <Progress value={(c.current / c.target) * 100} className="h-1.5" />
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>{c.current} / {c.target}</span>
+                          <span>{Math.round((c.current / c.target) * 100)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

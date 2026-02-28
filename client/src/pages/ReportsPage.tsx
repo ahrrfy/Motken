@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { exportMultiSheetExcel } from "@/lib/excel-utils";
-import { openPrintWindow, generateStatsHtml, generateUsersTableHtml } from "@/lib/print-utils";
+import { openPrintWindow, generateStatsHtml, generateUsersTableHtml, generateSemesterReportHtml, generateAnnualSummaryHtml } from "@/lib/print-utils";
 import { quranSurahs } from "@shared/quran-surahs";
 import {
   BarChart,
@@ -589,6 +589,39 @@ export default function ReportsPage() {
     openPrintWindow("التقارير والإحصائيات", content, printOpts);
   };
 
+  const handlePrintSemesterReport = async () => {
+    if (!selectedStudentId) return;
+    try {
+      const [studentData, assignmentsData] = await Promise.all([
+        fetch(`/api/users/${selectedStudentId}`).then(r => r.json()),
+        fetch(`/api/assignments?studentId=${selectedStudentId}`).then(r => r.json())
+      ]);
+      
+      const gradedAssignments = assignmentsData.filter((a: any) => a.grade != null).map((a: any) => {
+        const surah = quranSurahs.find(s => s.number === a.surahNumber);
+        return {
+          ...a,
+          surahName: surah?.name || `سورة ${a.surahNumber}`
+        };
+      });
+
+      const html = generateSemesterReportHtml(studentData, gradedAssignments, userMosqueData.name || "المركز");
+      openPrintWindow(`تقرير الطالب ${studentData.name}`, html, printOpts);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handlePrintAnnualSummary = async () => {
+    try {
+      const leaderboard = await fetch("/api/points/leaderboard").then(r => r.json());
+      const html = generateAnnualSummaryHtml(stats, leaderboard.slice(0, 10), userMosqueData.name || "المركز");
+      openPrintWindow("التقرير السنوي", html, printOpts);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" data-testid="reports-page">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -667,6 +700,10 @@ export default function ReportsPage() {
             <Button variant="outline" onClick={handlePrint} data-testid="button-print">
               <Printer className="h-4 w-4 ml-2" />
               طباعة
+            </Button>
+            <Button variant="outline" onClick={handlePrintAnnualSummary} data-testid="button-print-annual">
+              <Printer className="h-4 w-4 ml-2" />
+              طباعة التقرير السنوي
             </Button>
           </div>
 
@@ -947,6 +984,12 @@ export default function ReportsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedStudentId && (
+                  <Button variant="outline" className="mr-4" onClick={handlePrintSemesterReport} data-testid="button-print-semester">
+                    <Printer className="h-4 w-4 ml-2" />
+                    طباعة تقرير الدرجات
+                  </Button>
+                )}
               </div>
               {selectedStudentId ? (
                 <QuranPassport studentId={selectedStudentId} />

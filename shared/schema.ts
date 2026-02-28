@@ -645,3 +645,33 @@ export const similarVerses = pgTable("similar_verses", {
 export const insertSimilarVerseSchema = createInsertSchema(similarVerses).omit({ id: true, createdAt: true });
 export type InsertSimilarVerse = z.infer<typeof insertSimilarVerseSchema>;
 export type SimilarVerse = typeof similarVerses.$inferSelect;
+
+// ==================== MESSAGE TEMPLATES ====================
+export const messageTemplates = pgTable("message_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueId: varchar("mosque_id"),
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({ id: true, createdAt: true });
+export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+
+// ==================== COMMUNICATION LOG ====================
+export const communicationLogs = pgTable("communication_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").notNull(),
+  mosqueId: varchar("mosque_id"),
+  contactedBy: varchar("contacted_by").notNull(),
+  method: text("method").notNull(),
+  subject: text("subject").notNull(),
+  notes: text("notes"),
+  parentPhone: text("parent_phone"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertCommunicationLogSchema = createInsertSchema(communicationLogs).omit({ id: true, createdAt: true });
+export type InsertCommunicationLog = z.infer<typeof insertCommunicationLogSchema>;
+export type CommunicationLog = typeof communicationLogs.$inferSelect;
