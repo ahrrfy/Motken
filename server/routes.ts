@@ -340,7 +340,25 @@ export async function registerRoutes(
         }
       }
 
-      const safe = result.map(({ password, ...u }) => u);
+      let safe;
+      if (currentUser.role === "admin" || currentUser.role === "supervisor") {
+        safe = result.map(({ password, ...u }) => u);
+      } else if (currentUser.role === "teacher") {
+        const myStudentIds = new Set((await storage.getUsersByTeacher(currentUser.id)).map(s => s.id));
+        safe = result.map(({ password, phone, parentPhone, address, telegramId, ...u }) => {
+          if (myStudentIds.has(u.id) || u.id === currentUser.id) {
+            return { ...u, phone, parentPhone, address, telegramId };
+          }
+          return u;
+        });
+      } else {
+        safe = result.map(({ password, phone, parentPhone, address, telegramId, ...u }) => {
+          if (u.id === currentUser.id) {
+            return { ...u, phone, parentPhone, address, telegramId };
+          }
+          return u;
+        });
+      }
       res.json(safe);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
@@ -376,6 +394,17 @@ export async function registerRoutes(
         return res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا المستخدم" });
       }
       const { password, ...safe } = user;
+      if (currentUser.role === "student" && user.id !== currentUser.id) {
+        const { phone: _p, parentPhone: _pp, address: _a, telegramId: _t, ...limited } = safe;
+        return res.json(limited);
+      }
+      if (currentUser.role === "teacher" && user.id !== currentUser.id) {
+        const isMyStudent = user.teacherId === currentUser.id;
+        if (!isMyStudent && user.role !== "student") {
+          const { phone: _p, address: _a, telegramId: _t, ...limited } = safe;
+          return res.json(limited);
+        }
+      }
       res.json(safe);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
