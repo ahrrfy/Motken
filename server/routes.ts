@@ -193,7 +193,7 @@ export async function registerRoutes(
       await logActivity(req.user!, `إنشاء جامع: ${mosque.name}`, "mosques");
       res.status(201).json(mosque);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -518,7 +518,7 @@ export async function registerRoutes(
 
       res.status(201).json(safe);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -885,7 +885,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `إنشاء واجب: ${req.body.surahName}`, "assignments", `للطالب ${req.body.studentId}`);
       res.status(201).json(assignment);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -1127,7 +1127,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `تقييم ${targetUser.name}: ${stars} نجوم${honorBadge ? ' + وسام شرف' : ''}`, "ratings");
       res.status(201).json(rating);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -1261,7 +1261,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `إنشاء امتحان: ${title}`, "exams", `${surahName} (${fromVerse}-${toVerse}) - ${targetStudents.length} طالب`);
       res.status(201).json(exam);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -1701,7 +1701,7 @@ export async function registerRoutes(
         graduationRate: totalStudents > 0 ? Math.round((totalGraduated / totalStudents) * 100) : 0,
       });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -1734,7 +1734,7 @@ export async function registerRoutes(
 
       res.json(enriched);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -1773,7 +1773,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `إنشاء دورة: ${title}`, "courses");
       res.status(201).json(course);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -1805,7 +1805,7 @@ export async function registerRoutes(
       if (!updated) return res.status(404).json({ message: "الدورة غير موجودة" });
       res.json(updated);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -1830,7 +1830,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `حذف دورة: ${course.title}`, "courses");
       res.json({ message: "تم حذف الدورة بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -1872,7 +1872,7 @@ export async function registerRoutes(
 
       res.status(201).json(created);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
     }
   });
 
@@ -1944,7 +1944,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `تخريج ${studentIds.length} طالب من دورة: ${course.title}`, "courses");
       res.json({ message: "تم تخريج الطلاب ومنح الشهادات بنجاح", certificates: createdCertificates });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -1973,7 +1973,7 @@ export async function registerRoutes(
 
       res.json(certs);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -1996,7 +1996,7 @@ export async function registerRoutes(
       await storage.deleteCourseStudent(entry.id);
       res.json({ message: "تم إزالة الطالب من الدورة" });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -2030,7 +2030,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `نسخ دورة: ${original.title}`, "courses");
       res.status(201).json(newCourse);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -2063,7 +2063,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `إلغاء تخريج طالب من دورة: ${course.title}`, "courses");
       res.json({ message: "تم إلغاء التخريج بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -2099,7 +2099,7 @@ export async function registerRoutes(
       const { password, ...safe } = updated;
       res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -2371,7 +2371,7 @@ export async function registerRoutes(
 
       res.json({ message: "تم إنشاء البيانات الأولية بنجاح", mosques: 3, users: 12 });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -2403,7 +2403,7 @@ export async function registerRoutes(
       const { password, ...safe } = user;
       res.json({ ...safe, mosqueName });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -2426,7 +2426,7 @@ export async function registerRoutes(
       await logActivity(req.user!, "تصفير النظام بالكامل", "system", "تم مسح جميع بيانات المساجد والمستخدمين");
       res.json({ message: "تم تصفير النظام بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: err.message || "حدث خطأ أثناء تصفير النظام" });
+      console.error(err); res.status(500).json({ message: "حدث خطأ أثناء تصفير النظام" });
     }
   });
 
@@ -2511,7 +2511,7 @@ export async function registerRoutes(
       await logActivity(req.user!, "إنشاء نسخة احتياطية", "system", `تم تصدير ${backup.metadata.totalRecords} سجل`);
       res.json(backup);
     } catch (err: any) {
-      res.status(500).json({ message: err.message || "حدث خطأ أثناء إنشاء النسخة الاحتياطية" });
+      console.error(err); res.status(500).json({ message: "حدث خطأ أثناء إنشاء النسخة الاحتياطية" });
     }
   });
 
@@ -2801,7 +2801,7 @@ export async function registerRoutes(
         client.release();
       }
     } catch (err: any) {
-      res.status(500).json({ message: err.message || "حدث خطأ أثناء استعادة النسخة الاحتياطية" });
+      console.error(err); res.status(500).json({ message: "حدث خطأ أثناء استعادة النسخة الاحتياطية" });
     }
   });
 
@@ -4160,7 +4160,7 @@ export async function registerRoutes(
       await logActivity(currentUser, "إنشاء إنابة طارئة", "emergency_substitutions");
       res.status(201).json(sub);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4258,7 +4258,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `توزيع تلقائي لطلاب ${absentTeacher.name}`, "emergency_substitutions");
       res.status(201).json({ created, totalStudents: activeStudents.length, totalTeachers: availableTeachers.length });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4306,7 +4306,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `تسجيل حادثة: ${title}`, "incidents");
       res.status(201).json(record);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4393,7 +4393,7 @@ export async function registerRoutes(
       await logActivity(currentUser, "تسجيل تخرج طالب", "graduates");
       res.status(201).json(grad);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4469,7 +4469,7 @@ export async function registerRoutes(
       });
       res.status(201).json(followup);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4513,7 +4513,7 @@ export async function registerRoutes(
       await logActivity(currentUser, "طلب نقل طالب", "student_transfers");
       res.status(201).json(transfer);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4594,7 +4594,7 @@ export async function registerRoutes(
       });
       res.status(201).json(link);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4693,7 +4693,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `إرسال ملاحظة: ${title}`, "feedback");
       res.status(201).json(fb);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4769,7 +4769,7 @@ export async function registerRoutes(
       });
       res.status(201).json(rule);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4831,7 +4831,7 @@ export async function registerRoutes(
       });
       res.status(201).json(verse);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4876,7 +4876,7 @@ export async function registerRoutes(
 
       res.json({ currentStreak, maxStreak, totalPresent, totalRecords: allAttendance.length });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4917,7 +4917,7 @@ export async function registerRoutes(
 
       res.json(heatmapData);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -4969,7 +4969,7 @@ export async function registerRoutes(
 
       res.json({ star: top3[0] || null, topStudents: top3 });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -5030,7 +5030,7 @@ export async function registerRoutes(
         }
       });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -5079,7 +5079,7 @@ export async function registerRoutes(
 
       res.json({ todayReview, weakSpots, allSurahs: needsReview });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -5125,7 +5125,7 @@ export async function registerRoutes(
 
       res.json(ranked);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -5834,7 +5834,7 @@ export async function registerRoutes(
       }).returning();
       res.status(201).json(template);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -5906,7 +5906,7 @@ export async function registerRoutes(
       }).returning();
       res.status(201).json(log);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 
@@ -6110,7 +6110,7 @@ export async function registerRoutes(
       await logActivity(currentUser, `موافقة على تسجيل مسجد: ${reg.mosqueName}`, "registration");
       res.json({ message: "تمت الموافقة وإنشاء المسجد والمشرف بنجاح", mosqueId: mosque.id, userId: user.id });
     } catch (err: any) {
-      res.status(500).json({ message: err.message || "حدث خطأ" });
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
   });
 

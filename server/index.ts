@@ -88,7 +88,8 @@ app.get("/_health", async (_req, res) => {
     client.release();
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   } catch (err: any) {
-    res.status(503).json({ status: "error", message: err.message });
+    console.error("Health check failed:", err);
+    res.status(503).json({ status: "error", message: "خدمة غير متاحة" });
   }
 });
 
@@ -154,15 +155,13 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
     console.error("Internal Server Error:", err);
 
     if (res.headersSent) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    return res.status(status).json({ message: "حدث خطأ داخلي في الخادم" });
   });
 
   // importantly only setup vite in development and after
