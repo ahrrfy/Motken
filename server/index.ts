@@ -9,11 +9,13 @@ import { createIndexes } from "./db";
 
 const app = express();
 
+const isProduction = process.env.NODE_ENV === "production";
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
@@ -23,17 +25,62 @@ app.use(helmet({
       baseUri: ["'self'"],
       formAction: ["'self'"],
       upgradeInsecureRequests: [],
+      workerSrc: ["'self'", "blob:"],
+      manifestSrc: ["'self'"],
     },
   },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "same-origin" },
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-  hsts: { maxAge: 31536000, includeSubDomains: true },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  noSniff: true,
+  xssFilter: true,
+  dnsPrefetchControl: { allow: false },
+  frameguard: { action: "deny" },
+  permittedCrossDomainPolicies: { permittedPolicies: "none" },
 }));
 
 app.disable("x-powered-by");
 
+app.use((_req, res, next) => {
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Download-Options", "noopen");
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  next();
+});
+
 app.use(compression());
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+function csrfProtection(req: Request, res: Response, next: NextFunction) {
+  if (SAFE_METHODS.has(req.method)) return next();
+
+  const publicPaths = ["/api/register-mosque", "/api/auth/login"];
+  if (publicPaths.some(p => req.path === p)) return next();
+
+  const origin = req.get("origin") || req.get("referer");
+  if (!origin) {
+    return res.status(403).json({ message: "طلب غير مصرح" });
+  }
+
+  try {
+    const originUrl = new URL(origin);
+    const host = req.get("host") || "";
+
+    if (originUrl.host !== host) {
+      console.warn(`CSRF blocked: origin=${originUrl.host} host=${host} path=${req.path} ip=${req.ip}`);
+      return res.status(403).json({ message: "طلب غير مصرح" });
+    }
+  } catch {
+    return res.status(403).json({ message: "طلب غير مصرح" });
+  }
+
+  next();
+}
+
+app.use("/api/", csrfProtection);
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
@@ -68,14 +115,37 @@ const authLimiter = rateLimit({
 app.use("/api/auth/login", authLimiter);
 app.use("/api/register-mosque", authLimiter);
 
+const sensitiveActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "عدد محاولات كبير جداً. يرجى الانتظار" },
+  validate: { xForwardedForHeader: false, default: true },
+});
+app.use((req, res, next) => {
+  if (req.path.match(/^\/api\/users\/[^/]+\/(change-password|reset-password)$/)) {
+    return sensitiveActionLimiter(req, res, next);
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
-    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800, immutable");
   } else if (req.path.startsWith("/api/")) {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     res.setHeader("Surrogate-Control", "no-store");
+  }
+  next();
+});
+
+app.use((req, res, next) => {
+  const blocked = /^\/(\.env|\.git|\.DS_Store|\.htaccess|wp-admin|wp-login|phpinfo|adminer|phpmyadmin)/i;
+  if (blocked.test(req.path)) {
+    return res.status(404).end();
   }
   next();
 });
@@ -126,22 +196,11 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
+      const logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       log(logLine);
     }
   });
