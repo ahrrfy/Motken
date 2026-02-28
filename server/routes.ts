@@ -773,10 +773,6 @@ export async function registerRoutes(
         }
       }
 
-      if (currentUser.role === "student") {
-        const stripped = result.map(({ seenByStudent, seenAt, ...rest }) => rest);
-        return res.json(stripped);
-      }
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });

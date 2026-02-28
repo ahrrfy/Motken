@@ -54,9 +54,27 @@ app.use("/api/certificates/verify/", publicEndpointLimiter);
 app.use((req, res, next) => {
   if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+  } else if (req.path.startsWith("/api/")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
   }
   next();
 });
+
+app.get("/_health", async (_req, res) => {
+  try {
+    const { pool } = await import("./db");
+    const client = await pool.connect();
+    await client.query("SELECT 1");
+    client.release();
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    res.status(503).json({ status: "error", message: err.message });
+  }
+});
+
 const httpServer = createServer(app);
 
 declare module "http" {
