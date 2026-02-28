@@ -210,6 +210,22 @@ export function requireAuth(req: any, res: any, next: any) {
   next();
 }
 
+export function requirePrivacyPolicy(req: any, res: any, next: any) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
+  }
+  if (req.user!.role === "admin") {
+    return next();
+  }
+  if (!req.user!.acceptedPrivacyPolicy) {
+    return res.status(403).json({
+      message: "يجب قبول سياسة الخصوصية قبل استخدام النظام",
+      code: "PRIVACY_POLICY_REQUIRED",
+    });
+  }
+  next();
+}
+
 export function requireRole(...roles: string[]) {
   return (req: any, res: any, next: any) => {
     if (!req.isAuthenticated()) {
