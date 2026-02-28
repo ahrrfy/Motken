@@ -21,11 +21,17 @@ app.use(helmet({
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: [],
     },
   },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "same-origin" },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  hsts: { maxAge: 31536000, includeSubDomains: true },
 }));
+
+app.disable("x-powered-by");
 
 app.use(compression());
 
@@ -50,6 +56,17 @@ const publicEndpointLimiter = rateLimit({
 app.use("/api/family-dashboard/", publicEndpointLimiter);
 app.use("/api/parent-report/", publicEndpointLimiter);
 app.use("/api/certificates/verify/", publicEndpointLimiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "محاولات كثيرة جداً. يرجى الانتظار 15 دقيقة" },
+  validate: { xForwardedForHeader: false, default: true },
+});
+app.use("/api/auth/login", authLimiter);
+app.use("/api/register-mosque", authLimiter);
 
 app.use((req, res, next) => {
   if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
