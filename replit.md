@@ -59,6 +59,8 @@ The system is built with a modern web stack:
 -   **Print Templates**: Professional memorization certificates, semester grade reports, mosque annual summary reports.
 -   **Accessibility**: Font size toggle (small/medium/large), keyboard shortcuts (Alt+D Dashboard, Alt+S Settings, Alt+M Messages, Alt+Q Quran).
 -   **Performance**: Response compression, static asset caching, API no-cache headers, DB pool health checks (60s interval), reduced pool size (20 max), service worker for offline capabilities. React Query: staleTime 15s, refetchInterval 30s, refetchOnWindowFocus enabled, retry 1. Healthcheck endpoint at `/_health`.
+-   **Self-Healing System**: Auto-recovery on DB failure, DB optimization cron (6h), session cleanup cron (30min), temp data cleanup (24h), memory monitoring, graceful shutdown (SIGTERM/SIGINT), unhandledRejection/uncaughtException handlers. See `server/self-healing.ts`.
+-   **Documentation**: `MAINTENANCE_LOG.md` (maintenance history), `README_ARCH.md` (architecture guide).
 -   **Institutional Systems**: Crisis Management, Graduation & Follow-up, Institutional Integration, Integrated Family System, Knowledge Management, Maintenance & Improvement, Educational Content.
 -   **Admin Interface**: Redesigned with categorized sidebar navigation, merged sections, enhanced dashboard.
 -   **Level System**: 6-level reverse-order system (Juz 30-1), with updated names: مبتدئ/متوسط/متقدم/متميز/خبير/حافظ.

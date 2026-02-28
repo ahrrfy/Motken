@@ -5,7 +5,8 @@ import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { createIndexes } from "./db";
+import { createIndexes, pool } from "./db";
+import { startSelfHealing, stopSelfHealing, getDetailedHealthReport } from "./self-healing";
 
 const app = express();
 
@@ -152,11 +153,17 @@ app.use((req, res, next) => {
 
 app.get("/_health", async (_req, res) => {
   try {
-    const { pool } = await import("./db");
-    const client = await pool.connect();
-    await client.query("SELECT 1");
-    client.release();
-    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+    const report = await getDetailedHealthReport();
+    if (report.status === "healthy") {
+      res.status(200).json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        uptime: Math.round(report.uptime),
+        autoRecoveries: report.autoRecoveries,
+      });
+    } else {
+      res.status(503).json({ status: "degraded", message: "خدمة متدهورة" });
+    }
   } catch (err: any) {
     console.error("Health check failed:", err);
     res.status(503).json({ status: "error", message: "خدمة غير متاحة" });
@@ -208,6 +215,44 @@ app.use((req, res, next) => {
   next();
 });
 
+process.on("unhandledRejection", (reason: any) => {
+  console.error("[Process] Unhandled Promise Rejection:", reason?.message || reason);
+});
+
+process.on("uncaughtException", (err: Error) => {
+  console.error("[Process] Uncaught Exception:", err.message);
+  console.error(err.stack);
+});
+
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal: string) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  log(`${signal} received. Starting graceful shutdown...`);
+
+  stopSelfHealing();
+
+  httpServer.close(() => {
+    log("HTTP server closed");
+  });
+
+  try {
+    await pool.end();
+    log("Database pool closed");
+  } catch (err: any) {
+    console.error("Error closing database pool:", err.message);
+  }
+
+  setTimeout(() => {
+    log("Forced shutdown after timeout");
+    process.exit(1);
+  }, 10000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
 (async () => {
   await createIndexes();
   await registerRoutes(httpServer, app);
@@ -223,20 +268,13 @@ app.use((req, res, next) => {
     return res.status(status).json({ message: "حدث خطأ داخلي في الخادم" });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
+  if (isProduction) {
     serveStatic(app);
   } else {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
@@ -246,6 +284,7 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      startSelfHealing();
     },
   );
 })();
