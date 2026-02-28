@@ -8,8 +8,8 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 50,
-  min: 5,
+  max: 20,
+  min: 2,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   allowExitOnIdle: false,
@@ -18,6 +18,18 @@ export const pool = new pg.Pool({
 pool.on("error", (err) => {
   console.error("Unexpected pool error:", err.message);
 });
+
+async function ensurePoolHealthy() {
+  try {
+    const client = await pool.connect();
+    await client.query("SELECT 1");
+    client.release();
+  } catch (err: any) {
+    console.error("Pool health check failed, connections will be re-established:", err.message);
+  }
+}
+
+setInterval(ensurePoolHealthy, 60000);
 
 export const db = drizzle(pool, { schema });
 
