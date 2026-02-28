@@ -615,6 +615,7 @@ export async function registerRoutes(
         }
       }
       updateData.password = await hashPassword(req.body.password);
+      await logActivity(currentUser, `تغيير كلمة مرور المستخدم ${targetUser.name} (${targetUser.username})`, "security");
     }
 
     if (currentUser.role === "admin") {
@@ -667,6 +668,7 @@ export async function registerRoutes(
       if (targetUser.role === "admin") {
         return res.status(403).json({ message: "لا يمكن حذف حساب مدير النظام" });
       }
+      await logActivity(req.user!, `حذف المستخدم ${targetUser.name} (${targetUser.username}) - الدور: ${targetUser.role}`, "security");
       await storage.deleteUser(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {

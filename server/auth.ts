@@ -152,6 +152,10 @@ export function setupAuth(app: Express) {
       if (err) return next(err);
       if (!user) {
         recordLoginAttempt(rateLimitKey, false);
+        const entry = loginAttempts.get(rateLimitKey);
+        if (entry && entry.count >= 3) {
+          console.warn(`Security: ${entry.count} failed login attempts for "${username}" from IP ${clientIp}`);
+        }
         return res.status(401).json({ message: info?.message || "فشل تسجيل الدخول" });
       }
       recordLoginAttempt(rateLimitKey, true);
