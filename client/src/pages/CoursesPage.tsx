@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
+import { openPrintWindow, generateCertificateHtml } from "@/lib/print-utils";
 import {
   BookOpen, Plus, Trash2, Award, Loader2, Users, CalendarDays, Printer,
   GraduationCap, CheckCircle, Search, Filter, Copy, Edit, BarChart3, Shield,
@@ -1062,7 +1063,12 @@ export default function CoursesPage() {
   const handlePrint = (cert: CertificateData) => {
     const studentName = getStudentName(cert.studentId);
     const courseName = getCourseName(cert.courseId);
-    printCertificate(cert, courseName, studentName, cert.studentId);
+    const html = generateCertificateHtml(cert, studentName, courseName, mosqueData.name || "مركز التحفيظ");
+    openPrintWindow(`شهادة ${studentName}`, html, { 
+      landscape: true, 
+      mosqueName: mosqueData.name, 
+      mosqueImage: mosqueData.image || undefined 
+    });
   };
 
   const getProgressPercent = (course: CourseData) => {

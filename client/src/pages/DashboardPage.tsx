@@ -88,6 +88,21 @@ interface DailySummary {
   items: DailySummaryItem[];
 }
 
+interface TeacherPerformance {
+  teacherId: string;
+  name: string;
+  gradingSpeed: number;
+  avgGrade: number;
+  assignmentFrequency: number;
+  activeStudentsRatio: number;
+}
+
+interface TeachingRecommendation {
+  subject: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
 interface MosqueHealth {
   score: number;
   attendance: number;
@@ -105,8 +120,13 @@ export default function DashboardPage() {
   const [hadithFade, setHadithFade] = useState(true);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [mosqueHealth, setMosqueHealth] = useState<MosqueHealth | null>(null);
+  const [teacherPerformances, setTeacherPerformances] = useState<TeacherPerformance[]>([]);
+  const [teachingRecommendations, setTeachingRecommendations] = useState<TeachingRecommendation[]>([]);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingHealth, setLoadingHealth] = useState(true);
+  const [loadingTeacherStats, setLoadingTeacherStats] = useState(false);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(false);
 
   const isEn = language === "en";
   const currentRole = effectiveRole || user?.role;
@@ -172,8 +192,22 @@ export default function DashboardPage() {
         .then(data => { if (data) setMosqueHealth(data); })
         .catch(() => {})
         .finally(() => setLoadingHealth(false));
+
+      setLoadingTeacherStats(true);
+      fetch("/api/teacher-comparison", { credentials: "include" })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setTeacherPerformances(data))
+        .catch(() => {})
+        .finally(() => setLoadingTeacherStats(false));
     } else {
       setLoadingHealth(false);
+    }
+
+    if (currentRole === 'teacher' && user?.id) {
+      fetch(`/api/teaching-recommendations/${user.id}`, { credentials: "include" })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setTeachingRecommendations(data))
+        .catch(() => {});
     }
   }, [currentRole, user?.mosqueId]);
 
@@ -181,6 +215,18 @@ export default function DashboardPage() {
   const isSupervisor = currentRole === 'supervisor';
   const isTeacher = currentRole === 'teacher';
   const isStudent = currentRole === 'student';
+
+  useEffect(() => {
+    if (isStudent) {
+      setLoadingChallenges(true);
+      fetch("/api/student-challenges", { credentials: "include" })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setChallenges(data))
+        .catch(() => setChallenges([]))
+        .finally(() => setLoadingChallenges(false));
+    }
+  }, [isStudent]);
+
   const isRealAdmin = user?.role === 'admin' && !previewRole;
 
   const completionRate = stats?.totalAssignments
@@ -405,6 +451,99 @@ export default function DashboardPage() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground italic text-sm">
                     {isEn ? "Health score unavailable" : "مؤشر الصحة غير متاح حالياً"}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {!isStudent && stats && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {(isAdmin || isSupervisor) && (
+            <Card className="border shadow-sm" data-testid="card-teacher-comparison">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-emerald-500" />
+                  {isEn ? "Teacher Comparison" : "مقارنة الأساتذة"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingTeacherStats ? (
+                  <div className="py-8 text-center text-muted-foreground animate-pulse">
+                    {isEn ? "Loading metrics..." : "جاري تحميل المؤشرات..."}
+                  </div>
+                ) : teacherPerformances.length > 0 ? (
+                  <div className="space-y-4">
+                    {teacherPerformances.map((tp, idx) => (
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-medium">{tp.name}</span>
+                          <span className="text-muted-foreground">{tp.avgGrade}% {isEn ? "Avg" : "متوسط"}</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full transition-all"
+                            style={{ width: `${tp.avgGrade}%` }}
+                          />
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-0.5">
+                            <Clock className="w-3 h-3" />
+                            <span>{tp.gradingSpeed}d {isEn ? "speed" : "سرعة"}</span>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <Activity className="w-3 h-3" />
+                            <span>{tp.assignmentFrequency} {isEn ? "freq" : "تكرار"}</span>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <Users className="w-3 h-3" />
+                            <span>{tp.activeStudentsRatio}% {isEn ? "active" : "نشط"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground italic text-sm">
+                    {isEn ? "No teacher data available" : "لا توجد بيانات أساتذة متاحة"}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {isTeacher && (
+            <Card className="border shadow-sm" data-testid="card-teaching-recommendations">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-purple-500" />
+                  {isEn ? "Teaching Recommendations" : "توصيات تعليمية"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {teachingRecommendations.length > 0 ? (
+                  <div className="space-y-3">
+                    {teachingRecommendations.map((rec, idx) => (
+                      <div key={idx} className="p-3 rounded-lg border bg-muted/30 flex gap-3 items-start">
+                        <div className={`mt-0.5 p-1 rounded-full ${
+                          rec.priority === 'high' ? 'bg-red-100 text-red-600' :
+                          rec.priority === 'medium' ? 'bg-amber-100 text-amber-600' :
+                          'bg-blue-100 text-blue-600'
+                        }`}>
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">{rec.subject}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{rec.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground italic text-sm">
+                    {isEn ? "No specific recommendations yet" : "لا توجد توصيات محددة حالياً"}
                   </div>
                 )}
               </CardContent>
@@ -667,6 +806,51 @@ export default function DashboardPage() {
           </div>
 
           <SmartReviewCard userId={user.id} isEn={isEn} />
+
+          {challenges.length > 0 && (
+            <Card className="border shadow-sm overflow-hidden" data-testid="card-weekly-challenges">
+              <CardHeader className="bg-blue-50/50 pb-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2 text-blue-700">
+                  <Target className="w-4 h-4" />
+                  {isEn ? "Weekly Challenges" : "تحديات الأسبوع"}
+                  <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100">
+                    {challenges.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                {challenges.map((c, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-bold">{c.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{c.description}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700">
+                        +{c.reward} {isEn ? "pts" : "نقطة"}
+                      </Badge>
+                    </div>
+                    <div className="relative h-2 w-full bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className="absolute top-0 right-0 h-full bg-blue-500 transition-all duration-500"
+                        style={{ width: `${Math.min(100, (c.current / c.target) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
+                      <span>{c.current} / {c.target}</span>
+                      <span>{Math.round((c.current / c.target) * 100)}%</span>
+                    </div>
+                  </div>
+                ))}
+                <Link href="/quran">
+                  <Button variant="ghost" size="sm" className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 mt-2 gap-1">
+                    {isEn ? "View all achievements" : "عرض كافة الإنجازات"}
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

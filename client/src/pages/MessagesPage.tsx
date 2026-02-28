@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   MessageCircle, Send, Loader2, Search, Plus, ArrowRight, Users,
-  Trash2, CheckCheck, Check, MoreVertical, Megaphone, X, AlertTriangle
+  Trash2, CheckCheck, Check, MoreVertical, Megaphone, X, AlertTriangle, FileText
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
@@ -93,12 +93,34 @@ export default function MessagesPage() {
   const [broadcastTarget, setBroadcastTarget] = useState("all");
   const [broadcastSending, setBroadcastSending] = useState(false);
 
+  const [messageTemplates, setMessageTemplates] = useState<{ id: string, title: string, content: string }[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
   const [deleteConvoConfirm, setDeleteConvoConfirm] = useState<string | null>(null);
   const [deletingConvo, setDeletingConvo] = useState(false);
   const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
   const [deletingMessage, setDeletingMessage] = useState(false);
 
   const [convoSearch, setConvoSearch] = useState("");
+
+  const fetchTemplates = useCallback(async () => {
+    setLoadingTemplates(true);
+    try {
+      const res = await fetch("/api/message-templates", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setMessageTemplates(data);
+      }
+    } catch {
+      console.error("Failed to fetch templates");
+    } finally {
+      setLoadingTemplates(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -566,6 +588,32 @@ export default function MessagesPage() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {messageTemplates.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-emerald-600"
+                      title="نماذج الرسائل"
+                      data-testid="button-message-templates"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {messageTemplates.map((template) => (
+                      <DropdownMenuItem
+                        key={template.id}
+                        onClick={() => setMessageText(template.content)}
+                        className="cursor-pointer"
+                      >
+                        <span className="truncate">{template.title}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
