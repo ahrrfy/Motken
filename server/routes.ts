@@ -83,6 +83,16 @@ export async function registerRoutes(
     smart_alerts: ["/api/smart-alerts"],
     competitions: ["/api/competitions"],
     advanced_reports: ["/api/advanced-reports"],
+    ratings: ["/api/ratings"],
+    courses: ["/api/courses", "/api/certificates"],
+    library: ["/api/library"],
+    knowledge_base: ["/api/tajweed", "/api/similar-verses"],
+    educational_content: ["/api/educational-content"],
+    graduation: ["/api/graduates"],
+    family_system: ["/api/family"],
+    crisis_management: ["/api/emergency", "/api/incidents"],
+    institutional: ["/api/transfers"],
+    id_cards: ["/api/id-cards"],
   };
 
   app.use(async (req, res, next) => {
@@ -100,26 +110,41 @@ export async function registerRoutes(
     next();
   });
 
-  // Auto-seed feature flags
+  const allFeatureDefaults = [
+    { featureKey: "attendance", featureName: "نظام الحضور والغياب", description: "تسجيل حضور وغياب الطلاب يومياً مع إمكانية تحديد الحالة (حاضر، غائب، متأخر، معذور) وإضافة ملاحظات وعرض سجل الحضور التاريخي", category: "management", isEnabled: true },
+    { featureKey: "messaging", featureName: "المحادثات الداخلية", description: "نظام مراسلة فوري داخلي يتيح للمعلمين والمشرفين والطلاب التواصل المباشر مع بعضهم البعض داخل المنصة", category: "communication", isEnabled: true },
+    { featureKey: "points_rewards", featureName: "النقاط والمكافآت", description: "نظام تحفيزي لمنح النقاط والشارات للطلاب على إنجازاتهم في الحفظ والسلوك والحضور مع لوحة شرف تعرض ترتيب المتميزين", category: "gamification", isEnabled: true },
+    { featureKey: "schedules", featureName: "جدولة الحلقات", description: "تنظيم وعرض الجدول الأسبوعي لحلقات التحفيظ مع تحديد المعلم والوقت والمكان لكل حلقة", category: "management", isEnabled: true },
+    { featureKey: "parent_portal", featureName: "بوابة ولي الأمر", description: "إنشاء تقارير دورية عن مستوى الطالب ومشاركتها مع ولي الأمر عبر رابط خاص دون الحاجة لتسجيل دخول", category: "communication", isEnabled: true },
+    { featureKey: "mosque_map", featureName: "خريطة الجوامع", description: "عرض خريطة تفاعلية توضح مواقع الجوامع والمراكز القرآنية المسجلة في النظام", category: "visualization", isEnabled: false },
+    { featureKey: "backup_export", featureName: "النسخ الاحتياطي والتصدير", description: "إمكانية تصدير بيانات النظام وإنشاء نسخ احتياطية لحماية البيانات من الفقدان", category: "data", isEnabled: true },
+    { featureKey: "smart_alerts", featureName: "التنبيهات الذكية", description: "تنبيهات تلقائية تُرسل عند غياب الطالب المتكرر أو تراجع مستواه أو اقتراب مواعيد الامتحانات والمسابقات", category: "automation", isEnabled: true },
+    { featureKey: "competitions", featureName: "المسابقات القرآنية", description: "تنظيم مسابقات قرآنية بين الطلاب مع تحديد السور والآيات وتسجيل النتائج والترتيب", category: "gamification", isEnabled: true },
+    { featureKey: "advanced_reports", featureName: "التقارير المتقدمة", description: "تقارير تفصيلية وإحصائيات شاملة عن أداء الطلاب ونشاط المعلمين ومستوى التقدم في الحفظ", category: "analytics", isEnabled: true },
+    { featureKey: "ratings", featureName: "التقييمات والأوسمة", description: "نظام تقييم أداء الطلاب ومنح الأوسمة والشارات التقديرية بناءً على مستوى الإنجاز", category: "gamification", isEnabled: true },
+    { featureKey: "courses", featureName: "الدورات والشهادات", description: "إدارة الدورات التعليمية وإصدار شهادات الإتمام والتخرج للطلاب", category: "education", isEnabled: true },
+    { featureKey: "library", featureName: "المكتبة الإسلامية", description: "مكتبة رقمية تحتوي على كتب ومراجع إسلامية متنوعة لدعم العملية التعليمية", category: "education", isEnabled: true },
+    { featureKey: "knowledge_base", featureName: "موسوعة التجويد", description: "موسوعة شاملة لأحكام التجويد والآيات المتشابهة لمساعدة الطلاب والمعلمين", category: "education", isEnabled: true },
+    { featureKey: "educational_content", featureName: "المحتوى التعليمي", description: "محتوى تعليمي تفاعلي يشمل دروس ومواد تعليمية متنوعة لدعم حفظ القرآن", category: "education", isEnabled: true },
+    { featureKey: "graduation", featureName: "التخرج والمتابعة", description: "نظام متابعة الخريجين وتسجيل إنجازاتهم بعد إتمام الحفظ", category: "management", isEnabled: true },
+    { featureKey: "family_system", featureName: "نظام الأسرة", description: "ربط حسابات أفراد الأسرة الواحدة لتسهيل المتابعة والتواصل", category: "communication", isEnabled: true },
+    { featureKey: "whiteboard", featureName: "السبورة التفاعلية", description: "سبورة تفاعلية رقمية لاستخدامها في التدريس والشرح أثناء الحلقات", category: "education", isEnabled: true },
+    { featureKey: "crisis_management", featureName: "إدارة الأزمات", description: "نظام لإدارة الأزمات والطوارئ والبدائل في حالات الغياب والظروف الطارئة", category: "management", isEnabled: true },
+    { featureKey: "institutional", featureName: "التكامل المؤسسي", description: "نظام التكامل مع المؤسسات والجهات الخارجية ونقل البيانات بينها", category: "management", isEnabled: true },
+    { featureKey: "floor_plan", featureName: "المخطط البصري", description: "عرض مخطط بصري لتوزيع القاعات والحلقات داخل الجامع أو المركز", category: "visualization", isEnabled: true },
+    { featureKey: "id_cards", featureName: "الهويات ومسح QR", description: "إنشاء بطاقات هوية للطلاب والمعلمين مع رموز QR للتحقق السريع", category: "management", isEnabled: true },
+  ];
+
+  // Auto-seed feature flags (add missing ones)
   try {
     const existingFlags = await storage.getFeatureFlags();
-    if (existingFlags.length === 0) {
-      const defaults = [
-        { featureKey: "attendance", featureName: "نظام الحضور والغياب", description: "تسجيل حضور وغياب الطلاب يومياً مع إمكانية تحديد الحالة (حاضر، غائب، متأخر، معذور) وإضافة ملاحظات وعرض سجل الحضور التاريخي", category: "management", isEnabled: true },
-        { featureKey: "messaging", featureName: "المحادثات الداخلية", description: "نظام مراسلة فوري داخلي يتيح للمعلمين والمشرفين والطلاب التواصل المباشر مع بعضهم البعض داخل المنصة", category: "communication", isEnabled: true },
-        { featureKey: "points_rewards", featureName: "النقاط والمكافآت", description: "نظام تحفيزي لمنح النقاط والشارات للطلاب على إنجازاتهم في الحفظ والسلوك والحضور مع لوحة شرف تعرض ترتيب المتميزين", category: "gamification", isEnabled: true },
-        { featureKey: "schedules", featureName: "جدولة الحلقات", description: "تنظيم وعرض الجدول الأسبوعي لحلقات التحفيظ مع تحديد المعلم والوقت والمكان لكل حلقة", category: "management", isEnabled: true },
-        { featureKey: "parent_portal", featureName: "بوابة ولي الأمر", description: "إنشاء تقارير دورية عن مستوى الطالب ومشاركتها مع ولي الأمر عبر رابط خاص دون الحاجة لتسجيل دخول", category: "communication", isEnabled: true },
-        { featureKey: "mosque_map", featureName: "خريطة الجوامع", description: "عرض خريطة تفاعلية توضح مواقع الجوامع والمراكز القرآنية المسجلة في النظام", category: "visualization", isEnabled: false },
-        { featureKey: "backup_export", featureName: "النسخ الاحتياطي والتصدير", description: "إمكانية تصدير بيانات النظام وإنشاء نسخ احتياطية لحماية البيانات من الفقدان", category: "data", isEnabled: true },
-        { featureKey: "smart_alerts", featureName: "التنبيهات الذكية", description: "تنبيهات تلقائية تُرسل عند غياب الطالب المتكرر أو تراجع مستواه أو اقتراب مواعيد الامتحانات والمسابقات", category: "automation", isEnabled: true },
-        { featureKey: "competitions", featureName: "المسابقات القرآنية", description: "تنظيم مسابقات قرآنية بين الطلاب مع تحديد السور والآيات وتسجيل النتائج والترتيب", category: "gamification", isEnabled: true },
-        { featureKey: "advanced_reports", featureName: "التقارير المتقدمة", description: "تقارير تفصيلية وإحصائيات شاملة عن أداء الطلاب ونشاط المعلمين ومستوى التقدم في الحفظ", category: "analytics", isEnabled: true },
-      ];
-      for (const flag of defaults) {
+    const existingKeys = new Set(existingFlags.map(f => f.featureKey));
+    const newFlags = allFeatureDefaults.filter(f => !existingKeys.has(f.featureKey));
+    if (newFlags.length > 0) {
+      for (const flag of newFlags) {
         await storage.createFeatureFlag(flag);
       }
-      console.log("Feature flags seeded successfully");
+      console.log(`Feature flags: ${newFlags.length} new flags added`);
     }
   } catch (err) {
     console.error("Error seeding feature flags:", err);
@@ -2994,27 +3019,17 @@ export async function registerRoutes(
   app.post("/api/feature-flags/seed", requireRole("admin"), async (req, res) => {
     try {
       const existing = await storage.getFeatureFlags();
-      if (existing.length > 0) {
-        return res.status(400).json({ message: "الميزات موجودة مسبقاً" });
+      const existingKeys = new Set(existing.map(f => f.featureKey));
+      const newFlags = allFeatureDefaults.filter(f => !existingKeys.has(f.featureKey));
+      if (newFlags.length === 0) {
+        return res.status(400).json({ message: "جميع الميزات موجودة مسبقاً" });
       }
-      const defaults = [
-        { featureKey: "attendance", featureName: "نظام الحضور والغياب", description: "تسجيل حضور وغياب الطلاب يومياً مع إمكانية تحديد الحالة (حاضر، غائب، متأخر، معذور) وإضافة ملاحظات وعرض سجل الحضور التاريخي", category: "management", isEnabled: true },
-        { featureKey: "messaging", featureName: "المحادثات الداخلية", description: "نظام مراسلة فوري داخلي يتيح للمعلمين والمشرفين والطلاب التواصل المباشر مع بعضهم البعض داخل المنصة", category: "communication", isEnabled: true },
-        { featureKey: "points_rewards", featureName: "النقاط والمكافآت", description: "نظام تحفيزي لمنح النقاط والشارات للطلاب على إنجازاتهم في الحفظ والسلوك والحضور مع لوحة شرف تعرض ترتيب المتميزين", category: "gamification", isEnabled: true },
-        { featureKey: "schedules", featureName: "جدولة الحلقات", description: "تنظيم وعرض الجدول الأسبوعي لحلقات التحفيظ مع تحديد المعلم والوقت والمكان لكل حلقة", category: "management", isEnabled: true },
-        { featureKey: "parent_portal", featureName: "بوابة ولي الأمر", description: "إنشاء تقارير دورية عن مستوى الطالب ومشاركتها مع ولي الأمر عبر رابط خاص دون الحاجة لتسجيل دخول", category: "communication", isEnabled: true },
-        { featureKey: "mosque_map", featureName: "خريطة الجوامع", description: "عرض خريطة تفاعلية توضح مواقع الجوامع والمراكز القرآنية المسجلة في النظام", category: "visualization", isEnabled: false },
-        { featureKey: "backup_export", featureName: "النسخ الاحتياطي والتصدير", description: "إمكانية تصدير بيانات النظام وإنشاء نسخ احتياطية لحماية البيانات من الفقدان", category: "data", isEnabled: true },
-        { featureKey: "smart_alerts", featureName: "التنبيهات الذكية", description: "تنبيهات تلقائية تُرسل عند غياب الطالب المتكرر أو تراجع مستواه أو اقتراب مواعيد الامتحانات والمسابقات", category: "automation", isEnabled: true },
-        { featureKey: "competitions", featureName: "المسابقات القرآنية", description: "تنظيم مسابقات قرآنية بين الطلاب مع تحديد السور والآيات وتسجيل النتائج والترتيب", category: "gamification", isEnabled: true },
-        { featureKey: "advanced_reports", featureName: "التقارير المتقدمة", description: "تقارير تفصيلية وإحصائيات شاملة عن أداء الطلاب ونشاط المعلمين ومستوى التقدم في الحفظ", category: "analytics", isEnabled: true },
-      ];
       const created = [];
-      for (const flag of defaults) {
+      for (const flag of newFlags) {
         const f = await storage.createFeatureFlag(flag);
         created.push(f);
       }
-      await logActivity(req.user!, "إنشاء الميزات الافتراضية", "feature_flags");
+      await logActivity(req.user!, `إضافة ${newFlags.length} ميزة جديدة`, "feature_flags");
       res.status(201).json(created);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في إنشاء الميزات" });
