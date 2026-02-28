@@ -26,6 +26,8 @@ interface Student {
   parentPhone?: string | null;
   phone?: string | null;
   level?: number;
+  disciplineScore?: number;
+  patterns?: string[];
 }
 
 interface AttendanceEntry {
@@ -116,9 +118,28 @@ export default function AttendancePage() {
       const res = await fetch("/api/users?role=student", { credentials: "include" });
       if (res.ok) {
         const data: Student[] = await res.json();
-        setStudents(data);
+
+        // Fetch patterns and discipline scores for each student
+        const enrichedData = await Promise.all(data.map(async (student) => {
+          try {
+            const patternRes = await fetch(`/api/attendance-patterns/${student.id}`, { credentials: "include" });
+            if (patternRes.ok) {
+              const patternData = await patternRes.json();
+              return {
+                ...student,
+                disciplineScore: patternData.disciplineScore,
+                patterns: patternData.patterns,
+              };
+            }
+          } catch (e) {
+            console.error(`Failed to fetch patterns for ${student.id}`, e);
+          }
+          return student;
+        }));
+
+        setStudents(enrichedData);
         const initial: Record<string, AttendanceEntry> = {};
-        data.forEach((s) => {
+        enrichedData.forEach((s) => {
           initial[s.id] = { studentId: s.id, status: "present", notes: "" };
         });
         setAttendanceData(initial);
@@ -652,7 +673,34 @@ export default function AttendancePage() {
                                       {student.name.charAt(0)}
                                     </div>
                                   )}
-                                  <span data-testid={`text-student-name-${student.id}`}>{student.name}</span>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                      <span data-testid={`text-student-name-${student.id}`}>{student.name}</span>
+                                      {student.disciplineScore !== undefined && (
+                                        <Badge 
+                                          variant="outline" 
+                                          className={`text-[10px] px-1 h-4 ${
+                                            student.disciplineScore > 80 ? "bg-green-50 text-green-700 border-green-200" :
+                                            student.disciplineScore > 60 ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
+                                            "bg-red-50 text-red-700 border-red-200"
+                                          }`}
+                                          title="درجة الانضباط"
+                                        >
+                                          {student.disciplineScore}%
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {student.patterns && student.patterns.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-0.5">
+                                        {student.patterns.map((p, i) => (
+                                          <span key={i} className="text-[10px] text-red-500 flex items-center gap-0.5">
+                                            <AlertTriangle className="w-2.5 h-2.5" />
+                                            {p}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </TableCell>
                               {(["present", "absent", "late", "excused"] as const).map((statusVal) => {
@@ -714,12 +762,16 @@ export default function AttendancePage() {
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
-                                {isAbsent && savedToday && (
+                                {isAbsent && (
                                   <Button
-                                    variant="ghost"
+                                    variant={savedToday ? "default" : "outline"}
                                     size="sm"
                                     onClick={() => openWhatsApp(student)}
-                                    className="gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                    className={`gap-1 ${
+                                      savedToday 
+                                        ? "bg-green-600 hover:bg-green-700 text-white" 
+                                        : "text-green-600 border-green-200 hover:bg-green-50"
+                                    }`}
                                     data-testid={`button-notify-parent-${student.id}`}
                                   >
                                     <Phone className="w-4 h-4" />

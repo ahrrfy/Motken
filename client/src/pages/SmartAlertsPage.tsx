@@ -12,7 +12,8 @@ import {
   AlertTriangle, AlertCircle, Info, CheckCircle, Bell,
   Search, MessageCircle, Loader2, Shield, TrendingDown,
   Clock, Flame, ArrowUp, X, ExternalLink, Users, PartyPopper,
-  BookOpen, RefreshCw
+  BookOpen, RefreshCw, PlusCircle, Coins, ChevronDown, ChevronUp,
+  CalendarDays
 } from "lucide-react";
 
 interface SmartAlert {
@@ -23,11 +24,12 @@ interface SmartAlert {
   studentId?: string;
   studentName?: string;
   parentPhone?: string;
-  actionType?: "whatsapp" | "link";
+  actionType?: "whatsapp" | "link" | "mixed";
   actionUrl?: string;
   actionLabel?: string;
   timestamp: Date;
   dismissed: boolean;
+  type?: "absence" | "low-grade" | "overdue" | "streak" | "levelup";
 }
 
 const severityConfig = {
@@ -79,6 +81,7 @@ export default function SmartAlertsPage() {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
@@ -167,6 +170,7 @@ export default function SmartAlertsPage() {
           actionLabel: info.parentPhone ? "تواصل مع ولي الأمر" : "عرض التفاصيل",
           timestamp: new Date(info.lastDate || now),
           dismissed: false,
+          type: "absence",
         });
       }
     });
@@ -193,6 +197,7 @@ export default function SmartAlertsPage() {
           actionLabel: parentPhone ? "تواصل مع ولي الأمر" : "عرض الطالب",
           timestamp: new Date(assignment.updatedAt || assignment.createdAt || now),
           dismissed: false,
+          type: "low-grade",
         });
       }
     });
@@ -221,6 +226,7 @@ export default function SmartAlertsPage() {
             actionLabel: "عرض الواجبات",
             timestamp: new Date(scheduledDate),
             dismissed: false,
+            type: "overdue",
           });
         }
       }
@@ -241,6 +247,7 @@ export default function SmartAlertsPage() {
           actionLabel: "عرض الملف",
           timestamp: new Date(),
           dismissed: false,
+          type: "streak",
         });
       } else if (streak >= 14) {
         result.push({
@@ -255,6 +262,7 @@ export default function SmartAlertsPage() {
           actionLabel: "عرض الملف",
           timestamp: new Date(),
           dismissed: false,
+          type: "streak",
         });
       } else if (streak >= 7) {
         result.push({
@@ -269,6 +277,7 @@ export default function SmartAlertsPage() {
           actionLabel: "عرض الملف",
           timestamp: new Date(),
           dismissed: false,
+          type: "streak",
         });
       }
     });
@@ -291,6 +300,7 @@ export default function SmartAlertsPage() {
           actionLabel: "عرض التقدم",
           timestamp: new Date(),
           dismissed: false,
+          type: "levelup",
         });
       }
     });
@@ -304,7 +314,7 @@ export default function SmartAlertsPage() {
   }, [attendanceData, assignmentsData, studentsData, studentsMap]);
 
   const filteredAlerts = useMemo(() => {
-    return alerts.filter((alert) => {
+    let list = alerts.filter((alert) => {
       if (dismissedIds.has(alert.id)) return false;
       if (severityFilter !== "all" && alert.severity !== severityFilter) return false;
       if (searchQuery.trim()) {
@@ -316,7 +326,46 @@ export default function SmartAlertsPage() {
       }
       return true;
     });
-  }, [alerts, dismissedIds, severityFilter, searchQuery]);
+
+    if (!showAll && severityFilter === "all" && !searchQuery.trim()) {
+      return list.slice(0, 3);
+    }
+    return list;
+  }, [alerts, dismissedIds, severityFilter, searchQuery, showAll]);
+
+  const weeklySummary = useMemo(() => {
+    const last7Days = alerts.filter(a => {
+      const diff = new Date().getTime() - a.timestamp.getTime();
+      return diff <= 7 * 24 * 60 * 60 * 1000;
+    });
+
+    return {
+      total: last7Days.length,
+      absences: last7Days.filter(a => a.type === "absence").length,
+      lowGrades: last7Days.filter(a => a.type === "low-grade").length,
+      streaks: last7Days.filter(a => a.type === "streak").length,
+    };
+  }, [alerts]);
+
+  const handleAwardPoints = async (studentId: string) => {
+    try {
+      const res = await fetch("/api/points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: parseInt(studentId),
+          points: 10,
+          reason: "مكافأة تشجيعية من التنبيهات الذكية",
+          category: "behavior"
+        }),
+      });
+      if (res.ok) {
+        toast({ title: "تم منح النقاط", description: "تم منح 10 نقاط للطالب بنجاح" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "فشل في منح النقاط", variant: "destructive" });
+    }
+  };
 
   const stats = useMemo(() => {
     const active = alerts.filter((a) => !dismissedIds.has(a.id));
@@ -433,7 +482,7 @@ export default function SmartAlertsPage() {
                   key={opt.value}
                   variant={severityFilter === opt.value ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSeverityFilter(opt.value)}
+                  onClick={() => { setSeverityFilter(opt.value); setShowAll(true); }}
                   data-testid={`button-filter-${opt.value}`}
                   className="text-xs"
                 >
@@ -445,6 +494,35 @@ export default function SmartAlertsPage() {
                   )}
                 </Button>
               ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm border-none bg-primary/5">
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm font-bold flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            ملخص الأسبوع الماضي
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+            <div className="text-center p-2 rounded-lg bg-background border">
+              <p className="text-[10px] text-muted-foreground">تنبيهات غياب</p>
+              <p className="text-lg font-bold text-red-600">{weeklySummary.absences}</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-background border">
+              <p className="text-[10px] text-muted-foreground">أداء منخفض</p>
+              <p className="text-lg font-bold text-amber-600">{weeklySummary.lowGrades}</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-background border">
+              <p className="text-[10px] text-muted-foreground">إنجازات متميزة</p>
+              <p className="text-lg font-bold text-green-600">{weeklySummary.streaks}</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-background border">
+              <p className="text-[10px] text-muted-foreground">إجمالي الفعاليات</p>
+              <p className="text-lg font-bold text-primary">{weeklySummary.total}</p>
             </div>
           </div>
         </CardContent>
@@ -463,7 +541,7 @@ export default function SmartAlertsPage() {
               <Button
                 variant="link"
                 className="mt-2"
-                onClick={() => { setSeverityFilter("all"); setSearchQuery(""); }}
+                onClick={() => { setSeverityFilter("all"); setSearchQuery(""); setShowAll(true); }}
                 data-testid="button-clear-filters"
               >
                 مسح الفلاتر
@@ -504,13 +582,55 @@ export default function SmartAlertsPage() {
                         </Badge>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <span className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1" data-testid={`text-alert-time-${alert.id}`}>
                           <Clock className="w-3 h-3" />
                           {formatDateAr(alert.timestamp)}
                         </span>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {alert.parentPhone && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 px-2 border-green-200 text-green-700 hover:bg-green-50"
+                              onClick={() => {
+                                const url = getWhatsAppUrl(alert.parentPhone!, `السلام عليكم، بخصوص الطالب ${alert.studentName}: ${alert.description}`);
+                                window.open(url, "_blank");
+                              }}
+                              data-testid={`button-contact-parent-${alert.id}`}
+                            >
+                              <MessageCircle className="w-3 h-3 ml-1" />
+                              تواصل واتساب
+                            </Button>
+                          )}
+
+                          {alert.type === "low-grade" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 px-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                              onClick={() => setLocation(`/assignments?studentId=${alert.studentId}&action=create-review`)}
+                              data-testid={`button-create-review-${alert.id}`}
+                            >
+                              <PlusCircle className="w-3 h-3 ml-1" />
+                              إنشاء مراجعة
+                            </Button>
+                          )}
+
+                          {alert.severity === "positive" && alert.studentId && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 px-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                              onClick={() => handleAwardPoints(alert.studentId!)}
+                              data-testid={`button-award-points-${alert.id}`}
+                            >
+                              <Coins className="w-3 h-3 ml-1" />
+                              منح نقاط
+                            </Button>
+                          )}
+
                           {alert.actionUrl && (
                             <Button
                               size="sm"
@@ -525,11 +645,7 @@ export default function SmartAlertsPage() {
                                 }
                               }}
                             >
-                              {alert.actionType === "whatsapp" ? (
-                                <MessageCircle className="w-3 h-3 ml-1" />
-                              ) : (
-                                <ExternalLink className="w-3 h-3 ml-1" />
-                              )}
+                              <ExternalLink className="w-3 h-3 ml-1" />
                               {alert.actionLabel || "عرض"}
                             </Button>
                           )}
@@ -550,6 +666,28 @@ export default function SmartAlertsPage() {
               </Card>
             );
           })}
+          {!showAll && alerts.length > 3 && severityFilter === "all" && !searchQuery && (
+            <Button
+              variant="outline"
+              className="w-full mt-2"
+              onClick={() => setShowAll(true)}
+              data-testid="button-show-all-alerts"
+            >
+              عرض الكل ({alerts.length})
+              <ChevronDown className="w-4 h-4 mr-2" />
+            </Button>
+          )}
+          {showAll && alerts.length > 3 && severityFilter === "all" && !searchQuery && (
+            <Button
+              variant="ghost"
+              className="w-full mt-2 text-muted-foreground"
+              onClick={() => setShowAll(false)}
+              data-testid="button-show-less-alerts"
+            >
+              عرض أقل
+              <ChevronUp className="w-4 h-4 mr-2" />
+            </Button>
+          )}
         </div>
       )}
 
