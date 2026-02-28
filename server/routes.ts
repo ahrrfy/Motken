@@ -13,7 +13,7 @@ import {
   competitions, competitionParticipants, schedules, parentReports, exams, examStudents,
   featureFlags, bannedDevices, emergencySubstitutions, incidentRecords, graduates,
   graduateFollowups, studentTransfers, familyLinks, feedback, tajweedRules, similarVerses,
-  messageTemplates, communicationLogs,
+  messageTemplates, communicationLogs, mosqueRegistrations,
 } from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
 import { filterTextFields } from "@shared/content-filter";
@@ -5779,6 +5779,272 @@ export async function registerRoutes(
       res.status(201).json(log);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== MOSQUE REGISTRATION & VOUCHING SYSTEM ====================
+  const registrationLimiter = new Map<string, number[]>();
+
+  app.post("/api/register-mosque", async (req, res) => {
+    try {
+      const ip = req.ip || "unknown";
+      const now = Date.now();
+      const attempts = registrationLimiter.get(ip) || [];
+      const recentAttempts = attempts.filter(t => now - t < 3600000);
+      if (recentAttempts.length >= 3) {
+        return res.status(429).json({ message: "تم تجاوز الحد المسموح. حاول بعد ساعة" });
+      }
+      registrationLimiter.set(ip, [...recentAttempts, now]);
+
+      const { mosqueName, province, city, area, landmark, mosquePhone,
+              applicantName, applicantPhone, requestedUsername, requestedPassword } = req.body;
+
+      if (!mosqueName || !province || !city || !area || !applicantName || !applicantPhone || !requestedUsername || !requestedPassword) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب ملؤها" });
+      }
+
+      if (requestedPassword.length < 6) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      }
+
+      const existingUser = await storage.getUserByUsername(requestedUsername);
+      if (existingUser) {
+        return res.status(400).json({ message: "اسم المستخدم مستخدم بالفعل" });
+      }
+
+      const { eq } = await import("drizzle-orm");
+      const existingPending = await db.select().from(mosqueRegistrations)
+        .where(eq(mosqueRegistrations.requestedUsername, requestedUsername));
+      if (existingPending.some(r => r.status === "pending")) {
+        return res.status(400).json({ message: "يوجد طلب معلّق بنفس اسم المستخدم" });
+      }
+
+      const { hashPassword } = await import("./auth");
+      const hashedPassword = await hashPassword(requestedPassword);
+
+      const contentCheck = filterTextFields(req.body, ["mosqueName", "city", "area", "applicantName"]);
+      if (contentCheck.blocked) {
+        return res.status(400).json({ message: `محتوى غير مسموح في حقل ${contentCheck.field}` });
+      }
+
+      const [registration] = await db.insert(mosqueRegistrations).values({
+        mosqueName,
+        province,
+        city,
+        area,
+        landmark: landmark || null,
+        mosquePhone,
+        applicantName,
+        applicantPhone,
+        requestedUsername,
+        requestedPassword: hashedPassword,
+        registrationType: "direct",
+        status: "pending",
+      }).returning();
+
+      res.status(201).json({ message: "تم تقديم طلبك بنجاح. سيتم مراجعته من قبل الإدارة", id: registration.id });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تقديم الطلب" });
+    }
+  });
+
+  app.post("/api/vouch-mosque", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "supervisor") {
+        return res.status(403).json({ message: "التزكية متاحة للمشرفين فقط" });
+      }
+
+      const { mosqueName, province, city, area, landmark, mosquePhone,
+              applicantName, applicantPhone, requestedUsername, requestedPassword,
+              voucherRelationship, vouchReason } = req.body;
+
+      if (!mosqueName || !province || !city || !area || !applicantName || !applicantPhone ||
+          !requestedUsername || !requestedPassword || !voucherRelationship || !vouchReason) {
+        return res.status(400).json({ message: "جميع الحقول المطلوبة يجب ملؤها" });
+      }
+
+      if (requestedPassword.length < 6) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      }
+
+      const existingUser = await storage.getUserByUsername(requestedUsername);
+      if (existingUser) {
+        return res.status(400).json({ message: "اسم المستخدم مستخدم بالفعل" });
+      }
+
+      const { hashPassword } = await import("./auth");
+      const hashedPassword = await hashPassword(requestedPassword);
+
+      const contentCheck = filterTextFields(req.body, ["mosqueName", "city", "area", "applicantName", "vouchReason"]);
+      if (contentCheck.blocked) {
+        return res.status(400).json({ message: `محتوى غير مسموح في حقل ${contentCheck.field}` });
+      }
+
+      const [registration] = await db.insert(mosqueRegistrations).values({
+        mosqueName,
+        province,
+        city,
+        area,
+        landmark: landmark || null,
+        mosquePhone,
+        applicantName,
+        applicantPhone,
+        requestedUsername,
+        requestedPassword: hashedPassword,
+        registrationType: "vouching",
+        vouchedByUserId: currentUser.id,
+        vouchedByMosqueId: currentUser.mosqueId,
+        voucherRelationship,
+        vouchReason,
+        status: "pending",
+      }).returning();
+
+      await logActivity(currentUser, `تزكية مسجد جديد: ${mosqueName}`, "registration");
+      res.status(201).json({ message: "تم تقديم التزكية بنجاح", id: registration.id });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/mosque-registrations", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const allRegs = await db.select().from(mosqueRegistrations);
+      allRegs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      const enriched = await Promise.all(allRegs.map(async (reg) => {
+        let voucherName = null;
+        let voucherMosqueName = null;
+        if (reg.vouchedByUserId) {
+          const voucher = await storage.getUser(reg.vouchedByUserId);
+          voucherName = voucher?.name || null;
+        }
+        if (reg.vouchedByMosqueId) {
+          const mosque = await storage.getMosque(reg.vouchedByMosqueId);
+          voucherMosqueName = mosque?.name || null;
+        }
+        return { ...reg, voucherName, voucherMosqueName, requestedPassword: undefined };
+      }));
+
+      res.json(enriched);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.patch("/api/mosque-registrations/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const { eq } = await import("drizzle-orm");
+      const [reg] = await db.select().from(mosqueRegistrations).where(eq(mosqueRegistrations.id, req.params.id));
+      if (!reg) return res.status(404).json({ message: "الطلب غير موجود" });
+      if (reg.status !== "pending") return res.status(400).json({ message: "الطلب تمت معالجته مسبقاً" });
+
+      const existingUser = await storage.getUserByUsername(reg.requestedUsername);
+      if (existingUser) {
+        return res.status(400).json({ message: "اسم المستخدم أصبح مستخدماً. يرجى رفض الطلب" });
+      }
+
+      const mosque = await storage.createMosque({
+        name: reg.mosqueName,
+        province: reg.province,
+        city: reg.city,
+        area: reg.area,
+        landmark: reg.landmark,
+        phone: reg.mosquePhone,
+        managerName: reg.applicantName,
+        status: "active",
+        isActive: true,
+      });
+
+      const user = await storage.createUser({
+        username: reg.requestedUsername,
+        password: reg.requestedPassword,
+        name: reg.applicantName,
+        role: "supervisor",
+        mosqueId: mosque.id,
+        phone: reg.applicantPhone,
+        isActive: true,
+      });
+
+      await db.update(mosqueRegistrations)
+        .set({ status: "approved", adminNotes: req.body.adminNotes || null, reviewedAt: new Date() })
+        .where(eq(mosqueRegistrations.id, req.params.id));
+
+      await logActivity(currentUser, `موافقة على تسجيل مسجد: ${reg.mosqueName}`, "registration");
+      res.json({ message: "تمت الموافقة وإنشاء المسجد والمشرف بنجاح", mosqueId: mosque.id, userId: user.id });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "حدث خطأ" });
+    }
+  });
+
+  app.patch("/api/mosque-registrations/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const { eq } = await import("drizzle-orm");
+      const [reg] = await db.select().from(mosqueRegistrations).where(eq(mosqueRegistrations.id, req.params.id));
+      if (!reg) return res.status(404).json({ message: "الطلب غير موجود" });
+      if (reg.status !== "pending") return res.status(400).json({ message: "الطلب تمت معالجته مسبقاً" });
+
+      const { rejectionReason } = req.body;
+      if (!rejectionReason) return res.status(400).json({ message: "يرجى كتابة سبب الرفض" });
+
+      await db.update(mosqueRegistrations)
+        .set({ status: "rejected", rejectionReason, adminNotes: req.body.adminNotes || null, reviewedAt: new Date() })
+        .where(eq(mosqueRegistrations.id, req.params.id));
+
+      await logActivity(currentUser, `رفض تسجيل مسجد: ${reg.mosqueName}`, "registration");
+      res.json({ message: "تم رفض الطلب" });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/my-vouchings", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "supervisor") {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { eq } = await import("drizzle-orm");
+      const myVouchings = await db.select().from(mosqueRegistrations)
+        .where(eq(mosqueRegistrations.vouchedByUserId, currentUser.id));
+      myVouchings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json(myVouchings.map(v => ({ ...v, requestedPassword: undefined })));
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/registration-stats", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const allRegs = await db.select().from(mosqueRegistrations);
+      res.json({
+        total: allRegs.length,
+        pending: allRegs.filter(r => r.status === "pending").length,
+        approved: allRegs.filter(r => r.status === "approved").length,
+        rejected: allRegs.filter(r => r.status === "rejected").length,
+        vouching: allRegs.filter(r => r.registrationType === "vouching").length,
+        direct: allRegs.filter(r => r.registrationType === "direct").length,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
     }
   });
 

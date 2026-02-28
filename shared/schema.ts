@@ -675,3 +675,31 @@ export const communicationLogs = pgTable("communication_logs", {
 export const insertCommunicationLogSchema = createInsertSchema(communicationLogs).omit({ id: true, createdAt: true });
 export type InsertCommunicationLog = z.infer<typeof insertCommunicationLogSchema>;
 export type CommunicationLog = typeof communicationLogs.$inferSelect;
+
+// ==================== MOSQUE REGISTRATIONS (التزكية) ====================
+export const mosqueRegistrations = pgTable("mosque_registrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueName: text("mosque_name").notNull(),
+  province: text("province").notNull(),
+  city: text("city").notNull(),
+  area: text("area").notNull(),
+  landmark: text("landmark"),
+  mosquePhone: text("mosque_phone"),
+  applicantName: text("applicant_name").notNull(),
+  applicantPhone: text("applicant_phone").notNull(),
+  requestedUsername: text("requested_username").notNull(),
+  requestedPassword: text("requested_password").notNull(),
+  registrationType: text("registration_type").notNull().default("direct"),
+  vouchedByUserId: varchar("vouched_by_user_id"),
+  vouchedByMosqueId: varchar("vouched_by_mosque_id"),
+  voucherRelationship: text("voucher_relationship"),
+  vouchReason: text("vouch_reason"),
+  status: text("status").notNull().default("pending"),
+  rejectionReason: text("rejection_reason"),
+  adminNotes: text("admin_notes"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertMosqueRegistrationSchema = createInsertSchema(mosqueRegistrations).omit({ id: true, createdAt: true, reviewedAt: true });
+export type InsertMosqueRegistration = z.infer<typeof insertMosqueRegistrationSchema>;
+export type MosqueRegistration = typeof mosqueRegistrations.$inferSelect;
