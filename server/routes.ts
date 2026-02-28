@@ -455,8 +455,13 @@ export async function registerRoutes(
         return res.status(400).json({ message: "الاسم مطلوب ويجب ألا يتجاوز 200 حرف" });
       }
       const rawPassword = req.body.password || crypto.randomBytes(4).toString("hex");
-      if (req.body.password && (typeof req.body.password !== "string" || req.body.password.length < 6)) {
-        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      if (req.body.password) {
+        if (typeof req.body.password !== "string" || req.body.password.length < 6) {
+          return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+        }
+        if (req.body.password.length > 128) {
+          return res.status(400).json({ message: "كلمة المرور طويلة جداً" });
+        }
       }
       if (req.body.role === "student" && (!parentPhone || typeof parentPhone !== "string" || parentPhone.length < 10)) {
         return res.status(400).json({ message: "رقم هاتف ولي الأمر مطلوب للطلاب" });
@@ -601,6 +606,9 @@ export async function registerRoutes(
       if (typeof req.body.password !== "string" || req.body.password.length < 6) {
         return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
       }
+      if (req.body.password.length > 128) {
+        return res.status(400).json({ message: "كلمة المرور طويلة جداً" });
+      }
       if (currentUser.id !== req.params.id && currentUser.role !== "admin") {
         if (!["supervisor", "teacher"].includes(currentUser.role)) {
           return res.status(403).json({ message: "غير مصرح بتغيير كلمة المرور" });
@@ -637,6 +645,14 @@ export async function registerRoutes(
 
     const updated = await storage.updateUser(req.params.id, updateData);
     if (!updated) return res.status(404).json({ message: "المستخدم غير موجود" });
+
+    if (updateData.isActive === false || updateData.suspendedUntil) {
+      sessionTracker.removeSessionsByUserId(req.params.id);
+    }
+    if (updateData.role || updateData.isActive !== undefined || updateData.suspendedUntil !== undefined) {
+      await logActivity(currentUser, `تحديث أمني للمستخدم ${updated.name}: ${Object.keys(updateData).join(", ")}`, "security");
+    }
+
     const { password, ...safe } = updated;
     return res.json(safe);
     } catch (err: any) {
@@ -2219,8 +2235,8 @@ export async function registerRoutes(
   // ==================== SEED DATA ====================
   app.post("/api/seed", async (req, res) => {
     try {
-      const existing = await storage.getUserByUsername("ahrrfy");
-      if (existing) {
+      const allUsers = await storage.getUsers();
+      if (allUsers.length > 0) {
         if (!req.isAuthenticated() || req.user!.role !== "admin") {
           return res.status(403).json({ message: "غير مصرح بالوصول" });
         }
@@ -2228,10 +2244,6 @@ export async function registerRoutes(
         if (sup1Check) {
           return res.status(403).json({ message: "البيانات موجودة مسبقًا" });
         }
-      }
-      const allUsers = await storage.getUsers();
-      if (allUsers.length > 0 && !existing) {
-        return res.status(403).json({ message: "النظام يحتوي بيانات بالفعل. لا يمكن تشغيل Seed" });
       }
 
       const mosque1 = await storage.createMosque({
@@ -3003,18 +3015,51 @@ export async function registerRoutes(
       const { studentId, teacherId, mosqueId, date } = req.query;
 
       if (date && teacherId) {
+        if (currentUser.role !== "admin") {
+          const teacher = await storage.getUser(teacherId as string);
+          if (!teacher || teacher.mosqueId !== currentUser.mosqueId) {
+            return res.status(403).json({ message: "غير مصرح بالوصول" });
+          }
+        }
         const records = await storage.getAttendanceByDate(new Date(date as string), teacherId as string);
         return res.json(records);
       }
       if (studentId) {
+        if (currentUser.role === "student" && studentId !== currentUser.id) {
+          return res.status(403).json({ message: "غير مصرح بالوصول" });
+        }
+        if (currentUser.role !== "admin") {
+          const student = await storage.getUser(studentId as string);
+          if (!student || student.mosqueId !== currentUser.mosqueId) {
+            return res.status(403).json({ message: "غير مصرح بالوصول" });
+          }
+          if (currentUser.role === "teacher" && !canTeacherAccessStudent(currentUser, student)) {
+            return res.status(403).json({ message: "غير مصرح بالوصول" });
+          }
+        }
         const records = await storage.getAttendanceByStudent(studentId as string);
         return res.json(records);
       }
       if (teacherId) {
+        if (currentUser.role === "student") {
+          return res.status(403).json({ message: "غير مصرح بالوصول" });
+        }
+        if (currentUser.role !== "admin") {
+          const teacher = await storage.getUser(teacherId as string);
+          if (!teacher || teacher.mosqueId !== currentUser.mosqueId) {
+            return res.status(403).json({ message: "غير مصرح بالوصول" });
+          }
+        }
         const records = await storage.getAttendanceByTeacher(teacherId as string);
         return res.json(records);
       }
       if (mosqueId) {
+        if (currentUser.role === "student") {
+          return res.status(403).json({ message: "غير مصرح بالوصول" });
+        }
+        if (currentUser.role !== "admin" && mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "غير مصرح بالوصول لحضور مسجد آخر" });
+        }
         const records = await storage.getAttendanceByMosque(mosqueId as string);
         return res.json(records);
       }
@@ -3109,16 +3154,23 @@ export async function registerRoutes(
       if (!date || !students || !Array.isArray(students) || students.length === 0) {
         return res.status(400).json({ message: "التاريخ وقائمة الطلاب مطلوبة" });
       }
+      if (students.length > 200) {
+        return res.status(400).json({ message: "لا يمكن تسجيل أكثر من 200 طالب في وقت واحد" });
+      }
       const created = [];
       for (const s of students) {
         if (!s.studentId || !s.status) continue;
+        if (currentUser.role !== "admin") {
+          const student = await storage.getUser(s.studentId);
+          if (!student || student.mosqueId !== currentUser.mosqueId) continue;
+        }
         const record = await storage.createAttendance({
           studentId: s.studentId,
           teacherId: currentUser.id,
           mosqueId: currentUser.mosqueId,
           date: new Date(date),
           status: s.status,
-          notes: s.notes,
+          notes: typeof s.notes === "string" ? s.notes.slice(0, 500) : undefined,
         });
         created.push(record);
       }
@@ -3401,8 +3453,15 @@ export async function registerRoutes(
         return res.status(403).json({ message: "غير مصرح بمنح النقاط" });
       }
       const { userId, amount, reason, category } = req.body;
-      if (!userId || !amount || !reason) {
+      if (!userId || amount === undefined || !reason) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
+      }
+      const numAmount = Number(amount);
+      if (!Number.isFinite(numAmount) || numAmount === 0 || Math.abs(numAmount) > 10000) {
+        return res.status(400).json({ message: "قيمة النقاط غير صحيحة (الحد الأقصى 10000)" });
+      }
+      if (typeof reason !== "string" || reason.length > 500) {
+        return res.status(400).json({ message: "السبب مطلوب ويجب ألا يتجاوز 500 حرف" });
       }
       const targetStudent = await storage.getUser(userId);
       if (!targetStudent) return res.status(404).json({ message: "المستخدم غير موجود" });
@@ -3412,8 +3471,8 @@ export async function registerRoutes(
       const point = await storage.createPoint({
         userId,
         mosqueId: currentUser.mosqueId,
-        amount: Number(amount),
-        reason,
+        amount: numAmount,
+        reason: reason.slice(0, 500),
         category: category || "assignment",
       });
       await logActivity(currentUser, `منح ${amount} نقطة`, "points");
@@ -5805,6 +5864,12 @@ export async function registerRoutes(
       if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
+      if (currentUser.role !== "admin") {
+        const student = await storage.getUser(req.params.studentId);
+        if (!student || student.mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "غير مصرح بالوصول لسجل طالب من جامع آخر" });
+        }
+      }
       const { eq } = await import("drizzle-orm");
       const logs = await db.select().from(communicationLogs).where(eq(communicationLogs.studentId, req.params.studentId));
       logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -5823,6 +5888,12 @@ export async function registerRoutes(
       const { studentId, method, subject, notes, parentPhone } = req.body;
       if (!studentId || !method || !subject) {
         return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      if (currentUser.role !== "admin") {
+        const student = await storage.getUser(studentId);
+        if (!student || student.mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "غير مصرح بالتواصل مع طالب من جامع آخر" });
+        }
       }
       const [log] = await db.insert(communicationLogs).values({
         studentId,
