@@ -109,13 +109,12 @@ export default function LoginPage() {
               {loading ? (isEn ? "Signing in..." : "جاري الدخول...") : (isEn ? "Sign In" : "تسجيل الدخول")}
             </Button>
 
-            <div className="pt-2 text-center">
-              <Link href="/register-mosque" className="text-sm text-primary hover:underline font-medium" data-testid="link-register-mosque">
-                {isEn ? "Register your mosque / center" : "سجّل مسجدك / مركزك"}
-              </Link>
-            </div>
           </form>
-
+          <div className="pt-3 text-center">
+            <Link href="/register-mosque" className="text-sm text-primary hover:underline font-medium" data-testid="link-register-mosque">
+              {isEn ? "Register your mosque / center" : "سجّل مسجدك / مركزك"}
+            </Link>
+          </div>
         </CardContent>
         <div className="h-1 bg-gradient-to-r from-emerald-600 via-amber-500 to-emerald-600 w-full" />
         <CardFooter className="flex justify-center border-t bg-muted/20 py-4">
