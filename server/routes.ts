@@ -2113,7 +2113,7 @@ export async function registerRoutes(
         inactiveStudents: myStudents.filter(s => !s.isActive).length,
         specialNeedsStudents: myStudents.filter(s => s.isSpecialNeeds).length,
         orphanStudents: myStudents.filter(s => s.isOrphan).length,
-        users: myStudents.map(({ password, ...u }) => u),
+        users: myStudents.map(({ password, address, telegramId, educationLevel, ...u }) => u),
         assignments: myAssignments,
       });
     }
@@ -4082,6 +4082,11 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
+      const sub = await storage.getEmergencySubstitution(req.params.id);
+      if (!sub) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && sub.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
+      }
       const allowedFields: Record<string, boolean> = { status: true, notes: true, endDate: true };
       const safeData: any = {};
       for (const key of Object.keys(req.body)) {
@@ -4223,6 +4228,11 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
+      const incident = await storage.getIncidentRecord(req.params.id);
+      if (!incident) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && incident.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
+      }
       const incidentAllowed: Record<string, boolean> = { title: true, description: true, severity: true, status: true, actionTaken: true, resolution: true };
       const safeIncidentData: any = {};
       for (const key of Object.keys(req.body)) {
@@ -4304,6 +4314,11 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const grad = await storage.getGraduate(req.params.id);
+      if (!grad) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && grad.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
       }
       const allowedFields = ["graduationDate", "totalJuz", "ijazahChain", "ijazahTeacher", "recitationStyle", "finalGrade", "certificateId", "notes"];
       const updateData: any = {};
@@ -4422,6 +4437,9 @@ export async function registerRoutes(
       }
       const transfer = await storage.getStudentTransfer(req.params.id);
       if (!transfer) return res.status(404).json({ message: "طلب النقل غير موجود" });
+      if (currentUser.role !== "admin" && transfer.fromMosqueId !== currentUser.mosqueId && transfer.toMosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
+      }
       const allowedFields = ["status", "reason", "transferData"];
       const updateData: any = {};
       for (const key of allowedFields) {
@@ -4596,6 +4614,11 @@ export async function registerRoutes(
       const currentUser = req.user!;
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const fb = await storage.getFeedback(req.params.id);
+      if (!fb) return res.status(404).json({ message: "السجل غير موجود" });
+      if (currentUser.role !== "admin" && fb.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
       }
       const allowedFields = ["status", "response", "priority"];
       const updateData: any = {};
@@ -5734,6 +5757,11 @@ export async function registerRoutes(
         return res.status(403).json({ message: "غير مصرح" });
       }
       const { eq } = await import("drizzle-orm");
+      const [template] = await db.select().from(messageTemplates).where(eq(messageTemplates.id, req.params.id));
+      if (!template) return res.status(404).json({ message: "القالب غير موجود" });
+      if (currentUser.role !== "admin" && template.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بحذف هذا القالب" });
+      }
       await db.delete(messageTemplates).where(eq(messageTemplates.id, req.params.id));
       res.json({ message: "تم الحذف" });
     } catch (err: any) {
