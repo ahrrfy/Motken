@@ -62,6 +62,11 @@ The system is built with a modern web stack:
 -   **Institutional Systems**: Crisis Management, Graduation & Follow-up, Institutional Integration, Integrated Family System, Knowledge Management, Maintenance & Improvement, Educational Content.
 -   **Admin Interface**: Redesigned with categorized sidebar navigation, merged sections, enhanced dashboard.
 -   **Level System**: 6-level reverse-order system (Juz 30-1), with updated names: مبتدئ/متوسط/متقدم/متميز/خبير/حافظ.
+-   **Mosque Registration & Vouching System (نظام التزكية)**: Two-path mosque onboarding:
+    - **Direct Registration**: Public form at `/register-mosque` for new mosque registration with admin approval.
+    - **Vouching (التزكية)**: Existing supervisors can vouch for new mosques with relationship/reason.
+    - Admin reviews all requests with approve/reject workflow. Approval auto-creates mosque + supervisor account.
+    - Rate-limited public registration (3/hour/IP), vouching tree tracking, registration stats dashboard.
 
 ## External Dependencies
 -   **api.alquran.cloud**: Fetches Quran text.

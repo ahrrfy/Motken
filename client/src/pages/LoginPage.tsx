@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { Link } from "wouter";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -107,6 +108,14 @@ export default function LoginPage() {
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-11" disabled={loading} data-testid="button-login">
               {loading ? (isEn ? "Signing in..." : "جاري الدخول...") : (isEn ? "Sign In" : "تسجيل الدخول")}
             </Button>
+
+            <div className="pt-2 text-center">
+              <Link href="/register-mosque">
+                <a className="text-sm text-primary hover:underline font-medium" data-testid="link-register-mosque">
+                  {isEn ? "Register your mosque / center" : "سجّل مسجدك / مركزك"}
+                </a>
+              </Link>
+            </div>
           </form>
 
         </CardContent>
