@@ -39,6 +39,17 @@ const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
+setInterval(() => {
+  const now = Date.now();
+  const keys = Array.from(loginAttempts.keys());
+  for (const key of keys) {
+    const entry = loginAttempts.get(key);
+    if (entry && now - entry.lastAttempt > LOGIN_WINDOW_MS) {
+      loginAttempts.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 function checkLoginRateLimit(key: string): boolean {
   const now = Date.now();
   const entry = loginAttempts.get(key);
@@ -78,8 +89,9 @@ export function setupAuth(app: Express) {
       pool,
       createTableIfMissing: true,
     }),
+    name: "mutqin.sid",
     cookie: {
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: isProduction,
       sameSite: "lax",
@@ -143,24 +155,33 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: info?.message || "فشل تسجيل الدخول" });
       }
       recordLoginAttempt(rateLimitKey, true);
-      req.login(user, async (err) => {
-        if (err) return next(err);
-        sessionTracker.updateSession(req.sessionID, user, req);
-        const { password, ...safeUser } = user;
-        let mosqueName = null;
-        if (user.mosqueId) {
-          const mosque = await storage.getMosque(user.mosqueId);
-          mosqueName = mosque?.name || null;
-        }
-        return res.json({ ...safeUser, mosqueName });
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) return next(regenerateErr);
+        req.login(user, async (err) => {
+          if (err) return next(err);
+          sessionTracker.updateSession(req.sessionID, user, req);
+          const { password, ...safeUser } = user;
+          let mosqueName = null;
+          if (user.mosqueId) {
+            const mosque = await storage.getMosque(user.mosqueId);
+            mosqueName = mosque?.name || null;
+          }
+          return res.json({ ...safeUser, mosqueName });
+        });
       });
     })(req, res, next);
   });
 
   app.post("/api/auth/logout", (req, res, next) => {
+    const sid = req.sessionID;
     req.logout((err) => {
       if (err) return next(err);
-      res.json({ message: "تم تسجيل الخروج بنجاح" });
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) return next(destroyErr);
+        res.clearCookie("mutqin.sid");
+        sessionTracker.removeSession(sid);
+        res.json({ message: "تم تسجيل الخروج بنجاح" });
+      });
     });
   });
 
