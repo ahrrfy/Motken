@@ -272,6 +272,37 @@ export default function AssignmentsExamsPage() {
     }
   }, [assignments, user]);
 
+  const [isSuggesting, setIsSuggesting] = useState(false);
+
+  const handleSuggestNext = async () => {
+    if (!assignSelectedStudent) {
+      toast({ title: "تنبيه", description: "يرجى اختيار طالب أولاً", variant: "destructive" });
+      return;
+    }
+
+    setIsSuggesting(true);
+    try {
+      const res = await fetch(`/api/assignment-suggestion/${assignSelectedStudent}`, { credentials: "include" });
+      if (res.ok) {
+        const suggestion = await res.json();
+        const surah = surahs.find(s => s.name === suggestion.surahName);
+        if (surah) {
+          setAssignSelectedSurah(String(surah.number));
+          setAssignFromVerse(String(suggestion.fromVerse));
+          setAssignToVerse(String(suggestion.toVerse));
+          setAssignType(suggestion.type || "new");
+          toast({ title: "تم التحديث", description: "تم ملء البيانات بناءً على آخر إنجاز للطالب" });
+        }
+      } else {
+        toast({ title: "عذراً", description: "لا توجد اقتراحات حالياً لهذا الطالب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "فشل في جلب الاقتراحات", variant: "destructive" });
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
   const handleAssignSurahChange = (val: string) => {
     setAssignSelectedSurah(val);
     setAssignFromVerse("");
@@ -382,8 +413,25 @@ export default function AssignmentsExamsPage() {
       });
       if (res.ok) {
         const updated = await res.json();
-        setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, ...updated } : a));
+        setAssignments(prev => {
+          const base = prev.map(a => a.id === assignmentId ? { ...a, ...updated } : a);
+          // If the backend returned an auto-created review assignment in the response
+          if (updated.autoReviewAssignment) {
+            return [updated.autoReviewAssignment, ...base];
+          }
+          return base;
+        });
+
         toast({ title: "تم بنجاح", description: "تم تقييم الواجب", className: "bg-green-50 border-green-200 text-green-800" });
+
+        if (grade < 60) {
+          toast({
+            title: "تنبيه: مراجعة تلقائية",
+            description: "تم إنشاء واجب مراجعة تلقائياً بسبب انخفاض الدرجة",
+            variant: "default",
+            className: "bg-blue-50 border-blue-200 text-blue-800"
+          });
+        }
         setAssignGradeInput(prev => { const n = { ...prev }; delete n[assignmentId]; return n; });
       } else {
         toast({ title: "خطأ", description: "فشل في تحديث الواجب", variant: "destructive" });
@@ -768,7 +816,22 @@ export default function AssignmentsExamsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{bulkMode ? "الطلاب" : "الطالب"}</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>{bulkMode ? "الطلاب" : "الطالب"}</Label>
+                    {!bulkMode && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-blue-600 gap-1"
+                        onClick={handleSuggestNext}
+                        disabled={isSuggesting || !assignSelectedStudent}
+                        data-testid="button-suggest-next"
+                      >
+                        {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
+                        اقتراح الواجب القادم
+                      </Button>
+                    )}
+                  </div>
                   {loadingStudents ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="status-loading-students">
                       <Loader2 className="w-4 h-4 animate-spin" /> جاري التحميل...
@@ -1104,6 +1167,26 @@ export default function AssignmentsExamsPage() {
                             <div className="flex items-center gap-2">
                               <Award className="w-4 h-4 text-blue-600" />
                               <span className="text-xs font-semibold text-blue-800">تقييم وإتمام</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {[
+                                { label: "ممتاز", grade: 95 },
+                                { label: "جيد جداً", grade: 85 },
+                                { label: "جيد", grade: 75 },
+                                { label: "مقبول", grade: 65 },
+                                { label: "ضعيف", grade: 50 },
+                              ].map((preset) => (
+                                <Button
+                                  key={preset.grade}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-[10px] px-2"
+                                  onClick={() => setAssignGradeInput(prev => ({ ...prev, [task.id]: preset.grade.toString() }))}
+                                  data-testid={`button-preset-grade-${task.id}-${preset.grade}`}
+                                >
+                                  {preset.label} {preset.grade}
+                                </Button>
+                              ))}
                             </div>
                             <div className="flex items-center gap-2 mt-2">
                               <Input

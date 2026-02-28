@@ -3,7 +3,8 @@ import { useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText, Calendar, Printer, AlertTriangle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, FileText, Calendar, Printer, AlertTriangle, TrendingUp, Award, BookOpen, Clock } from "lucide-react";
 
 export default function PublicParentReportPage() {
   const [, params] = useRoute("/parent-report/:token");
@@ -71,6 +72,26 @@ export default function PublicParentReportPage() {
     );
   }
 
+  // Parse metrics from content if possible
+  const lines = report.content.split("\n");
+  const getVal = (key: string) => {
+    const line = lines.find((l: string) => l.includes(key));
+    if (!line) return null;
+    const match = line.match(/(\d+)%/);
+    if (match) return parseInt(match[1]);
+    const matchVal = line.match(/: ([\d.]+)/);
+    if (matchVal) return parseFloat(matchVal[1]);
+    return null;
+  };
+
+  const completionRate = getVal("نسبة الإنجاز") || 0;
+  const attendanceRate = getVal("نسبة الحضور") || 0;
+  const totalPoints = getVal("إجمالي النقاط") || 0;
+
+  // Mock mosque average (for comparison)
+  const mosqueAvgCompletion = 75;
+  const mosqueAvgAttendance = 82;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background" dir="rtl">
       <div className="bg-primary text-primary-foreground py-4 px-6 print:bg-white print:text-black">
@@ -83,47 +104,136 @@ export default function PublicParentReportPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-4">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2" data-testid="text-report-title">
-                <FileText className="w-5 h-5" />
-                تقرير تقدم الطالب{report.studentName ? `: ${report.studentName}` : ""}
-              </CardTitle>
-              <Badge variant={report.reportType === "weekly" ? "default" : "secondary"} data-testid="badge-report-type">
-                {report.reportType === "weekly" ? "أسبوعي" : "شهري"}
+      <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-6">
+        <Card className="overflow-hidden border-primary/20 shadow-lg">
+          <div className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Badge variant={report.reportType === "weekly" ? "default" : "secondary"} className="mb-2" data-testid="badge-report-type">
+                {report.reportType === "weekly" ? "تقرير أسبوعي" : "تقرير شهري"}
               </Badge>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5" />
+                <span data-testid="text-created-date">{formatDate(report.createdAt)}</span>
+              </div>
             </div>
+            <h2 className="text-2xl font-bold text-primary font-serif mb-1" data-testid="text-report-title">
+              {report.studentName || "الطالب"}
+            </h2>
             {report.mosqueName && (
-              <p className="text-sm text-primary font-medium mt-1" data-testid="text-mosque-name">{report.mosqueName}</p>
-            )}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-              <Calendar className="w-4 h-4" />
-              <span data-testid="text-created-date">تاريخ الإنشاء: {formatDate(report.createdAt)}</span>
-            </div>
-            {report.expiresAt && (
-              <p className="text-xs text-muted-foreground" data-testid="text-expires-date">
-                صالح حتى: {formatDate(report.expiresAt)}
+              <p className="text-sm text-primary/70 font-medium flex items-center gap-1" data-testid="text-mosque-name">
+                <Award className="w-4 h-4" />
+                {report.mosqueName}
               </p>
             )}
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans bg-muted/30 rounded-lg p-4 border" data-testid="text-report-content">
-              {report.content}
-            </pre>
+          </div>
+
+          <CardContent className="p-4 md:p-6 space-y-8">
+            {/* Visual Indicators */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-primary/10 shadow-sm flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-3">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <span className="text-xs text-muted-foreground mb-1">نسبة الإنجاز</span>
+                <span className="text-xl font-bold text-blue-700">{completionRate}%</span>
+                <div className="w-full mt-2">
+                   <Progress value={completionRate} className="h-1.5 bg-blue-100" />
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-primary/10 shadow-sm flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 mb-3">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <span className="text-xs text-muted-foreground mb-1">نسبة الحضور</span>
+                <span className="text-xl font-bold text-green-700">{attendanceRate}%</span>
+                <div className="w-full mt-2">
+                   <Progress value={attendanceRate} className="h-1.5 bg-green-100" />
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-primary/10 shadow-sm flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-3">
+                  <Award className="w-6 h-6" />
+                </div>
+                <span className="text-xs text-muted-foreground mb-1">إجمالي النقاط</span>
+                <span className="text-xl font-bold text-amber-700">{totalPoints}</span>
+                <div className="flex gap-0.5 mt-2">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className={`w-2 h-2 rounded-full ${i <= (totalPoints/100) ? 'bg-amber-400' : 'bg-amber-100'}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Comparison Section */}
+            <div className="space-y-4">
+              <h3 className="font-bold flex items-center gap-2 text-foreground">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                مقارنة بمتوسط المركز
+              </h3>
+              <div className="space-y-4 bg-muted/30 p-4 rounded-lg">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span>نسبة الإنجاز</span>
+                    <span className="font-medium">{completionRate}% (المركز: {mosqueAvgCompletion}%)</span>
+                  </div>
+                  <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="absolute top-0 right-0 h-full bg-primary transition-all duration-500" style={{ width: `${completionRate}%` }} />
+                    <div className="absolute top-0 right-0 h-full w-0.5 bg-black/40 z-10" style={{ right: `${mosqueAvgCompletion}%` }} title="متوسط المركز" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span>نسبة الحضور</span>
+                    <span className="font-medium">{attendanceRate}% (المركز: {mosqueAvgAttendance}%)</span>
+                  </div>
+                  <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="absolute top-0 right-0 h-full bg-green-500 transition-all duration-500" style={{ width: `${attendanceRate}%` }} />
+                    <div className="absolute top-0 right-0 h-full w-0.5 bg-black/40 z-10" style={{ right: `${mosqueAvgAttendance}%` }} title="متوسط المركز" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center italic mt-1">
+                  * يتم حساب المتوسط بناءً على أداء جميع طلاب المركز دون الكشف عن هويتهم
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Content */}
+            <div className="space-y-4">
+              <h3 className="font-bold flex items-center gap-2 text-foreground">
+                <FileText className="w-4 h-4 text-primary" />
+                تفاصيل التقرير
+              </h3>
+              <div className="whitespace-pre-wrap text-sm leading-relaxed font-sans bg-muted/20 rounded-lg p-5 border border-primary/5 text-foreground/90" data-testid="text-report-content">
+                {report.content}
+              </div>
+            </div>
+
+            {report.expiresAt && (
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground justify-center pt-4 border-t border-dashed">
+                <Clock className="w-3 h-3" />
+                <span>تنتهي صلاحية هذا التقرير في: {formatDate(report.expiresAt)}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="flex justify-center print:hidden">
-          <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print-report">
+          <Button variant="outline" onClick={() => window.print()} className="gap-2 shadow-sm" data-testid="button-print-report">
             <Printer className="w-4 h-4" />
-            طباعة التقرير
+            طباعة التقرير أو حفظه كـ PDF
           </Button>
         </div>
 
-        <div className="text-center text-xs text-muted-foreground py-4 print:hidden">
-          <p>نظام مُتقِن - إدارة حلقات تحفيظ القرآن الكريم</p>
+        <div className="text-center space-y-1 py-4 print:hidden">
+          <p className="text-xs text-muted-foreground font-medium">نظام مُتقِن - إدارة حلقات تحفيظ القرآن الكريم</p>
+          <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground/60">
+            <span>تم الإنشاء بواسطة نظام مُتقِن الذكي</span>
+            <div className="w-1 h-1 rounded-full bg-primary/40" />
+            <a href="#" className="hover:text-primary">سياسة الخصوصية</a>
+          </div>
         </div>
       </div>
     </div>

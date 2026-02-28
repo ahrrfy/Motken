@@ -8,6 +8,7 @@ Mutqin is a multi-tenant online Quran memorization management system for Islamic
 - Parent phone is mandatory for all students
 - No features requiring paid subscriptions or external API integrations
 - Logo: transparent icon (golden Quran book + checkmark) without text or white frame
+- Philosophy: "Hidden Depth" - simple to use, smart behind the scenes
 
 ## System Architecture
 The system is built with a modern web stack:
@@ -32,11 +33,11 @@ The system is built with a modern web stack:
 6. **الإدارة والمراقبة (Admin)**: Mosques, Reports, IDs & QR Scan, Monitoring & Security, Feature Control, Settings
 
 ### Core Features:
--   **Dashboard**: Visual statistics (SVG progress rings), quick access grid, assignment completion rate, attendance summary, student breakdown, GitHub-style activity heatmap, star of the week, attendance streaks, performance prediction, smart review suggestions, motivational hadith ticker.
+-   **Dashboard**: Visual statistics (SVG progress rings), quick access grid, assignment completion rate, attendance summary, student breakdown, GitHub-style activity heatmap, star of the week, attendance streaks, performance prediction, smart review suggestions, motivational hadith ticker. **NEW: Smart Daily Summary (top 3 actionable insights), Mosque Health Score gauge (0-100).**
 -   **Student Management**: Stats cards, profile summary, batch actions, archive/restore, notes, enhanced export.
--   **Assignments & Exams**: Stats cards, 1-100 grading, deadline tracking, visual calendar, completion rates, bulk assignment.
--   **Attendance**: Stats cards, quick actions, absence alerts, monthly calendar view, statistics tab, printable sheet, parent WhatsApp notification.
--   **Points & Rewards**: Deduct/batch award points, 8+ categories, stats cards, achievement system, Excel export.
+-   **Assignments & Exams**: Stats cards, 1-100 grading, deadline tracking, visual calendar, completion rates, bulk assignment. **NEW: Quick-grade preset buttons (ممتاز/جيد جداً/جيد/مقبول/ضعيف), Smart assignment suggestion (auto-suggests next surah/verses), Auto-review assignment creation on low grades (<60).**
+-   **Attendance**: Stats cards, quick actions, absence alerts, monthly calendar view, statistics tab, printable sheet, parent WhatsApp notification. **NEW: Discipline score badge per student (0-100), Absence pattern detection (e.g., "absent every Sunday"), Prominent WhatsApp button for consecutive absences.**
+-   **Points & Rewards**: Deduct/batch award points, 9 categories, stats cards, achievement system, Excel export. **NEW: Auto-points on attendance (5pts/present), Auto-points on assignment grading (10/7/5pts by grade), Streak bonuses (25/50/100pts at 7/14/30 day streaks).**
 -   **Schedules**: Stats cards, weekly grid with time labels, copy/duplicate, conflict detection, printable timetable.
 -   **Ratings**: Stats cards, weekly rating system, rating history, auto-honor badge suggestion, badges showcase.
 -   **Quran Tracker**: Stats with streak/juz/milestones, visual memorization tree, personal plan, daily review, tajweed error tracking, achievement milestones.
@@ -45,12 +46,13 @@ The system is built with a modern web stack:
 -   **Internal Islamic Library**: Offline-capable reader with 50+ books, bookmarking, and progress tracking.
 -   **Activity & Monitoring**: Combined monitoring page (online users, activity logs, teacher activities). Session management.
 -   **Reporting & Analytics**: Student progress, attendance, points, ID cards, reports with print/export. Quran Passport, Mosque infographic.
--   **Smart Alerts**: Dynamic alert generation (absence, low performance, overdue assignments, streaks, level-up). Filterable by severity with WhatsApp parent contact.
--   **Parent Portal**: Visual progress charts, attendance summary, enhanced report content, WhatsApp message templates, student info card.
+-   **Smart Alerts**: Dynamic alert generation (absence, low performance, overdue assignments, streaks, level-up). Filterable by severity with WhatsApp parent contact. **NEW: Priority-based display (top 3 by default), One-click action buttons (WhatsApp/Review/Points), Weekly summary section.**
+-   **Parent Portal**: Visual progress charts, attendance summary, enhanced report content, WhatsApp message templates, student info card. **NEW: Auto-generated weekly WhatsApp summary, Visual progress bars in public report, Mosque average comparison (anonymized).**
 -   **Competitions**: Tabbed interface (Competitions, Star of Week, Mosque Rankings), mosque leaderboard.
 -   **ID Cards**: Professional card design with gradient headers and improved print support.
--   **Security**: Helmet HTTP security headers, Scrypt password hashing, session security, login/API rate limiting, IP banning, IDOR prevention, request body size limits, random default passwords, input validation. Includes security hardening against privilege escalation and unauthorized access. Deep security audit: mosque isolation on all endpoints (schedules/competitions/leaderboard/messages/points/badges/conversations/attendance/parent-reports/graduates/family-links/incidents/emergency-substitutions), mass assignment protection with field whitelists on all PATCH endpoints (users/emergency-substitutions/incidents/graduates/student-transfers/feedback), role gating on all mutation endpoints (courses/competitions/schedules/tajweed/similar-verses), XSS sanitization in print utilities, content text filtering on competitions/schedules. Database indexes on all foreign key columns (27+ tables) for DoS prevention.
--   **Smart Analytics API**: 6 dedicated endpoints for student-streaks, activity-heatmap, star-of-week, prediction, smart-review, mosque-rankings.
+-   **Security**: Helmet HTTP security headers, Scrypt password hashing, session security, login/API rate limiting, IP banning, IDOR prevention, request body size limits, random default passwords, input validation. Deep security audit: mosque isolation on all endpoints, mass assignment protection with field whitelists on all PATCH endpoints, role gating on all mutation endpoints, XSS sanitization in print utilities, content text filtering. Database indexes on all foreign key columns (27+ tables) for DoS prevention.
+-   **Smart Analytics API**: 9 dedicated endpoints: student-streaks, activity-heatmap, star-of-week, prediction, smart-review, mosque-rankings, **daily-summary, mosque-health, assignment-suggestion, attendance-patterns, collective-weakness.**
+-   **Auto-Intelligence System**: Automatic point awards (attendance/grades/streaks), auto-review assignments for low grades, smart assignment suggestions based on student history, attendance pattern detection, collective weakness analysis, discipline scoring.
 -   **Performance**: Response compression, static asset caching, API no-cache headers, DB pool health checks (60s interval), reduced pool size (20 max), service worker for offline capabilities. React Query: staleTime 15s, refetchInterval 30s, refetchOnWindowFocus enabled, retry 1. Healthcheck endpoint at `/_health`.
 -   **Institutional Systems**: Crisis Management, Graduation & Follow-up, Institutional Integration, Integrated Family System, Knowledge Management, Maintenance & Improvement, Educational Content.
 -   **Admin Interface**: Redesigned with categorized sidebar navigation, merged sections, enhanced dashboard.
