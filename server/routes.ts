@@ -3639,13 +3639,22 @@ export async function registerRoutes(
 
   app.patch("/api/competitions/:id/participants/:participantId", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بتعديل نتائج المشاركين" });
+      }
+      const competition = await storage.getCompetition(req.params.id);
+      if (!competition) return res.status(404).json({ message: "المسابقة غير موجودة" });
+      if (currentUser.role !== "admin" && competition.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بتعديل مسابقة جامع آخر" });
+      }
       const updateData: any = {};
       if (req.body.score !== undefined) updateData.score = Number(req.body.score);
       if (req.body.rank !== undefined) updateData.rank = Number(req.body.rank);
       if (req.body.notes !== undefined) updateData.notes = req.body.notes;
       const updated = await storage.updateCompetitionParticipant(req.params.participantId, updateData);
       if (!updated) return res.status(404).json({ message: "المشارك غير موجود" });
-      await logActivity(req.user!, "تعديل نتيجة مشارك", "competitions");
+      await logActivity(currentUser, "تعديل نتيجة مشارك", "competitions");
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في تعديل المشارك" });
@@ -4595,7 +4604,12 @@ export async function registerRoutes(
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
-      const updated = await storage.updateTajweedRule(req.params.id, req.body);
+      const tajweedAllowed = ["category", "title", "description", "examples", "surahReference", "sortOrder"];
+      const safeTajweedData: any = {};
+      for (const key of tajweedAllowed) {
+        if (req.body[key] !== undefined) safeTajweedData[key] = req.body[key];
+      }
+      const updated = await storage.updateTajweedRule(req.params.id, safeTajweedData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
