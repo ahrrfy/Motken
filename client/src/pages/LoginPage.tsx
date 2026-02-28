@@ -110,10 +110,8 @@ export default function LoginPage() {
             </Button>
 
             <div className="pt-2 text-center">
-              <Link href="/register-mosque">
-                <a className="text-sm text-primary hover:underline font-medium" data-testid="link-register-mosque">
-                  {isEn ? "Register your mosque / center" : "سجّل مسجدك / مركزك"}
-                </a>
+              <Link href="/register-mosque" className="text-sm text-primary hover:underline font-medium" data-testid="link-register-mosque">
+                {isEn ? "Register your mosque / center" : "سجّل مسجدك / مركزك"}
               </Link>
             </div>
           </form>
