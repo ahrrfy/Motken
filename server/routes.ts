@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
+import { quranSurahs } from "@shared/quran-surahs";
 import { db } from "./db";
 import {
   insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema,
@@ -916,6 +917,41 @@ export async function registerRoutes(
     if (!updated) return res.status(404).json({ message: "الواجب غير موجود" });
     if (req.body.grade !== undefined) {
       await logActivity(req.user!, `تقييم واجب بدرجة ${req.body.grade}`, "assignments", `واجب ${req.params.id}`);
+      const g = Number(req.body.grade);
+      try {
+        const autoPoints = g >= 90 ? 10 : g >= 75 ? 7 : g >= 60 ? 5 : 0;
+        if (autoPoints > 0) {
+          await storage.createPoint({
+            userId: assignment.studentId,
+            mosqueId: assignment.mosqueId,
+            amount: autoPoints,
+            category: "assignment",
+            description: `نقاط تلقائية - درجة ${g} في ${assignment.surahName || "واجب"}`,
+            awardedBy: currentUser.id,
+          });
+        }
+        if (g < 60 && assignment.surahName) {
+          await storage.createAssignment({
+            studentId: assignment.studentId,
+            teacherId: currentUser.id,
+            mosqueId: assignment.mosqueId,
+            surahName: assignment.surahName,
+            fromVerse: assignment.fromVerse,
+            toVerse: assignment.toVerse,
+            type: "review",
+            status: "pending",
+            scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+            notes: `مراجعة تلقائية - الدرجة السابقة: ${g}`,
+          });
+          await storage.createNotification({
+            userId: assignment.studentId,
+            mosqueId: assignment.mosqueId,
+            title: "واجب مراجعة جديد",
+            message: `تم إنشاء واجب مراجعة تلقائي لسورة ${assignment.surahName} (الآيات ${assignment.fromVerse}-${assignment.toVerse})`,
+            type: "warning",
+          });
+        }
+      } catch {}
     }
     res.json(updated);
     } catch (err: any) {
@@ -3057,6 +3093,36 @@ export async function registerRoutes(
         });
         created.push(record);
       }
+      const presentStudents = created.filter(r => r.status === "present" || r.status === "late");
+      for (const record of presentStudents) {
+        try {
+          await storage.createPoint({
+            userId: record.studentId,
+            mosqueId: currentUser.mosqueId,
+            amount: 5,
+            category: "attendance",
+            description: "نقاط حضور تلقائية",
+            awardedBy: currentUser.id,
+          });
+          const allAttendance = await storage.getAttendanceByStudent(record.studentId);
+          const sorted = allAttendance.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          let streak = 0;
+          for (const a of sorted) {
+            if (a.status === "present" || a.status === "late") streak++;
+            else break;
+          }
+          if (streak === 7 || streak === 14 || streak === 30) {
+            await storage.createPoint({
+              userId: record.studentId,
+              mosqueId: currentUser.mosqueId,
+              amount: streak === 7 ? 25 : streak === 14 ? 50 : 100,
+              category: "attendance",
+              description: `مكافأة سلسلة حضور ${streak} يوم متتالي`,
+              awardedBy: currentUser.id,
+            });
+          }
+        } catch {}
+      }
       await logActivity(currentUser, `تسجيل حضور جماعي: ${created.length} طالب`, "attendance");
       res.status(201).json(created);
     } catch (err: any) {
@@ -4951,6 +5017,380 @@ export async function registerRoutes(
       res.json(ranked);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== SMART DAILY SUMMARY ====================
+  app.get("/api/daily-summary", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      let students: User[] = [];
+      let assignmentsList: Assignment[] = [];
+
+      if (currentUser.role === "admin") {
+        students = (await storage.getUsersByRole("student")).filter(s => s.isActive && !s.pendingApproval);
+        assignmentsList = await storage.getAssignments();
+      } else if (currentUser.role === "teacher") {
+        students = (await storage.getUsersByTeacher(currentUser.id)).filter(s => s.isActive && !s.pendingApproval);
+        assignmentsList = await storage.getAssignmentsByTeacher(currentUser.id);
+      } else if (currentUser.mosqueId) {
+        const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+        students = mosqueUsers.filter(u => u.role === "student" && u.isActive && !u.pendingApproval);
+        assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const consecutiveAbsences: any[] = [];
+      const ungradedAssignments = assignmentsList.filter(a => a.status === "pending" || (a.status === "done" && a.grade === null));
+      const overdueAssignments = assignmentsList.filter(a => a.status === "pending" && a.scheduledDate && new Date(a.scheduledDate) < today);
+      const nearLevelUp: any[] = [];
+
+      let todayPresent = 0;
+      let todayTotal = 0;
+
+      for (const student of students) {
+        const attendance = await storage.getAttendanceByStudent(student.id);
+        const sorted = attendance.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        let absences = 0;
+        for (const a of sorted) {
+          if (a.status === "absent") absences++;
+          else break;
+        }
+        if (absences >= 2) {
+          consecutiveAbsences.push({ id: student.id, name: student.name, days: absences, parentPhone: student.parentPhone });
+        }
+
+        const todayRecord = sorted.find(a => {
+          const d = new Date(a.date);
+          d.setHours(0, 0, 0, 0);
+          return d.getTime() === today.getTime();
+        });
+        if (todayRecord) {
+          todayTotal++;
+          if (todayRecord.status === "present" || todayRecord.status === "late") todayPresent++;
+        }
+
+        const studentAssignments = assignmentsList.filter(a => a.studentId === student.id && a.status === "done");
+        const juzMap = new Set<string>();
+        for (const a of studentAssignments) {
+          if (a.surahName) juzMap.add(a.surahName);
+        }
+        const currentLevel = student.level || 1;
+        const thresholds = [5, 10, 15, 20, 25, 30];
+        if (currentLevel < 6) {
+          const nextThreshold = thresholds[currentLevel];
+          const surahs = juzMap.size;
+          if (nextThreshold && surahs >= nextThreshold - 2) {
+            nearLevelUp.push({ id: student.id, name: student.name, currentLevel, surahsCount: surahs });
+          }
+        }
+      }
+
+      const attendanceRate = todayTotal > 0 ? Math.round((todayPresent / todayTotal) * 100) : null;
+
+      const items: any[] = [];
+
+      if (consecutiveAbsences.length > 0) {
+        items.push({
+          type: "consecutive_absence",
+          severity: "critical",
+          title: `${consecutiveAbsences.length} طالب غائب بشكل متتالي`,
+          description: consecutiveAbsences.map(s => `${s.name} (${s.days} أيام)`).join("، "),
+          data: consecutiveAbsences,
+          actionType: "whatsapp",
+        });
+      }
+
+      if (ungradedAssignments.length > 0) {
+        items.push({
+          type: "ungraded",
+          severity: "warning",
+          title: `${ungradedAssignments.length} واجب بحاجة للتصحيح`,
+          description: "واجبات مكتملة تنتظر التقييم",
+          data: { count: ungradedAssignments.length },
+          actionType: "navigate",
+          actionTarget: "/assignments",
+        });
+      }
+
+      if (overdueAssignments.length > 0) {
+        items.push({
+          type: "overdue",
+          severity: "warning",
+          title: `${overdueAssignments.length} واجب متأخر`,
+          description: "واجبات تجاوزت موعدها المحدد",
+          data: { count: overdueAssignments.length },
+          actionType: "navigate",
+          actionTarget: "/assignments",
+        });
+      }
+
+      if (nearLevelUp.length > 0) {
+        items.push({
+          type: "near_level_up",
+          severity: "positive",
+          title: `${nearLevelUp.length} طالب قريب من الترقية`,
+          description: nearLevelUp.map(s => s.name).join("، "),
+          data: nearLevelUp,
+          actionType: "navigate",
+          actionTarget: "/students",
+        });
+      }
+
+      items.sort((a, b) => {
+        const order: Record<string, number> = { critical: 0, warning: 1, positive: 2, info: 3 };
+        return (order[a.severity] || 3) - (order[b.severity] || 3);
+      });
+
+      res.json({
+        items,
+        attendanceRate,
+        todayPresent,
+        todayTotal,
+        studentsCount: students.length,
+        ungradedCount: ungradedAssignments.length,
+        overdueCount: overdueAssignments.length,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب الملخص" });
+    }
+  });
+
+  // ==================== MOSQUE HEALTH SCORE ====================
+  app.get("/api/mosque-health/:mosqueId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      if (currentUser.role === "supervisor" && currentUser.mosqueId !== req.params.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const mosqueUsers = await storage.getUsersByMosque(req.params.mosqueId);
+      const students = mosqueUsers.filter(u => u.role === "student" && u.isActive && !u.pendingApproval);
+      const totalStudents = students.length;
+      if (totalStudents === 0) return res.json({ score: 0, attendance: 0, completion: 0, activeRatio: 0 });
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      let totalAttendance = 0;
+      let presentCount = 0;
+      let totalAssignments = 0;
+      let completedAssignments = 0;
+      let activeStudents = 0;
+
+      for (const student of students) {
+        const att = await storage.getAttendanceByStudent(student.id);
+        const recent = att.filter(a => new Date(a.date) > sevenDaysAgo);
+        totalAttendance += recent.length;
+        presentCount += recent.filter(a => a.status === "present" || a.status === "late").length;
+
+        const assignments = await storage.getAssignmentsByStudent(student.id);
+        totalAssignments += assignments.length;
+        completedAssignments += assignments.filter(a => a.status === "done").length;
+
+        const hasRecentActivity = att.some(a => new Date(a.date) > sevenDaysAgo) ||
+          assignments.some(a => new Date(a.createdAt) > sevenDaysAgo);
+        if (hasRecentActivity) activeStudents++;
+      }
+
+      const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
+      const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
+      const activeRatio = Math.round((activeStudents / totalStudents) * 100);
+
+      const score = Math.round(attendanceRate * 0.4 + completionRate * 0.3 + activeRatio * 0.3);
+
+      res.json({ score, attendance: attendanceRate, completion: completionRate, activeRatio });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== SMART ASSIGNMENT SUGGESTION ====================
+  app.get("/api/assignment-suggestion/:studentId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const student = await storage.getUser(req.params.studentId);
+      if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
+
+      const assignments = await storage.getAssignmentsByStudent(req.params.studentId);
+      const doneAssignments = assignments.filter(a => a.status === "done" && a.surahName).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      if (doneAssignments.length === 0) {
+        const firstSurah = quranSurahs[quranSurahs.length - 1];
+        return res.json({
+          surahName: firstSurah.name,
+          fromVerse: 1,
+          toVerse: Math.min(5, firstSurah.versesCount),
+          reason: "أول واجب - البدء من جزء عمّ",
+          type: "new",
+        });
+      }
+
+      const lastDone = doneAssignments[0];
+      const lastSurah = quranSurahs.find(s => s.name === lastDone.surahName);
+
+      if (lastDone.grade !== null && Number(lastDone.grade) < 60) {
+        return res.json({
+          surahName: lastDone.surahName,
+          fromVerse: lastDone.fromVerse,
+          toVerse: lastDone.toVerse,
+          reason: `مراجعة - الدرجة السابقة ${lastDone.grade}`,
+          type: "review",
+        });
+      }
+
+      if (lastSurah && lastDone.toVerse && lastDone.toVerse < lastSurah.versesCount) {
+        const nextFrom = lastDone.toVerse + 1;
+        const nextTo = Math.min(nextFrom + 4, lastSurah.versesCount);
+        return res.json({
+          surahName: lastSurah.name,
+          fromVerse: nextFrom,
+          toVerse: nextTo,
+          reason: `إكمال سورة ${lastSurah.name}`,
+          type: "new",
+        });
+      }
+
+      if (lastSurah) {
+        const currentIndex = quranSurahs.findIndex(s => s.number === lastSurah.number);
+        const nextSurah = currentIndex > 0 ? quranSurahs[currentIndex - 1] : null;
+        if (nextSurah) {
+          return res.json({
+            surahName: nextSurah.name,
+            fromVerse: 1,
+            toVerse: Math.min(5, nextSurah.versesCount),
+            reason: `الانتقال لسورة ${nextSurah.name}`,
+            type: "new",
+          });
+        }
+      }
+
+      const weakSurahs = doneAssignments.filter(a => a.grade !== null && Number(a.grade) < 75);
+      if (weakSurahs.length > 0) {
+        const weakest = weakSurahs[0];
+        return res.json({
+          surahName: weakest.surahName,
+          fromVerse: weakest.fromVerse,
+          toVerse: weakest.toVerse,
+          reason: `تقوية نقطة ضعف - ${weakest.surahName}`,
+          type: "review",
+        });
+      }
+
+      res.json({ surahName: null, reason: "لا توجد اقتراحات حالياً", type: null });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== ATTENDANCE PATTERNS & DISCIPLINE SCORE ====================
+  app.get("/api/attendance-patterns/:studentId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "teacher", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const attendance = await storage.getAttendanceByStudent(req.params.studentId);
+      if (attendance.length === 0) return res.json({ disciplineScore: 100, patterns: [], totalDays: 0 });
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentAtt = attendance.filter(a => new Date(a.date) > thirtyDaysAgo);
+
+      const totalDays = recentAtt.length;
+      const presentDays = recentAtt.filter(a => a.status === "present").length;
+      const lateDays = recentAtt.filter(a => a.status === "late").length;
+      const absentDays = recentAtt.filter(a => a.status === "absent").length;
+
+      const disciplineScore = totalDays > 0
+        ? Math.round(((presentDays + lateDays * 0.7) / totalDays) * 100)
+        : 100;
+
+      const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const absentByDay: Record<number, number> = {};
+      const totalByDay: Record<number, number> = {};
+      for (const a of recentAtt) {
+        const day = new Date(a.date).getDay();
+        totalByDay[day] = (totalByDay[day] || 0) + 1;
+        if (a.status === "absent") absentByDay[day] = (absentByDay[day] || 0) + 1;
+      }
+
+      const patterns: string[] = [];
+      for (const [day, count] of Object.entries(absentByDay)) {
+        const total = totalByDay[Number(day)] || 1;
+        if (count >= 2 && count / total >= 0.5) {
+          patterns.push(`يتغيب كثيراً يوم ${dayNames[Number(day)]}`);
+        }
+      }
+
+      res.json({
+        disciplineScore,
+        patterns,
+        totalDays,
+        presentDays,
+        lateDays,
+        absentDays,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== COLLECTIVE WEAKNESS ====================
+  app.get("/api/collective-weakness/:mosqueId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      if (currentUser.role === "supervisor" && currentUser.mosqueId !== req.params.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const assignments = await storage.getAssignmentsByMosque(req.params.mosqueId);
+      const graded = assignments.filter(a => a.status === "done" && a.grade !== null && a.surahName);
+
+      const surahStats: Record<string, { total: number; sumGrades: number; lowCount: number }> = {};
+
+      for (const a of graded) {
+        const name = a.surahName!;
+        if (!surahStats[name]) surahStats[name] = { total: 0, sumGrades: 0, lowCount: 0 };
+        surahStats[name].total++;
+        surahStats[name].sumGrades += Number(a.grade);
+        if (Number(a.grade) < 70) surahStats[name].lowCount++;
+      }
+
+      const weakSurahs = Object.entries(surahStats)
+        .map(([name, stats]) => ({
+          surahName: name,
+          avgGrade: Math.round(stats.sumGrades / stats.total),
+          totalAssignments: stats.total,
+          lowGradeCount: stats.lowCount,
+          lowPercentage: Math.round((stats.lowCount / stats.total) * 100),
+        }))
+        .filter(s => s.totalAssignments >= 3 && s.lowPercentage >= 30)
+        .sort((a, b) => a.avgGrade - b.avgGrade)
+        .slice(0, 10);
+
+      res.json(weakSurahs);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
     }
   });
 

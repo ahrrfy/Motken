@@ -258,6 +258,7 @@ export default function ParentPortalPage() {
     const categoryPoints = getPointsByCategory();
 
     const lines = [
+      `السلام عليكم ورحمة الله وبركاته`,
       `📋 تقرير ${reportTypeLabel} - ${student.name}`,
       ``,
       `🎓 المستوى: ${levelName}`,
@@ -302,6 +303,8 @@ export default function ParentPortalPage() {
     }
 
     lines.push(`📈 التقدم العام: ${progressDesc}`);
+    lines.push(``);
+    lines.push(`بارك الله فيكم ونفع بكم 🤲`);
 
     return lines.join("\n");
   };

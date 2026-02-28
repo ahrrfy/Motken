@@ -74,6 +74,27 @@ interface SmartReviewData {
   weakSpots: { surah: string; issue: string }[];
 }
 
+interface DailySummaryItem {
+  type: string;
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  description: string;
+  data: any;
+  actionType: 'whatsapp' | 'navigate';
+  actionTarget?: string;
+}
+
+interface DailySummary {
+  items: DailySummaryItem[];
+}
+
+interface MosqueHealth {
+  score: number;
+  attendance: number;
+  completion: number;
+  activeRatio: number;
+}
+
 export default function DashboardPage() {
   const { user, previewRole, startPreview, effectiveRole } = useAuth();
   const { language } = useTheme();
@@ -82,6 +103,10 @@ export default function DashboardPage() {
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [hadithIndex, setHadithIndex] = useState(() => Math.floor(Math.random() * authenticHadiths.length));
   const [hadithFade, setHadithFade] = useState(true);
+  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [mosqueHealth, setMosqueHealth] = useState<MosqueHealth | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [loadingHealth, setLoadingHealth] = useState(true);
 
   const isEn = language === "en";
   const currentRole = effectiveRole || user?.role;
@@ -125,6 +150,32 @@ export default function DashboardPage() {
     }, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (isStudent) {
+      setLoadingSummary(false);
+      setLoadingHealth(false);
+      return;
+    }
+
+    setLoadingSummary(true);
+    fetch("/api/daily-summary", { credentials: "include" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setDailySummary(data); })
+      .catch(() => {})
+      .finally(() => setLoadingSummary(false));
+
+    if (user?.mosqueId && (isAdmin || isSupervisor)) {
+      setLoadingHealth(true);
+      fetch(`/api/mosque-health/${user.mosqueId}`, { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => { if (data) setMosqueHealth(data); })
+        .catch(() => {})
+        .finally(() => setLoadingHealth(false));
+    } else {
+      setLoadingHealth(false);
+    }
+  }, [currentRole, user?.mosqueId]);
 
   const isAdmin = currentRole === 'admin';
   const isSupervisor = currentRole === 'supervisor';
@@ -218,6 +269,148 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {!isStudent && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <Card className="lg:col-span-2 border shadow-sm overflow-hidden" data-testid="card-smart-summary">
+            <CardHeader className="bg-muted/30 pb-3">
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <Brain className="w-5 h-5 text-accent" />
+                {isEn ? "Smart Summary" : "الملخص الذكي"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loadingSummary ? (
+                <div className="p-8 text-center text-muted-foreground italic">
+                  {isEn ? "Analyzing data..." : "جاري تحليل البيانات..."}
+                </div>
+              ) : dailySummary?.items && dailySummary.items.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {dailySummary.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="p-4 flex items-start justify-between gap-4 hover:bg-muted/10 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-1 p-1.5 rounded-full ${
+                          item.severity === 'critical' ? 'bg-red-100 text-red-600' :
+                          item.severity === 'warning' ? 'bg-amber-100 text-amber-600' :
+                          'bg-blue-100 text-blue-600'
+                        }`}>
+                          {item.severity === 'critical' ? <AlertTriangle className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm leading-tight">{item.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        {item.actionType === 'whatsapp' ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-8 gap-1.5"
+                            onClick={() => {
+                              const students = Array.isArray(item.data) ? item.data : [];
+                              if (students.length > 0) {
+                                const phones = students.map((s: any) => s.parentPhone).filter(Boolean);
+                                if (phones.length > 0) {
+                                  window.open(`https://wa.me/${phones[0]}`, '_blank');
+                                }
+                              }
+                            }}
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {isEn ? "Contact" : "تواصل"}
+                          </Button>
+                        ) : (
+                          <Link href={item.actionTarget || '#'}>
+                            <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5">
+                              {isEn ? "View" : "عرض"}
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {dailySummary.items.length > 3 && (
+                    <Link href="/smart-alerts">
+                      <button className="w-full py-2.5 text-xs text-muted-foreground hover:bg-muted/20 transition-colors">
+                        {isEn ? `Show ${dailySummary.items.length - 3} more items` : `عرض ${dailySummary.items.length - 3} عناصر أخرى`}
+                      </button>
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground text-sm italic">
+                  {isEn ? "No important alerts for today" : "لا توجد تنبيهات هامة لليوم"}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {(isAdmin || isSupervisor) && (
+            <Card className="border shadow-sm" data-testid="card-mosque-health">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-emerald-500" />
+                  {isEn ? "Mosque Health Score" : "مؤشر صحة الجامع"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingHealth ? (
+                  <div className="flex flex-col items-center justify-center py-4">
+                    <div className="w-16 h-16 rounded-full border-4 border-muted border-t-accent animate-spin" />
+                  </div>
+                ) : mosqueHealth ? (
+                  <div className="flex flex-col items-center">
+                    <div className="relative w-32 h-32">
+                      <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/10" />
+                        <circle
+                          cx="50" cy="50" r="45" fill="none"
+                          stroke="currentColor" strokeWidth="8"
+                          strokeDasharray={`${mosqueHealth.score * 2.827} 282.7`}
+                          strokeLinecap="round"
+                          className={`transition-all duration-1000 ${
+                            mosqueHealth.score >= 80 ? 'text-emerald-500' :
+                            mosqueHealth.score >= 60 ? 'text-amber-500' :
+                            'text-red-500'
+                          }`}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className={`text-3xl font-black ${
+                          mosqueHealth.score >= 80 ? 'text-emerald-600' :
+                          mosqueHealth.score >= 60 ? 'text-amber-600' :
+                          'text-red-600'
+                        }`}>{mosqueHealth.score}</span>
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Score</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 w-full mt-6 gap-2 text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">{isEn ? "Att." : "حضور"}</p>
+                        <p className="text-sm font-bold">{mosqueHealth.attendance}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">{isEn ? "Comp." : "إنجاز"}</p>
+                        <p className="text-sm font-bold">{mosqueHealth.completion}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">{isEn ? "Active" : "نشط"}</p>
+                        <p className="text-sm font-bold">{mosqueHealth.activeRatio}%</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground italic text-sm">
+                    {isEn ? "Health score unavailable" : "مؤشر الصحة غير متاح حالياً"}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       {!isStudent && stats && (
