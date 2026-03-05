@@ -1,0 +1,93 @@
+نفّذ الثلاثة بالترتيب:
+
+━━━ الأمر 4 — عزل المسجد في phone/check ━━━
+
+في server/routes.ts ابحث عن:
+app.get("/api/phone/check", requireAuth, async (req, res) => {
+
+داخلها ابحث عن:
+const allUsers = await storage.getUsers();
+const exists = allUsers.some(u => {
+
+غيّره إلى:
+let usersToCheck;
+if (currentUser.role === "admin") {
+  usersToCheck = await storage.getUsers();
+} else if (currentUser.mosqueId) {
+  usersToCheck = await storage.getUsersByMosque(currentUser.mosqueId);
+} else {
+  usersToCheck = [];
+}
+const exists = usersToCheck.some(u => {
+
+━━━ الأمر 5 — إصلاح ثغرة family-links ━━━
+
+في server/routes.ts ابحث عن:
+app.post("/api/family-links", requireAuth, async (req, res) => {
+
+بعد سطر:
+const { parentPhone, studentId, relationship } = req.body;
+
+أضف مباشرة:
+if (currentUser.role !== "admin") {
+  const student = await storage.getUser(studentId);
+  if (!student || student.mosqueId !== currentUser.mosqueId) {
+    return res.status(403).json({ message: "الطالب لا ينتمي لمسجدك" });
+  }
+}
+
+━━━ الأمر 6 — اكتشاف الأخوة تلقائياً ━━━
+
+في server/routes.ts ابحث عن:
+if (parentPhone) {
+  const cleanPP = cleanDigits(parentPhone);
+  const ppDup = allUsers.some(u => {
+    const up = cleanDigits(u.phone || "");
+    const upp = cleanDigits(u.parentPhone || "");
+    return (up && up === cleanPP) || (upp && upp === cleanPP);
+  });
+  if (ppDup) {
+    return res.status(400).json({ message: "رقم هاتف ولي الأمر مستخدم بالفعل" });
+  }
+}
+
+استبدله كاملاً بـ:
+if (parentPhone) {
+  const cleanPP = cleanDigits(parentPhone);
+  const siblings = allUsers.filter(u => {
+    const upp = cleanDigits(u.parentPhone || "");
+    return upp && upp === cleanPP && u.role === "student";
+  });
+  req.body._detectedSiblings = siblings.map(s => ({ id: s.id, name: s.name }));
+}
+
+ثم ابحث عن السطر:
+await logActivity(currentUser, `إنشاء حساب: ${user.name} (${targetRole})`, "users");
+
+بعده مباشرة أضف:
+if (req.body._detectedSiblings?.length > 0 && user.mosqueId && user.parentPhone) {
+  for (const sibling of req.body._detectedSiblings) {
+    try {
+      await storage.createFamilyLink({
+        parentPhone: user.parentPhone,
+        studentId: user.id,
+        mosqueId: user.mosqueId,
+        relationship: "sibling",
+      });
+      const supervisors = await storage.getUsersByMosqueAndRole(user.mosqueId, "supervisor");
+      for (const sup of supervisors) {
+        await storage.createNotification({
+          userId: sup.id,
+          title: "👨‍👩‍👧 اكتشاف عائلة",
+          message: `${user.name} أخ/أخت لـ ${sibling.name} — تم ربطهما تلقائياً في نظام الأسر`,
+          type: "info",
+          link: "/family",
+        });
+      }
+    } catch {}
+  }
+}
+
+━━━ بعد التنفيذ ━━━
+شغّل: npm run build
+أعطني النتيجة ✅/❌ لكل أمر
