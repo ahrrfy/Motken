@@ -1,7 +1,7 @@
 # متقن (Mutqin) - Quran Memorization Management System
 
 ## Overview
-Mutqin is a multi-tenant online Quran memorization management system for Islamic centers in Iraq. It provides mosque-based data isolation, hierarchical role-based access control (Admin, Supervisor, Teacher, Student), and a full Arabic RTL interface. The system aims to streamline Quran memorization administration, student progress tracking, and communication within Islamic educational institutions.
+Mutqin is a multi-tenant online Quran memorization management system for Islamic centers (international, multi-country). It provides mosque-based data isolation, hierarchical role-based access control (Admin, Supervisor, Teacher, Student), and a full Arabic RTL interface. The system aims to streamline Quran memorization administration, student progress tracking, and communication within Islamic educational institutions.
 
 ## User Preferences
 - Date format: dd/mm/yyyy, time format: 12-hour with Arabic ص/م
@@ -71,13 +71,20 @@ The system is built with a modern web stack:
     - Rate-limited public registration (3/hour/IP), vouching tree tracking, registration stats dashboard.
 
 -   **Mosque Dashboard (لوحة تحكم المسجد)**: Per-mosque admin dashboard at `/mosques/:id/dashboard` with:
-    - KPI cards (students, teachers, supervisors, active students)
-    - Tabbed view: basic info, supervisor info (with WhatsApp link), students list, teachers list, messaging panel, event history
+    - KPI cards (students, teachers, supervisors, active students, attendance rate, last activity)
+    - Inactivity alert banner (7+ days without activity)
+    - Tabbed view: basic info, supervisor info (with WhatsApp link + last login), students list, teachers list, messaging panel, event history
     - Status management (activate/suspend) with automatic user status updates and history logging
     - Direct messaging system between admin and mosque supervisors
     - Unread message badge in sidebar for admin
--   **International Phone Input**: `libphonenumber-js`-based phone input component with 33 countries (Arab + common), country code selector with search, real-time validation, used in mosque registration form.
+-   **International Phone Input**: `libphonenumber-js`-based phone input component with 33 countries (Arab + common), country code selector with search, real-time validation. Applied to ALL phone fields across the system (Students, Teachers, Supervisors, Users, Settings, Registration).
+-   **International Phone Utils**: `formatPhone()`, `isValidPhone()`, `getWhatsAppUrl()` support any international number (backward compatible with Iraqi numbers).
 -   **Mosque Messaging System**: Admin-supervisor messaging via `mosque_messages` table, with unread tracking, auto-read marking, and event history logging.
+-   **Bulk Notification**: Admin broadcast notification to all active supervisors across all mosques via `/api/mosques/broadcast-notification`.
+-   **Comparative Mosque Stats**: Rankings tab on MosquesPage showing top 10 mosques by: student count, attendance rate, activity level. API: `/api/mosques/comparative-stats`.
+-   **Mosque Inactivity Alerts**: Automatic detection of mosques with no activity for 7+ days. Warning badges on mosque cards, dedicated inactive mosques tab, filterable. API: `/api/mosques/inactivity-check`.
+-   **Advanced Mosque Filtering**: Sort by name/date/student count, filter by student count range (min/max), filter inactive mosques only.
+-   **Mosque Excel Export**: Export filtered mosque data to Excel including stats (name, province, city, students, teachers, status, date).
 
 ## External Dependencies
 -   **api.alquran.cloud**: Fetches Quran text.

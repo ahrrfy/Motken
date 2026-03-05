@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers } from "lucide-react";
-import { isValidIraqiPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
+import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
+import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -361,13 +362,11 @@ export default function TeachersPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>الهاتف <span className="text-red-500">*</span></Label>
-                    <Input data-testid="input-phone" className={phoneInputClassName(phoneValidation, formData.phone)} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
-                    {formData.phone && !isValidIraqiPhone(formData.phone) && (
-                      <p className="text-xs text-orange-500 mt-1" data-testid="text-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
-                    )}
-                    {phoneValidation.message && (
-                      <p className={`text-xs mt-1 ${phoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-phone-validation">{phoneValidation.message}</p>
-                    )}
+                    <InternationalPhoneInput
+                      value={formData.phone}
+                      onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}
+                      error={phoneValidation.message && !phoneValidation.valid ? phoneValidation.message : undefined}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>المستويات المسموح بها</Label>

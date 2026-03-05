@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, Building2 } from "lucide-react";
-import { usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
+import { usePhoneValidation, phoneInputClassName, isValidPhone } from "@/lib/phone-utils";
+import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -307,10 +308,11 @@ export default function SupervisorsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>الهاتف <span className="text-red-500">*</span></Label>
-                    <Input data-testid="input-supervisor-phone" className={phoneInputClassName(phoneValidation, formData.phone)} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
-                    {phoneValidation.message && (
-                      <p className={`text-xs mt-1 ${phoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-phone-validation">{phoneValidation.message}</p>
-                    )}
+                    <InternationalPhoneInput
+                      value={formData.phone}
+                      onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}
+                      error={phoneValidation.message && !phoneValidation.valid ? phoneValidation.message : undefined}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>الجامع أو مركز التحفيظ <span className="text-red-500">*</span></Label>

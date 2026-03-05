@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
-import { usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
+import { usePhoneValidation, phoneInputClassName, isValidPhone } from "@/lib/phone-utils";
+import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2, Shield, Users, UserCheck, UserX, Download, Upload, CheckCircle, Database, HardDrive } from "lucide-react";
@@ -399,10 +400,11 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>رقم الهاتف</Label>
-                  <Input className={phoneInputClassName(phoneValidation, phone)} value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="input-settings-phone" dir="ltr" />
-                  {phoneValidation.message && (
-                    <p className={`text-xs mt-1 ${phoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-phone-validation">{phoneValidation.message}</p>
-                  )}
+                  <InternationalPhoneInput
+                    value={phone}
+                    onChange={(full) => setPhone(full)}
+                    error={phoneValidation.message && !phoneValidation.valid ? phoneValidation.message : undefined}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>العنوان</Label>

@@ -205,6 +205,104 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/mosques/comparative-stats", requireRole("admin"), async (req, res) => {
+    try {
+      const allMosquesList = await storage.getMosques();
+      const activeMosques = allMosquesList.filter((m: any) => m.status === "active");
+      const comparisons: any[] = [];
+
+      for (const m of activeMosques) {
+        const mosqueUsers = await storage.getUsersByMosque(m.id);
+        const studentsCount = mosqueUsers.filter(u => u.role === "student").length;
+        const teachersCount = mosqueUsers.filter(u => u.role === "teacher").length;
+        const activeStudents = mosqueUsers.filter(u => u.role === "student" && u.isActive).length;
+
+        let attendanceRate = 0;
+        try {
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const attendanceRows = await db.select().from(attendance)
+            .where(and(
+              eq(attendance.mosqueId, m.id),
+              dsql`${attendance.date} >= ${thirtyDaysAgo.toISOString().split("T")[0]}`
+            ));
+          if (attendanceRows.length > 0) {
+            const present = attendanceRows.filter(a => a.status === "present" || a.status === "late").length;
+            attendanceRate = Math.round((present / attendanceRows.length) * 100);
+          }
+        } catch {}
+
+        let lastActivity: string | null = null;
+        try {
+          const logs = await db.select().from(activityLogs)
+            .where(eq(activityLogs.mosqueId, m.id))
+            .orderBy(desc(activityLogs.createdAt))
+            .limit(1);
+          lastActivity = logs[0]?.createdAt?.toISOString() || null;
+        } catch {}
+
+        comparisons.push({
+          id: m.id,
+          name: m.name,
+          province: (m as any).province || "",
+          studentsCount,
+          teachersCount,
+          activeStudents,
+          attendanceRate,
+          lastActivity,
+        });
+      }
+
+      comparisons.sort((a, b) => b.studentsCount - a.studentsCount);
+
+      res.json({
+        mosques: comparisons,
+        topByStudents: comparisons.slice(0, 10),
+        topByAttendance: [...comparisons].sort((a, b) => b.attendanceRate - a.attendanceRate).slice(0, 10),
+        topByActivity: [...comparisons].filter(m => m.lastActivity).sort((a, b) =>
+          new Date(b.lastActivity!).getTime() - new Date(a.lastActivity!).getTime()
+        ).slice(0, 10),
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب الإحصائيات المقارنة" });
+    }
+  });
+
+  app.get("/api/mosques/inactivity-check", requireRole("admin"), async (req, res) => {
+    try {
+      const allMosquesList = await storage.getMosques();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const inactiveMosques: any[] = [];
+      for (const m of allMosquesList) {
+        if ((m as any).status !== "active") continue;
+        try {
+          const logs = await db.select().from(activityLogs)
+            .where(eq(activityLogs.mosqueId, m.id))
+            .orderBy(desc(activityLogs.createdAt))
+            .limit(1);
+          const lastLog = logs[0]?.createdAt;
+          if (!lastLog || new Date(lastLog) < sevenDaysAgo) {
+            inactiveMosques.push({
+              id: m.id,
+              name: m.name,
+              province: (m as any).province || "",
+              lastActivity: lastLog?.toISOString() || null,
+              daysSinceActivity: lastLog
+                ? Math.floor((Date.now() - new Date(lastLog).getTime()) / (1000 * 60 * 60 * 24))
+                : null,
+            });
+          }
+        } catch {}
+      }
+      inactiveMosques.sort((a, b) => (a.daysSinceActivity ?? 999) - (b.daysSinceActivity ?? 999));
+      res.json({ inactiveMosques, count: inactiveMosques.length });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
   app.get("/api/mosques/:id", requireAuth, async (req, res) => {
     try {
       const mosque = await storage.getMosque(req.params.id);
@@ -315,11 +413,37 @@ export async function registerRoutes(
 
       const supervisor = allUsers.find(u => u.role === "supervisor");
 
+      let attendanceRate = 0;
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const attendanceRows = await db.select().from(attendance)
+          .where(and(
+            eq(attendance.mosqueId, mosqueId),
+            dsql`${attendance.date} >= ${thirtyDaysAgo.toISOString().split("T")[0]}`
+          ));
+        if (attendanceRows.length > 0) {
+          const present = attendanceRows.filter(a => a.status === "present" || a.status === "late").length;
+          attendanceRate = Math.round((present / attendanceRows.length) * 100);
+        }
+      } catch {}
+
+      let lastActivity: string | null = null;
+      try {
+        const logs = await db.select().from(activityLogs)
+          .where(eq(activityLogs.mosqueId, mosqueId))
+          .orderBy(desc(activityLogs.createdAt))
+          .limit(1);
+        lastActivity = logs[0]?.createdAt?.toISOString() || null;
+      } catch {}
+
       res.json({
         studentsCount,
         teachersCount,
         supervisorsCount,
         activeStudents,
+        attendanceRate,
+        lastActivity,
         supervisorName: supervisor?.name || null,
         supervisorPhone: supervisor?.phone || null,
         supervisorId: supervisor?.id || null,
@@ -464,6 +588,37 @@ export async function registerRoutes(
       res.json({ count: result[0]?.value ?? 0 });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== ADMIN BROADCAST TO ALL SUPERVISORS ====================
+  app.post("/api/mosques/broadcast-notification", requireRole("admin"), async (req, res) => {
+    try {
+      const { title, message } = req.body;
+      if (!title || !message) {
+        return res.status(400).json({ message: "العنوان والرسالة مطلوبان" });
+      }
+      const allMosquesList = await storage.getMosques();
+      let sent = 0;
+      for (const m of allMosquesList) {
+        const mosqueUsers = await storage.getUsersByMosque(m.id);
+        const supervisors = mosqueUsers.filter(u => u.role === "supervisor" && u.isActive);
+        for (const sup of supervisors) {
+          await storage.createNotification({
+            userId: sup.id,
+            mosqueId: m.id,
+            title,
+            message,
+            type: "admin_broadcast",
+            isRead: false,
+          });
+          sent++;
+        }
+      }
+      await logActivity(req.user!, `إشعار جماعي لـ ${sent} مشرف`, "notifications");
+      res.json({ message: `تم إرسال الإشعار إلى ${sent} مشرف`, count: sent });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في إرسال الإشعار الجماعي" });
     }
   });
 
