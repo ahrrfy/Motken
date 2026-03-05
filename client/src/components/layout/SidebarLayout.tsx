@@ -51,6 +51,7 @@ import {
   MapPin,
   Pen,
   Download,
+  Share2,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -150,6 +151,7 @@ const navCategories: NavCategory[] = [
       { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
       { href: "/family-system", label: "نظام الأسرة", labelEn: "Family System", icon: HeartHandshake, roles: ["admin", "supervisor", "teacher"], featureKey: "family_system" },
       { href: "/whiteboard", label: "السبورة التفاعلية", labelEn: "Interactive Whiteboard", icon: Pen, roles: ["admin", "supervisor", "teacher"], featureKey: "whiteboard" },
+      { href: "/spread", label: "انشر النظام", labelEn: "Spread System", icon: Share2, roles: ["admin", "supervisor", "teacher"] },
     ],
   },
   {

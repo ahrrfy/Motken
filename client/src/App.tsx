@@ -47,6 +47,8 @@ import SidebarLayout from "@/components/layout/SidebarLayout";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import PublicParentReportPage from "@/pages/PublicParentReportPage";
 import RegisterMosquePage from "@/pages/RegisterMosquePage";
+import LandingPage from "@/pages/LandingPage";
+import SpreadPage from "@/pages/SpreadPage";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 
@@ -128,6 +130,22 @@ function App() {
     );
   }
 
+  if (window.location.pathname === "/welcome" ||
+      window.location.pathname.startsWith("/welcome") ||
+      window.location.pathname === "/") {
+    if (!user) {
+      return (
+        <>
+          <Switch>
+            <Route path="/welcome" component={LandingPage} />
+            <Route path="/" component={LandingPage} />
+          </Switch>
+          <Toaster />
+        </>
+      );
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-islamic-pattern" dir="rtl">
@@ -203,6 +221,7 @@ function App() {
         <Route path="/educational-content" component={EducationalContentPage} />
         <Route path="/floor-plan" component={FloorPlanPage} />
         <Route path="/whiteboard" component={WhiteboardPage} />
+        <Route path="/spread" component={SpreadPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">

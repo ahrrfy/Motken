@@ -1,0 +1,66 @@
+نفّذ هذه التعديلات:
+
+━━━ الأمر 1 — client/src/App.tsx ━━━
+ابحث عن:
+  if (window.location.pathname === "/welcome" ||
+      window.location.pathname.startsWith("/welcome")) {
+    return (
+      <>
+        <Switch>
+          <Route path="/welcome" component={LandingPage} />
+        </Switch>
+
+استبدله بـ:
+  if (window.location.pathname === "/welcome" ||
+      window.location.pathname.startsWith("/welcome") ||
+      window.location.pathname === "/") {
+    return (
+      <>
+        <Switch>
+          <Route path="/welcome" component={LandingPage} />
+          <Route path="/" component={LandingPage} />
+        </Switch>
+
+━━━ الأمر 2 — client/src/pages/SpreadPage.tsx ━━━
+ابحث عن:
+  useEffect(() => {
+    fetch("/api/my-invite-code", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+استبدله بـ:
+  useEffect(() => {
+    fetch("/api/my-invite-code", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          const origin = window.location.origin;
+          setData({
+            ...d,
+            inviteUrl: `${origin}/welcome?ref=${d.inviteCode}`,
+            whatsappText: `السلام عليكم 🕌\n\nنحن في *${d.mosqueName}* نستخدم نظام *مُتْقِن* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع حضور الطلاب\n✅ متابعة الحفظ آية بآية\n✅ تقارير لأولياء الأمور بضغطة واحدة\n✅ يعمل على الجوال مباشرة بدون تطبيق\n\n🔗 اكتشف النظام وسجّل مسجدك مجاناً:\n${origin}/welcome?ref=${d.inviteCode}`,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+━━━ الأمر 3 — client/src/pages/LandingPage.tsx ━━━
+ابحث عن:
+          <div className="flex items-center gap-2">
+            <a href="/login" ...>دخول</a>
+            <a href="#register" ...>ابدأ مجاناً</a>
+          </div>
+
+استبدله بـ:
+          <div className="flex items-center gap-2">
+            <a href="/welcome" className="text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5">الرئيسية</a>
+            <a href="/login" className="text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5">دخول</a>
+            <a href="#register" className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors">ابدأ مجاناً</a>
+          </div>
+
+ثم: npm run build
