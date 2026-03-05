@@ -139,7 +139,7 @@ export default function RegisterMosquePage() {
             {isEn ? "Mosque Registration" : "تسجيل مسجد / مركز جديد"}
           </CardTitle>
           <CardDescription>
-            {isEn ? "Join Mutqin system to manage your Quran circles" : "انضم لنظام مُتْقِن لإدارة حلقات التحفيظ في مسجدك"}
+            {isEn ? "Join Mutqin system to manage your Quran circles" : "انضم لنظام مُتْقِن لإدارة حلقات التحفيظ في مسجدك/مركزك"}
           </CardDescription>
         </CardHeader>
         

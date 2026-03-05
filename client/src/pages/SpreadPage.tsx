@@ -33,7 +33,7 @@ export default function SpreadPage() {
           setData({
             ...d,
             inviteUrl: `${origin}/welcome?ref=${d.inviteCode}`,
-            whatsappText: `السلام عليكم 🕌\n\nنحن في *${d.mosqueName}* نستخدم نظام *مُتْقِن* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع حضور الطلاب\n✅ متابعة الحفظ آية بآية\n✅ تقارير لأولياء الأمور بضغطة واحدة\n✅ يعمل على الجوال مباشرة بدون تطبيق\n\n🔗 اكتشف النظام وسجّل مسجدك:\n${origin}/welcome?ref=${d.inviteCode}\n\nنظام وقفي مجاني لخدمة كتاب الله 📖`,
+            whatsappText: `السلام عليكم 🕌\n\nنحن في *${d.mosqueName}* نستخدم نظام *مُتْقِن* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع حضور الطلاب\n✅ متابعة الحفظ آية بآية\n✅ تقارير لأولياء الأمور بضغطة واحدة\n✅ يعمل على الجوال مباشرة بدون تطبيق\n\n🔗 اكتشف النظام وسجّل مسجدك/مركزك:\n${origin}/welcome?ref=${d.inviteCode}\n\nنظام وقفي مجاني لخدمة كتاب الله 📖`,
           });
         }
       })
@@ -93,7 +93,7 @@ export default function SpreadPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Link2 className="w-5 h-5 text-emerald-600" />
-                رابط الدعوة الخاص بمسجدك
+                رابط الدعوة الخاص بمسجدك/مركزك
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -106,7 +106,7 @@ export default function SpreadPage() {
                   {copied ? "تم" : "نسخ"}
                 </Button>
               </div>
-              <p className="text-xs text-emerald-700">عندما يسجّل مسجد جديد عبر هذا الرابط، يُحتسب لكم الأجر إن شاء الله</p>
+              <p className="text-xs text-emerald-700">عندما يسجّل مسجد/مركز جديد عبر هذا الرابط، يُحتسب لكم الأجر إن شاء الله</p>
             </CardContent>
           </Card>
 
@@ -159,7 +159,7 @@ export default function SpreadPage() {
                   </div>
                   <div className="text-center bg-emerald-50 rounded-xl p-4">
                     <p className="text-3xl font-bold text-emerald-700">{data.stats.joinedFromInvite || 0}</p>
-                    <p className="text-sm text-gray-500 mt-1">مسجد انضم عبر رابطك</p>
+                    <p className="text-sm text-gray-500 mt-1">مسجد/مركز انضم عبر رابطك</p>
                   </div>
                 </div>
               </CardContent>
