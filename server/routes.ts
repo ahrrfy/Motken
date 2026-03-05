@@ -6353,6 +6353,47 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== PUBLIC STATS & INVITE CODES ====================
+  app.get("/api/public-stats", async (_req, res) => {
+    try {
+      const allMosques = await db.select().from(mosques);
+      const allUsers = await db.select().from(users);
+      const allProgress = await db.select().from(quranProgress);
+      const studentCount = allUsers.filter(u => u.role === "student").length;
+      const teacherCount = allUsers.filter(u => u.role === "teacher" || u.role === "supervisor").length;
+      const completedSurahs = allProgress.filter(p => p.status === "completed" || p.status === "memorized").length;
+      res.json({
+        mosques: allMosques.length,
+        students: studentCount,
+        teachers: teacherCount,
+        completedSurahs,
+      });
+    } catch {
+      res.json({ mosques: 0, students: 0, teachers: 0, completedSurahs: 0 });
+    }
+  });
+
+  app.get("/api/my-invite-code", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!currentUser.mosqueId) {
+        return res.status(400).json({ message: "لا يوجد مسجد مرتبط بحسابك" });
+      }
+      const mosque = await storage.getMosque(currentUser.mosqueId);
+      const inviteCode = currentUser.mosqueId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toLowerCase();
+      res.json({
+        inviteCode,
+        mosqueName: mosque?.name || "مسجد",
+        stats: {
+          totalInvites: 0,
+          joinedFromInvite: 0,
+        },
+      });
+    } catch {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
   app.get("/api/registration-stats", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
