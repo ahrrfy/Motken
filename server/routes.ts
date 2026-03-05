@@ -6489,6 +6489,19 @@ export async function registerRoutes(
         status: "pending",
       }).returning();
 
+      try {
+        const admins = (await storage.getUsers()).filter(u => u.role === "admin" && u.isActive);
+        for (const admin of admins) {
+          await storage.createNotification({
+            userId: admin.id,
+            title: "طلب تسجيل مسجد جديد",
+            message: `تم تقديم طلب تسجيل مباشر لمسجد "${mosqueName}" من ${applicantName}. يرجى مراجعته في طلبات الانضمام.`,
+            type: "registration_request",
+            isRead: false,
+          });
+        }
+      } catch {}
+
       res.status(201).json({ message: "تم تقديم طلبك بنجاح. سيتم مراجعته من قبل الإدارة", id: registration.id });
     } catch (err: any) {
       console.error("[register-mosque] Error:", err?.message || err);
@@ -6549,6 +6562,20 @@ export async function registerRoutes(
       }).returning();
 
       await logActivity(currentUser, `تزكية مسجد جديد: ${mosqueName}`, "registration");
+
+      try {
+        const admins = (await storage.getUsers()).filter(u => u.role === "admin" && u.isActive);
+        for (const admin of admins) {
+          await storage.createNotification({
+            userId: admin.id,
+            title: "تزكية مسجد جديدة",
+            message: `قام المشرف "${currentUser.name}" بتزكية مسجد "${mosqueName}" لصالح ${applicantName}. يرجى مراجعة الطلب.`,
+            type: "vouching_request",
+            isRead: false,
+          });
+        }
+      } catch {}
+
       res.status(201).json({ message: "تم تقديم التزكية بنجاح", id: registration.id });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ" });
@@ -6628,6 +6655,20 @@ export async function registerRoutes(
         .where(eq(mosqueRegistrations.id, req.params.id));
 
       await logActivity(currentUser, `موافقة على تسجيل مسجد: ${reg.mosqueName}`, "registration");
+
+      if (reg.vouchedByUserId) {
+        try {
+          await storage.createNotification({
+            userId: reg.vouchedByUserId,
+            mosqueId: reg.vouchedByMosqueId || undefined,
+            title: "تمت الموافقة على تزكيتك",
+            message: `تمت الموافقة على طلب تزكية مسجد "${reg.mosqueName}" الذي قدمته. تم إنشاء المسجد وحساب المشرف بنجاح.`,
+            type: "vouching_approved",
+            isRead: false,
+          });
+        } catch {}
+      }
+
       res.json({ message: "تمت الموافقة وإنشاء المسجد والمشرف بنجاح", mosqueId: mosque.id, userId: user.id });
     } catch (err: any) {
       console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
@@ -6654,6 +6695,20 @@ export async function registerRoutes(
         .where(eq(mosqueRegistrations.id, req.params.id));
 
       await logActivity(currentUser, `رفض تسجيل مسجد: ${reg.mosqueName}`, "registration");
+
+      if (reg.vouchedByUserId) {
+        try {
+          await storage.createNotification({
+            userId: reg.vouchedByUserId,
+            mosqueId: reg.vouchedByMosqueId || undefined,
+            title: "تم رفض طلب التزكية",
+            message: `تم رفض طلب تزكية مسجد "${reg.mosqueName}". السبب: ${rejectionReason}`,
+            type: "vouching_rejected",
+            isRead: false,
+          });
+        } catch {}
+      }
+
       res.json({ message: "تم رفض الطلب" });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ" });
