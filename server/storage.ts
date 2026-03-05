@@ -49,6 +49,7 @@ export interface IStorage {
   getUsersByMosque(mosqueId: string): Promise<User[]>;
   getUsersByMosqueAndRole(mosqueId: string, role: string): Promise<User[]>;
   getUsersByTeacher(teacherId: string): Promise<User[]>;
+  checkPhoneExists(phone: string, excludeId?: string): Promise<boolean>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
 
@@ -290,6 +291,20 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users).where(
       and(eq(users.teacherId, teacherId), eq(users.role, "student"))
     ).orderBy(desc(users.createdAt));
+  }
+
+  async checkPhoneExists(phone: string, excludeId?: string): Promise<boolean> {
+    const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
+    const cleanPhone = cleanDigits(phone);
+    if (!cleanPhone) return false;
+    const rows = await db.select({ id: users.id, phone: users.phone, parentPhone: users.parentPhone })
+      .from(users);
+    return rows.some(u => {
+      if (excludeId && u.id === excludeId) return false;
+      const up = cleanDigits(u.phone || "");
+      const upp = cleanDigits(u.parentPhone || "");
+      return (up && up === cleanPhone) || (upp && upp === cleanPhone);
+    });
   }
 
   async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
