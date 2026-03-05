@@ -28,12 +28,12 @@ interface UserData {
 
 const levelNames = ["مبتدئ", "متوسط", "متقدم", "متميز", "خبير", "حافظ"];
 const levelColors = [
-  { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-300", hex: "#3b82f6", hexBg: "#dbeafe" },
-  { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-300", hex: "#10b981", hexBg: "#d1fae5" },
-  { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-300", hex: "#8b5cf6", hexBg: "#ede9fe" },
-  { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-300", hex: "#f59e0b", hexBg: "#fef3c7" },
-  { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-300", hex: "#f97316", hexBg: "#ffedd5" },
-  { bg: "bg-red-100", text: "text-red-700", border: "border-red-300", hex: "#ef4444", hexBg: "#fee2e2" },
+  { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-300", hex: "#0284c7", hexBg: "#e0f2fe" },
+  { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-300", hex: "#059669", hexBg: "#d1fae5" },
+  { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-300", hex: "#7c3aed", hexBg: "#ede9fe" },
+  { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-300", hex: "#d97706", hexBg: "#fef3c7" },
+  { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-300", hex: "#ea580c", hexBg: "#ffedd5" },
+  { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-300", hex: "#e11d48", hexBg: "#ffe4e6" },
 ];
 
 function getLevelInfo(level?: number | null) {
@@ -74,7 +74,7 @@ function formatDate(dateStr?: string): string {
 }
 
 async function generateQRDataURL(data: string): Promise<string> {
-  return QRCode.toDataURL(data, { width: 80, margin: 1 });
+  return QRCode.toDataURL(data, { width: 120, margin: 1, errorCorrectionLevel: "M" });
 }
 
 function esc(str: string): string {
@@ -88,96 +88,86 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
   const levelInfo = getLevelInfo(user.level);
   const safeName = esc(user.name || "");
   const safeMosqueName = esc(mosqueName || "");
-  const avatarSection = user.avatar
-    ? `<img src="${esc(user.avatar)}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover;" />`
-    : `<span style="font-size:24px;font-weight:bold;color:#16213e;">${safeName.charAt(0)}</span>`;
 
-  const mosqueLogoSection = mosqueImage
-    ? `<div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
-        <img src="${esc(mosqueImage)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
-      </div>`
+  const avatarHtml = user.avatar
+    ? `<img src="${esc(user.avatar)}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+    : `<span style="font-size:20px;font-weight:700;color:#16213e;">${safeName.charAt(0)}</span>`;
+
+  const mosqueLogoHtml = mosqueImage
+    ? `<img src="${esc(mosqueImage)}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" />`
     : "";
-
-  const headerTitle = safeMosqueName
-    ? `<h2 style="font-size:12px;font-weight:bold;margin:0;line-height:1.2;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${safeMosqueName}</h2>`
-    : `<h2 style="font-size:14px;font-weight:bold;letter-spacing:1px;margin:0;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,0.3);">مُتْقِن</h2>`;
 
   const levelBadgeHtml = levelInfo
-    ? `<span style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:9999px;background:${levelInfo.colors.hexBg};color:${levelInfo.colors.hex};font-size:9px;font-weight:600;border:1px solid ${levelInfo.colors.hex}30;">${levelInfo.name}</span>`
+    ? `<span style="display:inline-block;padding:1px 10px;border-radius:9999px;background:${levelInfo.colors.hexBg};color:${levelInfo.colors.hex};font-size:9px;font-weight:600;border:1px solid ${levelInfo.colors.hex}40;">${levelInfo.name}</span>`
     : "";
 
-  const levelRowHtml = levelInfo
-    ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-        <span style="color:#9ca3af;font-size:10px;">المستوى</span>
-        <span style="font-weight:500;font-size:10px;color:${levelInfo.colors.hex};">${levelInfo.name}</span>
-      </div>`
-    : "";
+  const infoRows = [
+    { label: "رقم الهوية", value: `<span style="font-family:'Courier New',monospace;font-weight:700;color:#16213e;letter-spacing:0.5px;">${formattedId}</span>` },
+    safeMosqueName ? { label: "الجامع/المركز", value: `<span style="font-weight:500;">${safeMosqueName}</span>` } : null,
+    levelInfo ? { label: "المستوى", value: `<span style="font-weight:600;color:${levelInfo.colors.hex};">${levelInfo.name}</span>` } : null,
+    user.phone ? { label: "الهاتف", value: `<span dir="ltr">${esc(user.phone)}</span>` } : null,
+    { label: "الانضمام", value: joinDate },
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  const infoRowsHtml = infoRows.map(r =>
+    `<tr><td style="color:#6b7280;font-size:9px;padding:2px 0;white-space:nowrap;text-align:right;padding-left:8px;">${r.label}</td><td style="font-size:9px;padding:2px 0;text-align:left;">${r.value}</td></tr>`
+  ).join("");
 
   return `
-    <div style="width:9cm;height:6cm;border-radius:12px;overflow:hidden;border:2px solid #e5e7eb;background:white;display:inline-flex;flex-direction:column;margin:8px;page-break-inside:avoid;font-family:'Tajawal',sans-serif;position:relative;" dir="rtl">
-      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(to left,#3b82f6,#8b5cf6,#ec4899);"></div>
-      <div style="height:60px;background:linear-gradient(to left,#16213e,#1a1a2e,#0f3460);position:relative;overflow:hidden;flex-shrink:0;">
-        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;opacity:0.1;">
-          <defs>
-            <pattern id="p-${user.id}" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="white" stroke-width="0.5"/>
-              <circle cx="20" cy="20" r="8" fill="none" stroke="white" stroke-width="0.5"/>
-              <circle cx="20" cy="20" r="3" fill="none" stroke="white" stroke-width="0.3"/>
-            </pattern>
-          </defs>
+    <div style="width:8.6cm;height:5.4cm;border-radius:10px;overflow:hidden;border:1.5px solid #d1d5db;background:white;display:inline-flex;flex-direction:column;margin:6px;page-break-inside:avoid;font-family:'Tajawal','Segoe UI',sans-serif;position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.08);" dir="rtl">
+      <!-- Header -->
+      <div style="height:48px;background:linear-gradient(135deg,#0f3460 0%,#16213e 50%,#1a1a2e 100%);display:flex;align-items:center;justify-content:space-between;padding:0 12px;flex-shrink:0;position:relative;">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;opacity:0.06;">
+          <defs><pattern id="p-${user.id}" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+            <path d="M15 0L30 15L15 30L0 15Z" fill="none" stroke="white" stroke-width="0.5"/>
+            <circle cx="15" cy="15" r="5" fill="none" stroke="white" stroke-width="0.3"/>
+          </pattern></defs>
           <rect width="100%" height="100%" fill="url(#p-${user.id})"/>
         </svg>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;color:white;padding:0 12px;z-index:10;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            ${mosqueLogoSection}
-            <div>
-              ${headerTitle}
-              <p style="font-size:8px;opacity:0.8;margin:0;">لإدارة حلقات القرآن الكريم</p>
-            </div>
+        <div style="display:flex;align-items:center;gap:8px;z-index:1;">
+          ${mosqueLogoHtml ? `<div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(255,255,255,0.2);">${mosqueLogoHtml}</div>` : ""}
+          <div style="color:white;">
+            <div style="font-size:11px;font-weight:700;line-height:1.3;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeMosqueName || "مُتْقِن"}</div>
+            <div style="font-size:7px;opacity:0.7;">لإدارة حلقات القرآن الكريم</div>
           </div>
-          <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.3);box-shadow:0 2px 8px rgba(0,0,0,0.2);">
-            <img src="/logo.png" style="width:28px;height:28px;border-radius:50%;object-fit:contain;" />
+        </div>
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);z-index:1;">
+          <img src="/logo.png" style="width:26px;height:26px;border-radius:50%;object-fit:contain;" />
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div style="flex:1;display:flex;padding:8px 10px 6px;gap:8px;overflow:hidden;">
+        <!-- Right: Avatar + Name -->
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:80px;flex-shrink:0;">
+          <div style="width:50px;height:50px;border-radius:50%;border:2px solid #e5e7eb;overflow:hidden;background:#f9fafb;display:flex;align-items:center;justify-content:center;margin-bottom:4px;">
+            ${avatarHtml}
+          </div>
+          <div style="text-align:center;max-width:78px;overflow:hidden;">
+            <div style="font-size:10px;font-weight:700;color:#1f2937;line-height:1.3;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${safeName}</div>
+          </div>
+          <div style="margin-top:2px;display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span style="display:inline-block;padding:1px 10px;border-radius:9999px;background:#16213e;color:white;font-size:9px;font-weight:600;">${roleLabel}</span>
+            ${levelBadgeHtml}
+          </div>
+        </div>
+
+        <!-- Left: Info + QR -->
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;min-width:0;">
+          <table style="width:100%;border-collapse:collapse;font-size:9px;color:#374151;">
+            ${infoRowsHtml}
+          </table>
+          <div style="display:flex;align-items:flex-end;justify-content:flex-start;gap:4px;margin-top:4px;">
+            <div style="padding:2px;background:white;border:1px solid #e5e7eb;border-radius:6px;line-height:0;">
+              <img src="${qrDataUrl}" style="width:48px;height:48px;" alt="QR" />
+            </div>
+            <span style="font-size:6px;color:#9ca3af;writing-mode:vertical-rl;transform:rotate(180deg);line-height:1;">امسح للتحقق</span>
           </div>
         </div>
       </div>
-      <div style="display:flex;flex:1;padding:8px 10px 4px;gap:10px;align-items:stretch;">
-        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;justify-content:center;">
-          <div style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(22,33,62,0.2);overflow:hidden;background:linear-gradient(135deg,rgba(22,33,62,0.1),rgba(22,33,62,0.05));display:flex;align-items:center;justify-content:center;margin-bottom:4px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-            ${avatarSection}
-          </div>
-          <h3 style="font-size:13px;font-weight:bold;color:#1f2937;text-align:center;margin:0;line-height:1.2;">${safeName}</h3>
-          <span style="display:inline-block;margin-top:2px;padding:1px 8px;border-radius:9999px;background:#f3f4f6;color:#4b5563;font-size:10px;">${roleLabel}</span>
-          ${levelBadgeHtml}
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
-          <div style="padding:5px 8px;background:linear-gradient(135deg,#f9fafb,#f1f5f9);border-radius:8px;border:1px solid #e2e8f0;font-size:11px;color:#4b5563;box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="color:#9ca3af;font-size:10px;">رقم الهوية</span>
-              <span style="font-family:monospace;font-weight:600;color:#16213e;font-size:10px;background:rgba(22,33,62,0.05);padding:1px 4px;border-radius:4px;">${formattedId}</span>
-            </div>
-            ${safeMosqueName ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="color:#9ca3af;font-size:10px;">الجامع/المركز</span>
-              <span style="font-weight:500;font-size:10px;">${safeMosqueName}</span>
-            </div>` : ""}
-            ${levelRowHtml}
-            ${user.phone ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="color:#9ca3af;font-size:10px;">الهاتف</span>
-              <span dir="ltr" style="font-size:10px;">${esc(user.phone)}</span>
-            </div>` : ""}
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="color:#9ca3af;font-size:10px;">الانضمام</span>
-              <span style="font-size:10px;">${joinDate}</span>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:center;margin-top:5px;gap:4px;">
-            <div style="padding:3px;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-              <img src="${qrDataUrl}" style="width:58px;height:58px;" alt="QR" />
-            </div>
-            <p style="font-size:7px;color:#9ca3af;writing-mode:vertical-rl;transform:rotate(180deg);">امسح للتحقق</p>
-          </div>
-        </div>
-      </div>
-      <div style="width:100%;height:5px;background:linear-gradient(to left,#3b82f6,#8b5cf6,#ec4899);flex-shrink:0;"></div>
+
+      <!-- Footer stripe -->
+      <div style="height:4px;background:linear-gradient(to left,#0f3460,#16213e,#1a1a2e);flex-shrink:0;"></div>
     </div>
   `;
 }
@@ -199,115 +189,127 @@ function QRCodeImage({ value, size }: { value: string; size: number }) {
 
 function IDCard({ user, mosqueName, mosqueImage }: { user: UserData; mosqueName: string; mosqueImage?: string }) {
   const levelInfo = getLevelInfo(user.level);
+  const roleLabel = roleTranslations[user.role] || user.role;
 
   return (
     <div
-      className="bg-white w-[340px] rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 print:shadow-none print:border print:border-gray-300 flex flex-col relative"
+      className="bg-white rounded-[10px] shadow-md overflow-hidden border border-gray-300 flex flex-col relative print:shadow-none print:border print:border-gray-400"
+      style={{ width: "325px", height: "204px" }}
       dir="rtl"
       data-testid={`card-idcard-${user.id}`}
     >
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-l from-blue-500 via-purple-500 to-pink-500" data-testid={`decorative-border-top-${user.id}`} />
-
-      <div className="h-[60px] bg-gradient-to-l from-[#16213e] via-[#1a1a2e] to-[#0f3460] relative overflow-hidden shrink-0" data-testid={`card-header-${user.id}`}>
-        <div className="absolute inset-0 opacity-10">
+      <div className="h-[48px] bg-gradient-to-l from-[#0f3460] via-[#16213e] to-[#1a1a2e] relative overflow-hidden shrink-0 flex items-center justify-between px-3" data-testid={`card-header-${user.id}`}>
+        <div className="absolute inset-0 opacity-[0.06]">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <pattern id={`islamic-${user.id}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M20 0L40 20L20 40L0 20Z" fill="none" stroke="white" strokeWidth="0.5" />
-                <circle cx="20" cy="20" r="8" fill="none" stroke="white" strokeWidth="0.5" />
-                <circle cx="20" cy="20" r="3" fill="none" stroke="white" strokeWidth="0.3" />
+              <pattern id={`ip-${user.id}`} x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+                <path d="M15 0L30 15L15 30L0 15Z" fill="none" stroke="white" strokeWidth="0.5" />
+                <circle cx="15" cy="15" r="5" fill="none" stroke="white" strokeWidth="0.3" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill={`url(#islamic-${user.id})`} />
+            <rect width="100%" height="100%" fill={`url(#ip-${user.id})`} />
           </svg>
         </div>
-        <div className="absolute inset-0 flex items-center justify-between text-white z-10 px-3">
-          <div className="flex items-center gap-2">
-            {mosqueImage ? (
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 overflow-hidden shadow-lg">
-                <img src={mosqueImage} className="w-8 h-8 rounded-full object-cover" />
-              </div>
-            ) : null}
-            <div>
-              {mosqueName && <h2 className="font-serif text-[12px] font-bold leading-tight truncate max-w-[150px] drop-shadow-sm">{mosqueName}</h2>}
-              {!mosqueName && <h2 className="font-serif text-sm font-bold tracking-wide leading-tight drop-shadow-sm">مُتْقِن</h2>}
-              <p className="text-[8px] opacity-80">لإدارة حلقات القرآن الكريم</p>
+        <div className="flex items-center gap-2 z-10">
+          {mosqueImage ? (
+            <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center overflow-hidden border border-white/20 shrink-0">
+              <img src={mosqueImage} className="w-[30px] h-[30px] rounded-full object-cover" />
             </div>
+          ) : null}
+          <div className="text-white">
+            <div className="text-[11px] font-bold leading-tight truncate max-w-[180px]">{mosqueName || "مُتْقِن"}</div>
+            <div className="text-[7px] opacity-70">لإدارة حلقات القرآن الكريم</div>
           </div>
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 shadow-lg">
-            <img src="/logo.png" className="w-7 h-7 rounded-full object-contain" />
-          </div>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center border border-white/20 shrink-0 z-10">
+          <img src="/logo.png" className="w-[26px] h-[26px] rounded-full object-contain" />
         </div>
       </div>
 
-      <div className="flex flex-1 px-3 py-2 gap-3">
-        <div className="flex flex-col items-center shrink-0 justify-center">
-          <div className="w-[56px] h-[56px] rounded-full border-3 border-primary/30 shadow-lg overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-1.5 ring-2 ring-primary/10 ring-offset-1" data-testid={`avatar-container-${user.id}`}>
+      <div className="flex flex-1 px-2.5 py-2 gap-2 overflow-hidden">
+        <div className="flex flex-col items-center justify-center shrink-0" style={{ width: "80px" }}>
+          <div className="w-[50px] h-[50px] rounded-full border-2 border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center mb-1" data-testid={`avatar-container-${user.id}`}>
             {user.avatar ? (
               <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" data-testid={`img-avatar-${user.id}`} />
             ) : (
-              <span className="text-2xl font-bold text-primary" data-testid={`text-avatar-letter-${user.id}`}>
+              <span className="text-xl font-bold text-[#16213e]" data-testid={`text-avatar-letter-${user.id}`}>
                 {user.name.charAt(0)}
               </span>
             )}
           </div>
-          <h3 className="text-[13px] font-bold text-gray-800 text-center leading-tight" data-testid={`text-user-name-${user.id}`}>{user.name}</h3>
-          <Badge variant="secondary" className="mt-0.5 text-[10px] px-2 py-0" data-testid={`badge-role-${user.id}`}>
-            {roleTranslations[user.role] || user.role}
-          </Badge>
-          {levelInfo && (
-            <span
-              className={`mt-1 text-[9px] px-2 py-0.5 rounded-full font-semibold border ${levelInfo.colors.bg} ${levelInfo.colors.text} ${levelInfo.colors.border}`}
-              data-testid={`badge-level-${user.id}`}
-            >
-              {levelInfo.name}
+          <div className="text-center max-w-[78px] overflow-hidden">
+            <div className="text-[10px] font-bold text-gray-800 leading-tight line-clamp-2" data-testid={`text-user-name-${user.id}`}>{user.name}</div>
+          </div>
+          <div className="flex flex-col items-center gap-0.5 mt-1">
+            <span className="inline-block px-2.5 py-px rounded-full bg-[#16213e] text-white text-[9px] font-semibold" data-testid={`badge-role-${user.id}`}>
+              {roleLabel}
             </span>
-          )}
+            {levelInfo && (
+              <span
+                className={`inline-block px-2.5 py-px rounded-full text-[9px] font-semibold border ${levelInfo.colors.bg} ${levelInfo.colors.text} ${levelInfo.colors.border}`}
+                data-testid={`badge-level-${user.id}`}
+              >
+                {levelInfo.name}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center">
-          <div className="space-y-1.5 text-[11px] text-gray-600 bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-2.5 border border-gray-100 shadow-sm" data-testid={`info-section-${user.id}`}>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 shrink-0 text-[10px]">رقم الهوية</span>
-              <span className="font-mono font-semibold text-primary text-[10px] bg-primary/5 px-1.5 py-0.5 rounded" data-testid={`text-userid-${user.id}`}>{formatUserId(user.id)}</span>
-            </div>
-            {mosqueName && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 shrink-0 text-[10px]">الجامع/المركز</span>
-                <span className="font-medium text-[10px] truncate max-w-[120px] text-left" data-testid={`text-mosque-${user.id}`}>{mosqueName}</span>
-              </div>
-            )}
-            {levelInfo && (
-              <div className="flex justify-between items-center" data-testid={`row-level-${user.id}`}>
-                <span className="text-gray-400 shrink-0 text-[10px]">المستوى</span>
-                <span className="font-medium text-[10px]" style={{ color: levelInfo.colors.hex }}>{levelInfo.name}</span>
-              </div>
-            )}
-            {user.phone && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 shrink-0 text-[10px]">الهاتف</span>
-                <span dir="ltr" className="text-[10px]" data-testid={`text-phone-${user.id}`}>{user.phone}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 shrink-0 text-[10px]">الانضمام</span>
-              <span className="text-[10px]" data-testid={`text-joindate-${user.id}`}>{formatDate(user.createdAt)}</span>
-            </div>
-          </div>
+        <div className="flex-1 flex flex-col justify-between min-w-0">
+          <table className="w-full text-[9px] text-gray-700" style={{ borderCollapse: "collapse" }} data-testid={`info-section-${user.id}`}>
+            <tbody>
+              <tr>
+                <td className="text-gray-400 py-[2px] pr-0 pl-2 whitespace-nowrap text-[9px]">رقم الهوية</td>
+                <td className="py-[2px] text-left">
+                  <span className="font-mono font-bold text-[#16213e] tracking-wide text-[9px]" data-testid={`text-userid-${user.id}`}>{formatUserId(user.id)}</span>
+                </td>
+              </tr>
+              {mosqueName && (
+                <tr>
+                  <td className="text-gray-400 py-[2px] pr-0 pl-2 whitespace-nowrap text-[9px]">الجامع/المركز</td>
+                  <td className="py-[2px] text-left">
+                    <span className="font-medium text-[9px] block truncate max-w-[110px]" data-testid={`text-mosque-${user.id}`}>{mosqueName}</span>
+                  </td>
+                </tr>
+              )}
+              {levelInfo && (
+                <tr data-testid={`row-level-${user.id}`}>
+                  <td className="text-gray-400 py-[2px] pr-0 pl-2 whitespace-nowrap text-[9px]">المستوى</td>
+                  <td className="py-[2px] text-left">
+                    <span className="font-semibold text-[9px]" style={{ color: levelInfo.colors.hex }}>{levelInfo.name}</span>
+                  </td>
+                </tr>
+              )}
+              {user.phone && (
+                <tr>
+                  <td className="text-gray-400 py-[2px] pr-0 pl-2 whitespace-nowrap text-[9px]">الهاتف</td>
+                  <td className="py-[2px] text-left">
+                    <span dir="ltr" className="text-[9px]" data-testid={`text-phone-${user.id}`}>{user.phone}</span>
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td className="text-gray-400 py-[2px] pr-0 pl-2 whitespace-nowrap text-[9px]">الانضمام</td>
+                <td className="py-[2px] text-left">
+                  <span className="text-[9px]" data-testid={`text-joindate-${user.id}`}>{formatDate(user.createdAt)}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-          <div className="flex items-center justify-center mt-1.5 gap-1">
-            <div className="p-1 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="flex items-end gap-1 mt-1">
+            <div className="p-[2px] bg-white border border-gray-200 rounded-md leading-[0]">
               <QRCodeImage
                 value={JSON.stringify({ id: user.id, name: user.name, role: user.role })}
-                size={58}
+                size={48}
               />
             </div>
-            <p className="text-[7px] text-gray-400 writing-vertical-rl" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>امسح للتحقق</p>
+            <span className="text-[6px] text-gray-400" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", lineHeight: 1 }}>امسح للتحقق</span>
           </div>
         </div>
       </div>
 
-      <div className="w-full h-1.5 bg-gradient-to-l from-blue-500 via-purple-500 to-pink-500 shrink-0" data-testid={`decorative-border-bottom-${user.id}`} />
+      <div className="w-full h-1 bg-gradient-to-l from-[#0f3460] via-[#16213e] to-[#1a1a2e] shrink-0" data-testid={`decorative-border-bottom-${user.id}`} />
     </div>
   );
 }
@@ -321,7 +323,6 @@ export default function IDCardsPage() {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [filterRole, setFilterRole] = useState<string>("all");
 
-
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -330,18 +331,12 @@ export default function IDCardsPage() {
           fetch("/api/users", { credentials: "include" }),
           fetch("/api/mosques", { credentials: "include" }),
         ]);
-        if (usersRes.ok) {
-          const usersData = await usersRes.json();
-          setUsers(usersData);
-        }
+        if (usersRes.ok) setUsers(await usersRes.json());
         if (mosquesRes.ok) {
           const mosquesData = await mosquesRes.json();
           setMosques(Array.isArray(mosquesData) ? mosquesData : [mosquesData]);
         }
-      } catch {
-      } finally {
-        setLoading(false);
-      }
+      } catch {} finally { setLoading(false); }
     };
     fetchData();
   }, []);
@@ -352,16 +347,8 @@ export default function IDCardsPage() {
   });
 
   const mosqueMap = new Map(mosques.map((m) => [m.id, m]));
-
-  const getMosqueName = (mosqueId?: string | null) => {
-    if (!mosqueId) return "";
-    return mosqueMap.get(mosqueId)?.name || "";
-  };
-
-  const getMosqueImage = (mosqueId?: string | null) => {
-    if (!mosqueId) return "";
-    return mosqueMap.get(mosqueId)?.image || "";
-  };
+  const getMosqueName = (mosqueId?: string | null) => mosqueId ? (mosqueMap.get(mosqueId)?.name || "") : "";
+  const getMosqueImage = (mosqueId?: string | null) => mosqueId ? (mosqueMap.get(mosqueId)?.image || "") : "";
 
   const groupedUsers = {
     student: users.filter((u) => u.role === "student"),
@@ -375,18 +362,14 @@ export default function IDCardsPage() {
   const toggleUser = (id: string) => {
     setSelectedUserIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
   const toggleAll = () => {
-    if (selectedUserIds.size === filteredUsers.length) {
-      setSelectedUserIds(new Set());
-    } else {
-      setSelectedUserIds(new Set(filteredUsers.map((u) => u.id)));
-    }
+    if (selectedUserIds.size === filteredUsers.length) setSelectedUserIds(new Set());
+    else setSelectedUserIds(new Set(filteredUsers.map((u) => u.id)));
   };
 
   const selectedUsers = users.filter((u) => selectedUserIds.has(u.id));
@@ -395,25 +378,26 @@ export default function IDCardsPage() {
     for (const u of selectedUsers) {
       const qrData = JSON.stringify({ id: u.id, name: u.name, role: u.role });
       const qrDataUrl = await generateQRDataURL(qrData);
-      const cardHtml = generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl, getMosqueImage(u.mosqueId));
+      const cardHtml = generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl, getMosqueImage(u.mosqueId) || undefined);
       const win = window.open("", "_blank");
       if (!win) return;
-      const safeName = (u.name || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const safeName = esc(u.name || "");
       win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>هوية - ${safeName}</title><style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Tajawal', sans-serif; display: flex; justify-content: center; align-items: flex-start; padding: 10px; background: white; }
+        body { font-family: 'Tajawal', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f3f4f6; }
         .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: #16213e; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-        .actions-bar button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; }
-        .btn-print { background: #e94560; color: white; }
-        .btn-close { background: #555; color: white; }
-        .card-area { margin-top: 60px; }
-        @media print { .actions-bar { display: none !important; } .card-area { margin-top: 0; } @page { size: 9cm 6cm; margin: 0; } body { padding: 0; } }
+        .actions-bar button { padding: 8px 24px; border: none; border-radius: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600; transition: opacity 0.2s; }
+        .actions-bar button:hover { opacity: 0.9; }
+        .btn-print { background: #059669; color: white; }
+        .btn-close { background: #6b7280; color: white; }
+        .card-area { margin-top: 60px; padding: 20px; }
+        @media print { .actions-bar { display: none !important; } .card-area { margin-top: 0; padding: 0; } @page { size: 8.6cm 5.4cm; margin: 0; } body { padding: 0; background: white; min-height: auto; } }
       </style></head><body>
       <div class="actions-bar">
-        <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
-        <button class="btn-print" onclick="window.print()">📥 حفظ PDF</button>
-        <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+        <button class="btn-print" onclick="window.print()">طباعة</button>
+        <button class="btn-print" onclick="window.print()">حفظ PDF</button>
+        <button class="btn-close" onclick="window.close()">إغلاق</button>
       </div>
       <div class="card-area">${cardHtml}</div></body></html>`);
       win.document.close();
@@ -425,28 +409,27 @@ export default function IDCardsPage() {
     for (const u of selectedUsers) {
       const qrData = JSON.stringify({ id: u.id, name: u.name, role: u.role });
       const qrDataUrl = await generateQRDataURL(qrData);
-      cardsHtml.push(generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl, getMosqueImage(u.mosqueId)));
+      cardsHtml.push(generateIDCardHtml(u, getMosqueName(u.mosqueId), qrDataUrl, getMosqueImage(u.mosqueId) || undefined));
     }
-    const allCardsHtml = cardsHtml.join("");
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>بطاقات الهوية (${selectedUsers.length})</title><style>
       @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Tajawal', sans-serif; background: white; padding: 10px; }
+      body { font-family: 'Tajawal', sans-serif; background: #f3f4f6; padding: 20px; }
       .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: #16213e; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-      .actions-bar button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; }
-      .btn-print { background: #e94560; color: white; }
-      .btn-close { background: #555; color: white; }
+      .actions-bar button { padding: 8px 24px; border: none; border-radius: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 600; }
+      .btn-print { background: #059669; color: white; }
+      .btn-close { background: #6b7280; color: white; }
       .cards-area { margin-top: 60px; display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; padding: 20px; }
-      @media print { .actions-bar { display: none !important; } .cards-area { margin-top: 0; } @page { size: A4 portrait; margin: 10mm; } body { padding: 0; } }
+      @media print { .actions-bar { display: none !important; } .cards-area { margin-top: 0; gap: 8px; padding: 0; } @page { size: A4 portrait; margin: 8mm; } body { padding: 0; background: white; } }
     </style></head><body>
     <div class="actions-bar">
-      <button class="btn-print" onclick="window.print()">🖨️ طباعة</button>
-      <button class="btn-print" onclick="window.print()">📥 حفظ PDF</button>
-      <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+      <button class="btn-print" onclick="window.print()">طباعة</button>
+      <button class="btn-print" onclick="window.print()">حفظ PDF</button>
+      <button class="btn-close" onclick="window.close()">إغلاق</button>
     </div>
-    <div class="cards-area">${allCardsHtml}</div></body></html>`);
+    <div class="cards-area">${cardsHtml.join("")}</div></body></html>`);
     win.document.close();
   };
 
@@ -458,28 +441,21 @@ export default function IDCardsPage() {
       for (const u of selectedUsers) {
         const cardEl = document.querySelector(`[data-testid="card-idcard-${u.id}"]`) as HTMLElement;
         if (!cardEl) continue;
-
         const dataUrl = await toPng(cardEl, {
           quality: 1,
           pixelRatio: 300 / 96,
           backgroundColor: "#ffffff",
-          style: {
-            direction: "rtl",
-          },
+          style: { direction: "rtl" },
         });
-
         const a = document.createElement("a");
         a.href = dataUrl;
         a.download = `هوية_${u.name}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
         await new Promise((r) => setTimeout(r, 300));
       }
-    } finally {
-      setExporting(false);
-    }
+    } finally { setExporting(false); }
   };
 
   if (loading) {
@@ -527,11 +503,7 @@ export default function IDCardsPage() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                disabled={selectedUsers.length === 0 || exporting}
-                data-testid="button-export-pdf"
-              >
+              <Button variant="outline" disabled={selectedUsers.length === 0 || exporting} data-testid="button-export-pdf">
                 {exporting ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <FileDown className="w-4 h-4 ml-2" />}
                 {exporting ? "جاري التصدير..." : "تصدير"}
                 <ChevronDown className="w-3 h-3 mr-1" />
@@ -584,7 +556,6 @@ export default function IDCardsPage() {
                   </Badge>
                 )}
               </div>
-
               <div className="space-y-4">
                 {(filterRole === "all"
                   ? (["student", "teacher", "supervisor", "admin"] as const)
@@ -649,7 +620,7 @@ export default function IDCardsPage() {
                 data-testid="print-area"
               >
                 {selectedUsers.map((u) => (
-                  <IDCard key={u.id} user={u} mosqueName={getMosqueName(u.mosqueId)} mosqueImage={getMosqueImage(u.mosqueId)} />
+                  <IDCard key={u.id} user={u} mosqueName={getMosqueName(u.mosqueId)} mosqueImage={getMosqueImage(u.mosqueId) || undefined} />
                 ))}
               </div>
             </div>
