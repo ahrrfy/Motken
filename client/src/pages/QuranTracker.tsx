@@ -511,7 +511,14 @@ export default function QuranTracker() {
     return `mutqin_quran_status_${user?.id ?? "guest"}_${surahNum}`;
   }, [user?.id]);
 
-  const loadStatuses = useCallback((surahNum: number): Record<number, VerseStatus> => {
+  const loadStatuses = useCallback(async (surahNum: number): Promise<Record<number, VerseStatus>> => {
+    try {
+      const res = await fetch(`/api/quran-progress?surahNumber=${surahNum}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.verseStatuses && data.verseStatuses !== "{}") return JSON.parse(data.verseStatuses);
+      }
+    } catch {}
     try {
       const stored = localStorage.getItem(getStorageKey(surahNum));
       if (stored) return JSON.parse(stored);
@@ -519,16 +526,19 @@ export default function QuranTracker() {
     return {};
   }, [getStorageKey]);
 
-  const saveStatuses = useCallback((surahNum: number, statuses: Record<number, VerseStatus>) => {
-    try {
-      localStorage.setItem(getStorageKey(surahNum), JSON.stringify(statuses));
-    } catch {}
+  const saveStatuses = useCallback((surahNum: number, statuses: Record<number, VerseStatus>, totalVerses?: number) => {
+    try { localStorage.setItem(getStorageKey(surahNum), JSON.stringify(statuses)); } catch {}
+    fetch("/api/quran-progress", {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ surahNumber: surahNum, verseStatuses: statuses, totalVerses }),
+    }).catch(() => {});
   }, [getStorageKey]);
 
   const fetchSurah = useCallback(async (surahNum: number) => {
     if (cache.current.has(surahNum)) {
       setVerses(cache.current.get(surahNum)!);
-      setVerseStatuses(loadStatuses(surahNum));
+      setVerseStatuses(await loadStatuses(surahNum));
       setError(null);
       return;
     }
@@ -545,7 +555,7 @@ export default function QuranTracker() {
       }));
       cache.current.set(surahNum, ayahs);
       setVerses(ayahs);
-      setVerseStatuses(loadStatuses(surahNum));
+      setVerseStatuses(await loadStatuses(surahNum));
     } catch (e: any) {
       setError(e.message || "حدث خطأ غير متوقع");
       setVerses([]);
@@ -566,7 +576,7 @@ export default function QuranTracker() {
   const updateVerseStatus = (verseNum: number, status: VerseStatus) => {
     const updated = { ...verseStatuses, [verseNum]: status };
     setVerseStatuses(updated);
-    saveStatuses(surahNumber, updated);
+    saveStatuses(surahNumber, updated, verses.length);
     setDialogOpen(false);
   };
 

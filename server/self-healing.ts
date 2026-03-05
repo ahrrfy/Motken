@@ -178,3 +178,53 @@ export function getHealthReport(): SystemHealthReport | null {
 export async function getDetailedHealthReport(): Promise<SystemHealthReport> {
   return runHealthCheck();
 }
+
+let absenceAlertTimer: NodeJS.Timeout | null = null;
+
+async function checkRepeatedAbsences(): Promise<void> {
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const result = await pool.query(`
+      SELECT a.student_id, u.name, u.mosque_id, u.teacher_id, COUNT(*) AS cnt
+      FROM attendance a JOIN users u ON u.id = a.student_id
+      WHERE a.status IN ('absent','غائب') AND a.date >= $1
+      GROUP BY a.student_id, u.name, u.mosque_id, u.teacher_id
+      HAVING COUNT(*) >= 3
+    `, [threeDaysAgo]);
+
+    for (const row of result.rows) {
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const already = await pool.query(
+        `SELECT id FROM notifications WHERE user_id=$1 AND title LIKE '%غياب متكرر%' AND created_at>=$2 LIMIT 1`,
+        [row.teacher_id || row.mosque_id, todayStart]
+      );
+      if (already.rows.length) continue;
+
+      const recipients = new Set<string>();
+      if (row.teacher_id) recipients.add(row.teacher_id);
+      if (row.mosque_id) {
+        const sups = await pool.query(`SELECT id FROM users WHERE mosque_id=$1 AND role='supervisor'`, [row.mosque_id]);
+        sups.rows.forEach((s: any) => recipients.add(s.id));
+      }
+      for (const rid of recipients) {
+        await pool.query(
+          `INSERT INTO notifications(id,user_id,mosque_id,title,message,type,is_read,created_at)
+           VALUES(gen_random_uuid(),$1,$2,$3,$4,'warning',false,NOW())`,
+          [rid, row.mosque_id, `غياب متكرر`, `${row.name} غاب ${row.cnt} مرات في آخر 3 أيام`]
+        );
+      }
+    }
+  } catch (err: any) {
+    console.error("[Cron] Absence check error:", err.message);
+  }
+}
+
+export function startAbsenceAlerts(): void {
+  setTimeout(checkRepeatedAbsences, 10_000);
+  absenceAlertTimer = setInterval(checkRepeatedAbsences, 24 * 60 * 60_000);
+  console.log("[Self-Healing] Absence alert monitor started");
+}
+
+export function stopAbsenceAlerts(): void {
+  if (absenceAlertTimer) clearInterval(absenceAlertTimer);
+}
