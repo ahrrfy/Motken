@@ -6171,6 +6171,7 @@ export async function registerRoutes(
 
       res.status(201).json({ message: "تم تقديم طلبك بنجاح. سيتم مراجعته من قبل الإدارة", id: registration.id });
     } catch (err: any) {
+      console.error("[register-mosque] Error:", err?.message || err);
       res.status(500).json({ message: "حدث خطأ في تقديم الطلب" });
     }
   });
