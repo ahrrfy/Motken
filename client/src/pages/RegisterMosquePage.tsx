@@ -151,7 +151,7 @@ export default function RegisterMosquePage() {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mosqueName">{isEn ? "Mosque Name" : "اسم المسجد"} <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="mosqueName">{isEn ? "Mosque/Center Name" : "اسم المسجد/المركز"} <span className="text-destructive">*</span></Label>
                   <Input 
                     id="mosqueName" 
                     required 
