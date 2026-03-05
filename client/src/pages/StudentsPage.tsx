@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
-import { isValidIraqiPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
+import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
+import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -690,23 +691,19 @@ export default function StudentsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>الهاتف <span className="text-red-500">*</span></Label>
-                    <Input data-testid="input-phone" className={phoneInputClassName(phoneValidation, formData.phone)} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
-                    {formData.phone && !isValidIraqiPhone(formData.phone) && (
-                      <p className="text-xs text-orange-500 mt-1" data-testid="text-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
-                    )}
-                    {phoneValidation.message && (
-                      <p className={`text-xs mt-1 ${phoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-phone-validation">{phoneValidation.message}</p>
-                    )}
+                    <InternationalPhoneInput
+                      value={formData.phone}
+                      onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}
+                      error={phoneValidation.message && !phoneValidation.valid ? phoneValidation.message : undefined}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>هاتف ولي الأمر <span className="text-red-500">*</span></Label>
-                    <Input data-testid="input-parent-phone" className={phoneInputClassName(parentPhoneValidation, formData.parentPhone)} value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} dir="ltr" placeholder="07xxxxxxxxx" required />
-                    {formData.parentPhone && !isValidIraqiPhone(formData.parentPhone) && (
-                      <p className="text-xs text-orange-500 mt-1" data-testid="text-parent-phone-warning">⚠ صيغة الرقم غير مطابقة للأرقام العراقية (مثال: 07xxxxxxxxx)</p>
-                    )}
-                    {parentPhoneValidation.message && (
-                      <p className={`text-xs mt-1 ${parentPhoneValidation.valid ? "text-green-600" : "text-red-500"}`} data-testid="text-parent-phone-validation">{parentPhoneValidation.message}</p>
-                    )}
+                    <InternationalPhoneInput
+                      value={formData.parentPhone}
+                      onChange={(full) => setFormData(prev => ({ ...prev, parentPhone: full }))}
+                      error={parentPhoneValidation.message && !parentPhoneValidation.valid ? parentPhoneValidation.message : undefined}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>معرف التلغرام</Label>

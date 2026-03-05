@@ -8,10 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users, BookOpen, UserCheck, Activity,
   MessageSquare, MapPin, Phone, Calendar,
-  ArrowRight, ShieldCheck, MessageCircle
+  ArrowRight, ShieldCheck, MessageCircle,
+  BarChart3, Clock, AlertTriangle
 } from "lucide-react";
 import { MessagingPanel } from "@/components/messaging-panel";
 import { useToast } from "@/hooks/use-toast";
+import { getWhatsAppUrl } from "@/lib/phone-utils";
 
 export default function MosqueDashboardPage() {
   const { id } = useParams<{ id: string }>();
@@ -89,8 +91,20 @@ export default function MosqueDashboardPage() {
   };
 
   const whatsappUrl = stats?.supervisorPhone
-    ? `https://wa.me/${(stats.supervisorPhone || "").replace(/[^\d+]/g, "").replace(/^\+/, "")}`
+    ? getWhatsAppUrl(stats.supervisorPhone)
     : null;
+
+  const formatLastActivity = (dateStr: string | null) => {
+    if (!dateStr) return "لا يوجد نشاط مسجل";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "اليوم";
+    if (diffDays === 1) return "أمس";
+    if (diffDays < 7) return `منذ ${diffDays} أيام`;
+    if (diffDays < 30) return `منذ ${Math.floor(diffDays / 7)} أسابيع`;
+    return date.toLocaleDateString("ar-IQ");
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6" dir="rtl">
@@ -148,24 +162,42 @@ export default function MosqueDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
           { label: "الطلاب", value: stats?.studentsCount ?? 0, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
           { label: "الأساتذة", value: stats?.teachersCount ?? 0, icon: BookOpen, color: "text-green-600", bg: "bg-green-50" },
           { label: "المشرفون", value: stats?.supervisorsCount ?? 0, icon: UserCheck, color: "text-purple-600", bg: "bg-purple-50" },
           { label: "الطلاب النشطون", value: stats?.activeStudents ?? 0, icon: Activity, color: "text-orange-600", bg: "bg-orange-50" },
+          { label: "نسبة الحضور", value: `${stats?.attendanceRate ?? 0}%`, icon: BarChart3, color: "text-teal-600", bg: "bg-teal-50" },
+          { label: "آخر نشاط", value: formatLastActivity(stats?.lastActivity), icon: Clock, color: "text-indigo-600", bg: "bg-indigo-50", small: true },
         ].map((item, i) => (
           <Card key={i} className="border-0 shadow-sm">
             <CardContent className="p-4">
               <div className={`w-10 h-10 rounded-lg ${item.bg} flex items-center justify-center mb-3`}>
                 <item.icon className={`h-5 w-5 ${item.color}`} />
               </div>
-              <div className="text-2xl font-bold text-gray-800" data-testid={`stat-${item.label}`}>{item.value}</div>
+              <div className={`font-bold text-gray-800 ${(item as any).small ? "text-sm" : "text-2xl"}`} data-testid={`stat-${item.label}`}>{item.value}</div>
               <div className="text-sm text-gray-500">{item.label}</div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {stats?.lastActivity && (() => {
+        const daysSince = Math.floor((Date.now() - new Date(stats.lastActivity).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSince >= 7) {
+          return (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3" data-testid="alert-inactivity">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+              <div>
+                <div className="font-medium text-amber-800">تنبيه عدم نشاط</div>
+                <div className="text-sm text-amber-600">لم يتم تسجيل أي نشاط في هذا المسجد/المركز منذ {daysSince} يوم</div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       <Tabs defaultValue="info" dir="rtl">
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1 bg-transparent">
@@ -235,6 +267,15 @@ export default function MosqueDashboardPage() {
                   <div>
                     <div className="text-xs text-gray-400">تاريخ التسجيل</div>
                     <div className="font-medium">{mosque.createdAt ? new Date(mosque.createdAt).toLocaleDateString("ar-IQ") : "—"}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Clock className="h-4 w-4 text-gray-400" />
+                  <div>
+                    <div className="text-xs text-gray-400">آخر تسجيل دخول</div>
+                    <div className="font-medium" data-testid="text-supervisor-last-login">
+                      {stats?.lastSupervisorLogin ? new Date(stats.lastSupervisorLogin).toLocaleDateString("ar-IQ") : "—"}
+                    </div>
                   </div>
                 </div>
               </div>

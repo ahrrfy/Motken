@@ -23,8 +23,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
-import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle, ImagePlus, X, CheckCircle2, ShieldCheck, UserCheck, FileText, Clock, LayoutDashboard } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle, ImagePlus, X, CheckCircle2, ShieldCheck, UserCheck, FileText, Clock, LayoutDashboard, Download, Bell, BarChart3, AlertTriangle, ArrowUpDown, Trophy } from "lucide-react";
 import type { Mosque, MosqueRegistration } from "@shared/schema";
+import { exportJsonToExcel } from "@/lib/excel-utils";
 
 interface MosqueStats {
   supervisors: number;
@@ -108,6 +109,19 @@ export default function MosquesPage() {
   const [filterProvince, setFilterProvince] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [minStudents, setMinStudents] = useState("");
+  const [maxStudents, setMaxStudents] = useState("");
+  const [filterInactive, setFilterInactive] = useState(false);
+
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastSending, setBroadcastSending] = useState(false);
+
+  const [inactiveMosqueIds, setInactiveMosqueIds] = useState<Set<string>>(new Set());
+  const [inactivityData, setInactivityData] = useState<any[]>([]);
+  const [comparativeStats, setComparativeStats] = useState<any>(null);
 
   // Admin Registration Management State
   const [registrations, setRegistrations] = useState<MosqueRegistration[]>([]);
@@ -170,11 +184,55 @@ export default function MosquesPage() {
     }
   }, []);
 
+  const fetchInactivity = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const data = await apiGet("/api/mosques/inactivity-check");
+      setInactivityData(data.inactiveMosques || []);
+      setInactiveMosqueIds(new Set((data.inactiveMosques || []).map((m: any) => m.id)));
+    } catch {}
+  }, [isAdmin]);
+
+  const fetchComparativeStats = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const data = await apiGet("/api/mosques/comparative-stats");
+      setComparativeStats(data);
+    } catch {}
+  }, [isAdmin]);
+
+  const handleBroadcast = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      toast({ title: "خطأ", description: "يرجى ملء العنوان والرسالة", variant: "destructive" });
+      return;
+    }
+    setBroadcastSending(true);
+    try {
+      const res = await apiPost("/api/mosques/broadcast-notification", {
+        title: broadcastTitle.trim(),
+        message: broadcastMessage.trim(),
+      });
+      const data = await res.json();
+      toast({ title: "تم بنجاح", description: data.message || "تم إرسال الإشعار" });
+      setBroadcastOpen(false);
+      setBroadcastTitle("");
+      setBroadcastMessage("");
+    } catch {
+      toast({ title: "خطأ", description: "فشل في إرسال الإشعار الجماعي", variant: "destructive" });
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
+
   useEffect(() => {
     fetchMosques();
-    if (isAdmin) fetchRegistrations();
+    if (isAdmin) {
+      fetchRegistrations();
+      fetchInactivity();
+      fetchComparativeStats();
+    }
     if (isSupervisor) fetchMyVouchings();
-  }, [fetchMosques, fetchRegistrations, fetchMyVouchings, isAdmin, isSupervisor]);
+  }, [fetchMosques, fetchRegistrations, fetchMyVouchings, fetchInactivity, fetchComparativeStats, isAdmin, isSupervisor]);
 
   useEffect(() => {
     mosques.forEach((m) => fetchStats(m.id));
@@ -390,8 +448,47 @@ export default function MosquesPage() {
       to.setHours(23, 59, 59, 999);
       matchesDate = matchesDate && new Date(m.createdAt) <= to;
     }
-    return matchesSearch && matchesStatus && matchesProvince && matchesDate;
+    const mosqueStats = stats[m.id] || { students: 0, teachers: 0, supervisors: 0 };
+    const matchesMinStudents = !minStudents || mosqueStats.students >= parseInt(minStudents);
+    const matchesMaxStudents = !maxStudents || mosqueStats.students <= parseInt(maxStudents);
+    const matchesInactive = !filterInactive || inactiveMosqueIds.has(m.id);
+    return matchesSearch && matchesStatus && matchesProvince && matchesDate && matchesMinStudents && matchesMaxStudents && matchesInactive;
+  }).sort((a, b) => {
+    const sa = stats[a.id] || { students: 0, teachers: 0, supervisors: 0 };
+    const sb = stats[b.id] || { students: 0, teachers: 0, supervisors: 0 };
+    if (sortBy === "students_desc") return sb.students - sa.students;
+    if (sortBy === "students_asc") return sa.students - sb.students;
+    if (sortBy === "date_desc") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortBy === "date_asc") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return a.name.localeCompare(b.name, "ar");
   });
+
+  const handleExport = async () => {
+    try {
+      const exportData = filteredMosques.map((m) => {
+        const mosqueStats = stats[m.id] || { students: 0, teachers: 0, supervisors: 0 };
+        return {
+          "اسم الجامع/المركز": m.name,
+          "المحافظة": (m as any).province || "",
+          "المدينة": m.city || "",
+          "عدد الطلاب": mosqueStats.students,
+          "عدد المعلمين": mosqueStats.teachers,
+          "الحالة": statusLabels[(m as any).status] || (m as any).status,
+          "تاريخ الإنشاء": new Date(m.createdAt).toLocaleDateString("ar-IQ"),
+        };
+      });
+
+      await exportJsonToExcel(
+        exportData as any,
+        "الجوامع والمراكز",
+        `mosques_${new Date().toISOString().split('T')[0]}.xlsx`
+      );
+      toast({ title: "تم بنجاح", description: "تم تصدير البيانات بنجاح" });
+    } catch (error) {
+      console.error("Export failed", error);
+      toast({ title: "خطأ", description: "فشل في تصدير البيانات", variant: "destructive" });
+    }
+  };
 
   const renderForm = (isEdit: boolean = false) => (
     <div className="space-y-4" dir="rtl">
@@ -813,7 +910,12 @@ export default function MosquesPage() {
           <p className="text-muted-foreground">إدارة الجوامع ومراكز تحفيظ القرآن وطلبات الانضمام</p>
         </div>
         {isAdmin && (
-          <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setForm(emptyForm); }}>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" className="gap-2 text-amber-600 border-amber-300 hover:bg-amber-50" onClick={() => setBroadcastOpen(true)} data-testid="button-broadcast-notification">
+              <Bell className="w-4 h-4" />
+              إشعار جماعي
+            </Button>
+            <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setForm(emptyForm); }}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90 text-white gap-2" data-testid="button-add-mosque">
                 <Plus className="w-4 h-4" />
@@ -835,6 +937,7 @@ export default function MosquesPage() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
@@ -844,6 +947,21 @@ export default function MosquesPage() {
             <Building2 className="w-4 h-4" />
             الجوامع الحالية
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="stats" className="gap-2 py-2" data-testid="tab-comparative-stats">
+              <BarChart3 className="w-4 h-4" />
+              إحصائيات مقارنة
+            </TabsTrigger>
+          )}
+          {isAdmin && inactivityData.length > 0 && (
+            <TabsTrigger value="inactive" className="gap-2 py-2" data-testid="tab-inactive-mosques">
+              <AlertTriangle className="w-4 h-4" />
+              غير نشطة
+              <Badge variant="destructive" className="h-5 min-w-[20px] px-1.5 flex items-center justify-center text-[10px]">
+                {inactivityData.length}
+              </Badge>
+            </TabsTrigger>
+          )}
           {isAdmin && (
             <TabsTrigger value="registrations" className="gap-2 py-2" data-testid="tab-registrations">
               <FileText className="w-4 h-4" />
@@ -920,16 +1038,76 @@ export default function MosquesPage() {
                       onChange={(e) => setDateTo(e.target.value)}
                     />
                   </div>
-                  {(search || filterStatus !== "all" || filterProvince !== "all" || dateFrom || dateTo) && (
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-full sm:w-44" data-testid="select-sort-by">
+                      <ArrowUpDown className="w-3.5 h-3.5 ml-2" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">ترتيب بالاسم</SelectItem>
+                      <SelectItem value="date_desc">الأحدث أولاً</SelectItem>
+                      <SelectItem value="date_asc">الأقدم أولاً</SelectItem>
+                      <SelectItem value="students_desc">الأكثر طلاباً</SelectItem>
+                      <SelectItem value="students_asc">الأقل طلاباً</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-muted-foreground">الحد الأدنى للطلاب</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      data-testid="input-min-students"
+                      value={minStudents}
+                      onChange={(e) => setMinStudents(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-muted-foreground">الحد الأقصى للطلاب</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      data-testid="input-max-students"
+                      value={maxStudents}
+                      onChange={(e) => setMaxStudents(e.target.value)}
+                      placeholder="999"
+                    />
+                  </div>
+                  {isAdmin && inactivityData.length > 0 && (
                     <Button
-                      variant="ghost"
+                      variant={filterInactive ? "default" : "outline"}
                       size="sm"
-                      onClick={() => { setSearch(""); setFilterStatus("all"); setFilterProvince("all"); setDateFrom(""); setDateTo(""); }}
-                      data-testid="button-clear-filters"
+                      className={`gap-1 shrink-0 ${filterInactive ? "" : "text-amber-600 border-amber-300"}`}
+                      onClick={() => setFilterInactive(!filterInactive)}
+                      data-testid="button-filter-inactive"
                     >
-                      مسح الفلاتر
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      غير نشطة ({inactivityData.length})
                     </Button>
                   )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="gap-2 shrink-0"
+                      onClick={handleExport}
+                      data-testid="button-export-mosques"
+                    >
+                      <Download className="w-4 h-4" />
+                      تصدير Excel
+                    </Button>
+                    {(search || filterStatus !== "all" || filterProvince !== "all" || dateFrom || dateTo || sortBy !== "name" || minStudents || maxStudents || filterInactive) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setSearch(""); setFilterStatus("all"); setFilterProvince("all"); setDateFrom(""); setDateTo(""); setSortBy("name"); setMinStudents(""); setMaxStudents(""); setFilterInactive(false); }}
+                        data-testid="button-clear-filters"
+                      >
+                        مسح الفلاتر
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1000,6 +1178,12 @@ export default function MosquesPage() {
                         <span data-testid={`text-supervisors-${mosque.id}`}>مشرفين: {mosqueStats.supervisors}</span>
                         <span data-testid={`text-teachers-${mosque.id}`}>أساتذة: {mosqueStats.teachers}</span>
                         <span data-testid={`text-students-${mosque.id}`}>طلاب: {mosqueStats.students}</span>
+                        {inactiveMosqueIds.has(mosque.id) && (
+                          <span className="flex items-center gap-1 text-amber-600 font-medium" data-testid={`badge-inactive-${mosque.id}`}>
+                            <AlertTriangle className="w-3 h-3" />
+                            غير نشط
+                          </span>
+                        )}
                       </div>
 
                       {isAdmin && (
@@ -1099,6 +1283,97 @@ export default function MosquesPage() {
         </TabsContent>
 
         {isAdmin && (
+          <TabsContent value="stats" className="pt-4 space-y-6">
+            {comparativeStats ? (
+              <>
+                {[
+                  { title: "الأكثر طلاباً", data: comparativeStats.topByStudents, valueKey: "studentsCount", valueLabel: "طالب", icon: Users, color: "text-blue-600" },
+                  { title: "أعلى نسبة حضور", data: comparativeStats.topByAttendance, valueKey: "attendanceRate", valueLabel: "%", icon: BarChart3, color: "text-teal-600" },
+                  { title: "الأكثر نشاطاً", data: comparativeStats.topByActivity, valueKey: "lastActivity", valueLabel: "", icon: Trophy, color: "text-amber-600" },
+                ].map((section, si) => (
+                  <Card key={si}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <section.icon className={`w-5 h-5 ${section.color}`} />
+                        {section.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {(!section.data || section.data.length === 0) ? (
+                        <div className="text-center text-muted-foreground py-6">لا توجد بيانات</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {section.data.map((m: any, i: number) => (
+                            <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors" data-testid={`ranking-${section.valueKey}-${m.id}`}>
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                                i === 0 ? "bg-amber-100 text-amber-700" :
+                                i === 1 ? "bg-gray-200 text-gray-700" :
+                                i === 2 ? "bg-orange-100 text-orange-700" :
+                                "bg-muted text-muted-foreground"
+                              }`}>
+                                {i + 1}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-sm">{m.name}</div>
+                                <div className="text-xs text-muted-foreground">{m.province}</div>
+                              </div>
+                              <div className={`font-bold ${section.color}`}>
+                                {section.valueKey === "lastActivity"
+                                  ? (m.lastActivity ? new Date(m.lastActivity).toLocaleDateString("ar-IQ") : "—")
+                                  : `${m[section.valueKey]}${section.valueLabel}`
+                                }
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={() => navigate(`/mosques/${m.id}/dashboard`)} data-testid={`button-dashboard-ranking-${m.id}`}>
+                                <LayoutDashboard className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
+            ) : (
+              <div className="text-center text-muted-foreground py-12">جاري تحميل الإحصائيات...</div>
+            )}
+          </TabsContent>
+        )}
+
+        {isAdmin && inactivityData.length > 0 && (
+          <TabsContent value="inactive" className="pt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  جوامع/مراكز غير نشطة ({inactivityData.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {inactivityData.map((m: any) => (
+                    <div key={m.id} className="flex items-center gap-3 p-3 rounded-lg bg-amber-50/50 border border-amber-100" data-testid={`inactive-mosque-${m.id}`}>
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                      <div className="flex-1">
+                        <div className="font-medium">{m.name}</div>
+                        <div className="text-xs text-muted-foreground">{m.province}</div>
+                      </div>
+                      <div className="text-sm text-amber-700 font-medium">
+                        {m.daysSinceActivity !== null ? `${m.daysSinceActivity} يوم` : "لا نشاط مطلقاً"}
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/mosques/${m.id}/dashboard`)} className="gap-1" data-testid={`button-inactive-dashboard-${m.id}`}>
+                        <LayoutDashboard className="w-3.5 h-3.5" />
+                        لوحة التحكم
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {isAdmin && (
           <TabsContent value="registrations" className="pt-4">
             {renderRegistrationRequests()}
           </TabsContent>
@@ -1110,6 +1385,48 @@ export default function MosquesPage() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Broadcast Notification Dialog */}
+      <Dialog open={broadcastOpen} onOpenChange={setBroadcastOpen}>
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-amber-600" />
+              إشعار جماعي لكل المشرفين
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>عنوان الإشعار</Label>
+              <Input
+                data-testid="input-broadcast-title"
+                value={broadcastTitle}
+                onChange={(e) => setBroadcastTitle(e.target.value)}
+                placeholder="عنوان الإشعار..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>نص الإشعار</Label>
+              <Textarea
+                data-testid="input-broadcast-message"
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                placeholder="اكتب نص الإشعار الذي سيصل لجميع المشرفين..."
+                rows={4}
+              />
+            </div>
+            <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 text-sm text-amber-700">
+              سيتم إرسال هذا الإشعار إلى جميع المشرفين النشطين في كل الجوامع والمراكز
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setBroadcastOpen(false)} data-testid="button-cancel-broadcast">إلغاء</Button>
+            <Button onClick={handleBroadcast} disabled={broadcastSending} className="bg-amber-600 hover:bg-amber-700" data-testid="button-send-broadcast">
+              {broadcastSending ? "جاري الإرسال..." : "إرسال الإشعار"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Mosque Dialog */}
       <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) { setEditingMosque(null); setForm(emptyForm); } }}>

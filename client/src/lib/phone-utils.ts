@@ -1,23 +1,39 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-export function formatIraqiPhone(phone: string): string {
+export function formatPhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-\.]/g, '');
-  if (cleaned.startsWith('07')) {
+  if (cleaned.startsWith('07') && cleaned.length >= 11) {
     cleaned = '+964' + cleaned.substring(1);
   }
-  if (cleaned.startsWith('964') && !cleaned.startsWith('+')) {
-    cleaned = '+' + cleaned;
+  if (/^\d{10,}$/.test(cleaned) && !cleaned.startsWith('+')) {
+    if (cleaned.startsWith('964')) cleaned = '+' + cleaned;
+    else if (cleaned.startsWith('966')) cleaned = '+' + cleaned;
+    else if (cleaned.startsWith('971')) cleaned = '+' + cleaned;
+  }
+  if (!cleaned.startsWith('+') && /^\+/.test(phone)) {
+    cleaned = phone.replace(/[\s\-\.]/g, '');
   }
   return cleaned;
 }
 
+export function formatIraqiPhone(phone: string): string {
+  return formatPhone(phone);
+}
+
+export function isValidPhone(phone: string): boolean {
+  const cleaned = formatPhone(phone);
+  return /^\+\d{7,15}$/.test(cleaned);
+}
+
 export function isValidIraqiPhone(phone: string): boolean {
-  const cleaned = formatIraqiPhone(phone);
-  return /^\+9647\d{8,9}$/.test(cleaned);
+  const cleaned = formatPhone(phone);
+  if (/^\+9647\d{8,9}$/.test(cleaned)) return true;
+  return isValidPhone(cleaned);
 }
 
 export function getWhatsAppUrl(phone: string, message?: string): string {
-  const cleaned = formatIraqiPhone(phone).replace('+', '');
+  let cleaned = formatPhone(phone).replace(/[^\d]/g, '');
+  if (!cleaned) cleaned = phone.replace(/[^\d]/g, '');
   const url = `https://wa.me/${cleaned}`;
   return message ? `${url}?text=${encodeURIComponent(message)}` : url;
 }
@@ -45,8 +61,8 @@ export function usePhoneValidation(phone: string, excludeId?: string): PhoneVali
       setState({ valid: false, message: "", checking: false });
       return;
     }
-    if (digits.length < 11) {
-      setState({ valid: false, message: "رقم الهاتف يجب أن يكون 11 رقم على الأقل", checking: false });
+    if (digits.length < 7) {
+      setState({ valid: false, message: "رقم الهاتف قصير جداً", checking: false });
       return;
     }
 
@@ -79,8 +95,8 @@ export function usePhoneValidation(phone: string, excludeId?: string): PhoneVali
       setState({ valid: false, message: "", checking: false });
       return;
     }
-    if (digits.length < 11) {
-      setState({ valid: false, message: "رقم الهاتف يجب أن يكون 11 رقم على الأقل", checking: false });
+    if (digits.length < 7) {
+      setState({ valid: false, message: "رقم الهاتف قصير جداً", checking: false });
       return;
     }
     setState(prev => ({ ...prev, checking: true }));
