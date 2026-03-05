@@ -162,6 +162,8 @@ export async function registerRoutes(
   const privacyExemptPaths = [
     "/api/auth/",
     "/api/privacy-policy/",
+    "/api/register-mosque",
+    "/api/public-stats",
   ];
   app.use((req: any, res: any, next: any) => {
     if (!req.path.startsWith("/api/")) return next();
