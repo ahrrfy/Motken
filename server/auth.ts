@@ -31,9 +31,7 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-if (!process.env.SESSION_SECRET) {
-  process.env.SESSION_SECRET = randomBytes(32).toString("hex");
-}
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.REPL_ID || "mutqin-fallback-secret-key-2026";
 
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const LOGIN_MAX_ATTEMPTS = 5;
@@ -82,7 +80,7 @@ export function setupAuth(app: Express) {
   const isProduction = process.env.NODE_ENV === "production";
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: new PgStore({

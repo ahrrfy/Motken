@@ -1,0 +1,94 @@
+// سطر 2156 - يجلب كل مستخدمي كل المساجد
+let usersList = await storage.getUsers();
+```
+
+---
+
+## ✅ ما هو ممتاز في النظام
+
+| الجانب | التقييم |
+|--------|---------|
+| عزل المساجد | ✅ محكم — كل مسجد لا يرى بيانات غيره |
+| حماية الأدوار | ✅ الطالب لا يستطيع رفع صلاحياته |
+| نظام النقاط | ✅ محمي — فقط المعلم/المشرف/الأدمن |
+| قفل الحساب | ✅ 5 محاولات ثم حظر 15 دقيقة |
+| حد الجلسات | ✅ مستخدم واحد = جلستان فقط |
+| حذف كامل النظام | ✅ يطلب كلمة المرور قبل التنفيذ |
+| استعادة النسخ | ✅ تتحقق من صحة البيانات قبل الاستعادة |
+| صفحة التبرعات | ✅ صفحة معلوماتية — لا تحتاج API |
+| Self-healing | ✅ تنظيف جلسات + بيانات منتهية تلقائياً |
+| Session tracker | ✅ يتتبع الجهاز + المتصفح + IP |
+
+---
+
+## الأوامر الإصلاحية
+
+### الأمر 1 — SESSION_SECRET (الأهم)
+```
+في Replit افتح Secrets وأضف:
+
+Name: SESSION_SECRET
+Value: شغّل هذا في Shell وانسخ النتيجة:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+بعد الإضافة أعد تشغيل السيرفر وتحقق أن الجلسات تبقى بعد الـ restart.
+```
+
+---
+
+### الأمر 2 — إضافة `/api/students`
+```
+في server/routes.ts
+ابحث عن أول app.get("/api/users"
+وقبله أضف مباشرة:
+
+app.get("/api/students", requireAuth, async (req, res) => {
+  try {
+    const currentUser = req.user!;
+    let students;
+    if (currentUser.role === "admin") {
+      students = await storage.getUsersByRole("student");
+    } else if (currentUser.mosqueId) {
+      students = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
+    } else {
+      students = [];
+    }
+    res.json(students.filter(s => !s.pendingApproval));
+  } catch (err: any) {
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
+أعطني تأكيداً بعد الإضافة.
+```
+
+---
+
+### الأمر 3 — إصلاح فحص الهاتف (N+1)
+```
+في server/routes.ts
+ابحث عن كل مكان يحتوي على:
+const allUsers = await storage.getUsers();
+const phoneDup = allUsers.some(u => {
+
+استبدله بـ:
+// فحص الهاتف مباشرة في قاعدة البيانات
+const { db } = await import("./db");
+const { users } = await import("@shared/schema");
+const { sql } = await import("drizzle-orm");
+
+const phoneClean = (phone || "").replace(/\D/g, "");
+const phoneDupResult = await db.execute(sql`
+  SELECT id FROM users
+  WHERE id != ${req.params.id || "''"}
+    AND (
+      REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g') = ${phoneClean}
+      OR REGEXP_REPLACE(COALESCE(parent_phone,''), '[^0-9]', '', 'g') = ${phoneClean}
+    )
+  LIMIT 1
+`);
+const phoneDup = phoneDupResult.rows.length > 0;
+
+طبّق نفس التغيير لفحص parentPhone.
+
+أعطني تأكيداً بعد التطبيق.

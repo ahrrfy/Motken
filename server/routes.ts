@@ -307,13 +307,7 @@ export async function registerRoutes(
       if (!phone) {
         return res.json({ exists: false });
       }
-      const allUsers = await storage.getUsers();
-      const exists = allUsers.some(u => {
-        if (excludeId && u.id === excludeId) return false;
-        const uPhone = (u.phone || "").replace(/[\s\-\.]/g, "");
-        const uParentPhone = (u.parentPhone || "").replace(/[\s\-\.]/g, "");
-        return (uPhone && uPhone === phone) || (uParentPhone && uParentPhone === phone);
-      });
+      const exists = await storage.checkPhoneExists(phone, excludeId);
       return res.json({ exists });
     } catch (error) {
       res.status(500).json({ exists: false });
@@ -398,6 +392,31 @@ export async function registerRoutes(
       res.json(safe);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+    }
+  });
+
+  app.get("/api/students", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      let students: User[] = [];
+      if (currentUser.role === "admin") {
+        students = await storage.getUsersByRole("student");
+      } else if (currentUser.role === "teacher") {
+        if (currentUser.mosqueId) {
+          const allStudents = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
+          students = allStudents.filter(s => canTeacherAccessStudent(currentUser, s) && !s.pendingApproval);
+        } else {
+          students = (await storage.getUsersByTeacher(currentUser.id)).filter(s => !s.pendingApproval);
+        }
+      } else if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+        students = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
+      } else if (currentUser.mosqueId) {
+        students = (await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student")).filter(s => !s.pendingApproval);
+      }
+      const safe = students.map(({ password, ...u }) => u);
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب بيانات الطلاب" });
     }
   });
 
@@ -502,26 +521,14 @@ export async function registerRoutes(
       if (req.body.role === "student" && (!parentPhone || typeof parentPhone !== "string" || parentPhone.length < 10)) {
         return res.status(400).json({ message: "رقم هاتف ولي الأمر مطلوب للطلاب" });
       }
-      const allUsers = await storage.getUsers();
-      const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
       if (phone) {
-        const cleanPhone = cleanDigits(phone);
-        const phoneDup = allUsers.some(u => {
-          const up = cleanDigits(u.phone || "");
-          const upp = cleanDigits(u.parentPhone || "");
-          return (up && up === cleanPhone) || (upp && upp === cleanPhone);
-        });
+        const phoneDup = await storage.checkPhoneExists(phone);
         if (phoneDup) {
           return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل" });
         }
       }
       if (parentPhone) {
-        const cleanPP = cleanDigits(parentPhone);
-        const ppDup = allUsers.some(u => {
-          const up = cleanDigits(u.phone || "");
-          const upp = cleanDigits(u.parentPhone || "");
-          return (up && up === cleanPP) || (upp && upp === cleanPP);
-        });
+        const ppDup = await storage.checkPhoneExists(parentPhone);
         if (ppDup) {
           return res.status(400).json({ message: "رقم هاتف ولي الأمر مستخدم بالفعل" });
         }
@@ -595,29 +602,14 @@ export async function registerRoutes(
     const updateData: any = {};
     const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels } = req.body;
 
-    const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
     if (phone !== undefined && phone) {
-      const cleanPhone = cleanDigits(phone);
-      const allUsers = await storage.getUsers();
-      const phoneDup = allUsers.some(u => {
-        if (u.id === req.params.id) return false;
-        const up = cleanDigits(u.phone || "");
-        const upp = cleanDigits(u.parentPhone || "");
-        return (up && up === cleanPhone) || (upp && upp === cleanPhone);
-      });
+      const phoneDup = await storage.checkPhoneExists(phone, req.params.id);
       if (phoneDup) {
         return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل" });
       }
     }
     if (parentPhone !== undefined && parentPhone) {
-      const cleanPP = cleanDigits(parentPhone);
-      const allUsers = await storage.getUsers();
-      const ppDup = allUsers.some(u => {
-        if (u.id === req.params.id) return false;
-        const up = cleanDigits(u.phone || "");
-        const upp = cleanDigits(u.parentPhone || "");
-        return (up && up === cleanPP) || (upp && upp === cleanPP);
-      });
+      const ppDup = await storage.checkPhoneExists(parentPhone, req.params.id);
       if (ppDup) {
         return res.status(400).json({ message: "رقم هاتف ولي الأمر مستخدم بالفعل" });
       }
