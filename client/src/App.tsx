@@ -19,6 +19,7 @@ import AssignmentsExamsPage from "@/pages/AssignmentsExamsPage";
 import ActivityLogsPage from "@/pages/ActivityLogsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import MosquesPage from "@/pages/MosquesPage";
+import MosqueDashboardPage from "@/pages/MosqueDashboardPage";
 import AllUsersPage from "@/pages/AllUsersPage";
 import RatingsPage from "@/pages/RatingsPage";
 import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
@@ -185,6 +186,7 @@ function App() {
       <Switch>
         <Route path="/daily" component={TeacherDailyPage} />
         <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/mosques/:id/dashboard" component={MosqueDashboardPage} />
         <Route path="/mosques" component={MosquesPage} />
         <Route path="/students" component={StudentsPage} />
         <Route path="/teachers" component={TeachersPage} />

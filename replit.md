@@ -70,6 +70,15 @@ The system is built with a modern web stack:
     - Admin reviews all requests with approve/reject workflow. Approval auto-creates mosque + supervisor account.
     - Rate-limited public registration (3/hour/IP), vouching tree tracking, registration stats dashboard.
 
+-   **Mosque Dashboard (لوحة تحكم المسجد)**: Per-mosque admin dashboard at `/mosques/:id/dashboard` with:
+    - KPI cards (students, teachers, supervisors, active students)
+    - Tabbed view: basic info, supervisor info (with WhatsApp link), students list, teachers list, messaging panel, event history
+    - Status management (activate/suspend) with automatic user status updates and history logging
+    - Direct messaging system between admin and mosque supervisors
+    - Unread message badge in sidebar for admin
+-   **International Phone Input**: `libphonenumber-js`-based phone input component with 33 countries (Arab + common), country code selector with search, real-time validation, used in mosque registration form.
+-   **Mosque Messaging System**: Admin-supervisor messaging via `mosque_messages` table, with unread tracking, auto-read marking, and event history logging.
+
 ## External Dependencies
 -   **api.alquran.cloud**: Fetches Quran text.
 -   **qrcode package**: Local QR code generation.

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiPost } from "@/lib/api";
+import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
 
 const PROVINCES = [
@@ -207,12 +208,11 @@ export default function RegisterMosquePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mosquePhone">{isEn ? "Mosque Phone" : "رقم هاتف المسجد"} ({isEn ? "Optional" : "اختياري"})</Label>
-                  <Input 
-                    id="mosquePhone" 
+                  <Label>{isEn ? "Mosque Phone" : "رقم هاتف المسجد/المركز"} ({isEn ? "Optional" : "اختياري"})</Label>
+                  <InternationalPhoneInput
                     value={formData.mosquePhone}
-                    onChange={(e) => handleChange("mosquePhone", e.target.value)}
-                    data-testid="input-mosquePhone"
+                    onChange={(full) => handleChange("mosquePhone", full)}
+                    placeholder={isEn ? "Mosque phone" : "رقم هاتف المسجد/المركز"}
                   />
                 </div>
               </div>
@@ -234,13 +234,11 @@ export default function RegisterMosquePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="applicantPhone">{isEn ? "Phone Number" : "رقم الهاتف"} <span className="text-destructive">*</span></Label>
-                  <Input 
-                    id="applicantPhone" 
-                    required 
+                  <Label>{isEn ? "Phone Number" : "رقم الهاتف"} <span className="text-destructive">*</span></Label>
+                  <InternationalPhoneInput
                     value={formData.applicantPhone}
-                    onChange={(e) => handleChange("applicantPhone", e.target.value)}
-                    data-testid="input-applicantPhone"
+                    onChange={(full) => handleChange("applicantPhone", full)}
+                    placeholder={isEn ? "Phone number" : "رقم هاتف المسؤول"}
                   />
                 </div>
                 <div className="space-y-2">
