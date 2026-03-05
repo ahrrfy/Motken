@@ -2145,12 +2145,16 @@ export async function registerRoutes(
     const filterTeacherId = req.query.teacherId as string | undefined;
 
     if (currentUser.role === "admin") {
-      let usersList = await storage.getUsers();
+      let usersList: User[];
+      if (filterMosqueId) {
+        usersList = await storage.getUsersByMosque(filterMosqueId);
+      } else {
+        usersList = await storage.getUsers();
+      }
       let assignmentsList = await storage.getAssignments();
       const mosquesList = await storage.getMosques();
 
       if (filterMosqueId) {
-        usersList = usersList.filter(u => u.mosqueId === filterMosqueId);
         assignmentsList = assignmentsList.filter(a => a.mosqueId === filterMosqueId);
       }
       if (filterTeacherId) {
