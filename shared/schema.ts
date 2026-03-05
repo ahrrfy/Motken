@@ -723,3 +723,26 @@ export const quranProgress = pgTable("quran_progress", {
 export const insertQuranProgressSchema = createInsertSchema(quranProgress).omit({ id: true, updatedAt: true });
 export type InsertQuranProgress = z.infer<typeof insertQuranProgressSchema>;
 export type QuranProgress = typeof quranProgress.$inferSelect;
+
+// ==================== MOSQUE HISTORY (سجل أحداث المسجد) ====================
+export const mosqueHistory = pgTable("mosque_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueId: varchar("mosque_id").notNull(),
+  type: text("type").notNull(),
+  description: text("description").notNull(),
+  byUser: text("by_user"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export type MosqueHistory = typeof mosqueHistory.$inferSelect;
+
+// ==================== MOSQUE MESSAGES (رسائل المسجد) ====================
+export const mosqueMessages = pgTable("mosque_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mosqueId: varchar("mosque_id").notNull(),
+  fromAdmin: boolean("from_admin").notNull().default(true),
+  senderName: text("sender_name").notNull(),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export type MosqueMessage = typeof mosqueMessages.$inferSelect;

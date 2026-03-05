@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -179,6 +180,14 @@ function NavContent({ user, location, onNavigate, enabledFeatures, effectiveRole
   const { language } = useTheme();
   const isEn = language === "en";
 
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/messages/unread-admin-count"],
+    refetchInterval: 30_000,
+    staleTime: 20_000,
+    enabled: effectiveRole === "admin",
+  });
+  const unreadCount = unreadData?.count ?? 0;
+
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     navCategories.forEach((cat) => {
@@ -262,6 +271,11 @@ function NavContent({ user, location, onNavigate, enabledFeatures, effectiveRole
                       >
                         <item.icon className={cn("w-4 h-4 shrink-0", isActive ? "text-accent" : "text-sidebar-foreground/50 group-hover:text-accent/70")} />
                         <span className="truncate">{isEn ? item.labelEn : item.label}</span>
+                        {item.href === "/mosques" && unreadCount > 0 && (
+                          <span className="mr-auto bg-red-500 text-white text-xs rounded-full h-5 min-w-5 flex items-center justify-center px-1">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
+                        )}
                       </div>
                     </Link>
                   );
