@@ -302,12 +302,28 @@ export async function registerRoutes(
   // ==================== PHONE CHECK ====================
   app.get("/api/phone/check", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
       const phone = (req.query.phone as string || "").replace(/[\s\-\.]/g, "");
       const excludeId = req.query.excludeId as string | undefined;
       if (!phone) {
         return res.json({ exists: false });
       }
-      const exists = await storage.checkPhoneExists(phone, excludeId);
+      let usersToCheck: User[];
+      if (currentUser.role === "admin") {
+        usersToCheck = await storage.getUsers();
+      } else if (currentUser.mosqueId) {
+        usersToCheck = await storage.getUsersByMosque(currentUser.mosqueId);
+      } else {
+        usersToCheck = [];
+      }
+      const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
+      const cleanPhone = cleanDigits(phone);
+      const exists = usersToCheck.some(u => {
+        if (excludeId && u.id === excludeId) return false;
+        const up = cleanDigits(u.phone || "");
+        const upp = cleanDigits(u.parentPhone || "");
+        return (up && up === cleanPhone) || (upp && upp === cleanPhone);
+      });
       return res.json({ exists });
     } catch (error) {
       res.status(500).json({ exists: false });
@@ -528,10 +544,21 @@ export async function registerRoutes(
         }
       }
       if (parentPhone) {
-        const ppDup = await storage.checkPhoneExists(parentPhone);
-        if (ppDup) {
-          return res.status(400).json({ message: "رقم هاتف ولي الأمر مستخدم بالفعل" });
+        const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
+        const cleanPP = cleanDigits(parentPhone);
+        let siblingPool: User[];
+        if (currentUser.role === "admin") {
+          siblingPool = await storage.getUsers();
+        } else if (currentUser.mosqueId) {
+          siblingPool = await storage.getUsersByMosque(currentUser.mosqueId);
+        } else {
+          siblingPool = [];
         }
+        const detectedSiblings = siblingPool.filter(u => {
+          const upp = cleanDigits(u.parentPhone || "");
+          return upp && upp === cleanPP && u.role === "student";
+        });
+        req.body._detectedSiblings = detectedSiblings.map(s => ({ id: s.id, name: s.name }));
       }
       const data: any = {
         username, name, password: await hashPassword(rawPassword),
@@ -544,6 +571,28 @@ export async function registerRoutes(
       const user = await storage.createUser(data);
       const { password, ...safe } = user;
       await logActivity(currentUser, `إنشاء حساب: ${user.name} (${targetRole})`, "users");
+
+      if (req.body._detectedSiblings?.length > 0 && user.mosqueId && user.parentPhone) {
+        for (const sibling of req.body._detectedSiblings) {
+          try {
+            await storage.createFamilyLink({
+              parentPhone: user.parentPhone,
+              studentId: user.id,
+              mosqueId: user.mosqueId,
+              relationship: "sibling",
+            });
+            const supervisors = await storage.getUsersByMosqueAndRole(user.mosqueId, "supervisor");
+            for (const sup of supervisors) {
+              await storage.createNotification({
+                userId: sup.id,
+                title: "اكتشاف عائلة",
+                message: `${user.name} أخ/أخت لـ ${sibling.name} — تم ربطهما تلقائياً في نظام الأسر`,
+                type: "info",
+              });
+            }
+          } catch {}
+        }
+      }
 
       if (currentUser.role === "teacher" && user.pendingApproval && currentUser.mosqueId) {
         const supervisors = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "supervisor");
@@ -4611,6 +4660,12 @@ export async function registerRoutes(
       const { parentPhone, studentId, relationship } = req.body;
       if (!parentPhone || !studentId) {
         return res.status(400).json({ message: "رقم ولي الأمر ومعرف الطالب مطلوبان" });
+      }
+      if (currentUser.role !== "admin") {
+        const student = await storage.getUser(studentId);
+        if (!student || student.mosqueId !== currentUser.mosqueId) {
+          return res.status(403).json({ message: "الطالب لا ينتمي لمسجدك" });
+        }
       }
       const mosqueId = currentUser.role === "admin" ? (req.body.mosqueId || currentUser.mosqueId) : currentUser.mosqueId;
       const link = await storage.createFamilyLink({
