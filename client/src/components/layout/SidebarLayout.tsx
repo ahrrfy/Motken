@@ -161,7 +161,7 @@ const navCategories: NavCategory[] = [
     labelEn: "Administration",
     icon: Wrench,
     items: [
-      { href: "/mosques", label: "الجوامع والمراكز", labelEn: "Mosques & Centers", icon: Building2, roles: ["admin"] },
+      { href: "/mosques", label: "الجوامع والمراكز", labelEn: "Mosques & Centers", icon: Building2, roles: ["admin", "supervisor"] },
       { href: "/floor-plan", label: "المخطط البصري", labelEn: "Floor Plan", icon: MapPin, roles: ["admin", "supervisor", "teacher"], featureKey: "floor_plan" },
       { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Stats", icon: BarChart3, roles: ["admin", "supervisor"] },
       { href: "/id-cards", label: "الهويات ومسح QR", labelEn: "ID Cards & QR", icon: QrCode, roles: ["admin"], permission: "canPrintIds" as const, featureKey: "id_cards" },
