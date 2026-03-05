@@ -590,7 +590,7 @@ export default function MosquesPage() {
         <h2 className="text-lg font-bold text-primary">تزكياتي السابقة</h2>
         <Button onClick={() => setVouchOpen(true)} className="gap-2" data-testid="button-open-vouch">
           <ShieldCheck className="w-4 h-4" />
-          تزكية مسجد جديد
+          تزكية مسجد/مركز جديد
         </Button>
       </div>
 
