@@ -703,3 +703,23 @@ export const mosqueRegistrations = pgTable("mosque_registrations", {
 export const insertMosqueRegistrationSchema = createInsertSchema(mosqueRegistrations).omit({ id: true, createdAt: true, reviewedAt: true });
 export type InsertMosqueRegistration = z.infer<typeof insertMosqueRegistrationSchema>;
 export type MosqueRegistration = typeof mosqueRegistrations.$inferSelect;
+
+// ==================== QURAN PROGRESS (تقدم الحفظ) ====================
+export const quranProgress = pgTable("quran_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
+  surahNumber: integer("surah_number").notNull(),
+  verseStatuses: text("verse_statuses").notNull().default("{}"),
+  notes: text("notes"),
+  reviewedToday: boolean("reviewed_today").notNull().default(false),
+  reviewStreak: integer("review_streak").notNull().default(0),
+  lastReviewDate: text("last_review_date"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_quranprog_user_surah").on(table.userId, table.surahNumber),
+  index("idx_quranprog_mosque_id").on(table.mosqueId),
+]);
+export const insertQuranProgressSchema = createInsertSchema(quranProgress).omit({ id: true, updatedAt: true });
+export type InsertQuranProgress = z.infer<typeof insertQuranProgressSchema>;
+export type QuranProgress = typeof quranProgress.$inferSelect;

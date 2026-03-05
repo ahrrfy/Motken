@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, requirePrivacyPolicy, hashPassword } from "./auth";
 import { quranSurahs } from "@shared/quran-surahs";
 import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 import {
   insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema,
   type User, type Assignment,
@@ -13,7 +14,7 @@ import {
   competitions, competitionParticipants, schedules, parentReports, exams, examStudents,
   featureFlags, bannedDevices, emergencySubstitutions, incidentRecords, graduates,
   graduateFollowups, studentTransfers, familyLinks, feedback, tajweedRules, similarVerses,
-  messageTemplates, communicationLogs, mosqueRegistrations,
+  messageTemplates, communicationLogs, mosqueRegistrations, quranProgress,
 } from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
 import { filterTextFields } from "@shared/content-filter";
@@ -1040,6 +1041,24 @@ export async function registerRoutes(
     }
     const updated = await storage.updateAssignment(req.params.id, updateData);
     if (!updated) return res.status(404).json({ message: "الواجب غير موجود" });
+    // نقاط تلقائية عند إتمام الواجب
+    if (req.body.status === "done" && assignment.status !== "done") {
+      try {
+        const verses = assignment.toVerse - assignment.fromVerse + 1;
+        const autoPoints = Math.min(Math.max(verses, 3), 30);
+        await storage.createPoint({
+          userId: assignment.studentId, mosqueId: assignment.mosqueId,
+          amount: autoPoints, category: "assignment",
+          reason: `إتمام: ${assignment.surahName} (${assignment.fromVerse}-${assignment.toVerse}) — ${verses} آية`,
+        });
+        await storage.createNotification({
+          userId: assignment.studentId, mosqueId: assignment.mosqueId,
+          title: "أحسنت! واجب مكتمل",
+          message: `تم منحك ${autoPoints} نقطة لإتمام واجب ${assignment.surahName}`,
+          type: "success",
+        });
+      } catch {}
+    }
     if (req.body.grade !== undefined) {
       await logActivity(req.user!, `تقييم واجب بدرجة ${req.body.grade}`, "assignments", `واجب ${req.params.id}`);
       const g = Number(req.body.grade);
@@ -3992,6 +4011,47 @@ export async function registerRoutes(
     }
   });
 
+  // تقرير أسبوعي لولي الأمر
+  app.get("/api/weekly-report/:studentId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const student = await storage.getUser(req.params.studentId);
+      if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
+      if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId)
+        return res.status(403).json({ message: "غير مصرح" });
+
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [attendanceAll, assignmentsAll] = await Promise.all([
+        db.select().from(attendance).where(eq(attendance.studentId, student.id)),
+        db.select().from(assignments).where(eq(assignments.studentId, student.id)),
+      ]);
+      const weekAtt = attendanceAll.filter(a => new Date(a.date) >= weekAgo);
+      const present = weekAtt.filter(a => ["present","حاضر"].includes(a.status)).length;
+      const absent  = weekAtt.filter(a => ["absent","غائب"].includes(a.status)).length;
+      const weekAsgn = assignmentsAll.filter(a => new Date(a.createdAt) >= weekAgo);
+      const done    = weekAsgn.filter(a => a.status === "done").length;
+      const pending = weekAsgn.filter(a => a.status === "pending").length;
+
+      const whatsappText = [
+        `*التقرير الأسبوعي - ${student.name}*`,
+        `الحضور: ${present}/${weekAtt.length}`,
+        `الواجبات: ${done}/${weekAsgn.length} مكتملة`,
+        absent > 0 ? `غياب: ${absent} يوم` : `لا غياب هذا الأسبوع`,
+      ].join("\n");
+
+      res.json({
+        student: { id: student.id, name: student.name, parentPhone: student.parentPhone },
+        stats: { present, absent, done, pending, weekPoints: 0 },
+        whatsappText,
+        whatsappUrl: student.parentPhone
+          ? `https://wa.me/964${student.parentPhone.replace(/^0/,"")}?text=${encodeURIComponent(whatsappText)}`
+          : null,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
   // ==================== EXPORT ====================
   app.get("/api/export/students", requireAuth, async (req, res) => {
     try {
@@ -5987,6 +6047,64 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
     }
+  });
+
+  // ==================== QURAN PROGRESS ====================
+  app.get("/api/quran-progress", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const userId = (req.query.userId as string) || currentUser.id;
+      if (userId !== currentUser.id && !["admin","supervisor","teacher"].includes(currentUser.role))
+        return res.status(403).json({ message: "غير مصرح" });
+      const surahNumber = req.query.surahNumber ? Number(req.query.surahNumber) : null;
+      if (surahNumber) {
+        const row = await storage.getQuranProgress(userId, surahNumber);
+        return res.json(row || { verseStatuses: "{}", notes: null, reviewStreak: 0, reviewedToday: false });
+      }
+      res.json(await storage.getQuranProgressByUser(userId));
+    } catch { res.status(500).json({ message: "حدث خطأ" }); }
+  });
+
+  app.post("/api/quran-progress", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { surahNumber, verseStatuses, notes, reviewedToday, reviewStreak, lastReviewDate, totalVerses } = req.body;
+      if (!surahNumber || surahNumber < 1 || surahNumber > 114)
+        return res.status(400).json({ message: "رقم السورة غير صحيح" });
+      const statusesObj = typeof verseStatuses === "object" ? verseStatuses : JSON.parse(verseStatuses || "{}");
+      const row = await storage.upsertQuranProgress({
+        userId: currentUser.id, mosqueId: currentUser.mosqueId,
+        surahNumber: Number(surahNumber), verseStatuses: JSON.stringify(statusesObj),
+        notes: notes || null, reviewedToday: reviewedToday ?? false,
+        reviewStreak: reviewStreak ?? 0, lastReviewDate: lastReviewDate || null,
+      });
+      if (totalVerses > 0) {
+        const memorized = Object.values(statusesObj).filter((s: any) => s === "memorized").length;
+        if (memorized >= totalVerses) {
+          const existing = await db.select().from(badges)
+            .where(and(eq(badges.userId, currentUser.id), eq(badges.badgeType, `surah_complete_${surahNumber}`)));
+          if (existing.length === 0) {
+            await storage.createBadge({
+              userId: currentUser.id, mosqueId: currentUser.mosqueId,
+              badgeType: `surah_complete_${surahNumber}`,
+              badgeName: `حافظ سورة رقم ${surahNumber}`,
+              description: `تم حفظ السورة كاملاً`,
+            });
+            await storage.createPoint({
+              userId: currentUser.id, mosqueId: currentUser.mosqueId,
+              amount: Math.min(totalVerses * 2, 100), category: "achievement",
+              reason: `إتمام حفظ سورة كاملة (${totalVerses} آية)`,
+            });
+            await storage.createNotification({
+              userId: currentUser.id, mosqueId: currentUser.mosqueId,
+              title: "إنجاز رائع!", type: "success",
+              message: `أتممت حفظ السورة رقم ${surahNumber} كاملاً — تم منحك شارة ونقاط!`,
+            });
+          }
+        }
+      }
+      res.json(row);
+    } catch { res.status(500).json({ message: "حدث خطأ في حفظ التقدم" }); }
   });
 
   // ==================== MOSQUE REGISTRATION & VOUCHING SYSTEM ====================

@@ -6,7 +6,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { createIndexes, pool } from "./db";
-import { startSelfHealing, stopSelfHealing, getDetailedHealthReport } from "./self-healing";
+import { startSelfHealing, stopSelfHealing, getDetailedHealthReport, startAbsenceAlerts } from "./self-healing";
 
 const app = express();
 
@@ -291,6 +291,7 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
     () => {
       log(`serving on port ${port}`);
       startSelfHealing();
+      startAbsenceAlerts();
     },
   );
 })();
