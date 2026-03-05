@@ -20,14 +20,14 @@ const features = [
 const faqs = [
   { q: "هل النظام مجاني؟", a: "نعم، النظام وقف لله تعالى ومجاني بالكامل بدون أي رسوم أو اشتراكات." },
   { q: "هل أحتاج خبرة تقنية؟", a: "لا أبداً، النظام مصمم ليكون سهل الاستخدام لأي شخص. إذا تستخدم واتساب، تقدر تستخدم مُتْقِن." },
-  { q: "كيف أسجّل مسجدي؟", a: "اضغط على 'سجّل مسجدك' واملأ النموذج البسيط وسيتم تفعيل حسابك." },
+  { q: "كيف أسجّل مسجدي/مركزي؟", a: "اضغط على 'سجّل مسجدك/مركزك' واملأ النموذج البسيط وسيتم تفعيل حسابك." },
   { q: "هل يعمل على الجوال؟", a: "نعم، يعمل على أي جهاز — جوال، تابلت، أو كمبيوتر — بدون تحميل أي تطبيق." },
   { q: "هل بيانات مسجدنا آمنة؟", a: "بالتأكيد. بيانات كل مسجد معزولة تماماً ومشفرة. لا يمكن لأي مسجد آخر الاطلاع عليها." },
   { q: "كم عدد الطلاب المسموح؟", a: "لا يوجد حد أقصى. يمكنك إضافة عدد غير محدود من الطلاب والمعلمين." },
 ];
 
 const steps = [
-  { num: "١", title: "سجّل مسجدك", desc: "املأ نموذج بسيط باسم المسجد واسمك ورقم هاتفك" },
+  { num: "١", title: "سجّل مسجدك/مركزك", desc: "املأ نموذج بسيط باسم المسجد/المركز واسمك ورقم هاتفك" },
   { num: "٢", title: "أضف طلابك", desc: "أضف أسماء الطلاب والمعلمين بسهولة من لوحة التحكم" },
   { num: "٣", title: "تابع التقدم", desc: "تابع حفظ كل طالب وأرسل التقارير لأولياء الأمور" },
 ];
@@ -94,7 +94,7 @@ export default function LandingPage() {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3.5 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-emerald-600/30"
               data-testid="link-register-hero"
             >
-              سجّل مسجدك مجاناً
+              سجّل مسجدك/مركزك مجاناً
               <ArrowLeft className="w-5 h-5" />
             </a>
             <a
@@ -196,7 +196,7 @@ export default function LandingPage() {
 
       <section id="register" className="py-16 sm:py-20 bg-gradient-to-b from-[#0f3460] to-[#16213e] text-white">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4" data-testid="text-register-title">سجّل مسجدك الآن</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4" data-testid="text-register-title">سجّل مسجدك/مركزك الآن</h2>
           <p className="text-gray-300 mb-8 text-lg">مجاني بالكامل — ابدأ بإدارة حلقتك خلال دقائق</p>
           <a
             href={`/register-mosque${ref ? `?ref=${ref}` : ""}`}
@@ -204,7 +204,7 @@ export default function LandingPage() {
             data-testid="link-register-mosque"
           >
             <CheckCircle2 className="w-6 h-6" />
-            سجّل مسجدك مجاناً
+            سجّل مسجدك/مركزك مجاناً
           </a>
           <p className="text-gray-400 text-sm mt-6">لديك حساب بالفعل؟ <a href="/login" className="text-emerald-400 hover:underline" data-testid="link-login-bottom">سجّل دخولك</a></p>
         </div>
