@@ -1,0 +1,113 @@
+import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Send, MessageSquare } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Props {
+  mosqueId: string;
+  supervisorName: string;
+}
+
+export function MessagingPanel({ mosqueId, supervisorName }: Props) {
+  const [newMessage, setNewMessage] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: messages = [] } = useQuery<any[]>({
+    queryKey: [`/api/mosques/${mosqueId}/messages`],
+    refetchInterval: 15_000,
+    staleTime: 10_000,
+  });
+
+  const send = useMutation({
+    mutationFn: (content: string) =>
+      apiRequest("POST", `/api/mosques/${mosqueId}/messages`, { content }),
+    onSuccess: () => {
+      setNewMessage("");
+      qc.invalidateQueries({ queryKey: [`/api/mosques/${mosqueId}/messages`] });
+      toast({ title: "تم إرسال الرسالة" });
+    },
+    onError: () => toast({ title: "فشل الإرسال", variant: "destructive" }),
+  });
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = () => {
+    const trimmed = newMessage.trim();
+    if (!trimmed) return;
+    send.mutate(trimmed);
+  };
+
+  return (
+    <div className="border rounded-xl overflow-hidden bg-white shadow-sm" dir="rtl">
+      <div className="bg-green-600 text-white p-4 flex items-center gap-3">
+        <MessageSquare className="h-5 w-5" />
+        <div>
+          <div className="font-semibold" data-testid="text-messaging-title">محادثة مع المشرف</div>
+          <div className="text-green-100 text-sm">{supervisorName || "المشرف"}</div>
+        </div>
+      </div>
+
+      <div className="h-80 overflow-y-auto p-4 space-y-3 bg-gray-50">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-400 py-12">
+            <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <div>لا توجد رسائل بعد</div>
+            <div className="text-sm mt-1">ابدأ المحادثة مع المشرف</div>
+          </div>
+        )}
+        {messages.map((msg: any) => (
+          <div key={msg.id} className={`flex ${msg.fromAdmin ? "justify-start" : "justify-end"}`}>
+            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl text-sm shadow-sm ${
+              msg.fromAdmin
+                ? "bg-green-600 text-white rounded-tr-sm"
+                : "bg-white text-gray-800 border rounded-tl-sm"
+            }`}>
+              <div className={`text-xs mb-1 ${msg.fromAdmin ? "text-green-100" : "text-gray-400"}`}>
+                {msg.senderName}
+              </div>
+              <div>{msg.content}</div>
+              <div className={`text-xs mt-1 text-left ${msg.fromAdmin ? "text-green-200" : "text-gray-300"}`}>
+                {new Date(msg.createdAt).toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="p-4 border-t bg-white flex gap-2">
+        <Textarea
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder={`اكتب رسالة للمشرف ${supervisorName || ""}...`}
+          className="resize-none min-h-[60px] flex-1 text-sm"
+          data-testid="input-message-content"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+        />
+        <Button
+          onClick={handleSend}
+          disabled={send.isPending || !newMessage.trim()}
+          className="bg-green-600 hover:bg-green-700 self-end"
+          data-testid="button-send-message"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="px-4 pb-3 text-xs text-gray-400">
+        Enter للإرسال | Shift+Enter لسطر جديد
+      </div>
+    </div>
+  );
+}

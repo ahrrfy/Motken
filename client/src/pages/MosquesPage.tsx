@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
-import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle, ImagePlus, X, CheckCircle2, ShieldCheck, UserCheck, FileText, Clock } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle, ImagePlus, X, CheckCircle2, ShieldCheck, UserCheck, FileText, Clock, LayoutDashboard } from "lucide-react";
 import type { Mosque, MosqueRegistration } from "@shared/schema";
 
 interface MosqueStats {
@@ -89,6 +90,7 @@ const regStatusColors: Record<string, string> = {
 export default function MosquesPage() {
   const { toast } = useToast();
   const { effectiveRole } = useAuth();
+  const [, navigate] = useLocation();
   const isAdmin = effectiveRole === "admin";
   const isSupervisor = effectiveRole === "supervisor";
 
@@ -1002,6 +1004,16 @@ export default function MosquesPage() {
 
                       {isAdmin && (
                         <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                            onClick={() => navigate(`/mosques/${mosque.id}/dashboard`)}
+                            data-testid={`button-dashboard-mosque-${mosque.id}`}
+                          >
+                            <LayoutDashboard className="w-3.5 h-3.5" />
+                            لوحة التحكم
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

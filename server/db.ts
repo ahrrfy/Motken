@@ -131,6 +131,26 @@ export async function createIndexes() {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_quranprog_user_surah ON quran_progress(user_id, surah_number)`,
     `CREATE INDEX IF NOT EXISTS idx_quranprog_mosque_id ON quran_progress(mosque_id)`,
+    `CREATE TABLE IF NOT EXISTS mosque_history (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      mosque_id VARCHAR NOT NULL,
+      type TEXT NOT NULL,
+      description TEXT NOT NULL,
+      by_user TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_mosque_history_mosque_id ON mosque_history(mosque_id)`,
+    `CREATE TABLE IF NOT EXISTS mosque_messages (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      mosque_id VARCHAR NOT NULL,
+      from_admin BOOLEAN NOT NULL DEFAULT true,
+      sender_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      is_read BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_mosque_messages_mosque_id ON mosque_messages(mosque_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_mosque_messages_unread ON mosque_messages(from_admin, is_read) WHERE is_read = false`,
   ];
 
   let created = 0;

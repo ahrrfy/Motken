@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, requirePrivacyPolicy, hashPassword } from "./auth";
 import { quranSurahs } from "@shared/quran-surahs";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, asc, count, sql as dsql } from "drizzle-orm";
 import {
   insertUserSchema, insertAssignmentSchema, insertActivityLogSchema, insertNotificationSchema, insertMosqueSchema,
   type User, type Assignment,
@@ -15,6 +15,7 @@ import {
   featureFlags, bannedDevices, emergencySubstitutions, incidentRecords, graduates,
   graduateFollowups, studentTransfers, familyLinks, feedback, tajweedRules, similarVerses,
   messageTemplates, communicationLogs, mosqueRegistrations, quranProgress,
+  mosqueHistory, mosqueMessages,
 } from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
 import { filterTextFields } from "@shared/content-filter";
@@ -299,6 +300,170 @@ export async function registerRoutes(
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في حذف الجامع" });
+    }
+  });
+
+  // ==================== MOSQUE DASHBOARD ====================
+  app.get("/api/mosques/:id/stats", requireRole("admin"), async (req, res) => {
+    try {
+      const mosqueId = req.params.id;
+      const allUsers = await storage.getUsersByMosque(mosqueId);
+      const studentsCount = allUsers.filter(u => u.role === "student").length;
+      const teachersCount = allUsers.filter(u => u.role === "teacher").length;
+      const supervisorsCount = allUsers.filter(u => u.role === "supervisor").length;
+      const activeStudents = allUsers.filter(u => u.role === "student" && u.isActive).length;
+
+      const supervisor = allUsers.find(u => u.role === "supervisor");
+
+      res.json({
+        studentsCount,
+        teachersCount,
+        supervisorsCount,
+        activeStudents,
+        supervisorName: supervisor?.name || null,
+        supervisorPhone: supervisor?.phone || null,
+        supervisorId: supervisor?.id || null,
+        lastSupervisorLogin: supervisor?.createdAt || null,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في جلب الإحصائيات" });
+    }
+  });
+
+  app.get("/api/mosques/:id/users-list", requireRole("admin"), async (req, res) => {
+    try {
+      const mosqueId = req.params.id;
+      const role = req.query.role as string;
+      const allUsers = await storage.getUsersByMosque(mosqueId);
+      const filtered = role ? allUsers.filter(u => u.role === role) : allUsers;
+      const safe = filtered.map(u => ({
+        id: u.id, name: u.name, username: u.username, role: u.role,
+        phone: u.phone, isActive: u.isActive, createdAt: u.createdAt,
+        parentPhone: u.parentPhone, level: u.level,
+      }));
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/mosques/:id/history", requireRole("admin"), async (req, res) => {
+    try {
+      const history = await db.select().from(mosqueHistory)
+        .where(eq(mosqueHistory.mosqueId, req.params.id))
+        .orderBy(desc(mosqueHistory.createdAt))
+        .limit(50);
+      res.json(history);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.patch("/api/mosques/:id/status", requireRole("admin"), async (req, res) => {
+    try {
+      const { status } = req.body;
+      const validStatuses = ["active", "suspended", "permanently_closed"];
+      if (!validStatuses.includes(status)) return res.status(400).json({ message: "حالة غير صالحة" });
+      const mosque = await storage.getMosque(req.params.id);
+      if (!mosque) return res.status(404).json({ message: "غير موجود" });
+
+      await storage.updateMosque(req.params.id, { status });
+
+      if (status === "suspended") {
+        const mosqueUsers = await storage.getUsersByMosque(req.params.id);
+        for (const u of mosqueUsers) {
+          if (u.role !== "admin") {
+            await storage.updateUser(u.id, { isActive: false });
+          }
+        }
+      } else if (status === "active") {
+        const mosqueUsers = await storage.getUsersByMosque(req.params.id);
+        for (const u of mosqueUsers) {
+          await storage.updateUser(u.id, { isActive: true });
+        }
+      }
+
+      const statusLabels: Record<string, string> = { active: "نشط", suspended: "موقوف مؤقتاً", permanently_closed: "مغلق نهائياً" };
+      await db.insert(mosqueHistory).values({
+        mosqueId: req.params.id,
+        type: "status_change",
+        description: `تم تغيير الحالة إلى: ${statusLabels[status] || status}`,
+        byUser: req.user!.username || req.user!.name,
+      });
+
+      await logActivity(req.user!, `تغيير حالة المسجد "${mosque.name}" إلى ${statusLabels[status] || status}`, "mosques");
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  // ==================== MOSQUE MESSAGES ====================
+  app.get("/api/mosques/:id/messages", requireAuth, async (req, res) => {
+    try {
+      if (req.user!.role !== "admin" && req.user!.mosqueId !== req.params.id) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const msgs = await db.select().from(mosqueMessages)
+        .where(eq(mosqueMessages.mosqueId, req.params.id))
+        .orderBy(asc(mosqueMessages.createdAt))
+        .limit(100);
+
+      const isAdmin = req.user!.role === "admin";
+      await db.update(mosqueMessages)
+        .set({ isRead: true })
+        .where(and(
+          eq(mosqueMessages.mosqueId, req.params.id),
+          eq(mosqueMessages.fromAdmin, !isAdmin),
+          eq(mosqueMessages.isRead, false)
+        ));
+
+      res.json(msgs);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.post("/api/mosques/:id/messages", requireAuth, async (req, res) => {
+    try {
+      if (req.user!.role !== "admin" && req.user!.mosqueId !== req.params.id) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { content } = req.body;
+      if (!content?.trim()) return res.status(400).json({ message: "الرسالة فارغة" });
+
+      const isAdmin = req.user!.role === "admin";
+      const [msg] = await db.insert(mosqueMessages).values({
+        mosqueId: req.params.id,
+        content: content.trim(),
+        fromAdmin: isAdmin,
+        senderName: isAdmin ? "إدارة النظام" : (req.user!.name || req.user!.username),
+      }).returning();
+
+      await db.insert(mosqueHistory).values({
+        mosqueId: req.params.id,
+        type: "message_sent",
+        description: `رسالة ${isAdmin ? "من الإدارة" : "من المشرف"}`,
+        byUser: req.user!.name || req.user!.username,
+      });
+
+      res.json(msg);
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
+  app.get("/api/messages/unread-admin-count", requireRole("admin"), async (req, res) => {
+    try {
+      const result = await db.select({ value: count() })
+        .from(mosqueMessages)
+        .where(and(
+          eq(mosqueMessages.fromAdmin, false),
+          eq(mosqueMessages.isRead, false)
+        ));
+      res.json({ count: result[0]?.value ?? 0 });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ" });
     }
   });
 
