@@ -38,7 +38,7 @@ import {
   studentTransfers, familyLinks, feedback, tajweedRules, similarVerses,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, inArray, sum, count, asc } from "drizzle-orm";
+import { eq, desc, and, or, inArray, sum, count, asc, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -294,17 +294,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async checkPhoneExists(phone: string, excludeId?: string): Promise<boolean> {
-    const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
-    const cleanPhone = cleanDigits(phone);
-    if (!cleanPhone) return false;
-    const rows = await db.select({ id: users.id, phone: users.phone, parentPhone: users.parentPhone })
-      .from(users);
-    return rows.some(u => {
-      if (excludeId && u.id === excludeId) return false;
-      const up = cleanDigits(u.phone || "");
-      const upp = cleanDigits(u.parentPhone || "");
-      return (up && up === cleanPhone) || (upp && upp === cleanPhone);
-    });
+    const phoneClean = (phone || "").replace(/[^\d]/g, "");
+    if (!phoneClean) return false;
+    const excludeParam = excludeId || "";
+    const result = await db.execute(sql`
+      SELECT id FROM users
+      WHERE id != ${excludeParam}
+        AND (
+          REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g') = ${phoneClean}
+          OR REGEXP_REPLACE(COALESCE(parent_phone,''), '[^0-9]', '', 'g') = ${phoneClean}
+        )
+      LIMIT 1
+    `);
+    return result.rows.length > 0;
   }
 
   async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
