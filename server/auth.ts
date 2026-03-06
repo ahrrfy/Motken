@@ -31,7 +31,14 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.REPL_ID || "mutqin-fallback-secret-key-2026";
+const isProduction = process.env.NODE_ENV === "production";
+if (isProduction && !process.env.SESSION_SECRET) {
+  console.error("[SECURITY] SESSION_SECRET environment variable is NOT set in production! Using REPL_ID fallback.");
+}
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.REPL_ID || (() => {
+  console.warn("[SECURITY] Using generated fallback session secret — sessions will not persist across restarts");
+  return require("crypto").randomBytes(64).toString("hex");
+})();
 
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const LOGIN_MAX_ATTEMPTS = 5;

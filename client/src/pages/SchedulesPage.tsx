@@ -375,8 +375,9 @@ export default function SchedulesPage() {
         const slotSchedules = getSchedulesForSlot(dayIdx, timeSlot);
         const firstSlotSchedules = slotSchedules.filter(s => isFirstSlotOfSchedule(s, timeSlot));
         if (firstSlotSchedules.length > 0) {
+          const esc = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
           const content = firstSlotSchedules.map(s =>
-            `<div style="margin-bottom:4px;"><strong>${s.title}</strong><br/><small>${s.startTime} - ${s.endTime}</small><br/><small>${getTeacherName(s.teacherId)}</small>${s.location ? `<br/><small>📍 ${s.location}</small>` : ""}</div>`
+            `<div style="margin-bottom:4px;"><strong>${esc(s.title)}</strong><br/><small>${esc(s.startTime)} - ${esc(s.endTime)}</small><br/><small>${esc(getTeacherName(s.teacherId))}</small>${s.location ? `<br/><small>📍 ${esc(s.location)}</small>` : ""}</div>`
           ).join("");
           cells += `<td style="padding:6px;border:1px solid #ddd;text-align:center;vertical-align:top;font-size:12px;">${content}</td>`;
         } else if (slotSchedules.length > 0) {

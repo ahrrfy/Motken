@@ -380,19 +380,20 @@ export default function AttendancePage() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const esc = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     const rows = students.map((s, i) => {
       const entry = attendanceData[s.id];
       return `<tr>
         <td style="border:1px solid #ccc;padding:8px;text-align:center">${i + 1}</td>
-        <td style="border:1px solid #ccc;padding:8px;text-align:right">${s.name}</td>
+        <td style="border:1px solid #ccc;padding:8px;text-align:right">${esc(s.name)}</td>
         <td style="border:1px solid #ccc;padding:8px;text-align:center">${statusLabels[entry?.status || "present"]}</td>
-        <td style="border:1px solid #ccc;padding:8px;text-align:right">${entry?.notes || "—"}</td>
+        <td style="border:1px solid #ccc;padding:8px;text-align:right">${esc(entry?.notes || "—")}</td>
       </tr>`;
     }).join("");
 
     printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
       <meta charset="UTF-8">
-      <title>كشف الحضور - ${attendanceDate}</title>
+      <title>كشف الحضور - ${esc(attendanceDate)}</title>
       <style>
         body { font-family: 'Arial', sans-serif; padding: 30px; direction: rtl; }
         h1 { text-align: center; color: #1a5276; margin-bottom: 5px; }
@@ -404,7 +405,7 @@ export default function AttendancePage() {
     </head><body>
       <h1>كشف الحضور والغياب</h1>
       <div class="info">
-        <p>التاريخ: ${formatDateAr(attendanceDate)} | المعلم: ${user?.name || "—"}</p>
+        <p>التاريخ: ${esc(formatDateAr(attendanceDate))} | المعلم: ${esc(user?.name || "—")}</p>
       </div>
       <table>
         <thead><tr>
