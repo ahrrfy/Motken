@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { sessionTracker } from "./session-tracker";
 import { filterTextFields } from "@shared/content-filter";
+import { validateFields, validateAge, validateBoolean, validateEnum, validateDate, sanitizeImageUrl, validateTeacherLevels } from "@shared/security-utils";
 
 async function logActivity(user: any, action: string, module: string, details?: string) {
   await storage.createActivityLog({
@@ -327,7 +328,12 @@ export async function registerRoutes(
       if (!name || typeof name !== "string" || name.length > 200) {
         return res.status(400).json({ message: "اسم الجامع مطلوب ويجب ألا يتجاوز 200 حرف" });
       }
-      const mosque = await storage.createMosque({ name, province, city, area, landmark, address, phone, managerName, description, image, isActive });
+      const fieldCheck = validateFields(req.body, ["province", "city", "area", "landmark", "address", "phone", "managerName", "description"]);
+      if (!fieldCheck.valid) return res.status(400).json({ message: fieldCheck.error });
+      const boolCheck = validateBoolean(isActive, "isActive");
+      if (!boolCheck.valid) return res.status(400).json({ message: boolCheck.error });
+      const safeImage = sanitizeImageUrl(image);
+      const mosque = await storage.createMosque({ name, province, city, area, landmark, address, phone, managerName, description, image: safeImage, isActive });
       await logActivity(req.user!, `إنشاء جامع: ${mosque.name}`, "mosques");
       res.status(201).json(mosque);
     } catch (err: any) {
@@ -375,15 +381,22 @@ export async function registerRoutes(
         if (typeof description !== "string" || description.length > 1000) return res.status(400).json({ message: "الوصف يجب ألا يتجاوز 1000 حرف" });
         updateData.description = description;
       }
-      if (image !== undefined) updateData.image = image;
-      if (isActive !== undefined) updateData.isActive = isActive;
+      if (image !== undefined) updateData.image = sanitizeImageUrl(image);
+      if (isActive !== undefined) {
+        if (typeof isActive !== "boolean") return res.status(400).json({ message: "حالة النشاط يجب أن تكون صح/خطأ" });
+        updateData.isActive = isActive;
+      }
       if (req.body.status !== undefined) {
         if (!["active", "suspended", "permanently_closed"].includes(req.body.status)) {
           return res.status(400).json({ message: "حالة الجامع غير صحيحة" });
         }
         updateData.status = req.body.status;
       }
-      if (req.body.adminNotes !== undefined) updateData.adminNotes = req.body.adminNotes;
+      if (req.body.adminNotes !== undefined) {
+        const noteCheck = validateFields({ adminNotes: req.body.adminNotes }, ["adminNotes"]);
+        if (!noteCheck.valid) return res.status(400).json({ message: noteCheck.error });
+        updateData.adminNotes = req.body.adminNotes;
+      }
       const updated = await storage.updateMosque(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "الجامع غير موجود" });
       res.json(updated);
@@ -795,7 +808,7 @@ export async function registerRoutes(
       if (currentUser.role === "teacher" && user.id !== currentUser.id) {
         const isMyStudent = user.teacherId === currentUser.id;
         if (!isMyStudent && user.role !== "student") {
-          const { phone: _p, address: _a, telegramId: _t, ...limited } = safe;
+          const { phone: _p, parentPhone: _pp, address: _a, telegramId: _t, ...limited } = safe;
           return res.json(limited);
         }
       }
@@ -859,6 +872,23 @@ export async function registerRoutes(
         if (!/[A-Za-z]/.test(req.body.password) || !/[0-9]/.test(req.body.password)) {
           return res.status(400).json({ message: "كلمة المرور يجب أن تحتوي على حروف وأرقام" });
         }
+      }
+      const userFieldCheck = validateFields(req.body, ["phone", "parentPhone", "address", "telegramId", "educationLevel", "gender"]);
+      if (!userFieldCheck.valid) return res.status(400).json({ message: userFieldCheck.error });
+      const ageCheck = validateAge(age);
+      if (!ageCheck.valid) return res.status(400).json({ message: ageCheck.error });
+      const boolChecks = [
+        validateBoolean(isSpecialNeeds, "isSpecialNeeds"),
+        validateBoolean(isOrphan, "isOrphan"),
+      ];
+      for (const bc of boolChecks) { if (!bc.valid) return res.status(400).json({ message: bc.error }); }
+      if (teacherLevels) {
+        const tlCheck = validateTeacherLevels(teacherLevels);
+        if (!tlCheck.valid) return res.status(400).json({ message: tlCheck.error });
+      }
+      if (gender !== undefined && gender !== null) {
+        const genderCheck = validateEnum(gender, "gender", ["male", "female", "ذكر", "أنثى"]);
+        if (!genderCheck.valid) return res.status(400).json({ message: genderCheck.error });
       }
       if (req.body.role === "student" && (!parentPhone || typeof parentPhone !== "string" || parentPhone.length < 10)) {
         return res.status(400).json({ message: "رقم هاتف ولي الأمر مطلوب للطلاب" });
@@ -993,6 +1023,27 @@ export async function registerRoutes(
     const updateData: any = {};
     const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels } = req.body;
 
+    const patchFieldCheck = validateFields(req.body, ["name", "phone", "parentPhone", "address", "telegramId", "educationLevel"]);
+    if (!patchFieldCheck.valid) return res.status(400).json({ message: patchFieldCheck.error });
+    const patchAgeCheck = validateAge(age);
+    if (!patchAgeCheck.valid) return res.status(400).json({ message: patchAgeCheck.error });
+    if (gender !== undefined && gender !== null) {
+      const gCheck = validateEnum(gender, "gender", ["male", "female", "ذكر", "أنثى"]);
+      if (!gCheck.valid) return res.status(400).json({ message: gCheck.error });
+    }
+    if (isSpecialNeeds !== undefined) {
+      const bCheck = validateBoolean(isSpecialNeeds, "isSpecialNeeds");
+      if (!bCheck.valid) return res.status(400).json({ message: bCheck.error });
+    }
+    if (isOrphan !== undefined) {
+      const bCheck = validateBoolean(isOrphan, "isOrphan");
+      if (!bCheck.valid) return res.status(400).json({ message: bCheck.error });
+    }
+    if (teacherLevels !== undefined) {
+      const tlCheck = validateTeacherLevels(teacherLevels);
+      if (!tlCheck.valid) return res.status(400).json({ message: tlCheck.error });
+    }
+
     if (phone !== undefined && phone) {
       const phoneDup = await storage.checkPhoneExists(phone, req.params.id);
       if (phoneDup) {
@@ -1010,7 +1061,7 @@ export async function registerRoutes(
     if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
     if (gender !== undefined) updateData.gender = gender;
-    if (avatar !== undefined) updateData.avatar = avatar;
+    if (avatar !== undefined) updateData.avatar = sanitizeImageUrl(avatar);
     if (teacherId !== undefined) updateData.teacherId = teacherId;
     if (age !== undefined) updateData.age = age;
     if (telegramId !== undefined) updateData.telegramId = telegramId;
@@ -1055,14 +1106,36 @@ export async function registerRoutes(
         }
         updateData.isActive = req.body.isActive;
       }
-      if (req.body.canPrintIds !== undefined) updateData.canPrintIds = req.body.canPrintIds;
-      if (req.body.username !== undefined) updateData.username = req.body.username;
-      if (req.body.adminNotes !== undefined) updateData.adminNotes = req.body.adminNotes;
+      if (req.body.canPrintIds !== undefined) {
+        const cpCheck = validateBoolean(req.body.canPrintIds, "canPrintIds");
+        if (!cpCheck.valid) return res.status(400).json({ message: cpCheck.error });
+        updateData.canPrintIds = req.body.canPrintIds;
+      }
+      if (req.body.username !== undefined) {
+        if (typeof req.body.username !== "string" || req.body.username.length < 3 || req.body.username.length > 50) {
+          return res.status(400).json({ message: "اسم المستخدم يجب أن يكون بين 3 و 50 حرف" });
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(req.body.username)) {
+          return res.status(400).json({ message: "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام فقط" });
+        }
+        updateData.username = req.body.username;
+      }
+      if (req.body.adminNotes !== undefined) {
+        const anCheck = validateFields({ adminNotes: req.body.adminNotes }, ["adminNotes"]);
+        if (!anCheck.valid) return res.status(400).json({ message: anCheck.error });
+        updateData.adminNotes = req.body.adminNotes;
+      }
       if (req.body.suspendedUntil !== undefined) {
         if (targetUser.role === "admin") {
           return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
         }
-        updateData.suspendedUntil = req.body.suspendedUntil ? new Date(req.body.suspendedUntil) : null;
+        if (req.body.suspendedUntil) {
+          const dateCheck = validateDate(req.body.suspendedUntil, "suspendedUntil");
+          if (!dateCheck.valid) return res.status(400).json({ message: dateCheck.error });
+          updateData.suspendedUntil = new Date(req.body.suspendedUntil);
+        } else {
+          updateData.suspendedUntil = null;
+        }
       }
     }
 
@@ -1266,6 +1339,14 @@ export async function registerRoutes(
       if (!studentId || !surahName || fromVerse === undefined || toVerse === undefined || !scheduledDate) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
       }
+      const typeCheck = validateEnum(type, "type", ["memorization", "revision", "حفظ", "مراجعة"]);
+      if (!typeCheck.valid) return res.status(400).json({ message: typeCheck.error });
+      const statusCheck = validateEnum(status, "status", ["pending", "done", "missed", "incomplete"]);
+      if (!statusCheck.valid) return res.status(400).json({ message: statusCheck.error });
+      const dateCheck = validateDate(scheduledDate, "scheduledDate");
+      if (!dateCheck.valid) return res.status(400).json({ message: dateCheck.error });
+      const notesCheck = validateFields(req.body, ["notes", "surahName"]);
+      if (!notesCheck.valid) return res.status(400).json({ message: notesCheck.error });
 
       const fromVerseNum = Number(fromVerse);
       const toVerseNum = Number(toVerse);
@@ -1649,6 +1730,10 @@ export async function registerRoutes(
       if (!surahName || !examDate) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
       }
+      const examFieldCheck = validateFields(req.body, ["surahName", "description"]);
+      if (!examFieldCheck.valid) return res.status(400).json({ message: examFieldCheck.error });
+      const examDateCheck = validateDate(examDate, "examDate");
+      if (!examDateCheck.valid) return res.status(400).json({ message: examDateCheck.error });
       const fromVerseNum = Number(fromVerse);
       const toVerseNum = Number(toVerse);
       if (!Number.isInteger(fromVerseNum) || !Number.isInteger(toVerseNum) || fromVerseNum < 1 || toVerseNum < 1) {
@@ -2607,7 +2692,7 @@ export async function registerRoutes(
         inactiveStudents: myStudents.filter(s => !s.isActive).length,
         specialNeedsStudents: myStudents.filter(s => s.isSpecialNeeds).length,
         orphanStudents: myStudents.filter(s => s.isOrphan).length,
-        users: myStudents.map(({ password, address, telegramId, educationLevel, ...u }) => u),
+        users: myStudents.map(({ password, address, telegramId, educationLevel, parentPhone: _pp, ...u }) => u),
         assignments: myAssignments,
       });
     }
@@ -6478,6 +6563,8 @@ export async function registerRoutes(
       if (!mosqueName || !province || !city || !area || !applicantName || !applicantPhone || !requestedUsername || !requestedPassword) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب ملؤها" });
       }
+      const regFieldCheck = validateFields(req.body, ["mosqueName", "province", "city", "area", "landmark", "mosquePhone", "applicantName", "applicantPhone", "requestedUsername", "requestedPassword"]);
+      if (!regFieldCheck.valid) return res.status(400).json({ message: regFieldCheck.error });
 
       if (requestedPassword.length < 8) {
         return res.status(400).json({ message: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" });

@@ -53,6 +53,37 @@ app.use((_req, res, next) => {
 
 app.use(compression());
 
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+
+function deepPayloadGuard(req: Request, res: Response, next: NextFunction) {
+  if (!req.body || typeof req.body !== "object") return next();
+  const MAX_STRING_LEN = 5000;
+  const MAX_ARRAY_LEN = 200;
+  const MAX_DEPTH = 5;
+  function check(obj: any, depth: number): string | null {
+    if (depth > MAX_DEPTH) return "بيانات معقدة جداً";
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (typeof val === "string" && val.length > MAX_STRING_LEN) {
+        return `الحقل ${key} كبير جداً (الحد: ${MAX_STRING_LEN} حرف)`;
+      }
+      if (Array.isArray(val) && val.length > MAX_ARRAY_LEN) {
+        return `المصفوفة ${key} تحتوي عناصر أكثر من الحد (${MAX_ARRAY_LEN})`;
+      }
+      if (val && typeof val === "object") {
+        const err = check(val, depth + 1);
+        if (err) return err;
+      }
+    }
+    return null;
+  }
+  const err = check(req.body, 0);
+  if (err) return res.status(400).json({ message: err });
+  next();
+}
+app.use("/api/", deepPayloadGuard);
+
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 function csrfProtection(req: Request, res: Response, next: NextFunction) {
@@ -184,16 +215,6 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    limit: '500kb',
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
-app.use(express.urlencoded({ extended: false, limit: '500kb' }));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
