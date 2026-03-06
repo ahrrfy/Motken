@@ -1,12 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BookOpen, Users, BarChart3, Shield, Star, MessageCircle, ChevronDown, ChevronUp, Smartphone, CheckCircle2, Globe, Heart, ArrowLeft } from "lucide-react";
-
-interface PublicStats {
-  mosques: number;
-  students: number;
-  teachers: number;
-  completedSurahs: number;
-}
 
 const features = [
   { icon: BookOpen, title: "تتبع الحفظ آية بآية", desc: "تابع تقدم كل طالب في حفظ القرآن الكريم بدقة عالية مع تقارير مفصلة" },
@@ -33,15 +26,7 @@ const steps = [
 ];
 
 export default function LandingPage() {
-  const [stats, setStats] = useState<PublicStats>({ mosques: 0, students: 0, teachers: 0, completedSurahs: 0 });
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch("/api/public-stats")
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setStats(d); })
-      .catch(() => {});
-  }, []);
 
   const ref = new URLSearchParams(window.location.search).get("ref");
 
@@ -104,25 +89,6 @@ export default function LandingPage() {
             >
               تعرّف على المميزات
             </a>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-10 bg-gray-50 border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6" data-testid="stats-section">
-            {[
-              { value: stats.mosques, label: "مسجد ومركز", icon: Globe },
-              { value: stats.students, label: "طالب", icon: Users },
-              { value: stats.teachers, label: "معلم وأستاذ", icon: BookOpen },
-              { value: stats.completedSurahs, label: "سورة محفوظة", icon: Star },
-            ].map((s, i) => (
-              <div key={i} className="text-center bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
-                <s.icon className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                <p className="text-2xl sm:text-3xl font-bold text-[#16213e]">{s.value > 0 ? s.value.toLocaleString("ar-SA") : "—"}</p>
-                <p className="text-sm text-gray-500 mt-1">{s.label}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
