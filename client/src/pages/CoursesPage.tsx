@@ -1014,7 +1014,8 @@ export default function CoursesPage() {
 
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة إتمام - ${studentName}</title><style>${styles}</style></head><body>
+    const esc = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة إتمام - ${esc(studentName)}</title><style>${styles}</style></head><body>
     <div class="actions-bar">
       <button class="btn-print" onclick="window.print()">🖨️ طباعة مباشرة</button>
       <button class="btn-save" onclick="window.print()">📥 حفظ كـ PDF</button>
@@ -1050,7 +1051,8 @@ export default function CoursesPage() {
     const styles = getCertificateStyles(lastTheme, lastDecorations);
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادات دورة - ${course.title}</title><style>${styles}</style></head><body>
+    const esc2 = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادات دورة - ${esc2(course.title)}</title><style>${styles}</style></head><body>
     <div class="actions-bar">
       <button class="btn-print" onclick="window.print()">🖨️ طباعة الكل</button>
       <button class="btn-save" onclick="window.print()">📥 حفظ كـ PDF</button>
