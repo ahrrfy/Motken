@@ -165,7 +165,6 @@ export async function registerRoutes(
     "/api/auth/",
     "/api/privacy-policy/",
     "/api/register-mosque",
-    "/api/public-stats",
   ];
   app.use((req: any, res: any, next: any) => {
     if (!req.path.startsWith("/api/")) return next();
@@ -6853,26 +6852,7 @@ export async function registerRoutes(
     }
   });
 
-  // ==================== PUBLIC STATS & INVITE CODES ====================
-  app.get("/api/public-stats", async (_req, res) => {
-    try {
-      const allMosques = await db.select().from(mosques);
-      const allUsers = await db.select().from(users);
-      const allProgress = await db.select().from(quranProgress);
-      const studentCount = allUsers.filter(u => u.role === "student").length;
-      const teacherCount = allUsers.filter(u => u.role === "teacher" || u.role === "supervisor").length;
-      const completedSurahs = allProgress.filter(p => p.status === "completed" || p.status === "memorized").length;
-      res.json({
-        mosques: allMosques.length,
-        students: studentCount,
-        teachers: teacherCount,
-        completedSurahs,
-      });
-    } catch {
-      res.json({ mosques: 0, students: 0, teachers: 0, completedSurahs: 0 });
-    }
-  });
-
+  // ==================== INVITE CODES ====================
   app.get("/api/my-invite-code", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
