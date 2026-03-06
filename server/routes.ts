@@ -850,11 +850,14 @@ export async function registerRoutes(
       }
       const rawPassword = req.body.password || crypto.randomBytes(4).toString("hex");
       if (req.body.password) {
-        if (typeof req.body.password !== "string" || req.body.password.length < 6) {
-          return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+        if (typeof req.body.password !== "string" || req.body.password.length < 8) {
+          return res.status(400).json({ message: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" });
         }
         if (req.body.password.length > 128) {
           return res.status(400).json({ message: "كلمة المرور طويلة جداً" });
+        }
+        if (!/[A-Za-z]/.test(req.body.password) || !/[0-9]/.test(req.body.password)) {
+          return res.status(400).json({ message: "كلمة المرور يجب أن تحتوي على حروف وأرقام" });
         }
       }
       if (req.body.role === "student" && (!parentPhone || typeof parentPhone !== "string" || parentPhone.length < 10)) {
@@ -947,20 +950,24 @@ export async function registerRoutes(
       return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
     }
 
+    const isTeacherOfStudent = currentUser.role === "teacher" && targetUser.role === "student" && 
+      (targetUser.teacherId === currentUser.id || canTeacherAccessStudent(currentUser, targetUser));
     const canEdit =
       currentUser.role === "admin" ||
       currentUser.id === req.params.id ||
       (currentUser.role === "supervisor" && ["teacher", "student"].includes(targetUser.role)) ||
-      (currentUser.role === "teacher" && targetUser.role === "student");
+      isTeacherOfStudent;
 
     if (!canEdit) {
       return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
     }
 
-    const safeFields = ["name", "phone", "address", "gender", "avatar", "teacherId", "age", "telegramId", "parentPhone", "educationLevel", "isSpecialNeeds", "isOrphan", "level", "teacherLevels", "password"];
+    const safeFields = ["name", "phone", "address", "gender", "avatar", "age", "telegramId", "parentPhone", "educationLevel", "isSpecialNeeds", "isOrphan", "password"];
+    const supervisorFields = ["teacherId", "level", "teacherLevels"];
     const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil"];
+    const allAllowedFields = [...safeFields, ...supervisorFields, ...adminOnlyFields];
     const receivedKeys = Object.keys(req.body);
-    const forbiddenKeys = receivedKeys.filter(k => !safeFields.includes(k) && !adminOnlyFields.includes(k));
+    const forbiddenKeys = receivedKeys.filter(k => !allAllowedFields.includes(k));
     if (forbiddenKeys.length > 0) {
       return res.status(400).json({ message: `حقول غير مسموحة: ${forbiddenKeys.join(", ")}` });
     }
@@ -968,6 +975,18 @@ export async function registerRoutes(
       const attemptedAdminFields = receivedKeys.filter(k => adminOnlyFields.includes(k));
       if (attemptedAdminFields.length > 0) {
         return res.status(403).json({ message: "غير مصرح بتعديل هذه الحقول" });
+      }
+      if (currentUser.id === req.params.id) {
+        const attemptedSupervisorFields = receivedKeys.filter(k => supervisorFields.includes(k));
+        if (attemptedSupervisorFields.length > 0) {
+          return res.status(403).json({ message: "لا يمكنك تعديل هذه الحقول لحسابك الشخصي" });
+        }
+      }
+      if (currentUser.role === "teacher" && targetUser.role === "student") {
+        const teacherForbidden = receivedKeys.filter(k => supervisorFields.includes(k) && k !== "teacherId");
+        if (teacherForbidden.length > 0) {
+          return res.status(403).json({ message: "الأستاذ لا يمكنه تعديل مستوى الطالب" });
+        }
       }
     }
 
@@ -1003,11 +1022,14 @@ export async function registerRoutes(
     if (teacherLevels !== undefined) updateData.teacherLevels = teacherLevels;
 
     if (req.body.password) {
-      if (typeof req.body.password !== "string" || req.body.password.length < 6) {
-        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      if (typeof req.body.password !== "string" || req.body.password.length < 8) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" });
       }
       if (req.body.password.length > 128) {
         return res.status(400).json({ message: "كلمة المرور طويلة جداً" });
+      }
+      if (!/[A-Za-z]/.test(req.body.password) || !/[0-9]/.test(req.body.password)) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تحتوي على حروف وأرقام" });
       }
       if (currentUser.id !== req.params.id && currentUser.role !== "admin") {
         if (!["supervisor", "teacher"].includes(currentUser.role)) {
@@ -1521,6 +1543,9 @@ export async function registerRoutes(
       }
       if (currentUser.role === "teacher" && targetUser.role !== "student") {
         return res.status(403).json({ message: "الأستاذ يمكنه تقييم الطلاب فقط" });
+      }
+      if (currentUser.role === "teacher" && !canTeacherAccessStudent(currentUser, targetUser)) {
+        return res.status(403).json({ message: "لا يمكنك تقييم طالب غير تابع لك" });
       }
 
       const rating = await storage.createRating({
@@ -2659,6 +2684,9 @@ export async function registerRoutes(
   // ==================== SEED DATA ====================
   app.post("/api/seed", async (req, res) => {
     try {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(403).json({ message: "غير مسموح في بيئة الإنتاج" });
+      }
       const allUsers = await storage.getUsers();
       if (allUsers.length > 0) {
         if (!req.isAuthenticated() || req.user!.role !== "admin") {
@@ -2888,6 +2916,7 @@ export async function registerRoutes(
         db.select().from(bannedDevices),
       ]);
 
+      const safeUsersData = usersData.map(({ password, ...u }) => u);
       const backup = {
         metadata: {
           version: "1.0",
@@ -2905,7 +2934,7 @@ export async function registerRoutes(
         },
         data: {
           mosques: mosquesData,
-          users: usersData,
+          users: safeUsersData,
           assignments: assignmentsData,
           attendance: attendanceData,
           courses: coursesData,
@@ -6450,8 +6479,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب ملؤها" });
       }
 
-      if (requestedPassword.length < 6) {
-        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      if (requestedPassword.length < 8) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" });
+      }
+      if (!/[A-Za-z]/.test(requestedPassword) || !/[0-9]/.test(requestedPassword)) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تحتوي على حروف وأرقام" });
       }
 
       const existingUser = await storage.getUserByUsername(requestedUsername);
@@ -6525,8 +6557,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب ملؤها" });
       }
 
-      if (requestedPassword.length < 6) {
-        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      if (requestedPassword.length < 8) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" });
+      }
+      if (!/[A-Za-z]/.test(requestedPassword) || !/[0-9]/.test(requestedPassword)) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تحتوي على حروف وأرقام" });
       }
 
       const existingUser = await storage.getUserByUsername(requestedUsername);
