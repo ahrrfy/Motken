@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Bell, Users, CalendarCheck,
   MessageSquare, Star, BarChart3, GraduationCap, Trophy, Settings, LogOut,
@@ -20,32 +21,32 @@ const allNavItems = [
   { href: "/users", label: "جميع المستخدمين", icon: Users, roles: ["admin"], group: "people" },
   { href: "/assignments", label: "الواجبات والامتحانات", icon: ClipboardList, roles: ["admin","teacher","supervisor","student"], group: "edu" },
   { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin","teacher","student","supervisor"], group: "edu" },
-  { href: "/courses", label: "الدورات والشهادات", icon: Award, roles: ["admin","teacher","supervisor","student"], group: "edu" },
-  { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin","teacher","student","supervisor"], group: "edu" },
-  { href: "/knowledge-base", label: "موسوعة التجويد", icon: Brain, roles: ["admin","teacher","student","supervisor"], group: "edu" },
-  { href: "/educational-content", label: "المحتوى التعليمي", icon: Sparkles, roles: ["admin","teacher","student","supervisor"], group: "edu" },
-  { href: "/graduation", label: "التخرج والمتابعة", icon: BookOpenCheck, roles: ["admin","supervisor","teacher"], group: "edu" },
-  { href: "/attendance", label: "الحضور والغياب", icon: CalendarCheck, roles: ["admin","teacher","supervisor"], group: "track" },
-  { href: "/points-rewards", label: "النقاط والمكافآت", icon: Gift, roles: ["admin","teacher","student","supervisor"], group: "track" },
-  { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["admin","teacher","supervisor","student"], group: "track" },
-  { href: "/schedules", label: "جدول الحلقات", icon: Clock, roles: ["admin","teacher","supervisor"], group: "track" },
-  { href: "/competitions", label: "المسابقات القرآنية", icon: Trophy, roles: ["admin","teacher","supervisor","student"], group: "track" },
-  { href: "/messages", label: "المحادثات", icon: MessageSquare, roles: ["admin","teacher","student","supervisor"], group: "comm" },
+  { href: "/courses", label: "الدورات والشهادات", icon: Award, roles: ["admin","teacher","supervisor","student"], group: "edu", featureKey: "courses" },
+  { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin","teacher","student","supervisor"], group: "edu", featureKey: "library" },
+  { href: "/knowledge-base", label: "موسوعة التجويد", icon: Brain, roles: ["admin","teacher","student","supervisor"], group: "edu", featureKey: "knowledge_base" },
+  { href: "/educational-content", label: "المحتوى التعليمي", icon: Sparkles, roles: ["admin","teacher","student","supervisor"], group: "edu", featureKey: "educational_content" },
+  { href: "/graduation", label: "التخرج والمتابعة", icon: BookOpenCheck, roles: ["admin","supervisor","teacher"], group: "edu", featureKey: "graduation" },
+  { href: "/attendance", label: "الحضور والغياب", icon: CalendarCheck, roles: ["admin","teacher","supervisor"], group: "track", featureKey: "attendance" },
+  { href: "/points-rewards", label: "النقاط والمكافآت", icon: Gift, roles: ["admin","teacher","student","supervisor"], group: "track", featureKey: "points_rewards" },
+  { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["admin","teacher","supervisor","student"], group: "track", featureKey: "ratings" },
+  { href: "/schedules", label: "جدول الحلقات", icon: Clock, roles: ["admin","teacher","supervisor"], group: "track", featureKey: "schedules" },
+  { href: "/competitions", label: "المسابقات القرآنية", icon: Trophy, roles: ["admin","teacher","supervisor","student"], group: "track", featureKey: "competitions" },
+  { href: "/messages", label: "المحادثات", icon: MessageSquare, roles: ["admin","teacher","student","supervisor"], group: "comm", featureKey: "messaging" },
   { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin","teacher","student","supervisor"], group: "comm" },
-  { href: "/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, roles: ["admin","supervisor","teacher"], group: "comm" },
-  { href: "/parent-portal", label: "بوابة ولي الأمر", icon: UserCog, roles: ["admin","teacher","supervisor"], group: "comm" },
-  { href: "/family-system", label: "نظام الأسرة", icon: HeartHandshake, roles: ["admin","supervisor","teacher"], group: "comm" },
-  { href: "/whiteboard", label: "السبورة التفاعلية", icon: Pen, roles: ["admin","supervisor","teacher"], group: "comm" },
+  { href: "/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "smart_alerts" },
+  { href: "/parent-portal", label: "بوابة ولي الأمر", icon: UserCog, roles: ["admin","teacher","supervisor"], group: "comm", featureKey: "parent_portal" },
+  { href: "/family-system", label: "نظام الأسرة", icon: HeartHandshake, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "family_system" },
+  { href: "/whiteboard", label: "السبورة التفاعلية", icon: Pen, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "whiteboard" },
   { href: "/spread", label: "انشر النظام", icon: Share2, roles: ["admin","supervisor","teacher"], group: "comm" },
   { href: "/mosques", label: "الجوامع والمراكز", icon: Building2, roles: ["admin","supervisor"], group: "admin" },
-  { href: "/floor-plan", label: "المخطط البصري", icon: MapPin, roles: ["admin","supervisor","teacher"], group: "admin" },
+  { href: "/floor-plan", label: "المخطط البصري", icon: MapPin, roles: ["admin","supervisor","teacher"], group: "admin", featureKey: "floor_plan" },
   { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin","supervisor"], group: "admin" },
-  { href: "/id-cards", label: "الهويات ومسح QR", icon: QrCode, roles: ["admin"], group: "admin" },
+  { href: "/id-cards", label: "الهويات ومسح QR", icon: QrCode, roles: ["admin"], group: "admin", permission: "canPrintIds" as const, featureKey: "id_cards" },
   { href: "/monitoring", label: "المراقبة والأمان", icon: Eye, roles: ["admin"], group: "admin" },
   { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["supervisor"], group: "admin" },
   { href: "/feature-control", label: "التحكم بالمميزات", icon: Shield, roles: ["admin"], group: "admin" },
-  { href: "/crisis-management", label: "إدارة الأزمات", icon: AlertTriangle, roles: ["admin","supervisor"], group: "admin" },
-  { href: "/institutional", label: "التكامل المؤسسي", icon: ArrowUpDown, roles: ["admin","supervisor"], group: "admin" },
+  { href: "/crisis-management", label: "إدارة الأزمات", icon: AlertTriangle, roles: ["admin","supervisor"], group: "admin", featureKey: "crisis_management" },
+  { href: "/institutional", label: "التكامل المؤسسي", icon: ArrowUpDown, roles: ["admin","supervisor"], group: "admin", featureKey: "institutional" },
   { href: "/maintenance", label: "الملاحظات والتحسين", icon: Lightbulb, roles: ["admin","supervisor","teacher","student"], group: "admin" },
   { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin","teacher","student","supervisor"], group: "admin" },
 ];
@@ -57,7 +58,23 @@ const groupLabels: Record<string,string> = {
 export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   const { user, effectiveRole, logout } = useAuth();
   const [location] = useLocation();
+  const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const role = effectiveRole || user?.role || "student";
+
+  useEffect(() => {
+    async function loadFeatures() {
+      try {
+        const res = await fetch("/api/features/enabled", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setEnabledFeatures(data.enabled || []);
+        }
+      } catch {}
+    }
+    loadFeatures();
+    const interval = setInterval(loadFeatures, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const roleColor = {
     admin: "text-emerald-400 bg-emerald-500/20", supervisor: "text-purple-400 bg-purple-500/20",
@@ -65,7 +82,18 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   }[role] || "text-emerald-400 bg-emerald-500/20";
 
   const roleLabel = { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب" }[role] || "";
-  const visibleItems = allNavItems.filter(i => i.roles.includes(role));
+  const visibleItems = allNavItems.filter(i => {
+    if (!i.roles.includes(role)) {
+      if ("permission" in i && i.permission === "canPrintIds" && user?.canPrintIds) {
+        return true;
+      }
+      return false;
+    }
+    if ("featureKey" in i && i.featureKey && !enabledFeatures.includes(i.featureKey)) {
+      return false;
+    }
+    return true;
+  });
   const topItems = visibleItems.filter(i => !i.group);
   const grouped = ["people","edu","track","comm","admin"].map(g => ({
     group: g, label: groupLabels[g], items: visibleItems.filter(i => i.group === g),
