@@ -102,6 +102,18 @@ export default function MobileApp() {
             <Route path="/activity-logs" component={ActivityLogsPage} />
             <Route path="/online-users" component={OnlineUsersPage} />
             <Route path="/" component={DashboardPage} />
+            <Route>
+              {() => (
+                <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-6" dir="rtl">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <span className="text-2xl">404</span>
+                  </div>
+                  <h2 className="text-lg font-bold mb-2">الصفحة غير موجودة</h2>
+                  <p className="text-sm text-muted-foreground mb-4">الصفحة التي تبحث عنها غير متوفرة</p>
+                  <a href="/dashboard" className="text-sm text-primary font-medium hover:underline">العودة للوحة التحكم</a>
+                </div>
+              )}
+            </Route>
           </Switch>
         </Suspense>
       </MobileLayout>
