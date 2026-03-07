@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Bell, Menu,
-  CalendarCheck, Users, MessageSquare, Star, BarChart3, GraduationCap
+  CalendarCheck, Users, MessageSquare, Star, BarChart3, GraduationCap, Building2
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -18,11 +18,12 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
   const [location] = useLocation();
   const role = effectiveRole || user?.role;
 
-  const { data: unread = 0 } = useQuery<number>({
+  const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/messages/unread-count"],
     refetchInterval: 30000,
     enabled: !!user,
   });
+  const unread = unreadData?.count || 0;
 
   const { data: notifications = [] } = useQuery<any[]>({
     queryKey: ["/api/notifications"],
@@ -34,7 +35,7 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
   const navItems = (() => {
     if (role === "admin") return [
       { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard },
-      { href: "/mosques", label: "الجوامع", icon: LayoutDashboard },
+      { href: "/mosques", label: "الجوامع", icon: Building2 },
       { href: "/students", label: "الطلاب", icon: Users },
       { href: "/reports", label: "التقارير", icon: BarChart3 },
       { href: "/messages", label: "الرسائل", icon: MessageSquare, badge: unread },
@@ -73,7 +74,6 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
       headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90",
       navGlow: "shadow-emerald-500/10",
       activeBar: "bg-emerald-400",
-      dotBg: "bg-emerald-400/10",
     },
     supervisor: {
       color: "text-purple-400",
@@ -81,7 +81,6 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
       headerGradient: "from-purple-600/90 via-purple-700/80 to-purple-900/90",
       navGlow: "shadow-purple-500/10",
       activeBar: "bg-purple-400",
-      dotBg: "bg-purple-400/10",
     },
     teacher: {
       color: "text-teal-400",
@@ -89,7 +88,6 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
       headerGradient: "from-teal-600/90 via-teal-700/80 to-teal-900/90",
       navGlow: "shadow-teal-500/10",
       activeBar: "bg-teal-400",
-      dotBg: "bg-teal-400/10",
     },
     student: {
       color: "text-sky-400",
@@ -97,7 +95,6 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
       headerGradient: "from-sky-600/90 via-sky-700/80 to-sky-900/90",
       navGlow: "shadow-sky-500/10",
       activeBar: "bg-sky-400",
-      dotBg: "bg-sky-400/10",
     },
   }[role || "student"] || {
     color: "text-emerald-400",
@@ -105,7 +102,6 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
     headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90",
     navGlow: "shadow-emerald-500/10",
     activeBar: "bg-emerald-400",
-    dotBg: "bg-emerald-400/10",
   };
 
   return (
