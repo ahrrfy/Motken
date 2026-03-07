@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth-context";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Route, Switch } from "wouter";
 import { registerServiceWorker, startNotificationPolling, stopNotificationPolling, isNotificationsEnabled } from "@/lib/notifications";
 import { startUpdateChecker, stopUpdateChecker, onUpdateAvailable, applyUpdate } from "@/lib/update-checker";
@@ -52,6 +52,8 @@ import LandingPage from "@/pages/LandingPage";
 import SpreadPage from "@/pages/SpreadPage";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
+import { isMobileOrTablet } from "@/lib/device-detect";
+const MobileApp = lazy(() => import("@/mobile/MobileApp"));
 
 function UpdateBanner() {
   const [show, setShow] = useState(false);
@@ -91,6 +93,7 @@ function UpdateBanner() {
 
 function App() {
   const { user, loading } = useAuth();
+  const [isMobile] = useState(() => isMobileOrTablet());
 
   useEffect(() => {
     registerServiceWorker();
