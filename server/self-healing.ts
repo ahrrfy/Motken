@@ -70,7 +70,7 @@ async function runHealthCheck(): Promise<SystemHealthReport> {
   const memUsedMB = Math.round(report.memoryUsage.heapUsed / 1024 / 1024);
   const memTotalMB = Math.round(report.memoryUsage.heapTotal / 1024 / 1024);
 
-  if (memUsedMB > memTotalMB * 0.9) {
+  if (memUsedMB > memTotalMB * 0.95) {
     console.warn(`[Self-Healing] High memory usage: ${memUsedMB}MB / ${memTotalMB}MB`);
     if (global.gc) {
       global.gc();

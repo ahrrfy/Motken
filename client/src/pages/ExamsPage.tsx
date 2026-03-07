@@ -480,7 +480,7 @@ export default function ExamsPage() {
                       className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
                       data-testid={`button-delete-exam-${exam.id}`}
                       disabled={deletingExam === exam.id}
-                      onClick={(e) => { e.stopPropagation(); handleDeleteExam(exam.id); }}
+                      onClick={(e) => { e.stopPropagation(); if (confirm("هل أنت متأكد من حذف هذا الامتحان؟")) handleDeleteExam(exam.id); }}
                     >
                       {deletingExam === exam.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </Button>
