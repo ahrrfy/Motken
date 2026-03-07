@@ -1338,9 +1338,9 @@ export async function registerRoutes(
       if (!studentId || !surahName || fromVerse === undefined || toVerse === undefined || !scheduledDate) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
       }
-      const typeCheck = validateEnum(type, "type", ["memorization", "revision", "حفظ", "مراجعة"]);
+      const typeCheck = validateEnum(type || "new", "type", ["new", "review", "test", "memorization", "revision", "حفظ", "مراجعة"]);
       if (!typeCheck.valid) return res.status(400).json({ message: typeCheck.error });
-      const statusCheck = validateEnum(status, "status", ["pending", "done", "missed", "incomplete"]);
+      const statusCheck = validateEnum(status || "pending", "status", ["pending", "done", "missed", "incomplete"]);
       if (!statusCheck.valid) return res.status(400).json({ message: statusCheck.error });
       const dateCheck = validateDate(scheduledDate, "scheduledDate");
       if (!dateCheck.valid) return res.status(400).json({ message: dateCheck.error });
