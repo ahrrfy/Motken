@@ -252,6 +252,11 @@ export interface IStorage {
   createSimilarVerse(data: InsertSimilarVerse): Promise<SimilarVerse>;
   updateSimilarVerse(id: string, data: Partial<InsertSimilarVerse>): Promise<SimilarVerse | undefined>;
   deleteSimilarVerse(id: string): Promise<void>;
+
+  resetSystemData(): Promise<void>;
+  getQuranProgress(userId: string, surahNumber?: number): Promise<any>;
+  getQuranProgressByUser(userId: string): Promise<any[]>;
+  upsertQuranProgress(data: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
