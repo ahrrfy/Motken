@@ -1,13 +1,16 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { isNotificationsEnabled, setNotificationsEnabled, startNotificationPolling, stopNotificationPolling } from "@/lib/notifications";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Bell, Users, CalendarCheck,
   MessageSquare, Star, BarChart3, GraduationCap, Trophy, Settings, LogOut,
   Award, Library, Brain, Sparkles, BookOpenCheck, Gift, Clock, Shield,
   AlertTriangle, HeartHandshake, Pen, Share2, QrCode, Eye, UserCircle,
-  MapPin, Lightbulb, X, Building2, UserCog, ArrowUpDown
+  MapPin, Lightbulb, X, Building2, UserCog, ArrowUpDown,
+  Moon, Sun, Languages, ArrowLeftRight, EyeOff, Download, BellRing
 } from "lucide-react";
 
 interface MobileSidebarProps { open: boolean; onClose: () => void; }
@@ -56,9 +59,13 @@ const groupLabels: Record<string,string> = {
 };
 
 export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
-  const { user, effectiveRole, logout } = useAuth();
+  const { user, effectiveRole, logout, switchRole, previewRole, stopPreview } = useAuth();
+  const { isDark, toggleDark, language, setLanguage } = useTheme();
   const [location] = useLocation();
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
+  const [pushEnabled, setPushEnabled] = useState(() => isNotificationsEnabled());
+  const [canInstall, setCanInstall] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
   const role = effectiveRole || user?.role || "student";
 
   useEffect(() => {
@@ -76,6 +83,39 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone) {
+      setIsInstalled(true);
+    }
+    const onReady = () => setCanInstall(true);
+    window.addEventListener("pwaInstallReady", onReady);
+    if ((window as any).__pwaInstallPrompt?.()) setCanInstall(true);
+    return () => window.removeEventListener("pwaInstallReady", onReady);
+  }, []);
+
+  const handleInstall = useCallback(async () => {
+    const prompt = (window as any).__pwaInstallPrompt?.();
+    if (!prompt) return;
+    prompt.prompt();
+    const result = await prompt.userChoice;
+    if (result.outcome === "accepted") {
+      setCanInstall(false);
+      setIsInstalled(true);
+    }
+  }, []);
+
+  const togglePush = useCallback(async () => {
+    if (pushEnabled) {
+      setNotificationsEnabled(false);
+      stopNotificationPolling();
+      setPushEnabled(false);
+    } else {
+      setNotificationsEnabled(true);
+      startNotificationPolling();
+      setPushEnabled(true);
+    }
+  }, [pushEnabled]);
+
   const roleStyles = {
     admin: { pill: "text-emerald-400 bg-emerald-500/20", active: "text-emerald-400 bg-emerald-500/15 font-semibold", headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90", avatarRing: "ring-emerald-500/40" },
     supervisor: { pill: "text-purple-400 bg-purple-500/20", active: "text-purple-400 bg-purple-500/15 font-semibold", headerGradient: "from-purple-600/90 via-purple-700/80 to-purple-900/90", avatarRing: "ring-purple-500/40" },
@@ -83,7 +123,10 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     student: { pill: "text-sky-400 bg-sky-500/20", active: "text-sky-400 bg-sky-500/15 font-semibold", headerGradient: "from-sky-600/90 via-sky-700/80 to-sky-900/90", avatarRing: "ring-sky-500/40" },
   }[role] || { pill: "text-emerald-400 bg-emerald-500/20", active: "text-emerald-400 bg-emerald-500/15 font-semibold", headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90", avatarRing: "ring-emerald-500/40" };
 
-  const roleLabel = { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب" }[role] || "";
+  const roleLabel = previewRole
+    ? { admin:"معاينة: مدير", supervisor:"معاينة: مشرف", teacher:"معاينة: أستاذ", student:"معاينة: طالب" }[previewRole] || ""
+    : { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب" }[role] || "";
+
   const visibleItems = allNavItems.filter(i => {
     if (!i.roles.includes(role)) {
       if ("permission" in i && i.permission === "canPrintIds" && user?.canPrintIds) {
@@ -117,11 +160,16 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/80"><X className="w-4 h-4" /></button>
         </div>
+
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-full bg-accent flex items-center justify-center text-lg font-bold ring-2", roleStyles.avatarRing)}>
-              {user?.name?.charAt(0) || "؟"}
-            </div>
+            {user?.avatar ? (
+              <img src={user.avatar} alt={user.name} className={cn("w-10 h-10 rounded-full object-cover ring-2", roleStyles.avatarRing)} />
+            ) : (
+              <div className={cn("w-10 h-10 rounded-full bg-accent flex items-center justify-center text-lg font-bold ring-2", roleStyles.avatarRing)}>
+                {user?.name?.charAt(0) || "؟"}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{user?.name}</p>
               <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", roleStyles.pill)}>{roleLabel}</span>
@@ -129,6 +177,7 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
           </div>
           {user?.mosqueName && <p className="text-xs text-muted-foreground mt-2 pr-1">🕌 {user.mosqueName}</p>}
         </div>
+
         <div className="p-2">
           {topItems.map(item => {
             const Icon = item.icon;
@@ -160,11 +209,59 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
             })}
           </div>
         ))}
-        <div className="sticky bottom-0 p-4 border-t border-border/50 bg-card/95 backdrop-blur mt-auto">
-          <button onClick={() => { logout(); onClose(); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors">
-            <LogOut className="w-4 h-4" />تسجيل الخروج
-          </button>
+
+        <div className="sticky bottom-0 border-t border-border/50 bg-card/95 backdrop-blur mt-auto">
+          <div className="p-3 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <button onClick={toggleDark}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors bg-accent/50 hover:bg-accent">
+                {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                {isDark ? "فاتح" : "داكن"}
+              </button>
+              <button onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors bg-accent/50 hover:bg-accent">
+                <Languages className="w-3.5 h-3.5" />
+                {language === "ar" ? "English" : "عربي"}
+              </button>
+            </div>
+
+            <button onClick={togglePush}
+              className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
+                pushEnabled ? "bg-green-500/15 text-green-400" : "bg-accent/50 hover:bg-accent text-muted-foreground")}>
+              <BellRing className="w-3.5 h-3.5" />
+              {pushEnabled ? "الإشعارات: مفعّلة" : "تفعيل الإشعارات"}
+            </button>
+
+            {canInstall && !isInstalled && (
+              <button onClick={handleInstall}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors animate-pulse">
+                <Download className="w-3.5 h-3.5" />
+                تثبيت التطبيق
+              </button>
+            )}
+
+            {!previewRole && (user?.actualRole === "supervisor" || user?.role === "supervisor") && (
+              <button onClick={() => { switchRole(); onClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors">
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                {effectiveRole === "teacher" ? "العودة لوضع المشرف" : "التبديل لوضع الأستاذ"}
+              </button>
+            )}
+
+            {previewRole && (
+              <button onClick={() => { stopPreview(); onClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors">
+                <EyeOff className="w-3.5 h-3.5" />
+                إيقاف المعاينة
+              </button>
+            )}
+
+            <button onClick={() => { logout(); onClose(); }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+              <LogOut className="w-3.5 h-3.5" />
+              تسجيل الخروج
+            </button>
+          </div>
         </div>
       </div>
     </div>
