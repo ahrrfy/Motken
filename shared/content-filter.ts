@@ -1,27 +1,9 @@
 const bannedPatterns: string[] = [
-  "لعن", "يلعن", "ملعون",
-  "كلب", "حمار", "خنزير", "بقرة", "حيوان",
-  "غبي", "أغبي", "أحمق", "معتوه", "مجنون",
-  "كافر", "مرتد", "زنديق", "منافق",
-  "حرام عليك", "ابن ال",
-  "سب", "شتم", "يشتم",
-  "قتل", "اقتل", "يقتل", "نقتل", "ذبح", "اذبح",
-  "تفجير", "انتحاري", "متفجرات", "قنبلة",
-  "داعش", "ارهاب", "ارهابي", "إرهاب", "إرهابي",
-  "تطرف", "متطرف",
-  "طائفي", "طائفية",
-  "سلاح", "اسلحة", "أسلحة",
-  "خمر", "مخدرات", "حشيش",
-  "زنا", "فاحشة", "فاسق", "فاجر",
   "عاهرة", "قحبة", "شرموطة", "عرص",
-  "تحرش", "اغتصاب",
-  "لواط",
   "كس", "طيز", "زب",
-  "واطي", "حقير", "وسخ", "قذر",
-  "نجس", "نجاسة",
-  "fuck", "shit", "bitch", "ass", "damn", "hell",
-  "sex", "porn", "drug", "kill", "terror", "bomb",
-  "isis", "racist", "hate",
+  "داعش", "انتحاري", "متفجرات",
+  "fuck", "shit", "bitch",
+  "porn", "isis",
 ];
 
 export function containsBannedContent(text: string): { blocked: boolean; reason?: string } {
@@ -39,10 +21,11 @@ export function containsBannedContent(text: string): { blocked: boolean; reason?
       .replace(/[\u064B-\u065F\u0670]/g, "")
       .replace(/[ـ]/g, "");
 
-    if (normalized.includes(normalizedPattern)) {
+    const regex = new RegExp(`(?:^|\\s|[^\\p{L}])${normalizedPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|\\s|[^\\p{L}])`, "u");
+    if (regex.test(` ${normalized} `)) {
       return {
         blocked: true,
-        reason: "يحتوي النص على محتوى غير لائق أو مخالف لسياسة النظام",
+        reason: "يحتوي النص على محتوى غير لائق",
       };
     }
   }
