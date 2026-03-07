@@ -76,10 +76,12 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const roleColor = {
-    admin: "text-emerald-400 bg-emerald-500/20", supervisor: "text-purple-400 bg-purple-500/20",
-    teacher: "text-teal-400 bg-teal-500/20", student: "text-blue-400 bg-blue-500/20",
-  }[role] || "text-emerald-400 bg-emerald-500/20";
+  const roleStyles = {
+    admin: { pill: "text-emerald-400 bg-emerald-500/20", active: "text-emerald-400 bg-emerald-500/15 font-semibold", headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90", avatarRing: "ring-emerald-500/40" },
+    supervisor: { pill: "text-purple-400 bg-purple-500/20", active: "text-purple-400 bg-purple-500/15 font-semibold", headerGradient: "from-purple-600/90 via-purple-700/80 to-purple-900/90", avatarRing: "ring-purple-500/40" },
+    teacher: { pill: "text-teal-400 bg-teal-500/20", active: "text-teal-400 bg-teal-500/15 font-semibold", headerGradient: "from-teal-600/90 via-teal-700/80 to-teal-900/90", avatarRing: "ring-teal-500/40" },
+    student: { pill: "text-sky-400 bg-sky-500/20", active: "text-sky-400 bg-sky-500/15 font-semibold", headerGradient: "from-sky-600/90 via-sky-700/80 to-sky-900/90", avatarRing: "ring-sky-500/40" },
+  }[role] || { pill: "text-emerald-400 bg-emerald-500/20", active: "text-emerald-400 bg-emerald-500/15 font-semibold", headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90", avatarRing: "ring-emerald-500/40" };
 
   const roleLabel = { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب" }[role] || "";
   const visibleItems = allNavItems.filter(i => {
@@ -105,24 +107,24 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     <div className="fixed inset-0 z-50 flex" dir="rtl">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col">
-        <div className="sticky top-0 bg-card/95 backdrop-blur z-10 flex items-center justify-between p-4 border-b border-border/50">
+        <div className={cn("sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-l shadow-lg", roleStyles.headerGradient)}>
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="متقن" className="w-9 h-9 rounded-xl" />
+            <img src="/logo.png" alt="متقن" className="w-9 h-9 rounded-xl shadow-sm" />
             <div>
-              <p className="font-bold text-sm">نظام متقن</p>
-              <p className="text-xs text-muted-foreground">إدارة حلقات التحفيظ</p>
+              <p className="font-bold text-sm text-white">نظام متقن</p>
+              <p className="text-xs text-white/60">إدارة حلقات التحفيظ</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-accent"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/80"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-lg font-bold">
+            <div className={cn("w-10 h-10 rounded-full bg-accent flex items-center justify-center text-lg font-bold ring-2", roleStyles.avatarRing)}>
               {user?.name?.charAt(0) || "؟"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{user?.name}</p>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", roleColor)}>{roleLabel}</span>
+              <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", roleStyles.pill)}>{roleLabel}</span>
             </div>
           </div>
           {user?.mosqueName && <p className="text-xs text-muted-foreground mt-2 pr-1">🕌 {user.mosqueName}</p>}
@@ -133,8 +135,8 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
             const isActive = location === item.href;
             return (
               <Link key={item.href} href={item.href} onClick={onClose}>
-                <button className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-right",
-                  isActive ? `${roleColor} font-semibold` : "text-foreground/80 hover:bg-accent")}>
+                <button className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 text-right",
+                  isActive ? roleStyles.active : "text-foreground/80 hover:bg-accent")}>
                   <Icon className="w-4 h-4 flex-shrink-0" />{item.label}
                 </button>
               </Link>
@@ -149,8 +151,8 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
               const isActive = location === item.href || (location.startsWith(item.href) && item.href !== "/");
               return (
                 <Link key={item.href} href={item.href} onClick={onClose}>
-                  <button className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-right",
-                    isActive ? `${roleColor} font-semibold` : "text-foreground/80 hover:bg-accent")}>
+                  <button className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 text-right",
+                    isActive ? roleStyles.active : "text-foreground/80 hover:bg-accent")}>
                     <Icon className="w-4 h-4 flex-shrink-0" />{item.label}
                   </button>
                 </Link>
