@@ -7149,5 +7149,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/public-stats", async (_req, res) => {
+    try {
+      const [mosquesCount] = await db.select({ c: count() }).from(mosques);
+      const [studentsCount] = await db.select({ c: count() }).from(users).where(eq(users.role, "student"));
+      const [teachersCount] = await db.select({ c: count() }).from(users).where(eq(users.role, "teacher"));
+      const [assignmentsCount] = await db.select({ c: count() }).from(assignments).where(eq(assignments.status, "done"));
+      res.json({
+        mosques: mosquesCount?.c || 0,
+        students: studentsCount?.c || 0,
+        teachers: teachersCount?.c || 0,
+        completedAssignments: assignmentsCount?.c || 0,
+      });
+    } catch {
+      res.json({ mosques: 0, students: 0, teachers: 0, completedAssignments: 0 });
+    }
+  });
+
   return httpServer;
 }
