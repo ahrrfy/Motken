@@ -254,7 +254,7 @@ export default function KnowledgeBasePage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-knowledge-base">
             موسوعة التجويد
           </h1>
           <p className="text-muted-foreground">أحكام التجويد والقواعد القرآنية</p>
@@ -302,7 +302,7 @@ export default function KnowledgeBasePage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12" data-testid="status-loading">
+        <div className="flex items-center justify-center py-12" data-testid="status-loading-knowledge-base">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
           <span className="mr-2 text-muted-foreground">جاري التحميل...</span>
         </div>

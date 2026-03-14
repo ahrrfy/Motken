@@ -1086,7 +1086,7 @@ export default function CoursesPage() {
         <div className="flex items-center gap-3">
           <GraduationCap className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
           <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">الدورات والشهادات</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-courses">الدورات والشهادات</h1>
             <p className="text-muted-foreground text-sm">
               {isTeacher && "إدارة الدورات وتخريج الطلاب"}
               {isSupervisor && "إدارة جميع الدورات في الجامع/المركز"}
@@ -1395,7 +1395,7 @@ export default function CoursesPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12" data-testid="status-loading">
+            <div className="flex items-center justify-center py-12" data-testid="status-loading-courses">
               <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
               <span>جاري التحميل...</span>
             </div>

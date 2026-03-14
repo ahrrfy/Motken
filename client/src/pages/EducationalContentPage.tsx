@@ -278,7 +278,7 @@ export default function EducationalContentPage() {
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-educational-content">
           المحتوى التعليمي
         </h1>
         <p className="text-muted-foreground">المتشابهات القرآنية وتدريبات التجويد</p>
@@ -457,7 +457,7 @@ export default function EducationalContentPage() {
           )}
 
           {loading ? (
-            <div className="flex items-center justify-center py-12" data-testid="status-loading">
+            <div className="flex items-center justify-center py-12" data-testid="status-loading-educational-content">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="mr-2 text-muted-foreground">جاري التحميل...</span>
             </div>

@@ -125,7 +125,7 @@ export default function TeacherDailyPage() {
   const pendingCount = todayAssignments.filter(a => a.status==="pending").length;
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]" data-testid="status-loading">
+    <div className="flex items-center justify-center min-h-[60vh]" data-testid="status-loading-teacher-daily">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   );
@@ -134,7 +134,7 @@ export default function TeacherDailyPage() {
     <div className="p-3 sm:p-6 space-y-4 max-w-5xl mx-auto" dir="rtl">
       <div className="flex flex-wrap items-center gap-3">
         <CalendarDays className="w-7 h-7 text-primary" />
-        <h1 className="text-2xl font-bold font-serif text-primary" data-testid="text-page-title">واجبات اليوم</h1>
+        <h1 className="text-2xl font-bold font-serif text-primary" data-testid="text-page-title-teacher-daily">واجبات اليوم</h1>
         <span className="text-sm text-muted-foreground mr-auto">
           {new Date().toLocaleDateString("ar-IQ", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}
         </span>

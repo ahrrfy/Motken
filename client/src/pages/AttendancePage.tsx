@@ -504,7 +504,7 @@ export default function AttendancePage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 page-transition" data-testid="attendance-page">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-attendance">
             الحضور والغياب
           </h1>
           <p className="text-muted-foreground">إدارة حضور وغياب الطلاب</p>

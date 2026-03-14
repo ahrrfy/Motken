@@ -107,7 +107,7 @@ export default function FeatureControlPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto" dir="rtl">
       <div className="flex items-center gap-3">
         <Shield className="w-7 h-7 text-primary" />
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-feature-control">
           التحكم بالمميزات
         </h1>
       </div>

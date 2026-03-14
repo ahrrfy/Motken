@@ -813,7 +813,7 @@ export default function MessagesPage() {
     <div className="p-3 sm:p-4 md:p-6 max-w-6xl mx-auto page-transition" dir="rtl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-messages">
             الرسائل
           </h1>
           <p className="text-muted-foreground text-sm">تواصل مع المستخدمين الآخرين</p>

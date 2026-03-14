@@ -904,7 +904,7 @@ export default function MosquesPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-mosques">
             الجوامع ومراكز التحفيظ
           </h1>
           <p className="text-muted-foreground">إدارة الجوامع ومراكز تحفيظ القرآن وطلبات الانضمام</p>

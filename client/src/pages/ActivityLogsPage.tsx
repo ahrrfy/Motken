@@ -92,7 +92,7 @@ export default function ActivityLogsPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">سجل الحركات</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-activity-logs">سجل الحركات</h1>
           <p className="text-muted-foreground">مراقبة وتتبع جميع العمليات داخل النظام</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -145,7 +145,7 @@ export default function ActivityLogsPage() {
                 className="pr-9"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                data-testid="input-search"
+                data-testid="input-search-activity-logs"
               />
             </div>
             <div className="w-full sm:w-40">
@@ -214,7 +214,7 @@ export default function ActivityLogsPage() {
         </CardHeader>
         <CardContent className="p-0 sm:p-3 md:p-6">
           {loading ? (
-            <div className="flex items-center justify-center py-12" data-testid="status-loading">
+            <div className="flex items-center justify-center py-12" data-testid="status-loading-activity-logs">
               <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
               <span>جاري التحميل...</span>
             </div>

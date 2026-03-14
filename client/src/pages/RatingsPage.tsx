@@ -392,7 +392,7 @@ export default function RatingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24" data-testid="status-loading">
+      <div className="flex items-center justify-center py-24" data-testid="status-loading-ratings">
         <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
         <span>جاري التحميل...</span>
       </div>
@@ -403,7 +403,7 @@ export default function RatingsPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 page-transition">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">التقييمات والأوسمة</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-ratings">التقييمات والأوسمة</h1>
           <p className="text-muted-foreground">
             {isSupervisor && "تقييم أداء الأساتذة ومنح الأوسمة"}
             {isTeacher && "تقييم أداء الطلاب ومنح الأوسمة"}

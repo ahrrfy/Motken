@@ -322,7 +322,7 @@ export default function CrisisManagementPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-crisis-management">
             إدارة الأزمات
           </h1>
           <p className="text-muted-foreground">إدارة الاستبدالات الطارئة وسجل الحوادث</p>

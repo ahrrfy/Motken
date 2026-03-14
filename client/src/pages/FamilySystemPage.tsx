@@ -168,7 +168,7 @@ export default function FamilySystemPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-family-system">
             النظام العائلي
           </h1>
           <p className="text-muted-foreground">إدارة حسابات أولياء الأمور وربطهم بالطلاب</p>
@@ -361,7 +361,7 @@ export default function FamilySystemPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8" data-testid="status-loading">
+            <div className="flex items-center justify-center py-8" data-testid="status-loading-family-system">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="mr-2 text-muted-foreground">جاري التحميل...</span>
             </div>

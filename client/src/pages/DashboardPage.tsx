@@ -264,7 +264,7 @@ export default function DashboardPage() {
     <div className="p-4 md:p-6 space-y-5 page-transition" data-testid="dashboard-page">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-gradient-to-l from-accent/5 to-transparent p-4 md:p-5 rounded-xl border border-accent/10">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground" data-testid="text-page-title">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground" data-testid="text-page-title-dashboard">
             {isEn ? "Dashboard" : "لوحة التحكم"}
           </h1>
           <div className="flex items-center gap-2 text-muted-foreground mt-1">
