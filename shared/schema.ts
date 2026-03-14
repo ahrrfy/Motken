@@ -743,6 +743,21 @@ export const mosqueHistory = pgTable("mosque_history", {
 });
 export type MosqueHistory = typeof mosqueHistory.$inferSelect;
 
+// ==================== TESTIMONIALS (آراء المستخدمين) ====================
+export const testimonials = pgTable("testimonials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  role: text("role").notNull(),
+  text: text("text").notNull(),
+  rating: integer("rating").notNull().default(5),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
+export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+export type Testimonial = typeof testimonials.$inferSelect;
+
 // ==================== MOSQUE MESSAGES (رسائل المسجد) ====================
 export const mosqueMessages = pgTable("mosque_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

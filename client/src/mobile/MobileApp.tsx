@@ -39,6 +39,7 @@ const QRScannerPage = lazy(() => import("@/pages/QRScannerPage"));
 const MonitoringPage = lazy(() => import("@/pages/MonitoringPage"));
 const TeacherActivitiesPage = lazy(() => import("@/pages/TeacherActivitiesPage"));
 const FeatureControlPage = lazy(() => import("@/pages/FeatureControlPage"));
+const TestimonialsManagePage = lazy(() => import("@/pages/TestimonialsManagePage"));
 const CrisisManagementPage = lazy(() => import("@/pages/CrisisManagementPage"));
 const InstitutionalPage = lazy(() => import("@/pages/InstitutionalPage"));
 const MaintenancePage = lazy(() => import("@/pages/MaintenancePage"));
@@ -97,6 +98,7 @@ export default function MobileApp() {
             <Route path="/monitoring" component={MonitoringPage} />
             <Route path="/teacher-activities" component={TeacherActivitiesPage} />
             <Route path="/feature-control" component={FeatureControlPage} />
+            <Route path="/testimonials-manage" component={TestimonialsManagePage} />
             <Route path="/crisis-management" component={CrisisManagementPage} />
             <Route path="/institutional" component={InstitutionalPage} />
             <Route path="/maintenance" component={MaintenancePage} />

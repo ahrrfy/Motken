@@ -52,31 +52,11 @@ const steps = [
   { num: "٣", title: "تابع التقدم", desc: "تابع حفظ كل طالب وأرسل التقارير لأولياء الأمور وأصدر الشهادات" },
 ];
 
-const testimonials = [
-  {
-    name: "أبو عبدالله",
-    role: "مشرف حلقات — الرياض",
-    text: "النظام وفّر علينا ساعات من العمل اليدوي. أصبحنا نتابع ٦ حلقات و٩٠ طالباً من مكان واحد.",
-    rating: 5,
-  },
-  {
-    name: "الشيخ أحمد",
-    role: "معلم قرآن — جدة",
-    text: "ميزة التسميع الصوتي ممتازة — الطالب يسجّل من البيت وأنا أقيّم في وقتي. سهّلت العمل كثيراً.",
-    rating: 5,
-  },
-  {
-    name: "أم محمد",
-    role: "ولية أمر — الدمام",
-    text: "أتابع تقدم ابني في الحفظ أولاً بأول. التقارير واضحة وتصلني عبر واتساب. جزاكم الله خيراً.",
-    rating: 5,
-  },
-  {
-    name: "أبو يوسف",
-    role: "مدير مركز تحفيظ — المدينة",
-    text: "جرّبنا عدة أنظمة قبلها كلها معقدة أو مدفوعة. مُتْقِن سهل ومجاني والدعم سريع.",
-    rating: 5,
-  },
+const defaultTestimonials = [
+  { name: "أبو عبدالله", role: "مشرف حلقات — الرياض", text: "النظام وفّر علينا ساعات من العمل اليدوي. أصبحنا نتابع ٦ حلقات و٩٠ طالباً من مكان واحد.", rating: 5 },
+  { name: "الشيخ أحمد", role: "معلم قرآن — جدة", text: "ميزة التسميع الصوتي ممتازة — الطالب يسجّل من البيت وأنا أقيّم في وقتي. سهّلت العمل كثيراً.", rating: 5 },
+  { name: "أم محمد", role: "ولية أمر — الدمام", text: "أتابع تقدم ابني في الحفظ أولاً بأول. التقارير واضحة وتصلني عبر واتساب. جزاكم الله خيراً.", rating: 5 },
+  { name: "أبو يوسف", role: "مدير مركز تحفيظ — المدينة", text: "جرّبنا عدة أنظمة قبلها كلها معقدة أو مدفوعة. مُتْقِن سهل ومجاني والدعم سريع.", rating: 5 },
 ];
 
 const whyUs = [
@@ -134,14 +114,15 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [stats, setStats] = useState({ mosques: 0, students: 0, teachers: 0, completedAssignments: 0 });
   const [showAllFeatures, setShowAllFeatures] = useState(false);
+  const [testimonials, setTestimonials] = useState(defaultTestimonials);
 
   const refParam = new URLSearchParams(window.location.search).get("ref");
 
   useEffect(() => {
-    fetch("/api/public-stats")
-      .then(r => r.json())
-      .then(setStats)
-      .catch(() => {});
+    fetch("/api/public-stats").then(r => r.json()).then(setStats).catch(() => {});
+    fetch("/api/public-testimonials").then(r => r.json()).then((data: any[]) => {
+      if (data && data.length > 0) setTestimonials(data);
+    }).catch(() => {});
   }, []);
 
   const visibleFeatures = showAllFeatures ? features : features.slice(0, 6);
