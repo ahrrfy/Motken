@@ -223,7 +223,8 @@ export function registerUsersRoutes(app: Express) {
         return res.status(400).json({ message: "رقم هاتف ولي الأمر مطلوب للطلاب" });
       }
       if (phone) {
-        const phoneDup = await storage.checkPhoneExists(phone);
+        const isStaffRole = ["teacher", "supervisor"].includes(req.body.role);
+        const phoneDup = await storage.checkPhoneExists(phone, undefined, isStaffRole ? ["teacher", "supervisor"] : undefined);
         if (phoneDup) {
           return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل" });
         }
@@ -374,7 +375,8 @@ export function registerUsersRoutes(app: Express) {
     }
 
     if (phone !== undefined && phone) {
-      const phoneDup = await storage.checkPhoneExists(phone, req.params.id);
+      const isStaffRole = ["teacher", "supervisor"].includes(targetUser.role);
+      const phoneDup = await storage.checkPhoneExists(phone, req.params.id, isStaffRole ? ["teacher", "supervisor"] : undefined);
       if (phoneDup) {
         return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل" });
       }
@@ -660,6 +662,37 @@ export function registerUsersRoutes(app: Express) {
 
     const { password, ...safe } = updated;
     res.json(safe);
+  });
+
+  app.get("/api/users/:id/linked-accounts", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
+      if (!["teacher", "supervisor"].includes(user.role)) {
+        return res.json([]);
+      }
+      if (!user.phone) return res.json([]);
+      const linked = await storage.getLinkedAccounts(user.phone, user.id);
+      const mosqueIds = [...new Set(linked.map(l => l.mosqueId).filter(Boolean))];
+      const mosqueNames: Record<string, string> = {};
+      for (const mId of mosqueIds) {
+        if (mId) {
+          const mosque = await storage.getMosque(mId);
+          if (mosque) mosqueNames[mId] = mosque.name;
+        }
+      }
+      const result = linked.map(l => ({
+        id: l.id,
+        username: l.username,
+        name: l.name,
+        role: l.role,
+        mosqueId: l.mosqueId,
+        mosqueName: l.mosqueId ? mosqueNames[l.mosqueId] || "غير معروف" : "بدون مسجد",
+      }));
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "خطأ في جلب الحسابات المرتبطة" });
+    }
   });
 
 }

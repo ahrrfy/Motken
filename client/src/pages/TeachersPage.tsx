@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers } from "lucide-react";
+import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -500,7 +501,12 @@ export default function TeachersPage() {
                     const levels = getTeacherLevels(teacher);
                     return (
                     <TableRow key={teacher.id} data-testid={`row-teacher-${teacher.id}`}>
-                      <TableCell className="font-medium" data-testid={`text-name-${teacher.id}`}>{teacher.name}</TableCell>
+                      <TableCell className="font-medium" data-testid={`text-name-${teacher.id}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {teacher.name}
+                          <LinkedAccountsBadge userId={teacher.id} userRole="teacher" userName={teacher.name} />
+                        </div>
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell" data-testid={`text-gender-${teacher.id}`}>{teacher.gender === "female" ? "أنثى" : "ذكر"}</TableCell>
                       <TableCell className="hidden sm:table-cell" dir="ltr" data-testid={`text-phone-${teacher.id}`}>{teacher.phone || "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">
