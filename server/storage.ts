@@ -50,7 +50,8 @@ export interface IStorage {
   getUsersByMosque(mosqueId: string): Promise<User[]>;
   getUsersByMosqueAndRole(mosqueId: string, role: string): Promise<User[]>;
   getUsersByTeacher(teacherId: string): Promise<User[]>;
-  checkPhoneExists(phone: string, excludeId?: string): Promise<boolean>;
+  checkPhoneExists(phone: string, excludeId?: string, allowedRoles?: string[]): Promise<boolean>;
+  getLinkedAccounts(phone: string, excludeId?: string): Promise<User[]>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
 
@@ -299,17 +300,35 @@ export class DatabaseStorage implements IStorage {
     ).orderBy(desc(users.createdAt));
   }
 
-  async checkPhoneExists(phone: string, excludeId?: string): Promise<boolean> {
+  async checkPhoneExists(phone: string, excludeId?: string, allowedRoles?: string[]): Promise<boolean> {
     const phoneClean = (phone || "").replace(/[^\d]/g, "");
     if (!phoneClean) return false;
     const excludeParam = excludeId || "";
     const result = await db.execute(sql`
-      SELECT id FROM users
+      SELECT id, role FROM users
       WHERE id != ${excludeParam}
         AND REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g') = ${phoneClean}
-      LIMIT 1
     `);
-    return result.rows.length > 0;
+    if (result.rows.length === 0) return false;
+    if (allowedRoles && allowedRoles.length > 0) {
+      const allAllowed = result.rows.every((r: any) => allowedRoles.includes(r.role));
+      if (allAllowed) return false;
+    }
+    return true;
+  }
+
+  async getLinkedAccounts(phone: string, excludeId?: string): Promise<User[]> {
+    const phoneClean = (phone || "").replace(/[^\d]/g, "");
+    if (!phoneClean) return [];
+    const excludeParam = excludeId || "";
+    const result = await db.execute(sql`
+      SELECT * FROM users
+      WHERE id != ${excludeParam}
+        AND role IN ('teacher', 'supervisor')
+        AND REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g') = ${phoneClean}
+      ORDER BY created_at
+    `);
+    return result.rows as User[];
   }
 
   async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {

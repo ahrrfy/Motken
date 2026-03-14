@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, Building2 } from "lucide-react";
+import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { usePhoneValidation, phoneInputClassName, isValidPhone } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -391,6 +392,7 @@ export default function SupervisorsPage() {
                             )}
                           </div>
                           <span data-testid={`text-name-${supervisor.id}`}>{supervisor.name}</span>
+                          <LinkedAccountsBadge userId={supervisor.id} userRole="supervisor" userName={supervisor.name} />
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground" dir="ltr" data-testid={`text-username-${supervisor.id}`}>{supervisor.username}</TableCell>
