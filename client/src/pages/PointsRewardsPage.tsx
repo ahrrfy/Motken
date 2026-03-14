@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Trophy, Star, Heart, Clock, BookOpen, Plus, Award, Medal, TrendingUp, Crown, Download, Users, Filter, MinusCircle, PlusCircle, Target, Zap } from "lucide-react";
@@ -1044,16 +1045,15 @@ export default function PointsRewardsPage() {
 
             <div className="space-y-2">
               <Label>الطالب *</Label>
-              <Select value={pointForm.userId} onValueChange={(v) => setPointForm({ ...pointForm, userId: v })}>
-                <SelectTrigger data-testid="select-point-student">
-                  <SelectValue placeholder="اختر الطالب" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={students.map((s) => ({ value: s.id, label: s.name }))}
+                value={pointForm.userId}
+                onValueChange={(v) => setPointForm({ ...pointForm, userId: v })}
+                placeholder="اختر الطالب"
+                searchPlaceholder="ابحث عن طالب..."
+                emptyText="لا يوجد طالب بهذا الاسم"
+                data-testid="select-point-student"
+              />
             </div>
 
             <div className="space-y-2">
@@ -1232,16 +1232,15 @@ export default function PointsRewardsPage() {
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>الطالب *</Label>
-              <Select value={badgeForm.userId} onValueChange={(v) => setBadgeForm({ ...badgeForm, userId: v })}>
-                <SelectTrigger data-testid="select-badge-student">
-                  <SelectValue placeholder="اختر الطالب" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={students.map((s) => ({ value: s.id, label: s.name }))}
+                value={badgeForm.userId}
+                onValueChange={(v) => setBadgeForm({ ...badgeForm, userId: v })}
+                placeholder="اختر الطالب"
+                searchPlaceholder="ابحث عن طالب..."
+                emptyText="لا يوجد طالب بهذا الاسم"
+                data-testid="select-badge-student"
+              />
             </div>
 
             <div className="space-y-2">

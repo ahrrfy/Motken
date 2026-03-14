@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Bell, BellRing, CheckCheck, Clock, Info, Loader2, Trash2, Send, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -363,31 +364,29 @@ export default function NotificationsPage() {
               {targetType === "user" && (
                 <div className="space-y-2">
                   <Label>اختر المستخدم</Label>
-                  <Select value={targetUserId} onValueChange={setTargetUserId}>
-                    <SelectTrigger data-testid="select-target-user">
-                      <SelectValue placeholder="اختر مستخدم" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {usersList.filter(u => u.id !== user?.id).map(u => (
-                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.role})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={usersList.filter(u => u.id !== user?.id).map(u => ({ value: u.id, label: `${u.name} (${u.role})` }))}
+                    value={targetUserId}
+                    onValueChange={setTargetUserId}
+                    placeholder="اختر مستخدم"
+                    searchPlaceholder="ابحث عن مستخدم..."
+                    emptyText="لا يوجد مستخدم بهذا الاسم"
+                    data-testid="select-target-user"
+                  />
                 </div>
               )}
               {targetType === "mosque" && user?.role === "admin" && (
                 <div className="space-y-2">
                   <Label>اختر الجامع/المركز</Label>
-                  <Select value={targetMosqueId} onValueChange={setTargetMosqueId}>
-                    <SelectTrigger data-testid="select-target-mosque">
-                      <SelectValue placeholder="اختر الجامع/المركز" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mosquesList.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={mosquesList.map(m => ({ value: m.id, label: m.name }))}
+                    value={targetMosqueId}
+                    onValueChange={setTargetMosqueId}
+                    placeholder="اختر الجامع/المركز"
+                    searchPlaceholder="ابحث عن جامع..."
+                    emptyText="لا يوجد جامع بهذا الاسم"
+                    data-testid="select-target-mosque"
+                  />
                 </div>
               )}
               <Button

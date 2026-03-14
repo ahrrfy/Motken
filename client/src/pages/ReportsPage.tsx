@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Users,
@@ -654,33 +655,27 @@ export default function ReportsPage() {
             <div className="flex flex-wrap items-center gap-3" data-testid="filters-row">
               <Filter className="h-5 w-5 text-muted-foreground" />
               {isAdmin && (
-                <Select value={selectedMosque} onValueChange={(val) => { setSelectedMosque(val === "all" ? "" : val); }} data-testid="filter-mosque">
-                  <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-mosque-trigger">
-                    <SelectValue placeholder="جميع الجوامع والمراكز" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع الجوامع والمراكز</SelectItem>
-                    {mosques.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[{ value: "all", label: "جميع الجوامع والمراكز" }, ...mosques.map((m) => ({ value: m.id, label: m.name }))]}
+                  value={selectedMosque || "all"}
+                  onValueChange={(val) => { setSelectedMosque(val === "all" ? "" : val); }}
+                  placeholder="جميع الجوامع والمراكز"
+                  searchPlaceholder="ابحث عن جامع..."
+                  emptyText="لا يوجد جامع بهذا الاسم"
+                  triggerClassName="w-full sm:w-[200px]"
+                  data-testid="select-mosque-trigger"
+                />
               )}
-              <Select value={selectedTeacher} onValueChange={(val) => { setSelectedTeacher(val === "all" ? "" : val); }} data-testid="filter-teacher">
-                <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-teacher-trigger">
-                  <SelectValue placeholder="جميع الأساتذة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الأساتذة</SelectItem>
-                  {teachers.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={[{ value: "all", label: "جميع الأساتذة" }, ...teachers.map((t) => ({ value: t.id, label: t.name }))]}
+                value={selectedTeacher || "all"}
+                onValueChange={(val) => { setSelectedTeacher(val === "all" ? "" : val); }}
+                placeholder="جميع الأساتذة"
+                searchPlaceholder="ابحث عن أستاذ..."
+                emptyText="لا يوجد أستاذ بهذا الاسم"
+                triggerClassName="w-full sm:w-[200px]"
+                data-testid="select-teacher-trigger"
+              />
             </div>
           )}
 
@@ -972,18 +967,16 @@ export default function ReportsPage() {
             <CardContent>
               <div className="mb-6">
                 <label className="block text-sm font-medium mb-2">اختر الطالب</label>
-                <Select value={selectedStudentId} onValueChange={setSelectedStudentId} data-testid="select-passport-student">
-                  <SelectTrigger className="w-full sm:w-[300px]" data-testid="select-passport-student-trigger">
-                    <SelectValue placeholder="اختر طالباً لعرض جوازه" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)} data-testid={`student-option-${s.id}`}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={students.map((s) => ({ value: String(s.id), label: s.name }))}
+                  value={selectedStudentId}
+                  onValueChange={setSelectedStudentId}
+                  placeholder="اختر طالباً لعرض جوازه"
+                  searchPlaceholder="ابحث عن طالب..."
+                  emptyText="لا يوجد طالب بهذا الاسم"
+                  triggerClassName="w-full sm:w-[300px]"
+                  data-testid="select-passport-student-trigger"
+                />
                 {selectedStudentId && (
                   <Button variant="outline" className="mr-4" onClick={handlePrintSemesterReport} data-testid="button-print-semester">
                     <Printer className="h-4 w-4 ml-2" />

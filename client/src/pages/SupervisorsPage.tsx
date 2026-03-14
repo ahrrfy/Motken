@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, Building2 } from "lucide-react";
 import { usePhoneValidation, phoneInputClassName, isValidPhone } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
@@ -316,16 +317,15 @@ export default function SupervisorsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>الجامع أو مركز التحفيظ <span className="text-red-500">*</span></Label>
-                    <Select value={formData.mosqueId} onValueChange={(v) => setFormData(prev => ({...prev, mosqueId: v}))}>
-                      <SelectTrigger data-testid="select-supervisor-mosque">
-                        <SelectValue placeholder="اختر الجامع أو المركز" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mosques.map(m => (
-                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={mosques.map(m => ({ value: m.id, label: m.name }))}
+                      value={formData.mosqueId}
+                      onValueChange={(v) => setFormData(prev => ({...prev, mosqueId: v}))}
+                      placeholder="اختر الجامع أو المركز"
+                      searchPlaceholder="ابحث عن جامع..."
+                      emptyText="لا يوجد جامع بهذا الاسم"
+                      data-testid="select-supervisor-mosque"
+                    />
                   </div>
                   <Button onClick={handleAddSupervisor} disabled={submitting} className="w-full" data-testid="button-submit-supervisor">
                     {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}

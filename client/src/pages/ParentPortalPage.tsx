@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Loader2, FileText, Copy, Trash2, MessageCircle, Link, ClipboardCheck, Users, BookOpen, CheckCircle, Star, Calendar, TrendingUp, Award, Phone, Heart, AlertTriangle, Send } from "lucide-react";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
 import { useAuth } from "@/lib/auth-context";
@@ -462,16 +463,15 @@ export default function ParentPortalPage() {
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
               <div className="w-full sm:w-72">
                 <Label className="mb-2 block">الطالب</Label>
-                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                  <SelectTrigger data-testid="select-student">
-                    <SelectValue placeholder="اختر طالباً..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={students.map(s => ({ value: s.id, label: s.name }))}
+                  value={selectedStudentId}
+                  onValueChange={setSelectedStudentId}
+                  placeholder="اختر طالباً..."
+                  searchPlaceholder="ابحث عن طالب..."
+                  emptyText="لا يوجد طالب بهذا الاسم"
+                  data-testid="select-student"
+                />
               </div>
               {selectedStudentId && (
                 <Button

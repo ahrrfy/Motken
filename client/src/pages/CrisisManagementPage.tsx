@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -395,16 +396,15 @@ export default function CrisisManagementPage() {
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>المعلم الغائب</Label>
-                            <Select value={autoAbsentTeacherId} onValueChange={setAutoAbsentTeacherId}>
-                              <SelectTrigger data-testid="select-auto-absent-teacher">
-                                <SelectValue placeholder="اختر المعلم الغائب" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {teachers.map(t => (
-                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SearchableSelect
+                              options={teachers.map(t => ({ value: t.id, label: t.name }))}
+                              value={autoAbsentTeacherId}
+                              onValueChange={setAutoAbsentTeacherId}
+                              placeholder="اختر المعلم الغائب"
+                              searchPlaceholder="ابحث عن معلم..."
+                              emptyText="لا يوجد معلم بهذا الاسم"
+                              data-testid="select-auto-absent-teacher"
+                            />
                           </div>
                           <Button
                             onClick={handleAutoAssign}
@@ -433,29 +433,27 @@ export default function CrisisManagementPage() {
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>المعلم الغائب *</Label>
-                            <Select value={absentTeacherId} onValueChange={setAbsentTeacherId}>
-                              <SelectTrigger data-testid="select-absent-teacher">
-                                <SelectValue placeholder="اختر المعلم الغائب" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {teachers.map(t => (
-                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SearchableSelect
+                              options={teachers.map(t => ({ value: t.id, label: t.name }))}
+                              value={absentTeacherId}
+                              onValueChange={setAbsentTeacherId}
+                              placeholder="اختر المعلم الغائب"
+                              searchPlaceholder="ابحث عن معلم..."
+                              emptyText="لا يوجد معلم بهذا الاسم"
+                              data-testid="select-absent-teacher"
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label>المعلم البديل *</Label>
-                            <Select value={substituteTeacherId} onValueChange={setSubstituteTeacherId}>
-                              <SelectTrigger data-testid="select-substitute-teacher">
-                                <SelectValue placeholder="اختر المعلم البديل" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {teachers.filter(t => t.id !== absentTeacherId).map(t => (
-                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SearchableSelect
+                              options={teachers.filter(t => t.id !== absentTeacherId).map(t => ({ value: t.id, label: t.name }))}
+                              value={substituteTeacherId}
+                              onValueChange={setSubstituteTeacherId}
+                              placeholder="اختر المعلم البديل"
+                              searchPlaceholder="ابحث عن معلم..."
+                              emptyText="لا يوجد معلم بهذا الاسم"
+                              data-testid="select-substitute-teacher"
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label>السبب</Label>
