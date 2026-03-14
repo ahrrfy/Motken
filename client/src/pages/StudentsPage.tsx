@@ -834,16 +834,41 @@ export default function StudentsPage() {
                     <p className="text-xs text-muted-foreground">يحدد المستوى أي الأساتذة يمكنهم التعامل مع هذا الطالب</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>نوع الدراسة</Label>
-                    <Select value={formData.studyMode} onValueChange={(v) => setFormData(prev => ({...prev, studyMode: v}))}>
-                      <SelectTrigger data-testid="select-study-mode">
-                        <SelectValue placeholder="اختر نوع الدراسة" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="in-person">حضوري</SelectItem>
-                        <SelectItem value="online">إلكتروني</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="font-semibold">نوع الدراسة</Label>
+                    <div className="grid grid-cols-2 gap-3" data-testid="select-study-mode">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({...prev, studyMode: "in-person"}))}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                          formData.studyMode === "in-person"
+                            ? "border-green-500 bg-green-50 dark:bg-green-950/30 shadow-md ring-2 ring-green-200"
+                            : "border-muted hover:border-green-300 hover:bg-green-50/50"
+                        }`}
+                        data-testid="button-study-mode-in-person"
+                      >
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${formData.studyMode === "in-person" ? "bg-green-500 text-white" : "bg-green-100 text-green-600"}`}>
+                          <Users className="w-6 h-6" />
+                        </div>
+                        <span className={`text-sm font-bold ${formData.studyMode === "in-person" ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>حضوري</span>
+                        <span className="text-[10px] text-muted-foreground">حضور مباشر في المسجد</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({...prev, studyMode: "online"}))}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                          formData.studyMode === "online"
+                            ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 shadow-md ring-2 ring-cyan-200"
+                            : "border-muted hover:border-cyan-300 hover:bg-cyan-50/50"
+                        }`}
+                        data-testid="button-study-mode-online"
+                      >
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${formData.studyMode === "online" ? "bg-cyan-500 text-white" : "bg-cyan-100 text-cyan-600"}`}>
+                          <Monitor className="w-6 h-6" />
+                        </div>
+                        <span className={`text-sm font-bold ${formData.studyMode === "online" ? "text-cyan-700 dark:text-cyan-400" : "text-muted-foreground"}`}>إلكتروني</span>
+                        <span className="text-[10px] text-muted-foreground">دراسة عن بُعد</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -1239,7 +1264,7 @@ export default function StudentsPage() {
                   {filteredStudents.map((student) => {
                     const level = getStudentLevel(student);
                     return (
-                      <TableRow key={student.id} data-testid={`row-student-${student.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => openProfileDialog(student)}>
+                      <TableRow key={student.id} data-testid={`row-student-${student.id}`} className={`cursor-pointer hover:bg-muted/50 ${student.studyMode === "online" ? "bg-cyan-50/60 dark:bg-cyan-950/20 border-r-[3px] border-r-cyan-500" : ""}`} onClick={() => openProfileDialog(student)}>
                         {!isStudent && (
                           <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
@@ -1251,18 +1276,32 @@ export default function StudentsPage() {
                         )}
                         <TableCell className="font-medium" data-testid={`text-name-${student.id}`}>
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 relative ${student.studyMode === "online" ? "ring-2 ring-cyan-400 ring-offset-1" : "bg-primary/10 text-primary"}`}>
                               {student.avatar ? (
                                 <img src={student.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+                              ) : student.studyMode === "online" ? (
+                                <div className="w-full h-full rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700">
+                                  {student.name?.charAt(0)}
+                                </div>
                               ) : (
                                 student.name?.charAt(0)
                               )}
+                              {student.studyMode === "online" && (
+                                <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-cyan-500 flex items-center justify-center">
+                                  <Monitor className="w-2 h-2 text-white" />
+                                </div>
+                              )}
                             </div>
-                            <div>
-                              <span className={student.studyMode === "online" ? "text-cyan-700 font-semibold" : ""}>{student.name}</span>
-                              {student.studyMode === "online" && <Badge variant="secondary" className="bg-cyan-100 text-cyan-700 border-cyan-200 text-[10px] px-1.5 py-0 h-4 mr-1">إلكتروني</Badge>}
-                              {student.isSpecialNeeds && <Heart className="w-3 h-3 text-purple-500 inline mr-1" />}
-                              {student.isOrphan && <Shield className="w-3 h-3 text-amber-500 inline mr-1" />}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={student.studyMode === "online" ? "text-cyan-700 dark:text-cyan-400 font-bold" : ""}>{student.name}</span>
+                              {student.studyMode === "online" && (
+                                <Badge variant="secondary" className="bg-cyan-500 text-white border-cyan-600 text-[10px] px-2 py-0 h-[18px] gap-0.5 font-bold shadow-sm">
+                                  <Monitor className="w-2.5 h-2.5" />
+                                  إلكتروني
+                                </Badge>
+                              )}
+                              {student.isSpecialNeeds && <Heart className="w-3 h-3 text-purple-500 inline" />}
+                              {student.isOrphan && <Shield className="w-3 h-3 text-amber-500 inline" />}
                             </div>
                           </div>
                         </TableCell>

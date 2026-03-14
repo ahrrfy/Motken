@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2, Save, Calendar, ClipboardList, Search,
   CheckCircle, XCircle, Clock, TrendingUp, Printer,
-  Phone, CalendarDays, BarChart3, Users, AlertTriangle, Download
+  Phone, CalendarDays, BarChart3, Users, AlertTriangle, Download, Monitor
 } from "lucide-react";
 import { exportJsonToExcel } from "@/lib/excel-utils";
 import { useAuth } from "@/lib/auth-context";
@@ -698,7 +698,13 @@ export default function AttendancePage() {
                                   )}
                                   <div className="flex flex-col">
                                     <div className="flex items-center gap-2">
-                                      <span data-testid={`text-student-name-${student.id}`}>{student.name}</span>
+                                      <span data-testid={`text-student-name-${student.id}`} className={(student as any).studyMode === "online" ? "text-cyan-700 dark:text-cyan-400 font-bold" : ""}>{student.name}</span>
+                                      {(student as any).studyMode === "online" && (
+                                        <Badge variant="secondary" className="bg-cyan-500 text-white border-cyan-600 text-[10px] px-1.5 py-0 h-4 gap-0.5 font-bold">
+                                          <Monitor className="w-2.5 h-2.5" />
+                                          إلكتروني
+                                        </Badge>
+                                      )}
                                       {student.disciplineScore !== undefined && (
                                         <Badge 
                                           variant="outline" 
