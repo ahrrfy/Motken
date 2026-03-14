@@ -27,7 +27,7 @@ The system is built with a modern web stack:
 ### Sidebar Navigation Structure (Categorized Groups)
 1. **الرئيسية (Main)**: Dashboard, Today's Assignments
 2. **إدارة المستخدمين (People)**: Students, Teachers, Supervisors, All Users
-3. **التعليم والحفظ (Education)**: Assignments & Exams, Quran & Memorization, Courses & Certificates, Islamic Library
+3. **التعليم والحفظ (Education)**: Assignments & Exams, Quran & Memorization, Courses & Graduation (unified page with 4 tabs: الدورات, التخرج, الشهادات, التحقق), Islamic Library
 4. **المتابعة والتقييم (Tracking)**: Attendance, Points & Rewards, Ratings & Badges, Class Schedule, Quranic Competitions
 5. **التواصل والإشعارات (Communication)**: Chats, Notifications, Smart Alerts, Parent Portal
 6. **الإدارة والمراقبة (Admin)**: Mosques, Reports, IDs & QR Scan, Monitoring & Security, Feature Control, Settings
@@ -41,7 +41,7 @@ The system is built with a modern web stack:
 -   **Schedules**: Stats cards, weekly grid with time labels, copy/duplicate, conflict detection, printable timetable.
 -   **Ratings**: Stats cards, weekly rating system, rating history, auto-honor badge suggestion, badges showcase.
 -   **Quran Tracker**: Stats with streak/juz/milestones, visual memorization tree, personal plan, daily review, tajweed error tracking, achievement milestones.
--   **Courses & Certificates**: Stats, search/filter, edit, duplicate, graduation grades, public verification, batch printing.
+-   **Courses & Graduation** (`CoursesGraduationPage`): Unified page merging former CoursesPage, GraduationPage, and CertificatesPage into 4 tabs (الدورات, التخرج, الشهادات, التحقق). Sub-pages accept `embedded` prop to hide headers/stats when rendered inside tabs. Routes `/graduation` and `/certificates` redirect to the unified page with the correct tab. Stats, search/filter, edit, duplicate, graduation grades, public verification, batch printing.
 -   **User Management**: Comprehensive student, teacher, and supervisor management with detailed profiles, credential sharing, and transfer capabilities.
 -   **Internal Islamic Library**: Offline-capable reader with 50+ books, bookmarking, and progress tracking.
 -   **Activity & Monitoring**: Combined monitoring page (online users, activity logs, teacher activities). Session management.

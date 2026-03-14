@@ -40,7 +40,7 @@ interface CertificateRecord {
   ijazahTeacher?: string;
 }
 
-export default function CertificatesPage() {
+export default function CertificatesPage({ embedded, defaultTab }: { embedded?: boolean; defaultTab?: string }) {
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -147,7 +147,8 @@ export default function CertificatesPage() {
   };
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
+    <div className={embedded ? "space-y-4 md:space-y-6" : "p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6"} dir="rtl">
+      {!embedded && (
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-certificates">
@@ -156,8 +157,9 @@ export default function CertificatesPage() {
           <p className="text-muted-foreground text-sm">جميع الشهادات الصادرة - دورات وتخرج</p>
         </div>
       </div>
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {!embedded && <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card data-testid="card-stat-total">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -191,15 +193,17 @@ export default function CertificatesPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
-      <Tabs defaultValue="list" className="w-full">
+      <Tabs defaultValue={defaultTab || "list"} className="w-full">
+        {!embedded && (
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="list" data-testid="tab-list">قائمة الشهادات</TabsTrigger>
           <TabsTrigger value="verify" data-testid="tab-verify">التحقق من شهادة</TabsTrigger>
         </TabsList>
+        )}
 
-        <TabsContent value="list" className="space-y-4">
+        {(!embedded || defaultTab !== "verify") && <TabsContent value="list" className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -304,9 +308,9 @@ export default function CertificatesPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>}
 
-        <TabsContent value="verify" className="space-y-4">
+        {(!embedded || defaultTab === "verify") && <TabsContent value="verify" className="space-y-4">
           <Card className="shadow-md max-w-lg mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -356,7 +360,7 @@ export default function CertificatesPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>}
       </Tabs>
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>

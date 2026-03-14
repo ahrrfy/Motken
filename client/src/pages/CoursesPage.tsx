@@ -126,7 +126,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: "bg-gray-100 text-gray-700 border-none",
 };
 
-export default function CoursesPage() {
+export default function CoursesPage({ embedded }: { embedded?: boolean }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<CourseData[]>([]);
@@ -1091,8 +1091,9 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 page-transition">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+    <div className={embedded ? "space-y-4" : "p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 page-transition"}>
+      <div className={embedded ? "flex justify-end" : "flex flex-col md:flex-row justify-between items-start md:items-center gap-3"}>
+        {!embedded && (
         <div className="flex items-center gap-3">
           <GraduationCap className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
           <div>
@@ -1105,6 +1106,7 @@ export default function CoursesPage() {
             </p>
           </div>
         </div>
+        )}
         {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
@@ -1278,7 +1280,7 @@ export default function CoursesPage() {
         )}
       </div>
 
-      {!isStudent && stats && (
+      {!embedded && !isStudent && stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" data-testid="stats-cards">
           <Card data-testid="stat-total-courses">
             <CardContent className="p-4 flex items-center gap-3">
@@ -1328,6 +1330,7 @@ export default function CoursesPage() {
       )}
 
       <Tabs defaultValue="courses" dir="rtl">
+        {!embedded && (
         <TabsList data-testid="tabs-list">
           <TabsTrigger value="courses" data-testid="tab-courses">
             <BookOpen className="w-4 h-4 ml-1" />
@@ -1342,8 +1345,9 @@ export default function CoursesPage() {
             التحقق من شهادة
           </TabsTrigger>
         </TabsList>
+        )}
 
-        <TabsContent value="courses" className="mt-4 space-y-4">
+        <TabsContent value="courses" className={embedded ? "mt-0 space-y-4" : "mt-4 space-y-4"}>
           <div className="flex flex-col md:flex-row gap-3" data-testid="search-filter-bar">
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1696,7 +1700,7 @@ export default function CoursesPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="certificates" className="mt-4">
+        {!embedded && <TabsContent value="certificates" className="mt-4">
           {loadingCerts ? (
             <div className="flex items-center justify-center py-12" data-testid="status-loading-certs">
               <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
@@ -1758,9 +1762,9 @@ export default function CoursesPage() {
               ))}
             </div>
           )}
-        </TabsContent>
+        </TabsContent>}
 
-        <TabsContent value="verify" className="mt-4">
+        {!embedded && <TabsContent value="verify" className="mt-4">
           <Card data-testid="card-verify-certificate">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1847,7 +1851,7 @@ export default function CoursesPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>}
       </Tabs>
 
       <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditingCourse(null); }}>

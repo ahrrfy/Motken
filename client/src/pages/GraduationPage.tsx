@@ -74,7 +74,7 @@ const gradeOptions = [
   { value: "acceptable", label: "مقبول" },
 ];
 
-export default function GraduationPage() {
+export default function GraduationPage({ embedded }: { embedded?: boolean }) {
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -289,7 +289,7 @@ export default function GraduationPage() {
 
   if (selectedGraduate) {
     return (
-      <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
+      <div className={embedded ? "space-y-4 md:space-y-6" : "p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6"} dir="rtl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button
@@ -541,14 +541,16 @@ export default function GraduationPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div className={embedded ? "space-y-4 md:space-y-6" : "p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6"} dir="rtl">
+      <div className={embedded ? "flex justify-end gap-2" : "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"}>
+        {!embedded && (
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-graduation">
             الخريجون
           </h1>
           <p className="text-muted-foreground">إدارة الخريجين والمتابعة</p>
         </div>
+        )}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport} data-testid="button-export-graduates">
             <Download className="w-4 h-4 ml-1" />
@@ -693,7 +695,7 @@ export default function GraduationPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {!embedded && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card data-testid="card-stat-total-graduates">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -738,7 +740,7 @@ export default function GraduationPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
       <Card className="shadow-md">
         <CardHeader>
