@@ -893,6 +893,8 @@ export default function CoursesPage() {
       ? `<div class="star-row star-row-top">⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐</div><div class="star-row star-row-bottom">⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐</div>`
       : "";
 
+    const hijriDate = new Date(cert.issuedAt).toLocaleDateString("ar-SA-u-ca-islamic", { year: "numeric", month: "long", day: "numeric" });
+
     const certHtml = `
       <div class="cert-container">
         <div class="cert-frame">
@@ -905,7 +907,7 @@ export default function CoursesPage() {
           <div class="cert-content">
             <div class="cert-header">
               <div class="bismillah">﷽</div>
-              <div class="cert-logos" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:8px;">
+              <div class="cert-logos">
                 ${mosqueData.image ? `<div class="cert-logo"><img src="${mosqueData.image}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>` : ""}
                 <div class="cert-logo"><img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>
               </div>
@@ -917,16 +919,12 @@ export default function CoursesPage() {
               <div class="underline-decoration"></div>
             </div>
             <div class="cert-body">
-              يشهد نظام مُتْقِن لإدارة حلقات القرآن الكريم بأن
-              <br />
+              <span class="cert-intro">يشهد بأن</span>
               <span class="student-name">${studentName}</span>
-              <br />
-              ${theme.completionText}
-              <br />
+              <span class="cert-text">${theme.completionText}</span>
               <span class="course-name">${courseName}</span>
               ${gradeText}
-              <br />
-              وقد استوفى جميع المتطلبات والشروط المقررة
+              <span class="cert-text">وقد استوفى جميع المتطلبات والشروط المقررة</span>
             </div>
             <div class="cert-details">
               <div class="cert-detail-item">
@@ -934,18 +932,22 @@ export default function CoursesPage() {
                 <div class="cert-detail-value">${cert.certificateNumber}</div>
               </div>
               <div class="cert-detail-item">
-                <div class="cert-detail-label">تاريخ الإصدار</div>
+                <div class="cert-detail-label">التاريخ الهجري</div>
+                <div class="cert-detail-value">${hijriDate}</div>
+              </div>
+              <div class="cert-detail-item">
+                <div class="cert-detail-label">التاريخ الميلادي</div>
                 <div class="cert-detail-value">${issuedDate}</div>
               </div>
             </div>
             <div class="cert-signatures">
               <div class="cert-signature">
-                <div class="line"></div>
-                <div class="label">توقيع المشرف</div>
+                <div class="stamp-circle">الختم</div>
+                <div class="label">ختم المؤسسة</div>
               </div>
               <div class="cert-signature">
                 <div class="line"></div>
-                <div class="label">ختم المؤسسة</div>
+                <div class="label">توقيع المشرف</div>
               </div>
               <div class="cert-signature">
                 <div class="line"></div>
@@ -953,7 +955,6 @@ export default function CoursesPage() {
               </div>
             </div>
             <div class="cert-footer">
-              <div class="cert-number">${cert.certificateNumber}</div>
               <div class="cert-qr-note">النظام وقف لله تعالى • برمجة وتطوير أحمد خالد الزبيدي</div>
             </div>
           </div>
@@ -966,45 +967,54 @@ export default function CoursesPage() {
 
   const getCertificateStyles = (theme: ReturnType<typeof getCertificateTheme>, decorations: ReturnType<typeof getTemplateDecorations>) => {
     return `
-      @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Amiri:wght@400;700&family=Scheherazade+New:wght@400;700&display=swap');
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; direction: rtl; background: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+      body { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; direction: rtl; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; }
       .actions-bar { position: fixed; top: 0; left: 0; right: 0; background: ${theme.actionBarBg}; color: white; padding: 10px 20px; display: flex; gap: 10px; justify-content: center; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
       .actions-bar button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 14px; font-weight: 500; }
       .btn-print { background: ${theme.btnPrint}; color: white; }
       .btn-save { background: ${theme.btnSave}; color: white; }
       .btn-close { background: #555; color: white; }
       .cert-area { margin-top: 60px; }
-      .cert-container { width: 29.7cm; height: 21cm; margin: 0 auto; position: relative; padding: 0; background: white; page-break-after: always; }
-      .cert-frame { border: 3px solid ${theme.primary}; padding: 40px; position: relative; background: ${theme.bg}; width: 100%; height: 100%; overflow: hidden; }
+      .cert-container { width: 29.7cm; height: 21cm; margin: 0 auto; position: relative; padding: 0; background: white; page-break-after: always; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+      .cert-frame { border: 3px solid ${theme.primary}; padding: 30px 40px 25px; position: relative; background: ${theme.bg}; width: 100%; height: 100%; overflow: hidden; display: flex; flex-direction: column; }
       ${decorations.extraFrame}
       ${decorations.cornerStyle}
       ${decorations.watermark}
-      .cert-content { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-      .cert-header { text-align: center; margin-bottom: 10px; }
-      .bismillah { font-size: 28px; color: ${theme.accent}; margin-bottom: 10px; font-family: 'Tajawal', serif; }
-      .cert-logo { width: 60px; height: 60px; margin: 0 auto 8px; background: ${theme.primary}; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; font-weight: 700; overflow: hidden; }
-      .cert-system-name { font-size: 20px; font-weight: 700; color: ${theme.primary}; }
-      .cert-subtitle { font-size: 12px; color: #666; margin-top: 2px; }
-      .cert-title { text-align: center; margin: 10px 0; }
-      .cert-title h1 { font-size: 34px; font-weight: 700; color: ${theme.accent}; margin: 0; letter-spacing: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
-      .cert-title .underline-decoration { width: 200px; height: 3px; background: linear-gradient(to right, transparent, ${theme.accent}, transparent); margin: 8px auto; }
-      .cert-body { text-align: center; margin: 10px 0; font-size: 17px; line-height: 2; color: #333; }
-      .cert-body .student-name { font-size: 26px; font-weight: 700; color: ${theme.primary}; border-bottom: 2px solid ${theme.accent}; padding-bottom: 4px; display: inline-block; margin: 4px 0; }
-      .cert-body .course-name { font-size: 20px; font-weight: 700; color: ${theme.secondary}; display: inline-block; margin: 4px 0; }
-      .cert-body .grade-text { font-size: 22px; font-weight: 700; color: ${theme.accent}; display: inline-block; margin: 6px 0; }
-      .cert-details { display: flex; justify-content: space-around; margin: 10px 0; padding: 12px; background: ${theme.detailBg}; border-radius: 8px; border: 1px solid ${theme.detailBorder}; }
-      .cert-detail-item { text-align: center; }
-      .cert-detail-label { font-size: 11px; color: #888; margin-bottom: 3px; }
-      .cert-detail-value { font-size: 14px; font-weight: 700; color: ${theme.primary}; }
-      .cert-signatures { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 10px; }
-      .cert-signature { text-align: center; width: 200px; }
-      .cert-signature .line { width: 150px; border-top: 1px solid #333; margin: 0 auto 5px; }
-      .cert-signature .label { font-size: 12px; color: #666; }
-      .cert-footer { text-align: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid ${theme.detailBorder}; }
-      .cert-number { font-size: 11px; color: #999; font-family: monospace; }
-      .cert-qr-note { font-size: 10px; color: #aaa; margin-top: 3px; }
-      @media print { .actions-bar { display: none !important; } .cert-area { margin-top: 0; } body { padding: 0; } .cert-container { max-width: none; } @page { size: 29.7cm 21cm landscape; margin: 0; } }
+      .cert-content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+      .cert-header { text-align: center; margin-bottom: 8px; }
+      .bismillah { font-size: 26px; color: ${theme.accent}; margin-bottom: 6px; font-family: 'Scheherazade New', 'Amiri', serif; }
+      .cert-logos { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 6px; }
+      .cert-logo { width: 50px; height: 50px; background: ${theme.primary}; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: 700; overflow: hidden; }
+      .cert-system-name { font-size: 18px; font-weight: 700; color: ${theme.primary}; }
+      .cert-subtitle { font-size: 11px; color: #888; margin-top: 2px; }
+      .cert-title { text-align: center; margin: 6px 0 8px; }
+      .cert-title h1 { font-size: 32px; font-weight: 700; color: ${theme.accent}; margin: 0; letter-spacing: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.08); font-family: 'Scheherazade New', 'Amiri', serif; }
+      .cert-title .underline-decoration { width: 180px; height: 3px; background: linear-gradient(to right, transparent, ${theme.accent}, transparent); margin: 6px auto 0; }
+      .cert-body { text-align: center; margin: 8px 0; font-size: 16px; line-height: 1.8; color: #333; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .cert-body .cert-intro { font-size: 14px; color: #666; }
+      .cert-body .cert-text { font-size: 14px; color: #555; }
+      .cert-body .student-name { font-size: 28px; font-weight: 700; color: ${theme.primary}; border-bottom: 2px solid ${theme.accent}; padding-bottom: 3px; display: inline-block; margin: 4px 0; font-family: 'Scheherazade New', 'Amiri', serif; }
+      .cert-body .course-name { font-size: 19px; font-weight: 700; color: ${theme.secondary}; display: inline-block; margin: 3px 0; }
+      .cert-body .grade-text { font-size: 20px; font-weight: 700; color: ${theme.accent}; display: inline-block; margin: 3px 0; }
+      .cert-details { display: flex; justify-content: center; gap: 30px; margin: 8px 0; padding: 10px 20px; background: ${theme.detailBg}; border-radius: 8px; border: 1px solid ${theme.detailBorder}; }
+      .cert-detail-item { text-align: center; min-width: 100px; }
+      .cert-detail-label { font-size: 10px; color: #999; margin-bottom: 3px; }
+      .cert-detail-value { font-size: 12px; font-weight: 700; color: ${theme.primary}; }
+      .cert-signatures { display: flex; justify-content: space-between; margin-top: auto; padding-top: 10px; }
+      .cert-signature { text-align: center; min-width: 140px; }
+      .cert-signature .line { width: 120px; border-top: 1px solid #999; margin: 0 auto 6px; }
+      .cert-signature .stamp-circle { width: 50px; height: 50px; border: 1.5px solid #ccc; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #bbb; }
+      .cert-signature .label { font-size: 11px; color: #777; }
+      .cert-footer { text-align: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid ${theme.detailBorder}; }
+      .cert-qr-note { font-size: 9px; color: #bbb; }
+      @media print {
+        .actions-bar { display: none !important; }
+        .cert-area { margin-top: 0; }
+        body { padding: 0; background: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .cert-container { max-width: none; box-shadow: none; }
+        @page { size: 29.7cm 21cm landscape; margin: 0; }
+      }
     `;
   };
 
