@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "iLjPtos-3M1DHUzfjYcgo"
+uri = "file://update_report.md"
+type = "text"
+title = "تقرير تحديثات منظومة مُتْقِن - 14 مارس 2026"
