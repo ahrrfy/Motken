@@ -10,7 +10,7 @@ import {
   Award, Library, Brain, Sparkles, BookOpenCheck, Gift, Clock, Shield,
   AlertTriangle, HeartHandshake, Pen, Share2, QrCode, Eye, UserCircle,
   MapPin, Lightbulb, X, Building2, UserCog, ArrowUpDown,
-  Moon, Sun, Languages, ArrowLeftRight, EyeOff, Download, BellRing
+  Moon, Sun, Languages, ArrowLeftRight, EyeOff, Download, BellRing, MessageSquareQuote
 } from "lucide-react";
 
 interface MobileSidebarProps { open: boolean; onClose: () => void; }
@@ -48,6 +48,7 @@ const allNavItems = [
   { href: "/monitoring", label: "المراقبة والأمان", icon: Eye, roles: ["admin"], group: "admin" },
   { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["supervisor"], group: "admin" },
   { href: "/feature-control", label: "التحكم بالمميزات", icon: Shield, roles: ["admin"], group: "admin" },
+  { href: "/testimonials-manage", label: "آراء المستخدمين", icon: MessageSquareQuote, roles: ["admin"], group: "admin" },
   { href: "/crisis-management", label: "إدارة الأزمات", icon: AlertTriangle, roles: ["admin","supervisor"], group: "admin", featureKey: "crisis_management" },
   { href: "/institutional", label: "التكامل المؤسسي", icon: ArrowUpDown, roles: ["admin","supervisor"], group: "admin", featureKey: "institutional" },
   { href: "/maintenance", label: "الملاحظات والتحسين", icon: Lightbulb, roles: ["admin","supervisor","teacher","student"], group: "admin" },

@@ -31,6 +31,7 @@ import AttendancePage from "@/pages/AttendancePage";
 import CompetitionsPage from "@/pages/CompetitionsPage";
 import ParentPortalPage from "@/pages/ParentPortalPage";
 import FeatureControlPage from "@/pages/FeatureControlPage";
+import TestimonialsManagePage from "@/pages/TestimonialsManagePage";
 import MessagesPage from "@/pages/MessagesPage";
 import PointsRewardsPage from "@/pages/PointsRewardsPage";
 import SchedulesPage from "@/pages/SchedulesPage";
@@ -226,6 +227,7 @@ function App() {
         <Route path="/competitions" component={CompetitionsPage} />
         <Route path="/parent-portal" component={ParentPortalPage} />
         <Route path="/feature-control" component={FeatureControlPage} />
+        <Route path="/testimonials-manage" component={TestimonialsManagePage} />
         <Route path="/messages" component={MessagesPage} />
         <Route path="/points-rewards" component={PointsRewardsPage} />
         <Route path="/schedules" component={SchedulesPage} />

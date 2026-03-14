@@ -53,6 +53,7 @@ import {
   Pen,
   Download,
   Share2,
+  MessageSquareQuote,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -169,6 +170,7 @@ const navCategories: NavCategory[] = [
       { href: "/monitoring", label: "المراقبة والأمان", labelEn: "Monitoring & Security", icon: Eye, roles: ["admin"] },
       { href: "/teacher-activities", label: "أنشطة الأساتذة", labelEn: "Teacher Activities", icon: ClipboardList, roles: ["supervisor"] },
       { href: "/feature-control", label: "التحكم بالمميزات", labelEn: "Feature Control", icon: Shield, roles: ["admin"] },
+      { href: "/testimonials-manage", label: "آراء المستخدمين", labelEn: "Testimonials", icon: MessageSquareQuote, roles: ["admin"] },
       { href: "/crisis-management", label: "إدارة الأزمات", labelEn: "Crisis Management", icon: AlertTriangle, roles: ["admin", "supervisor"], featureKey: "crisis_management" },
       { href: "/institutional", label: "التكامل المؤسسي", labelEn: "Institutional Integration", icon: ArrowUpDown, roles: ["admin", "supervisor"], featureKey: "institutional" },
       { href: "/maintenance", label: "الملاحظات والتحسين", labelEn: "Feedback & Improvement", icon: Lightbulb, roles: ["admin", "supervisor", "teacher", "student"] },
