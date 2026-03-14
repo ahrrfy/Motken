@@ -7,7 +7,7 @@ import { isNotificationsEnabled, setNotificationsEnabled, startNotificationPolli
 import {
   LayoutDashboard, BookOpen, ClipboardList, Bell, Users, CalendarCheck,
   MessageSquare, Star, BarChart3, GraduationCap, Trophy, Settings, LogOut,
-  Award, Library, Brain, Sparkles, BookOpenCheck, Gift, Clock, Shield,
+  Award, Library, Brain, Sparkles, Gift, Clock, Shield,
   AlertTriangle, HeartHandshake, Pen, Share2, QrCode, Eye, UserCircle,
   MapPin, Lightbulb, X, Building2, UserCog, ArrowUpDown,
   Moon, Sun, Languages, ArrowLeftRight, EyeOff, Download, BellRing, MessageSquareQuote
@@ -24,11 +24,10 @@ const allNavItems = [
   { href: "/users", label: "جميع المستخدمين", icon: Users, roles: ["admin"], group: "people" },
   { href: "/assignments", label: "الواجبات والامتحانات", icon: ClipboardList, roles: ["admin","teacher","supervisor","student"], group: "edu" },
   { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin","teacher","student","supervisor"], group: "edu" },
-  { href: "/courses", label: "الدورات والشهادات", icon: Award, roles: ["admin","teacher","supervisor","student"], group: "edu", featureKey: "courses" },
+  { href: "/courses", label: "الدورات والتخرج", icon: Award, roles: ["admin","teacher","supervisor","student"], group: "edu", featureKey: "courses" },
   { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin","teacher","student","supervisor"], group: "edu", featureKey: "library" },
   { href: "/knowledge-base", label: "موسوعة التجويد", icon: Brain, roles: ["admin","teacher","student","supervisor"], group: "edu", featureKey: "knowledge_base" },
   { href: "/educational-content", label: "المحتوى التعليمي", icon: Sparkles, roles: ["admin","teacher","student","supervisor"], group: "edu", featureKey: "educational_content" },
-  { href: "/graduation", label: "التخرج والمتابعة", icon: BookOpenCheck, roles: ["admin","supervisor","teacher"], group: "edu", featureKey: "graduation" },
   { href: "/attendance", label: "الحضور والغياب", icon: CalendarCheck, roles: ["admin","teacher","supervisor"], group: "track", featureKey: "attendance" },
   { href: "/points-rewards", label: "النقاط والمكافآت", icon: Gift, roles: ["admin","teacher","student","supervisor"], group: "track", featureKey: "points_rewards" },
   { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["admin","teacher","supervisor","student"], group: "track", featureKey: "ratings" },

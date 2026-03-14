@@ -45,7 +45,6 @@ import {
   HeartHandshake,
   Lightbulb,
   ArrowUpDown,
-  BookOpenCheck,
   FileText,
   Brain,
   Sparkles,
@@ -121,12 +120,10 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/assignments", label: "الواجبات والامتحانات", labelEn: "Assignments & Exams", icon: ClipboardList, roles: ["admin", "teacher", "supervisor", "student"] },
       { href: "/quran", label: "المصحف والحفظ", labelEn: "Quran Tracker", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
-      { href: "/courses", label: "الدورات والشهادات", labelEn: "Courses & Certificates", icon: Award, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "courses" },
+      { href: "/courses", label: "الدورات والتخرج", labelEn: "Courses & Graduation", icon: Award, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "courses" },
       { href: "/library", label: "المكتبة الإسلامية", labelEn: "Islamic Library", icon: Library, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "library" },
       { href: "/knowledge-base", label: "موسوعة التجويد", labelEn: "Tajweed Encyclopedia", icon: Brain, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "knowledge_base" },
       { href: "/educational-content", label: "المحتوى التعليمي", labelEn: "Educational Content", icon: Sparkles, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "educational_content" },
-      { href: "/graduation", label: "التخرج والمتابعة", labelEn: "Graduation & Follow-up", icon: BookOpenCheck, roles: ["admin", "supervisor", "teacher"], featureKey: "graduation" },
-      { href: "/certificates", label: "الشهادات", labelEn: "Certificates", icon: Award, roles: ["admin", "supervisor", "teacher", "student"], featureKey: "graduation" },
     ],
   },
   {

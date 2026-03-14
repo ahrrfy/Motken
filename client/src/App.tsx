@@ -22,7 +22,7 @@ import MosqueDashboardPage from "@/pages/MosqueDashboardPage";
 import AllUsersPage from "@/pages/AllUsersPage";
 import RatingsPage from "@/pages/RatingsPage";
 import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
-import CoursesPage from "@/pages/CoursesPage";
+import CoursesGraduationPage from "@/pages/CoursesGraduationPage";
 import TeacherDailyPage from "@/pages/TeacherDailyPage";
 import OnlineUsersPage from "@/pages/OnlineUsersPage";
 import MonitoringPage from "@/pages/MonitoringPage";
@@ -36,8 +36,6 @@ import PointsRewardsPage from "@/pages/PointsRewardsPage";
 import SchedulesPage from "@/pages/SchedulesPage";
 import SmartAlertsPage from "@/pages/SmartAlertsPage";
 import CrisisManagementPage from "@/pages/CrisisManagementPage";
-import GraduationPage from "@/pages/GraduationPage";
-import CertificatesPage from "@/pages/CertificatesPage";
 import InstitutionalPage from "@/pages/InstitutionalPage";
 import FamilySystemPage from "@/pages/FamilySystemPage";
 import KnowledgeBasePage from "@/pages/KnowledgeBasePage";
@@ -239,7 +237,7 @@ function App() {
         <Route path="/supervisors">{() => <RoleGuard roles={["admin"]} Component={SupervisorsPage} />}</Route>
         <Route path="/assignments" component={AssignmentsExamsPage} />
         <Route path="/ratings" component={RatingsPage} />
-        <Route path="/courses" component={CoursesPage} />
+        <Route path="/courses" component={CoursesGraduationPage} />
         <Route path="/quran" component={QuranTracker} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/reports" component={ReportsPage} />
@@ -262,8 +260,8 @@ function App() {
         <Route path="/schedules" component={SchedulesPage} />
         <Route path="/smart-alerts" component={SmartAlertsPage} />
         <Route path="/crisis-management" component={CrisisManagementPage} />
-        <Route path="/graduation" component={GraduationPage} />
-        <Route path="/certificates" component={CertificatesPage} />
+        <Route path="/graduation">{() => <CoursesGraduationPage />}</Route>
+        <Route path="/certificates">{() => <CoursesGraduationPage />}</Route>
         <Route path="/institutional" component={InstitutionalPage} />
         <Route path="/family-system" component={FamilySystemPage} />
         <Route path="/knowledge-base" component={KnowledgeBasePage} />
