@@ -35,8 +35,8 @@ async function logActivity(user: any, action: string, module: string, details?: 
 }
 
 function getTeacherLevelsArray(teacher: any): number[] {
-  if (!teacher.teacherLevels) return [1, 2, 3, 4, 5, 6];
-  return teacher.teacherLevels.split(",").map(Number).filter((n: number) => n >= 1 && n <= 6);
+  if (!teacher.teacherLevels) return [1, 2, 3, 4, 5, 6, 7];
+  return teacher.teacherLevels.split(",").map(Number).filter((n: number) => n >= 1 && n <= 7);
 }
 
 function canTeacherAccessStudent(teacher: any, student: any): boolean {
@@ -52,6 +52,7 @@ function canTeacherAccessAssignment(teacher: any, assignment: any, student: any)
 }
 
 function calculateStudentLevel(juzCount: number): number {
+  if (juzCount >= 30) return 7;
   if (juzCount >= 26) return 6;
   if (juzCount >= 21) return 5;
   if (juzCount >= 16) return 4;
@@ -61,12 +62,13 @@ function calculateStudentLevel(juzCount: number): number {
 }
 
 const LEVEL_NAMES: Record<number, { ar: string; en: string }> = {
-  1: { ar: "مبتدئ", en: "Beginner" },
-  2: { ar: "متوسط", en: "Intermediate" },
-  3: { ar: "متقدم", en: "Advanced" },
-  4: { ar: "متميز", en: "Distinguished" },
-  5: { ar: "خبير", en: "Expert" },
-  6: { ar: "حافظ", en: "Hafiz" },
+  1: { ar: "المستوى الأول", en: "Level 1" },
+  2: { ar: "المستوى الثاني", en: "Level 2" },
+  3: { ar: "المستوى الثالث", en: "Level 3" },
+  4: { ar: "المستوى الرابع", en: "Level 4" },
+  5: { ar: "المستوى الخامس", en: "Level 5" },
+  6: { ar: "المستوى السادس", en: "Level 6" },
+  7: { ar: "حافظ", en: "Hafiz" },
 };
 
 export async function registerRoutes(
@@ -1845,6 +1847,7 @@ export async function registerRoutes(
         4: "الجزء 15-11 (5 أجزاء)",
         5: "الجزء 10-6 (5 أجزاء)",
         6: "الجزء 5-1 (5 أجزاء)",
+        7: "حافظ القرآن كاملاً (30 جزء)",
       },
     });
   });
@@ -1897,7 +1900,7 @@ export async function registerRoutes(
       if (!levels || !Array.isArray(levels) || levels.length === 0) {
         return res.status(400).json({ message: "يجب تحديد مستوى واحد على الأقل" });
       }
-      const validLevels = levels.filter((l: number) => l >= 1 && l <= 6);
+      const validLevels = levels.filter((l: number) => l >= 1 && l <= 7);
       if (validLevels.length === 0) return res.status(400).json({ message: "المستويات غير صحيحة" });
       const teacherLevels = validLevels.sort().join(",");
       await storage.updateUser(req.params.teacherId, { teacherLevels });
@@ -1923,7 +1926,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "غير مصرح" });
       }
       const { level } = req.body;
-      if (!level || level < 1 || level > 6) return res.status(400).json({ message: "المستوى يجب أن يكون بين 1 و 6" });
+      if (!level || level < 1 || level > 7) return res.status(400).json({ message: "المستوى يجب أن يكون بين 1 و 7" });
       const oldLevel = student.level || 1;
       await storage.updateUser(req.params.studentId, { level });
       if (oldLevel !== level) {

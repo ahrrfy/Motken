@@ -26,7 +26,7 @@ interface UserData {
   level?: number | null;
 }
 
-const levelNames = ["مبتدئ", "متوسط", "متقدم", "متميز", "خبير", "حافظ"];
+const levelNames = ["المستوى الأول", "المستوى الثاني", "المستوى الثالث", "المستوى الرابع", "المستوى الخامس", "المستوى السادس", "حافظ"];
 const levelColors = [
   { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-300", hex: "#0284c7", hexBg: "#e0f2fe" },
   { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-300", hex: "#059669", hexBg: "#d1fae5" },
@@ -34,10 +34,11 @@ const levelColors = [
   { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-300", hex: "#d97706", hexBg: "#fef3c7" },
   { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-300", hex: "#ea580c", hexBg: "#ffedd5" },
   { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-300", hex: "#e11d48", hexBg: "#ffe4e6" },
+  { bg: "bg-green-100", text: "text-green-700", border: "border-green-300", hex: "#16a34a", hexBg: "#dcfce7" },
 ];
 
 function getLevelInfo(level?: number | null) {
-  if (!level || level < 1 || level > 6) return null;
+  if (!level || level < 1 || level > 7) return null;
   return { name: levelNames[level - 1], colors: levelColors[level - 1] };
 }
 

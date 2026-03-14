@@ -63,7 +63,7 @@ The system is built with a modern web stack:
 -   **Documentation**: `MAINTENANCE_LOG.md` (maintenance history), `README_ARCH.md` (architecture guide).
 -   **Institutional Systems**: Crisis Management, Graduation & Follow-up, Institutional Integration, Integrated Family System, Knowledge Management, Maintenance & Improvement, Educational Content.
 -   **Admin Interface**: Redesigned with categorized sidebar navigation, merged sections, enhanced dashboard.
--   **Level System**: 6-level reverse-order system (Juz 30-1), with updated names: مبتدئ/متوسط/متقدم/متميز/خبير/حافظ.
+-   **Level System**: 7-level system (Juz 30-1). Levels 1-6: المستوى الأول through المستوى السادس (each 5 juz). Level 7: حافظ (memorized all 30 juz).
 -   **Mosque Registration & Vouching System (نظام التزكية)**: Two-path mosque onboarding:
     - **Direct Registration**: Public form at `/register-mosque` for new mosque registration with admin approval.
     - **Vouching (التزكية)**: Existing supervisors can vouch for new mosques with relationship/reason.
