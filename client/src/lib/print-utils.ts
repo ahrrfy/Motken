@@ -351,35 +351,35 @@ export function generateCertificateHtml(cert: any, studentName: string, courseNa
   const hijriDate = new Date(cert.issuedAt).toLocaleDateString("ar-SA-u-ca-islamic", { year: "numeric", month: "long", day: "numeric" });
   const gregorianDate = new Date(cert.issuedAt).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
   return `
-    <div style="padding:35px 40px;border:3px solid #16213e;background:linear-gradient(135deg,#fefefe 0%,#f8f4e8 100%);position:relative;min-height:600px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'Tajawal',sans-serif;">
-      <div style="position:absolute;inset:6px;border:1.5px solid #c9a84c;pointer-events:none;"></div>
-      <div style="position:absolute;top:16px;right:20px;font-size:11px;color:#aaa;">رقم: ${escapeHtml(cert.certificateNumber || "")}</div>
+    <div style="padding:40px 50px;border:3px solid #16213e;background:linear-gradient(135deg,#fefefe 0%,#f8f4e8 100%);position:relative;min-height:600px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'Tajawal',sans-serif;">
+      <div style="position:absolute;inset:8px;border:2px solid #c9a84c;pointer-events:none;"></div>
+      <div style="position:absolute;top:20px;right:24px;font-size:14px;color:#aaa;">رقم: ${escapeHtml(cert.certificateNumber || "")}</div>
       
-      <div style="font-size:16px;color:#c9a84c;letter-spacing:2px;margin-bottom:12px;">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
-      <h1 style="font-size:36px;color:#16213e;margin-bottom:6px;font-family:'Scheherazade New','Amiri',serif;">شهادة إتمام</h1>
-      <div style="width:120px;height:2px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);margin:0 auto 10px;"></div>
-      <h2 style="font-size:16px;color:#888;margin-bottom:20px;font-weight:400;">${escapeHtml(mosqueName || "مُتْقِن")}</h2>
+      <div style="font-size:22px;color:#c9a84c;letter-spacing:3px;margin-bottom:16px;">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
+      <h1 style="font-size:44px;color:#16213e;margin-bottom:8px;font-family:'Scheherazade New','Amiri',serif;">شهادة إتمام</h1>
+      <div style="width:160px;height:3px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);margin:0 auto 14px;"></div>
+      <h2 style="font-size:20px;color:#888;margin-bottom:24px;font-weight:400;">${escapeHtml(mosqueName || "مُتْقِن")}</h2>
 
-      <p style="font-size:14px;color:#666;margin-bottom:8px;">يشهد بأن</p>
-      <h3 style="font-size:30px;color:#16213e;margin-bottom:12px;border-bottom:2px solid #c9a84c;padding-bottom:8px;display:inline-block;min-width:250px;font-family:'Scheherazade New','Amiri',serif;">${escapeHtml(studentName || "")}</h3>
+      <p style="font-size:20px;color:#666;margin-bottom:10px;">يشهد بأن</p>
+      <h3 style="font-size:46px;color:#16213e;margin-bottom:16px;border-bottom:3px solid #c9a84c;padding-bottom:10px;display:inline-block;min-width:300px;font-family:'Scheherazade New','Amiri',serif;">${escapeHtml(studentName || "")}</h3>
       
-      <p style="font-size:14px;color:#555;margin-bottom:6px;">قد أتمّ بنجاح متطلبات الدورة التعليمية</p>
-      <h4 style="font-size:22px;color:#0f3460;margin-bottom:10px;">${escapeHtml(courseName || "")}</h4>
+      <p style="font-size:20px;color:#555;margin-bottom:8px;">قد أتمّ بنجاح متطلبات الدورة التعليمية</p>
+      <h4 style="font-size:30px;color:#0f3460;margin-bottom:14px;">${escapeHtml(courseName || "")}</h4>
       
-      ${cert.graduationGrade ? `<p style="font-size:16px;color:#16213e;margin-bottom:16px;">بتقدير: <strong style="color:#c9a84c;font-size:20px;">${escapeHtml(cert.graduationGrade)}</strong></p>` : ""}
+      ${cert.graduationGrade ? `<p style="font-size:22px;color:#16213e;margin-bottom:20px;">بتقدير: <strong style="color:#c9a84c;font-size:28px;">${escapeHtml(cert.graduationGrade)}</strong></p>` : ""}
 
-      <div style="display:flex;justify-content:space-between;width:100%;margin-top:24px;padding-top:16px;border-top:1px solid #e8e0cc;">
-        <div style="text-align:center;min-width:120px;">
-          <div style="width:50px;height:50px;border:1.5px solid #ccc;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#bbb;">الختم</div>
-          <p style="font-size:10px;color:#888;">ختم المركز</p>
+      <div style="display:flex;justify-content:space-between;width:100%;margin-top:30px;padding-top:20px;border-top:2px solid #e8e0cc;">
+        <div style="text-align:center;min-width:140px;">
+          <div style="width:70px;height:70px;border:2px solid #ccc;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#bbb;">الختم</div>
+          <p style="font-size:14px;color:#888;">ختم المركز</p>
         </div>
         <div style="text-align:center;">
-          <p style="font-size:11px;color:#888;margin-bottom:3px;">${hijriDate}</p>
-          <p style="font-size:10px;color:#aaa;">${gregorianDate}</p>
+          <p style="font-size:16px;color:#888;margin-bottom:4px;">${hijriDate}</p>
+          <p style="font-size:14px;color:#aaa;">${gregorianDate}</p>
         </div>
-        <div style="text-align:center;min-width:120px;">
-          <div style="width:100px;border-bottom:1px solid #999;margin:24px auto 8px;"></div>
-          <p style="font-size:10px;color:#888;">توقيع المسؤول</p>
+        <div style="text-align:center;min-width:140px;">
+          <div style="width:140px;border-bottom:2px solid #999;margin:24px auto 10px;"></div>
+          <p style="font-size:15px;color:#888;">توقيع المسؤول</p>
         </div>
       </div>
     </div>
