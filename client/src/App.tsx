@@ -1,5 +1,5 @@
-import { useAuth } from "@/lib/auth-context";
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useAuth, UserRole } from "@/lib/auth-context";
+import { useEffect, useState, lazy, Suspense, ComponentType } from "react";
 import { Route, Switch } from "wouter";
 import { registerServiceWorker, startNotificationPolling, stopNotificationPolling, isNotificationsEnabled } from "@/lib/notifications";
 import { startUpdateChecker, stopUpdateChecker, onUpdateAvailable, applyUpdate } from "@/lib/update-checker";
@@ -56,6 +56,20 @@ import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 import { isMobileOrTablet } from "@/lib/device-detect";
 const MobileApp = lazy(() => import("@/mobile/MobileApp"));
+
+function RoleGuard({ roles, Component }: { roles: UserRole[]; Component: ComponentType }) {
+  const { user } = useAuth();
+  const effectiveRole = user?.actualRole || user?.role;
+  if (!effectiveRole || !roles.includes(effectiveRole)) {
+    return (
+      <div className="p-10 text-center" dir="rtl">
+        <h2 className="text-2xl font-bold text-destructive">غير مصرح بالوصول</h2>
+        <p className="mt-2 text-muted-foreground">ليس لديك صلاحية لعرض هذه الصفحة</p>
+      </div>
+    );
+  }
+  return <Component />;
+}
 
 function UpdateBanner() {
   const [show, setShow] = useState(false);
@@ -204,10 +218,10 @@ function App() {
         <Route path="/daily" component={TeacherDailyPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/mosques/:id/dashboard" component={MosqueDashboardPage} />
-        <Route path="/mosques" component={MosquesPage} />
+        <Route path="/mosques">{() => <RoleGuard roles={["admin"]} Component={MosquesPage} />}</Route>
         <Route path="/students" component={StudentsPage} />
         <Route path="/teachers" component={TeachersPage} />
-        <Route path="/supervisors" component={SupervisorsPage} />
+        <Route path="/supervisors">{() => <RoleGuard roles={["admin"]} Component={SupervisorsPage} />}</Route>
         <Route path="/assignments" component={AssignmentsExamsPage} />
         <Route path="/ratings" component={RatingsPage} />
         <Route path="/courses" component={CoursesPage} />
@@ -218,16 +232,16 @@ function App() {
         <Route path="/scan-qr" component={QRScannerPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/activity-logs" component={ActivityLogsPage} />
-        <Route path="/teacher-activities" component={TeacherActivitiesPage} />
+        <Route path="/teacher-activities">{() => <RoleGuard roles={["admin", "supervisor"]} Component={TeacherActivitiesPage} />}</Route>
         <Route path="/notifications" component={NotificationsPage} />
-        <Route path="/users" component={AllUsersPage} />
-        <Route path="/monitoring" component={MonitoringPage} />
+        <Route path="/users">{() => <RoleGuard roles={["admin"]} Component={AllUsersPage} />}</Route>
+        <Route path="/monitoring">{() => <RoleGuard roles={["admin"]} Component={MonitoringPage} />}</Route>
         <Route path="/online-users" component={OnlineUsersPage} />
         <Route path="/attendance" component={AttendancePage} />
         <Route path="/competitions" component={CompetitionsPage} />
         <Route path="/parent-portal" component={ParentPortalPage} />
-        <Route path="/feature-control" component={FeatureControlPage} />
-        <Route path="/testimonials-manage" component={TestimonialsManagePage} />
+        <Route path="/feature-control">{() => <RoleGuard roles={["admin"]} Component={FeatureControlPage} />}</Route>
+        <Route path="/testimonials-manage">{() => <RoleGuard roles={["admin"]} Component={TestimonialsManagePage} />}</Route>
         <Route path="/messages" component={MessagesPage} />
         <Route path="/points-rewards" component={PointsRewardsPage} />
         <Route path="/schedules" component={SchedulesPage} />
