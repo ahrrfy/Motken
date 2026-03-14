@@ -121,6 +121,33 @@ export function registerUsersRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/users/batch-study-mode", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+      const { studentIds, studyMode } = req.body;
+      if (!Array.isArray(studentIds) || studentIds.length === 0) {
+        return res.status(400).json({ message: "يجب تحديد طالب واحد على الأقل" });
+      }
+      if (!["in-person", "online"].includes(studyMode)) {
+        return res.status(400).json({ message: "نوع الدراسة غير صالح" });
+      }
+      let updated = 0;
+      for (const id of studentIds) {
+        const student = await storage.getUser(id);
+        if (!student || student.role !== "student") continue;
+        if (currentUser.role === "supervisor" && student.mosqueId !== currentUser.mosqueId) continue;
+        await storage.updateUser(id, { studyMode });
+        updated++;
+      }
+      res.json({ message: `تم تحديث ${updated} طالب`, updated });
+    } catch (err: any) {
+      res.status(500).json({ message: "حدث خطأ في تحديث نوع الدراسة" });
+    }
+  });
+
   app.get("/api/users/:id", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
@@ -180,7 +207,7 @@ export function registerUsersRoutes(app: Express) {
         return res.status(400).json({ message: contentCheck.reason });
       }
 
-      const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels } = req.body;
+      const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels, studyMode } = req.body;
       if (!username || typeof username !== "string" || username.length < 3 || username.length > 50) {
         return res.status(400).json({ message: "اسم المستخدم مطلوب ويجب أن يكون بين 3 و 50 حرف" });
       }
@@ -250,6 +277,7 @@ export function registerUsersRoutes(app: Express) {
         username, name, password: await hashPassword(rawPassword),
         role: req.body.role, mosqueId: req.body.mosqueId, teacherId,
         phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan,
+        studyMode: req.body.role === "student" ? (studyMode || "in-person") : undefined,
         level: req.body.role === "student" ? (level || 1) : undefined,
         teacherLevels: req.body.role === "teacher" ? (teacherLevels || "1,2,3,4,5,6") : undefined,
         pendingApproval: req.body.pendingApproval || false,
@@ -323,7 +351,7 @@ export function registerUsersRoutes(app: Express) {
     }
 
     const safeFields = ["name", "phone", "address", "gender", "avatar", "age", "telegramId", "parentPhone", "educationLevel", "isSpecialNeeds", "isOrphan", "password"];
-    const supervisorFields = ["teacherId", "level", "teacherLevels"];
+    const supervisorFields = ["teacherId", "level", "teacherLevels", "studyMode"];
     const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil"];
     const allAllowedFields = [...safeFields, ...supervisorFields, ...adminOnlyFields];
     const receivedKeys = Object.keys(req.body);
@@ -351,7 +379,7 @@ export function registerUsersRoutes(app: Express) {
     }
 
     const updateData: any = {};
-    const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels } = req.body;
+    const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels, studyMode } = req.body;
 
     const patchFieldCheck = validateFields(req.body, ["name", "phone", "parentPhone", "address", "telegramId", "educationLevel"]);
     if (!patchFieldCheck.valid) return res.status(400).json({ message: patchFieldCheck.error });
@@ -397,6 +425,12 @@ export function registerUsersRoutes(app: Express) {
     if (isOrphan !== undefined) updateData.isOrphan = isOrphan;
     if (level !== undefined) updateData.level = level;
     if (teacherLevels !== undefined) updateData.teacherLevels = teacherLevels;
+    if (studyMode !== undefined) {
+      if (!["in-person", "online"].includes(studyMode)) {
+        return res.status(400).json({ message: "نوع الدراسة غير صالح" });
+      }
+      updateData.studyMode = studyMode;
+    }
 
     if (req.body.password) {
       if (typeof req.body.password !== "string" || req.body.password.length < 8) {

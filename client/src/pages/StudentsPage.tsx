@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat } from "lucide-react";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -40,6 +40,7 @@ interface Student {
   isOrphan?: boolean;
   isActive: boolean;
   adminNotes?: string | null;
+  studyMode?: string;
   createdAt?: string | null;
 }
 
@@ -94,7 +95,7 @@ export default function StudentsPage() {
   const [newTeacherId, setNewTeacherId] = useState("");
   const [formData, setFormData] = useState({
     name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male",
-    age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false
+    age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false, studyMode: "in-person"
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
@@ -104,6 +105,8 @@ export default function StudentsPage() {
   const [sortBy, setSortBy] = useState("name");
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
+  const [filterStudyMode, setFilterStudyMode] = useState("all");
+  const [batchStudyModeLoading, setBatchStudyModeLoading] = useState(false);
 
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [profileStudent, setProfileStudent] = useState<Student | null>(null);
@@ -328,6 +331,7 @@ export default function StudentsPage() {
           "مستوى الطالب": level.label,
           "ذوي الاحتياجات": s.isSpecialNeeds ? "نعم" : "لا",
           يتيم: s.isOrphan ? "نعم" : "لا",
+          "نوع الدراسة": (s.studyMode || "in-person") === "online" ? "إلكتروني" : "حضوري",
           الأستاذ: getTeacherName(s.teacherId),
           الحالة: s.isActive ? "نشط" : "متوقف",
           "تاريخ التسجيل": formatDateAr(s.createdAt),
@@ -355,6 +359,7 @@ export default function StudentsPage() {
           role: "student",
           age: formData.age ? parseInt(formData.age) : null,
           level: formData.level ? parseInt(formData.level) : 1,
+          studyMode: formData.studyMode || "in-person",
           educationLevel: formData.educationLevel || null,
           telegramId: formData.telegramId || null,
           parentPhone: formData.parentPhone || null,
@@ -367,7 +372,7 @@ export default function StudentsPage() {
         const savedPhone = formData.phone;
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false });
+        setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false, studyMode: "in-person" });
         fetchData();
         setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "student" });
       } else {
@@ -526,7 +531,7 @@ export default function StudentsPage() {
     setTransferDialogOpen(true);
   };
 
-  const hasActiveFilters = filterGender !== "all" || filterStatus !== "all" || filterSpecialNeeds !== "all" || filterOrphan !== "all" || filterLevel !== "all" || filterDateFrom || filterDateTo;
+  const hasActiveFilters = filterGender !== "all" || filterStatus !== "all" || filterSpecialNeeds !== "all" || filterOrphan !== "all" || filterLevel !== "all" || filterStudyMode !== "all" || filterDateFrom || filterDateTo;
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -535,6 +540,7 @@ export default function StudentsPage() {
     setFilterSpecialNeeds("all");
     setFilterOrphan("all");
     setFilterLevel("all");
+    setFilterStudyMode("all");
     setFilterDateFrom("");
     setFilterDateTo("");
   };
@@ -556,6 +562,7 @@ export default function StudentsPage() {
         if (filterOrphan === "no" && s.isOrphan) return false;
       }
       if (filterLevel !== "all" && String(s.level || 1) !== filterLevel) return false;
+      if (filterStudyMode !== "all" && (s.studyMode || "in-person") !== filterStudyMode) return false;
       if (filterDateFrom && (s as any).createdAt) {
         if (new Date((s as any).createdAt) < new Date(filterDateFrom)) return false;
       }
@@ -616,6 +623,7 @@ export default function StudentsPage() {
           العمر: s.age || "",
           "هاتف ولي الأمر": s.parentPhone || "",
           "مستوى الطالب": level.label,
+          "نوع الدراسة": (s.studyMode || "in-person") === "online" ? "إلكتروني" : "حضوري",
           الأستاذ: getTeacherName(s.teacherId),
           الحالة: s.isActive ? "نشط" : "متوقف",
         };
@@ -625,10 +633,38 @@ export default function StudentsPage() {
     );
   };
 
+  const handleBatchStudyMode = async (mode: string) => {
+    const ids = Array.from(selectedStudents);
+    if (ids.length === 0) return;
+    setBatchStudyModeLoading(true);
+    try {
+      const res = await fetch("/api/users/batch-study-mode", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ studentIds: ids, studyMode: mode }),
+      });
+      if (res.ok) {
+        const label = mode === "online" ? "إلكتروني" : "حضوري";
+        toast({ title: "تم بنجاح", description: `تم تحويل ${ids.length} طالب إلى ${label}`, className: "bg-green-50 border-green-200 text-green-800" });
+        setSelectedStudents(new Set());
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في التحويل", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setBatchStudyModeLoading(false);
+    }
+  };
+
   const totalStudents = students.length;
   const activeStudents = students.filter(s => s.isActive).length;
   const specialNeedsStudents = students.filter(s => s.isSpecialNeeds).length;
   const orphanStudents = students.filter(s => s.isOrphan).length;
+  const onlineStudents = students.filter(s => s.studyMode === "online").length;
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
@@ -797,6 +833,18 @@ export default function StudentsPage() {
                     </Select>
                     <p className="text-xs text-muted-foreground">يحدد المستوى أي الأساتذة يمكنهم التعامل مع هذا الطالب</p>
                   </div>
+                  <div className="space-y-2">
+                    <Label>نوع الدراسة</Label>
+                    <Select value={formData.studyMode} onValueChange={(v) => setFormData(prev => ({...prev, studyMode: v}))}>
+                      <SelectTrigger data-testid="select-study-mode">
+                        <SelectValue placeholder="اختر نوع الدراسة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in-person">حضوري</SelectItem>
+                        <SelectItem value="online">إلكتروني</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="special-needs"
@@ -872,6 +920,19 @@ export default function StudentsPage() {
               </div>
             </CardContent>
           </Card>
+          {onlineStudents > 0 && (
+            <Card className="border-cyan-200 bg-cyan-50/50 card-hover" data-testid="stat-online-students">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center">
+                  <Monitor className="w-5 h-5 text-cyan-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-cyan-700">{onlineStudents}</p>
+                  <p className="text-xs text-cyan-600/80">إلكتروني</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -979,6 +1040,18 @@ export default function StudentsPage() {
               <Download className="w-3.5 h-3.5" />
               تصدير المحدد
             </Button>
+            {(isSupervisor || user?.role === "admin") && (
+              <>
+                <Button variant="outline" size="sm" className="gap-1 border-cyan-300 text-cyan-700 hover:bg-cyan-50" onClick={() => handleBatchStudyMode("online")} disabled={batchStudyModeLoading} data-testid="button-batch-online">
+                  {batchStudyModeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Monitor className="w-3.5 h-3.5" />}
+                  تحويل إلى إلكتروني
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1 border-green-300 text-green-700 hover:bg-green-50" onClick={() => handleBatchStudyMode("in-person")} disabled={batchStudyModeLoading} data-testid="button-batch-in-person">
+                  {batchStudyModeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5" />}
+                  تحويل إلى حضوري
+                </Button>
+              </>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setSelectedStudents(new Set())} data-testid="button-clear-selection">
               <X className="w-4 h-4" />
             </Button>
@@ -1091,6 +1164,18 @@ export default function StudentsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-full sm:w-36">
+              <Select value={filterStudyMode} onValueChange={setFilterStudyMode}>
+                <SelectTrigger data-testid="select-filter-study-mode">
+                  <SelectValue placeholder="نوع الدراسة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">نوع الدراسة - الكل</SelectItem>
+                  <SelectItem value="in-person">حضوري</SelectItem>
+                  <SelectItem value="online">إلكتروني</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="w-full sm:w-40">
               <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
               <Input
@@ -1174,7 +1259,8 @@ export default function StudentsPage() {
                               )}
                             </div>
                             <div>
-                              <span>{student.name}</span>
+                              <span className={student.studyMode === "online" ? "text-cyan-700 font-semibold" : ""}>{student.name}</span>
+                              {student.studyMode === "online" && <Badge variant="secondary" className="bg-cyan-100 text-cyan-700 border-cyan-200 text-[10px] px-1.5 py-0 h-4 mr-1">إلكتروني</Badge>}
                               {student.isSpecialNeeds && <Heart className="w-3 h-3 text-purple-500 inline mr-1" />}
                               {student.isOrphan && <Shield className="w-3 h-3 text-amber-500 inline mr-1" />}
                             </div>
@@ -1372,6 +1458,7 @@ export default function StudentsPage() {
                     <Badge variant={profileStudent.isActive ? "default" : "destructive"} className={profileStudent.isActive ? "bg-green-100 text-green-700 border-none" : ""}>
                       {profileStudent.isActive ? "نشط" : "متوقف"}
                     </Badge>
+                    {(profileStudent.studyMode || "in-person") === "online" && <Badge variant="secondary" className="bg-cyan-100 text-cyan-700 border-cyan-200">إلكتروني</Badge>}
                     {profileStudent.isSpecialNeeds && <Badge variant="secondary" className="bg-purple-100 text-purple-700">ذوي احتياجات</Badge>}
                     {profileStudent.isOrphan && <Badge variant="secondary" className="bg-amber-100 text-amber-700">يتيم</Badge>}
                   </div>
@@ -1407,6 +1494,14 @@ export default function StudentsPage() {
                       </Button>
                     )}
                   </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">نوع الدراسة</span>
+                  <p className="font-medium" data-testid="text-profile-study-mode">
+                    <Badge variant="secondary" className={(profileStudent.studyMode || "in-person") === "online" ? "bg-cyan-100 text-cyan-700 border-cyan-200" : "bg-green-100 text-green-700 border-green-200"}>
+                      {(profileStudent.studyMode || "in-person") === "online" ? "إلكتروني" : "حضوري"}
+                    </Badge>
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-muted-foreground">المستوى الدراسي</span>
