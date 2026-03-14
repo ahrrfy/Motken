@@ -67,7 +67,7 @@ export default function TeacherActivitiesPage() {
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">أنشطة الأساتذة</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-teacher-activities">أنشطة الأساتذة</h1>
         <p className="text-muted-foreground">متابعة جميع الأنشطة التي يقوم بها الأساتذة في الجامع/المركز</p>
       </div>
 
@@ -85,14 +85,14 @@ export default function TeacherActivitiesPage() {
                 className="pr-9"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                data-testid="input-search"
+                data-testid="input-search-teacher-activities"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-3 md:p-6">
           {loading ? (
-            <div className="flex items-center justify-center py-12" data-testid="status-loading">
+            <div className="flex items-center justify-center py-12" data-testid="status-loading-teacher-activities">
               <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
               <span>جاري التحميل...</span>
             </div>

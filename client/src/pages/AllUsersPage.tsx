@@ -338,7 +338,7 @@ export default function AllUsersPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold" data-testid="text-page-title">جميع المستخدمين</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold" data-testid="text-page-title-all-users">جميع المستخدمين</h1>
           <p className="text-muted-foreground text-sm">إدارة جميع حسابات المستخدمين في النظام</p>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -178,7 +178,7 @@ export default function MaintenancePage() {
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
       <div>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-maintenance">
           الملاحظات والاقتراحات
         </h1>
         <p className="text-muted-foreground">نظام الملاحظات والاقتراحات والتحسينات</p>
@@ -231,7 +231,7 @@ export default function MaintenancePage() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="flex items-center justify-center py-8" data-testid="status-loading">
+                <div className="flex items-center justify-center py-8" data-testid="status-loading-maintenance">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   <span className="mr-2 text-muted-foreground">جاري التحميل...</span>
                 </div>

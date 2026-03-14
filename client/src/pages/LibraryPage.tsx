@@ -650,7 +650,7 @@ export default function LibraryPage() {
           <div className="relative flex-1 md:w-80">
             <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              data-testid="input-search"
+              data-testid="input-search-library"
               placeholder="بحث بعنوان الكتاب أو المؤلف..."
               className="pr-10"
               value={searchQuery}

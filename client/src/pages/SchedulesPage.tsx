@@ -415,7 +415,7 @@ export default function SchedulesPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <CalendarDays className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">جدول الحلقات الأسبوعي</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title-schedules">جدول الحلقات الأسبوعي</h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print-schedule">

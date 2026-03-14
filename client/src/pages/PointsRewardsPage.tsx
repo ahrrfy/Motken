@@ -448,7 +448,7 @@ export default function PointsRewardsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24" data-testid="status-loading">
+      <div className="flex items-center justify-center py-24" data-testid="status-loading-points-rewards">
         <Loader2 className="w-6 h-6 animate-spin text-emerald-600 ml-2" />
         <span>جاري التحميل...</span>
       </div>
@@ -461,7 +461,7 @@ export default function PointsRewardsPage() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 page-transition" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-emerald-700" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-emerald-700" data-testid="text-page-title-points-rewards">
             النقاط والمكافآت
           </h1>
           <p className="text-muted-foreground">

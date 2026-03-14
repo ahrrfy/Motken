@@ -24,7 +24,12 @@ export const mosques = pgTable("mosques", {
   adminNotes: text("admin_notes"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_mosques_status").on(table.status),
+  index("idx_mosques_province").on(table.province),
+  index("idx_mosques_city").on(table.city),
+  index("idx_mosques_is_active").on(table.isActive),
+]);
 
 export const insertMosqueSchema = createInsertSchema(mosques).omit({ id: true, createdAt: true });
 export type InsertMosque = z.infer<typeof insertMosqueSchema>;
@@ -63,6 +68,8 @@ export const users = pgTable("users", {
   index("idx_users_mosque_id").on(table.mosqueId),
   index("idx_users_teacher_id").on(table.teacherId),
   index("idx_users_role").on(table.role),
+  index("idx_users_phone").on(table.phone),
+  index("idx_users_is_active").on(table.isActive),
 ]);
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -94,6 +101,9 @@ export const assignments = pgTable("assignments", {
   index("idx_assignments_student_id").on(table.studentId),
   index("idx_assignments_teacher_id").on(table.teacherId),
   index("idx_assignments_mosque_id").on(table.mosqueId),
+  index("idx_assignments_status").on(table.status),
+  index("idx_assignments_scheduled_date").on(table.scheduledDate),
+  index("idx_assignments_has_audio").on(table.hasAudio),
 ]);
 
 export const insertAssignmentSchema = createInsertSchema(assignments).omit({ id: true, createdAt: true });
@@ -196,6 +206,7 @@ export const notifications = pgTable("notifications", {
 }, (table) => [
   index("idx_notifications_user_id").on(table.userId),
   index("idx_notifications_mosque_id").on(table.mosqueId),
+  index("idx_notifications_is_read").on(table.isRead),
 ]);
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
@@ -282,6 +293,8 @@ export const certificates = pgTable("certificates", {
   index("idx_certificates_student_id").on(table.studentId),
   index("idx_certificates_issued_by").on(table.issuedBy),
   index("idx_certificates_mosque_id").on(table.mosqueId),
+  index("idx_certificates_certificate_number").on(table.certificateNumber),
+  index("idx_certificates_certificate_type").on(table.certificateType),
 ]);
 
 export const insertCertificateSchema = createInsertSchema(certificates).omit({ id: true, createdAt: true });
@@ -335,6 +348,8 @@ export const attendance = pgTable("attendance", {
   index("idx_attendance_student_id").on(table.studentId),
   index("idx_attendance_teacher_id").on(table.teacherId),
   index("idx_attendance_mosque_id").on(table.mosqueId),
+  index("idx_attendance_date").on(table.date),
+  index("idx_attendance_status").on(table.status),
 ]);
 
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true, createdAt: true });
@@ -354,6 +369,7 @@ export const messages = pgTable("messages", {
   index("idx_messages_sender_id").on(table.senderId),
   index("idx_messages_receiver_id").on(table.receiverId),
   index("idx_messages_mosque_id").on(table.mosqueId),
+  index("idx_messages_is_read").on(table.isRead),
 ]);
 
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -707,7 +723,10 @@ export const mosqueRegistrations = pgTable("mosque_registrations", {
   adminNotes: text("admin_notes"),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_mosque_registrations_status").on(table.status),
+  index("idx_mosque_registrations_requested_username").on(table.requestedUsername),
+]);
 export const insertMosqueRegistrationSchema = createInsertSchema(mosqueRegistrations).omit({ id: true, createdAt: true, reviewedAt: true });
 export type InsertMosqueRegistration = z.infer<typeof insertMosqueRegistrationSchema>;
 export type MosqueRegistration = typeof mosqueRegistrations.$inferSelect;
@@ -725,8 +744,8 @@ export const quranProgress = pgTable("quran_progress", {
   lastReviewDate: text("last_review_date"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
-  index("idx_quranprog_user_surah").on(table.userId, table.surahNumber),
-  index("idx_quranprog_mosque_id").on(table.mosqueId),
+  index("idx_quran_progress_user_surah").on(table.userId, table.surahNumber),
+  index("idx_quran_progress_mosque_id").on(table.mosqueId),
 ]);
 export const insertQuranProgressSchema = createInsertSchema(quranProgress).omit({ id: true, updatedAt: true });
 export type InsertQuranProgress = z.infer<typeof insertQuranProgressSchema>;
@@ -735,12 +754,14 @@ export type QuranProgress = typeof quranProgress.$inferSelect;
 // ==================== MOSQUE HISTORY (سجل أحداث المسجد) ====================
 export const mosqueHistory = pgTable("mosque_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  mosqueId: varchar("mosque_id").notNull(),
+  mosqueId: varchar("mosque_id").notNull().references(() => mosques.id, { onDelete: "cascade" }),
   type: text("type").notNull(),
   description: text("description").notNull(),
   byUser: text("by_user"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_mosque_history_mosque_id").on(table.mosqueId),
+]);
 export type MosqueHistory = typeof mosqueHistory.$inferSelect;
 
 // ==================== TESTIMONIALS (آراء المستخدمين) ====================
@@ -761,11 +782,14 @@ export type Testimonial = typeof testimonials.$inferSelect;
 // ==================== MOSQUE MESSAGES (رسائل المسجد) ====================
 export const mosqueMessages = pgTable("mosque_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  mosqueId: varchar("mosque_id").notNull(),
+  mosqueId: varchar("mosque_id").notNull().references(() => mosques.id, { onDelete: "cascade" }),
   fromAdmin: boolean("from_admin").notNull().default(true),
   senderName: text("sender_name").notNull(),
   content: text("content").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_mosque_messages_mosque_id").on(table.mosqueId),
+  index("idx_mosque_messages_is_read").on(table.isRead),
+]);
 export type MosqueMessage = typeof mosqueMessages.$inferSelect;

@@ -426,7 +426,7 @@ export default function SmartAlertsPage() {
     <div className="p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl" data-testid="smart-alerts-page">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-card p-4 rounded-xl shadow-sm border">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif" data-testid="text-page-title">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground font-serif" data-testid="text-page-title-smart-alerts">
             مركز التنبيهات الذكية
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="text-page-subtitle">

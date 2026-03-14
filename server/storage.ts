@@ -254,9 +254,9 @@ export interface IStorage {
   deleteSimilarVerse(id: string): Promise<void>;
 
   resetSystemData(): Promise<void>;
-  getQuranProgress(userId: string, surahNumber?: number): Promise<any>;
-  getQuranProgressByUser(userId: string): Promise<any[]>;
-  upsertQuranProgress(data: any): Promise<any>;
+  getQuranProgress(userId: string, surahNumber?: number): Promise<QuranProgress | undefined>;
+  getQuranProgressByUser(userId: string): Promise<QuranProgress[]>;
+  upsertQuranProgress(data: { userId: string; mosqueId?: string; surahNumber: number; verseStatuses: string; notes?: string }): Promise<QuranProgress>;
 }
 
 export class DatabaseStorage implements IStorage {

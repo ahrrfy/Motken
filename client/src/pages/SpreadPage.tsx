@@ -80,7 +80,7 @@ export default function SpreadPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]" data-testid="status-loading">
+      <div className="flex items-center justify-center min-h-[60vh]" data-testid="status-loading-spread">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -93,7 +93,7 @@ export default function SpreadPage() {
           <Share2 className="w-5 h-5 text-emerald-700" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold font-serif text-primary" data-testid="text-page-title">انشر النظام</h1>
+          <h1 className="text-2xl font-bold font-serif text-primary" data-testid="text-page-title-spread">انشر النظام</h1>
           <p className="text-sm text-muted-foreground">ساهم في نشر الخير — شارك النظام مع مساجد أخرى</p>
         </div>
       </div>
