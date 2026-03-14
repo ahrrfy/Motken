@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
+import path from "path";
+import fs from "fs";
+import multer from "multer";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, requirePrivacyPolicy, hashPassword } from "./auth";
 import { quranSurahs } from "@shared/quran-surahs";
@@ -1460,6 +1463,9 @@ export async function registerRoutes(
       if (!Number.isInteger(g) || g < 0 || g > 100) return res.status(400).json({ message: "الدرجة يجب أن تكون بين 0 و 100" });
       updateData.grade = g;
     }
+    if (req.body.status === "done" && assignment.hasAudio) {
+      updateData.audioGradedAt = new Date();
+    }
     const updated = await storage.updateAssignment(req.params.id, updateData);
     if (!updated) return res.status(404).json({ message: "الواجب غير موجود" });
     // نقاط تلقائية عند إتمام الواجب
@@ -1522,6 +1528,172 @@ export async function registerRoutes(
       res.status(500).json({ message: "حدث خطأ في تحديث الواجب" });
     }
   });
+
+  const audioUploadDir = path.join(process.cwd(), "uploads", "audio");
+  if (!fs.existsSync(audioUploadDir)) {
+    fs.mkdirSync(audioUploadDir, { recursive: true });
+  }
+  const audioStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, audioUploadDir),
+    filename: (req, file, cb) => {
+      const ext = file.originalname.split(".").pop() || "webm";
+      cb(null, `recitation_${req.params.id}_${Date.now()}.${ext}`);
+    },
+  });
+  const audioUpload = multer({
+    storage: audioStorage,
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith("audio/")) cb(null, true);
+      else cb(new Error("يُسمح فقط بملفات الصوت"));
+    },
+  });
+
+  app.post("/api/assignments/:id/audio", requireAuth, audioUpload.single("audio"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "student") {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return res.status(403).json({ message: "فقط الطالب يمكنه رفع التسميع الصوتي" });
+      }
+      const assignment = await storage.getAssignment(req.params.id);
+      if (!assignment) {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return res.status(404).json({ message: "الواجب غير موجود" });
+      }
+      if (assignment.studentId !== currentUser.id) {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return res.status(403).json({ message: "غير مصرح برفع تسجيل لهذا الواجب" });
+      }
+      if (assignment.status === "done") {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return res.status(400).json({ message: "لا يمكن رفع تسجيل لواجب مكتمل" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ message: "لم يتم إرسال ملف صوتي" });
+      }
+      if (assignment.hasAudio && assignment.audioFileName) {
+        const oldPath = path.join(audioUploadDir, assignment.audioFileName);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      const updated = await storage.updateAssignment(req.params.id, {
+        hasAudio: true,
+        audioFileName: req.file.filename,
+        audioUploadedAt: new Date(),
+        audioGradedAt: null,
+      });
+      await storage.createNotification({
+        userId: assignment.teacherId,
+        mosqueId: assignment.mosqueId,
+        title: "تسميع صوتي جديد",
+        message: `قام الطالب ${currentUser.name} برفع تسميع صوتي لسورة ${assignment.surahName} (${assignment.fromVerse}-${assignment.toVerse})`,
+        type: "info",
+      });
+      await logActivity(currentUser, "رفع تسميع صوتي", "assignments", `واجب ${req.params.id}`);
+      res.json({ message: "تم رفع التسجيل بنجاح", assignment: updated });
+    } catch (err: any) {
+      if (req.file) try { fs.unlinkSync(req.file.path); } catch {}
+      res.status(500).json({ message: "حدث خطأ في رفع التسجيل" });
+    }
+  });
+
+  app.get("/api/assignments/:id/audio", requireAuth, async (req, res) => {
+    try {
+      const assignment = await storage.getAssignment(req.params.id);
+      if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+      if (!assignment.hasAudio || !assignment.audioFileName) {
+        return res.status(404).json({ message: "لا يوجد تسجيل صوتي لهذا الواجب" });
+      }
+      const currentUser = req.user!;
+      const isOwner = assignment.studentId === currentUser.id;
+      const isTeacher = currentUser.role === "teacher" && assignment.teacherId === currentUser.id;
+      const isSupervisor = currentUser.role === "supervisor" && assignment.mosqueId === currentUser.mosqueId;
+      const isAdmin = currentUser.role === "admin";
+      if (!isOwner && !isTeacher && !isSupervisor && !isAdmin) {
+        return res.status(403).json({ message: "غير مصرح بالاستماع لهذا التسجيل" });
+      }
+      const filePath = path.join(audioUploadDir, assignment.audioFileName);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "ملف التسجيل غير موجود (ربما تم حذفه تلقائياً)" });
+      }
+      const stat = fs.statSync(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = ext === ".mp4" ? "audio/mp4" : ext === ".ogg" ? "audio/ogg" : "audio/webm";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Length", stat.size);
+      res.setHeader("Accept-Ranges", "bytes");
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+        const chunkSize = end - start + 1;
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
+        res.setHeader("Content-Length", chunkSize);
+        fs.createReadStream(filePath, { start, end }).pipe(res);
+      } else {
+        fs.createReadStream(filePath).pipe(res);
+      }
+    } catch {
+      res.status(500).json({ message: "حدث خطأ في تحميل التسجيل" });
+    }
+  });
+
+  app.delete("/api/assignments/:id/audio", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const assignment = await storage.getAssignment(req.params.id);
+      if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+      const isOwner = assignment.studentId === currentUser.id;
+      const isTeacher = currentUser.role === "teacher" && assignment.teacherId === currentUser.id;
+      const isAdmin = currentUser.role === "admin";
+      if (!isOwner && !isTeacher && !isAdmin) {
+        return res.status(403).json({ message: "غير مصرح بحذف هذا التسجيل" });
+      }
+      if (assignment.hasAudio && assignment.audioFileName) {
+        const filePath = path.join(audioUploadDir, assignment.audioFileName);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
+      await storage.updateAssignment(req.params.id, {
+        hasAudio: false,
+        audioFileName: null,
+        audioUploadedAt: null,
+        audioGradedAt: null,
+      });
+      await logActivity(currentUser, "حذف تسميع صوتي", "assignments", `واجب ${req.params.id}`);
+      res.json({ message: "تم حذف التسجيل بنجاح" });
+    } catch {
+      res.status(500).json({ message: "حدث خطأ في حذف التسجيل" });
+    }
+  });
+
+  setInterval(async () => {
+    try {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const gradedAssignments = await db
+        .select()
+        .from(assignments)
+        .where(
+          and(
+            eq(assignments.hasAudio, true),
+            dsql`${assignments.audioGradedAt} IS NOT NULL AND ${assignments.audioGradedAt} < ${fiveMinAgo.toISOString()}`
+          )
+        );
+      for (const a of gradedAssignments) {
+        if (a.audioFileName) {
+          const filePath = path.join(audioUploadDir, a.audioFileName);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+          await db
+            .update(assignments)
+            .set({ hasAudio: false, audioFileName: null })
+            .where(eq(assignments.id, a.id));
+        }
+      }
+    } catch {}
+  }, 60 * 1000);
 
   app.delete("/api/assignments/:id", requireAuth, async (req, res) => {
     try {
