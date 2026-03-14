@@ -1049,12 +1049,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل" });
       }
     }
-    if (parentPhone !== undefined && parentPhone) {
-      const ppDup = await storage.checkPhoneExists(parentPhone, req.params.id);
-      if (ppDup) {
-        return res.status(400).json({ message: "رقم هاتف ولي الأمر مستخدم بالفعل" });
-      }
-    }
+    
 
     if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;

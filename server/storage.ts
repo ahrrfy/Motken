@@ -306,10 +306,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db.execute(sql`
       SELECT id FROM users
       WHERE id != ${excludeParam}
-        AND (
-          REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g') = ${phoneClean}
-          OR REGEXP_REPLACE(COALESCE(parent_phone,''), '[^0-9]', '', 'g') = ${phoneClean}
-        )
+        AND REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '', 'g') = ${phoneClean}
       LIMIT 1
     `);
     return result.rows.length > 0;
