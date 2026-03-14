@@ -12,19 +12,23 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
 import {
-  Loader2, Plus, GraduationCap, ArrowRight, Award, Users, Download, BookOpen, ClipboardList
+  Loader2, Plus, GraduationCap, ArrowRight, Award, Users, Download, BookOpen, ClipboardList, Printer
 } from "lucide-react";
+import { CERTIFICATE_TEMPLATES, printCertificate, type CertificateData } from "@/lib/certificate-templates";
 
 interface Graduate {
   id: string;
   studentId: string;
   studentName?: string;
+  mosqueId?: string;
+  mosqueName?: string;
   graduationDate: string;
   totalJuz: number;
   recitationStyle: string;
   ijazahChain?: string;
   ijazahTeacher?: string;
   finalGrade?: string;
+  certificateId?: string;
   createdAt?: string;
   followups?: Followup[];
 }
@@ -42,6 +46,11 @@ interface Followup {
 interface Student {
   id: string;
   name: string;
+  level?: number;
+  memorizedJuz?: number;
+  mosqueId?: string;
+  mosqueName?: string;
+  teacherName?: string;
 }
 
 const retentionMap: Record<string, { label: string; color: string }> = {
@@ -56,6 +65,13 @@ const recitationStyles: Record<string, string> = {
   warsh: "ورش",
   qaloon: "قالون",
 };
+
+const gradeOptions = [
+  { value: "excellent", label: "ممتاز" },
+  { value: "very_good", label: "جيد جداً" },
+  { value: "good", label: "جيد" },
+  { value: "acceptable", label: "مقبول" },
+];
 
 export default function GraduationPage() {
   const { user } = useAuth();
@@ -77,6 +93,7 @@ export default function GraduationPage() {
   const [ijazahTeacher, setIjazahTeacher] = useState("");
   const [recitationStyle, setRecitationStyle] = useState("hafs");
   const [finalGrade, setFinalGrade] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("classic-gold");
 
   const [followupDialogOpen, setFollowupDialogOpen] = useState(false);
   const [followupDate, setFollowupDate] = useState("");
@@ -84,6 +101,9 @@ export default function GraduationPage() {
   const [followupJuzCount, setFollowupJuzCount] = useState("");
   const [followupNotes, setFollowupNotes] = useState("");
   const [followupSubmitting, setFollowupSubmitting] = useState(false);
+
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [printTemplateId, setPrintTemplateId] = useState("classic-gold");
 
   const canManage = user?.role === "admin" || user?.role === "supervisor" || user?.role === "teacher";
 
@@ -114,6 +134,16 @@ export default function GraduationPage() {
     setIjazahTeacher("");
     setRecitationStyle("hafs");
     setFinalGrade("");
+    setSelectedTemplateId("classic-gold");
+  };
+
+  const handleStudentChange = (id: string) => {
+    setStudentId(id);
+    const student = students.find(s => s.id === id);
+    if (student) {
+      if (student.memorizedJuz) setTotalJuz(String(student.memorizedJuz));
+      if (!graduationDate) setGraduationDate(new Date().toISOString().split("T")[0]);
+    }
   };
 
   const handleCreate = async () => {
@@ -135,10 +165,11 @@ export default function GraduationPage() {
           ijazahChain: ijazahChain || null,
           ijazahTeacher: ijazahTeacher || null,
           finalGrade: finalGrade || null,
+          templateId: selectedTemplateId,
         }),
       });
       if (res.ok) {
-        toast({ title: "تم بنجاح", description: "تم تسجيل الخريج بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
+        toast({ title: "تم بنجاح", description: "تم تسجيل الخريج وإصدار الشهادة تلقائياً", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
         resetForm();
         fetchGraduates();
@@ -210,9 +241,42 @@ export default function GraduationPage() {
     }
   };
 
+  const handlePrintGraduateCert = (grad: Graduate, templateId: string) => {
+    const certData: CertificateData = {
+      certificateNumber: grad.certificateId || `MTQ-GRAD-${grad.id.slice(0, 8)}`,
+      studentName: grad.studentName || getStudentName(grad.studentId),
+      title: "شهادة إتمام حفظ القرآن الكريم",
+      mosqueName: grad.mosqueName || "",
+      grade: grad.finalGrade,
+      issuedAt: grad.graduationDate,
+      certificateType: "graduation",
+      totalJuz: grad.totalJuz,
+      recitationStyle: grad.recitationStyle,
+      ijazahTeacher: grad.ijazahTeacher,
+    };
+    printCertificate(certData, templateId);
+  };
+
   const handleExport = () => {
-    console.log("Exporting graduates data:", graduates);
-    toast({ title: "تصدير", description: "تم تصدير البيانات (راجع وحدة التحكم)", className: "bg-green-50 border-green-200 text-green-800" });
+    const csvRows = [
+      ["الاسم", "تاريخ التخرج", "الأجزاء", "الرواية", "الإجازة", "التقدير"].join(","),
+      ...graduates.map(g => [
+        g.studentName || getStudentName(g.studentId),
+        new Date(g.graduationDate).toLocaleDateString("ar-SA"),
+        g.totalJuz,
+        recitationStyles[g.recitationStyle] || g.recitationStyle,
+        g.ijazahChain ? "نعم" : "لا",
+        g.finalGrade || "",
+      ].join(","))
+    ].join("\n");
+    const blob = new Blob(["\uFEFF" + csvRows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "graduates.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "تصدير", description: "تم تصدير بيانات الخريجين", className: "bg-green-50 border-green-200 text-green-800" });
   };
 
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || id;
@@ -225,19 +289,30 @@ export default function GraduationPage() {
   if (selectedGraduate) {
     return (
       <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6" dir="rtl">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSelectedGraduate(null); fetchGraduates(); }}
+              data-testid="button-back-to-graduates"
+            >
+              <ArrowRight className="w-4 h-4 ml-1" />
+              العودة
+            </Button>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-graduate-detail-title">
+              تفاصيل الخريج
+            </h1>
+          </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={() => { setSelectedGraduate(null); fetchGraduates(); }}
-            data-testid="button-back-to-graduates"
+            onClick={() => { setPrintTemplateId("classic-gold"); setPrintDialogOpen(true); }}
+            data-testid="button-print-certificate"
           >
-            <ArrowRight className="w-4 h-4 ml-1" />
-            العودة
+            <Printer className="w-4 h-4 ml-1" />
+            طباعة الشهادة
           </Button>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-graduate-detail-title">
-            تفاصيل الخريج
-          </h1>
         </div>
 
         <Card className="border-t-4 border-t-primary shadow-md" data-testid="card-graduate-info">
@@ -276,7 +351,18 @@ export default function GraduationPage() {
               {selectedGraduate.finalGrade && (
                 <div>
                   <span className="text-muted-foreground">التقدير النهائي: </span>
-                  <span data-testid="text-final-grade">{selectedGraduate.finalGrade}</span>
+                  <Badge variant="secondary" data-testid="text-final-grade">
+                    {gradeOptions.find(g => g.value === selectedGraduate.finalGrade)?.label || selectedGraduate.finalGrade}
+                  </Badge>
+                </div>
+              )}
+              {selectedGraduate.certificateId && (
+                <div>
+                  <span className="text-muted-foreground">الشهادة: </span>
+                  <Badge className="bg-green-100 text-green-800 border-green-200">
+                    <Award className="w-3 h-3 ml-1" />
+                    صادرة
+                  </Badge>
                 </div>
               )}
             </div>
@@ -400,6 +486,55 @@ export default function GraduationPage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-primary" />
+                طباعة شهادة التخرج
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                <strong>{selectedGraduate.studentName || getStudentName(selectedGraduate.studentId)}</strong>
+                <span className="text-muted-foreground"> — حفظ {selectedGraduate.totalJuz} جزءاً</span>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold">اختر قالب الشهادة</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {CERTIFICATE_TEMPLATES.map(tmpl => (
+                    <div
+                      key={tmpl.id}
+                      className={`p-2.5 border rounded-lg cursor-pointer transition-all text-sm ${printTemplateId === tmpl.id ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-gray-200 hover:border-primary/50"}`}
+                      onClick={() => setPrintTemplateId(tmpl.id)}
+                      data-testid={`print-template-${tmpl.id}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{tmpl.preview}</span>
+                        <div>
+                          <div className="font-medium">{tmpl.name}</div>
+                          <div className="text-xs text-muted-foreground">{tmpl.description}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  handlePrintGraduateCert(selectedGraduate, printTemplateId);
+                  setPrintDialogOpen(false);
+                }}
+                data-testid="button-confirm-print-cert"
+              >
+                <Printer className="w-4 h-4 ml-2" />
+                طباعة
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -433,7 +568,7 @@ export default function GraduationPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>الطالب *</Label>
-                    <Select value={studentId} onValueChange={setStudentId}>
+                    <Select value={studentId} onValueChange={handleStudentChange}>
                       <SelectTrigger data-testid="select-graduate-student">
                         <SelectValue placeholder="اختر الطالب" />
                       </SelectTrigger>
@@ -444,6 +579,20 @@ export default function GraduationPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {studentId && (() => {
+                    const s = students.find(st => st.id === studentId);
+                    if (!s) return null;
+                    return (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm space-y-1" data-testid="student-auto-info">
+                        <div className="font-medium text-blue-800">معلومات الطالب</div>
+                        {s.level && <div className="text-blue-700">المستوى: <strong>المستوى {s.level <= 6 ? ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس"][s.level - 1] : "حافظ"}</strong></div>}
+                        {s.mosqueName && <div className="text-blue-700">المسجد: <strong>{s.mosqueName}</strong></div>}
+                        {s.teacherName && <div className="text-blue-700">المعلم: <strong>{s.teacherName}</strong></div>}
+                      </div>
+                    );
+                  })()}
+
                   <div className="space-y-2">
                     <Label>تاريخ التخرج *</Label>
                     <Input
@@ -453,54 +602,80 @@ export default function GraduationPage() {
                       data-testid="input-graduation-date"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>عدد الأجزاء</Label>
-                    <Input
-                      type="number"
-                      value={totalJuz}
-                      onChange={e => setTotalJuz(e.target.value)}
-                      data-testid="input-total-juz"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>رواية القراءة</Label>
-                    <Select value={recitationStyle} onValueChange={setRecitationStyle}>
-                      <SelectTrigger data-testid="select-recitation-style">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hafs">حفص</SelectItem>
-                        <SelectItem value="warsh">ورش</SelectItem>
-                        <SelectItem value="qaloon">قالون</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>سند الإجازة</Label>
-                    <Input
-                      value={ijazahChain}
-                      onChange={e => setIjazahChain(e.target.value)}
-                      placeholder="سند الإجازة"
-                      data-testid="input-ijazah-chain"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>معلم الإجازة</Label>
-                    <Input
-                      value={ijazahTeacher}
-                      onChange={e => setIjazahTeacher(e.target.value)}
-                      placeholder="اسم معلم الإجازة"
-                      data-testid="input-ijazah-teacher"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>عدد الأجزاء</Label>
+                      <Input
+                        type="number"
+                        value={totalJuz}
+                        onChange={e => setTotalJuz(e.target.value)}
+                        data-testid="input-total-juz"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>رواية القراءة</Label>
+                      <Select value={recitationStyle} onValueChange={setRecitationStyle}>
+                        <SelectTrigger data-testid="select-recitation-style">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hafs">حفص</SelectItem>
+                          <SelectItem value="warsh">ورش</SelectItem>
+                          <SelectItem value="qaloon">قالون</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>التقدير النهائي</Label>
-                    <Input
-                      value={finalGrade}
-                      onChange={e => setFinalGrade(e.target.value)}
-                      placeholder="مثال: ممتاز"
-                      data-testid="input-final-grade"
-                    />
+                    <Select value={finalGrade} onValueChange={setFinalGrade}>
+                      <SelectTrigger data-testid="select-final-grade">
+                        <SelectValue placeholder="اختر التقدير" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gradeOptions.map(g => (
+                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>سند الإجازة</Label>
+                      <Input
+                        value={ijazahChain}
+                        onChange={e => setIjazahChain(e.target.value)}
+                        placeholder="سند الإجازة"
+                        data-testid="input-ijazah-chain"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>معلم الإجازة</Label>
+                      <Input
+                        value={ijazahTeacher}
+                        onChange={e => setIjazahTeacher(e.target.value)}
+                        placeholder="اسم معلم الإجازة"
+                        data-testid="input-ijazah-teacher"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold">قالب الشهادة</Label>
+                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                      <SelectTrigger data-testid="select-template">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CERTIFICATE_TEMPLATES.map(t => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.preview} {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {CERTIFICATE_TEMPLATES.find(t => t.id === selectedTemplateId)?.description}
+                    </p>
                   </div>
                   <Button
                     onClick={handleCreate}
@@ -509,7 +684,7 @@ export default function GraduationPage() {
                     data-testid="button-confirm-create-graduate"
                   >
                     {submitting && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-                    تسجيل الخريج
+                    تسجيل الخريج وإصدار الشهادة
                   </Button>
                 </div>
               </DialogContent>
@@ -593,6 +768,7 @@ export default function GraduationPage() {
                     <TableHead className="text-right">الرواية</TableHead>
                     <TableHead className="text-right">الإجازة</TableHead>
                     <TableHead className="text-right">التقدير</TableHead>
+                    <TableHead className="text-right">الشهادة</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -618,7 +794,21 @@ export default function GraduationPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell data-testid={`text-grade-${g.id}`}>{g.finalGrade || "—"}</TableCell>
+                      <TableCell data-testid={`text-grade-${g.id}`}>
+                        {g.finalGrade ? (
+                          <Badge variant="secondary">{gradeOptions.find(go => go.value === g.finalGrade)?.label || g.finalGrade}</Badge>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {g.certificateId ? (
+                          <Badge className="bg-primary/10 text-primary border-primary/20">
+                            <Award className="w-3 h-3 ml-1" />
+                            صادرة
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

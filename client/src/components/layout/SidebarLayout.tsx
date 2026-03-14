@@ -125,6 +125,7 @@ const navCategories: NavCategory[] = [
       { href: "/knowledge-base", label: "موسوعة التجويد", labelEn: "Tajweed Encyclopedia", icon: Brain, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "knowledge_base" },
       { href: "/educational-content", label: "المحتوى التعليمي", labelEn: "Educational Content", icon: Sparkles, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "educational_content" },
       { href: "/graduation", label: "التخرج والمتابعة", labelEn: "Graduation & Follow-up", icon: BookOpenCheck, roles: ["admin", "supervisor", "teacher"], featureKey: "graduation" },
+      { href: "/certificates", label: "الشهادات", labelEn: "Certificates", icon: Award, roles: ["admin", "supervisor", "teacher", "student"], featureKey: "graduation" },
     ],
   },
   {
