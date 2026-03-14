@@ -33,11 +33,13 @@ async function comparePasswords(supplied: string, stored: string) {
 
 const isProduction = process.env.NODE_ENV === "production";
 if (isProduction && !process.env.SESSION_SECRET) {
-  console.error("[SECURITY] SESSION_SECRET environment variable is NOT set in production! Using REPL_ID fallback.");
+  console.error("[SECURITY CRITICAL] SESSION_SECRET is NOT set in production! Refusing to start.");
+  process.exit(1);
 }
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.REPL_ID || (() => {
-  console.warn("[SECURITY] Using generated fallback session secret — sessions will not persist across restarts");
-  return require("crypto").randomBytes(64).toString("hex");
+const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
+  const fallback = require("crypto").randomBytes(64).toString("hex");
+  console.warn("[SECURITY] Using generated session secret — sessions will not persist across restarts. Set SESSION_SECRET env var.");
+  return fallback;
 })();
 
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();

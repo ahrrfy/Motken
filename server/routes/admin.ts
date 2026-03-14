@@ -34,8 +34,14 @@ export function registerAdminRoutes(app: Express) {
   // ==================== SEED DATA ====================
   app.post("/api/seed", async (req, res) => {
     try {
+      // SECURITY FIX: Block in production entirely
       if (process.env.NODE_ENV === "production" || process.env.REPL_DEPLOYMENT) {
         return res.status(403).json({ message: "غير مسموح في بيئة الإنتاج" });
+      }
+      // SECURITY FIX: Require SEED_SECRET even in development
+      const seedSecret = process.env.SEED_SECRET;
+      if (!seedSecret || req.body.seedSecret !== seedSecret) {
+        return res.status(403).json({ message: "مفتاح التهيئة مطلوب. عيّن SEED_SECRET في متغيرات البيئة" });
       }
       const allUsers = await storage.getUsers();
       if (allUsers.length > 0) {
@@ -87,10 +93,15 @@ export function registerAdminRoutes(app: Express) {
         isActive: true,
       });
 
-      const existingAdmin = await storage.getUserByUsername("ahrrfy");
+      const adminUsername = process.env.ADMIN_USERNAME || "admin";
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminPassword) {
+        return res.status(400).json({ message: "يجب تعيين ADMIN_PASSWORD في متغيرات البيئة" });
+      }
+      const existingAdmin = await storage.getUserByUsername(adminUsername);
       const adminUser = existingAdmin || await storage.createUser({
-        username: "ahrrfy",
-        password: await hashPassword("6399137"),
+        username: adminUsername,
+        password: await hashPassword(adminPassword),
         name: "المدير",
         role: "admin",
         phone: "",
@@ -101,7 +112,7 @@ export function registerAdminRoutes(app: Express) {
 
       const sup1 = await storage.createUser({
         username: "supervisor1",
-        password: await hashPassword("Sup3r!vis0r#1"),
+        password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")),
         name: "المشرف أحمد",
         role: "supervisor",
         mosqueId: mosque1.id,
@@ -111,7 +122,7 @@ export function registerAdminRoutes(app: Express) {
 
       const sup2 = await storage.createUser({
         username: "supervisor2",
-        password: await hashPassword("Sup3r!vis0r#2"),
+        password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")),
         name: "المشرف خالد",
         role: "supervisor",
         mosqueId: mosque2.id,
@@ -121,7 +132,7 @@ export function registerAdminRoutes(app: Express) {
 
       const teacher1 = await storage.createUser({
         username: "teacher1",
-        password: await hashPassword("T3ach!ng#Q1"),
+        password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")),
         name: "الشيخ أحمد",
         role: "teacher",
         mosqueId: mosque1.id,
@@ -131,7 +142,7 @@ export function registerAdminRoutes(app: Express) {
 
       const teacher2 = await storage.createUser({
         username: "teacher2",
-        password: await hashPassword("T3ach!ng#Q2"),
+        password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")),
         name: "الشيخ عبد الله",
         role: "teacher",
         mosqueId: mosque1.id,
@@ -141,7 +152,7 @@ export function registerAdminRoutes(app: Express) {
 
       const teacher3 = await storage.createUser({
         username: "teacher3",
-        password: await hashPassword("T3ach!ng#Q3"),
+        password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")),
         name: "الشيخ محمد",
         role: "teacher",
         mosqueId: mosque2.id,
@@ -149,11 +160,11 @@ export function registerAdminRoutes(app: Express) {
         isActive: true,
       });
 
-      const s1 = await storage.createUser({ username: "student1", password: await hashPassword("Stud3nt!Q1"), name: "عمر خالد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07901234567", isActive: true });
-      const s2 = await storage.createUser({ username: "student2", password: await hashPassword("Stud3nt!Q2"), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07911234567", isActive: true });
-      const s3 = await storage.createUser({ username: "student3", password: await hashPassword("Stud3nt!Q3"), name: "يوسف علي", role: "student", mosqueId: mosque1.id, teacherId: teacher2.id, phone: "07921234567", isActive: true });
-      const s4 = await storage.createUser({ username: "student4", password: await hashPassword("Stud3nt!Q4"), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07931234567", isActive: true });
-      const s5 = await storage.createUser({ username: "student5", password: await hashPassword("Stud3nt!Q5"), name: "كريم محمود", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07941234567", isActive: true });
+      const s1 = await storage.createUser({ username: "student1", password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")), name: "عمر خالد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07901234567", isActive: true });
+      const s2 = await storage.createUser({ username: "student2", password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")), name: "أحمد محمد", role: "student", mosqueId: mosque1.id, teacherId: teacher1.id, phone: "07911234567", isActive: true });
+      const s3 = await storage.createUser({ username: "student3", password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")), name: "يوسف علي", role: "student", mosqueId: mosque1.id, teacherId: teacher2.id, phone: "07921234567", isActive: true });
+      const s4 = await storage.createUser({ username: "student4", password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")), name: "سعيد حسن", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07931234567", isActive: true });
+      const s5 = await storage.createUser({ username: "student5", password: await hashPassword(require("crypto").randomBytes(12).toString("base64url")), name: "كريم محمود", role: "student", mosqueId: mosque2.id, teacherId: teacher3.id, phone: "07941234567", isActive: true });
 
       await storage.createAssignment({
         studentId: s1.id, teacherId: teacher1.id, mosqueId: mosque1.id,

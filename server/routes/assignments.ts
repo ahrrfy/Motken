@@ -327,8 +327,9 @@ export function registerAssignmentsRoutes(app: Express) {
         return res.status(400).json({ message: "لم يتم إرسال ملف صوتي" });
       }
       if (assignment.hasAudio && assignment.audioFileName) {
-        const oldPath = path.join(audioUploadDir, assignment.audioFileName);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        const safeOldName = path.basename(assignment.audioFileName);
+        const oldPath = path.join(audioUploadDir, safeOldName);
+        if (safeOldName === assignment.audioFileName && fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
       const updated = await storage.updateAssignment(req.params.id, {
         hasAudio: true,
@@ -366,7 +367,17 @@ export function registerAssignmentsRoutes(app: Express) {
       if (!isOwner && !isTeacher && !isSupervisor && !isAdmin) {
         return res.status(403).json({ message: "غير مصرح بالاستماع لهذا التسجيل" });
       }
-      const filePath = path.join(audioUploadDir, assignment.audioFileName);
+      // SECURITY FIX: Sanitize filename to prevent path traversal
+      const safeFileName = path.basename(assignment.audioFileName);
+      if (safeFileName !== assignment.audioFileName || safeFileName.includes('..')) {
+        return res.status(400).json({ message: "اسم الملف غير صالح" });
+      }
+      const filePath = path.join(audioUploadDir, safeFileName);
+      // Verify the resolved path is within the upload directory
+      const resolvedPath = path.resolve(filePath);
+      if (!resolvedPath.startsWith(path.resolve(audioUploadDir))) {
+        return res.status(403).json({ message: "مسار الملف غير مصرح به" });
+      }
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: "ملف التسجيل غير موجود (ربما تم حذفه تلقائياً)" });
       }
@@ -406,8 +417,9 @@ export function registerAssignmentsRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح بحذف هذا التسجيل" });
       }
       if (assignment.hasAudio && assignment.audioFileName) {
-        const filePath = path.join(audioUploadDir, assignment.audioFileName);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        const safeDelName = path.basename(assignment.audioFileName);
+        const filePath = path.join(audioUploadDir, safeDelName);
+        if (safeDelName === assignment.audioFileName && fs.existsSync(filePath)) fs.unlinkSync(filePath);
       }
       await storage.updateAssignment(req.params.id, {
         hasAudio: false,
@@ -437,9 +449,12 @@ export function registerAssignmentsRoutes(app: Express) {
       for (const a of gradedAssignments) {
         if (a.audioFileName) {
           try {
-            const filePath = path.join(audioUploadDir, a.audioFileName);
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
+            const safeCleanName = path.basename(a.audioFileName);
+            if (safeCleanName === a.audioFileName) {
+              const filePath = path.join(audioUploadDir, safeCleanName);
+              if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+              }
             }
           } catch (fileErr) {
             console.error(`خطأ في حذف ملف صوتي ${a.audioFileName}:`, fileErr);

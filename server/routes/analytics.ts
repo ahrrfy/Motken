@@ -10,12 +10,32 @@ import {
   type Assignment,
 } from "@shared/schema";
 import { quranSurahs } from "@shared/quran-surahs";
+import { canTeacherAccessStudent } from "./shared";
+
+// SECURITY FIX: Authorization check for accessing student/user data
+async function checkDataAccess(currentUser: any, targetUserId: string, res: any): Promise<boolean> {
+  const target = await storage.getUser(targetUserId);
+  if (!target) { res.status(404).json({ message: "المستخدم غير موجود" }); return false; }
+  if (currentUser.role === "admin") return true;
+  if (currentUser.role === "student" && currentUser.id !== targetUserId) {
+    res.status(403).json({ message: "غير مصرح بالوصول لبيانات مستخدم آخر" }); return false;
+  }
+  if (currentUser.role === "student") return true;
+  if (target.mosqueId !== currentUser.mosqueId) {
+    res.status(403).json({ message: "غير مصرح بالوصول لبيانات مستخدم من جامع آخر" }); return false;
+  }
+  if (currentUser.role === "teacher" && target.role === "student" && !canTeacherAccessStudent(currentUser, target)) {
+    res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا الطالب" }); return false;
+  }
+  return true;
+}
 
 export function registerAnalyticsRoutes(app: Express) {
   // ==================== STUDENT STREAKS ====================
   app.get("/api/student-streaks/:studentId", requireAuth, async (req, res) => {
     try {
       const studentId = req.params.studentId;
+      if (!(await checkDataAccess(req.user!, studentId, res))) return;
       const allAttendance = await storage.getAttendanceByStudent(studentId);
 
       const sorted = allAttendance.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -49,6 +69,7 @@ export function registerAnalyticsRoutes(app: Express) {
   app.get("/api/activity-heatmap/:userId", requireAuth, async (req, res) => {
     try {
       const userId = req.params.userId;
+      if (!(await checkDataAccess(req.user!, userId, res))) return;
       const now = new Date();
       const yearAgo = new Date(now);
       yearAgo.setFullYear(yearAgo.getFullYear() - 1);
@@ -144,6 +165,7 @@ export function registerAnalyticsRoutes(app: Express) {
   app.get("/api/prediction/:studentId", requireAuth, async (req, res) => {
     try {
       const studentId = req.params.studentId;
+      if (!(await checkDataAccess(req.user!, studentId, res))) return;
       const student = await storage.getUser(studentId);
       if (!student) return res.status(404).json({ message: "Student not found" });
 
@@ -503,6 +525,7 @@ export function registerAnalyticsRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح" });
       }
 
+      if (!(await checkDataAccess(req.user!, req.params.studentId, res))) return;
       const student = await storage.getUser(req.params.studentId);
       if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
 
@@ -588,6 +611,7 @@ export function registerAnalyticsRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح" });
       }
 
+      if (!(await checkDataAccess(req.user!, req.params.studentId, res))) return;
       const attendance = await storage.getAttendanceByStudent(req.params.studentId);
       if (attendance.length === 0) return res.json({ disciplineScore: 100, patterns: [], totalDays: 0 });
 
@@ -854,6 +878,7 @@ export function registerAnalyticsRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح" });
       }
 
+      if (!(await checkDataAccess(req.user!, req.params.studentId, res))) return;
       const student = await storage.getUser(req.params.studentId);
       if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
 
@@ -917,6 +942,8 @@ export function registerAnalyticsRoutes(app: Express) {
 
   app.get("/api/student-titles/:studentId", requireAuth, async (req, res) => {
     try {
+      if (!(await checkDataAccess(req.user!, req.params.studentId, res))) return;
+      if (!(await checkDataAccess(req.user!, req.params.studentId, res))) return;
       const student = await storage.getUser(req.params.studentId);
       if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
 
