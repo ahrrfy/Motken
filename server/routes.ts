@@ -1484,10 +1484,12 @@ export async function registerRoutes(
           message: `تم منحك ${autoPoints} نقطة لإتمام واجب ${assignment.surahName}`,
           type: "success",
         });
-      } catch {}
+      } catch (e) { console.error("خطأ في منح نقاط الإتمام:", e); }
     }
     if (req.body.grade !== undefined) {
       await logActivity(req.user!, `تقييم واجب بدرجة ${req.body.grade}`, "assignments", `واجب ${req.params.id}`);
+    }
+    if (req.body.grade !== undefined && assignment.grade === null) {
       const g = Number(req.body.grade);
       try {
         const autoPoints = g >= 90 ? 10 : g >= 75 ? 7 : g >= 60 ? 5 : 0;
@@ -1521,7 +1523,7 @@ export async function registerRoutes(
             type: "warning",
           });
         }
-      } catch {}
+      } catch (e) { console.error("خطأ في منح نقاط التقييم:", e); }
     }
     res.json(updated);
     } catch (err: any) {
@@ -1682,9 +1684,13 @@ export async function registerRoutes(
         );
       for (const a of gradedAssignments) {
         if (a.audioFileName) {
-          const filePath = path.join(audioUploadDir, a.audioFileName);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+          try {
+            const filePath = path.join(audioUploadDir, a.audioFileName);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (fileErr) {
+            console.error(`خطأ في حذف ملف صوتي ${a.audioFileName}:`, fileErr);
           }
           await db
             .update(assignments)
@@ -1692,7 +1698,9 @@ export async function registerRoutes(
             .where(eq(assignments.id, a.id));
         }
       }
-    } catch {}
+    } catch (err) {
+      console.error("خطأ في تنظيف الملفات الصوتية:", err);
+    }
   }, 60 * 1000);
 
   app.delete("/api/assignments/:id", requireAuth, async (req, res) => {
@@ -2703,17 +2711,39 @@ export async function registerRoutes(
         certs = await storage.getCertificatesByStudent(currentUser.id);
       }
 
-      const enriched = await Promise.all(certs.map(async (cert: any) => {
-        const student = await storage.getUser(cert.studentId);
-        const issuer = await storage.getUser(cert.issuedBy);
-        const course = cert.courseId ? await storage.getCourse(cert.courseId) : null;
-        const mosque = cert.mosqueId ? await storage.getMosque(cert.mosqueId) : null;
-
-        let graduateData: any = null;
-        if (cert.graduateId) {
-          try { graduateData = await storage.getGraduate(cert.graduateId); } catch {}
-        }
-
+      const userIds = new Set<string>();
+      const courseIds = new Set<string>();
+      const mosqueIds = new Set<string>();
+      const graduateIds = new Set<string>();
+      for (const cert of certs) {
+        if (cert.studentId) userIds.add(cert.studentId);
+        if (cert.issuedBy) userIds.add(cert.issuedBy);
+        if (cert.courseId) courseIds.add(cert.courseId);
+        if (cert.mosqueId) mosqueIds.add(cert.mosqueId);
+        if (cert.graduateId) graduateIds.add(cert.graduateId);
+      }
+      const usersMap = new Map<string, any>();
+      for (const uid of userIds) {
+        try { const u = await storage.getUser(uid); if (u) usersMap.set(uid, u); } catch {}
+      }
+      const coursesMap = new Map<string, any>();
+      for (const cid of courseIds) {
+        try { const c = await storage.getCourse(cid); if (c) coursesMap.set(cid, c); } catch {}
+      }
+      const mosquesMap = new Map<string, any>();
+      for (const mid of mosqueIds) {
+        try { const m = await storage.getMosque(mid); if (m) mosquesMap.set(mid, m); } catch {}
+      }
+      const graduatesMap = new Map<string, any>();
+      for (const gid of graduateIds) {
+        try { const g = await storage.getGraduate(gid); if (g) graduatesMap.set(gid, g); } catch {}
+      }
+      const enriched = certs.map((cert: any) => {
+        const student = usersMap.get(cert.studentId);
+        const issuer = usersMap.get(cert.issuedBy);
+        const course = coursesMap.get(cert.courseId);
+        const mosque = mosquesMap.get(cert.mosqueId);
+        const graduateData = graduatesMap.get(cert.graduateId);
         return {
           ...cert,
           studentName: student?.name || "",
@@ -2724,7 +2754,7 @@ export async function registerRoutes(
           recitationStyle: graduateData?.recitationStyle || undefined,
           ijazahTeacher: graduateData?.ijazahTeacher || undefined,
         };
-      }));
+      });
 
       res.json(enriched);
     } catch (err: any) {
@@ -2994,7 +3024,7 @@ export async function registerRoutes(
   // ==================== SEED DATA ====================
   app.post("/api/seed", async (req, res) => {
     try {
-      if (process.env.NODE_ENV === "production") {
+      if (process.env.NODE_ENV === "production" || process.env.REPL_DEPLOYMENT) {
         return res.status(403).json({ message: "غير مسموح في بيئة الإنتاج" });
       }
       const allUsers = await storage.getUsers();
@@ -5178,6 +5208,20 @@ export async function registerRoutes(
       const { studentId, graduationDate, totalJuz, ijazahChain, ijazahTeacher, recitationStyle, finalGrade, certificateId, notes } = req.body;
       if (!studentId || !graduationDate) {
         return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
+      }
+      const student = await storage.getUser(studentId);
+      if (!student || student.role !== "student") {
+        return res.status(400).json({ message: "الطالب غير موجود" });
+      }
+      if (currentUser.role === "teacher" && !canTeacherAccessStudent(currentUser, student)) {
+        return res.status(403).json({ message: "غير مصرح بتخريج طالب ليس في مستوياتك" });
+      }
+      if (currentUser.role === "supervisor" && student.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح بتخريج طالب من جامع آخر" });
+      }
+      const totalJuzNum = Number(totalJuz) || 30;
+      if (totalJuzNum < 1 || totalJuzNum > 30) {
+        return res.status(400).json({ message: "عدد الأجزاء يجب أن يكون بين 1 و 30" });
       }
       const mosqueId = currentUser.role === "admin" ? (req.body.mosqueId || currentUser.mosqueId) : currentUser.mosqueId;
       const grad = await storage.createGraduate({
