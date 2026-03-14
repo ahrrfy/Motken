@@ -49,7 +49,7 @@ import {
 } from "recharts";
 
 const COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#6366f1"];
-const LEVEL_NAMES = ["مبتدئ", "متوسط", "متقدم", "متميز", "خبير", "حافظ"];
+const LEVEL_NAMES = ["المستوى الأول", "المستوى الثاني", "المستوى الثالث", "المستوى الرابع", "المستوى الخامس", "المستوى السادس", "حافظ"];
 
 interface StatsData {
   totalStudents?: number;
@@ -427,7 +427,7 @@ function MosqueInfographic({ stats, isAdmin }: { stats: StatsData; isAdmin: bool
                   <Tooltip />
                   <Bar dataKey="count" name="عدد الطلاب" fill="#6366f1" radius={[4, 4, 0, 0]}>
                     {levelDistribution.map((_entry, index) => (
-                      <Cell key={`level-${index}`} fill={["#22c55e", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"][index % 6]} />
+                      <Cell key={`level-${index}`} fill={["#22c55e", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6"][index % 7]} />
                     ))}
                   </Bar>
                 </BarChart>

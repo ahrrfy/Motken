@@ -32,7 +32,7 @@ interface Teacher {
   isActive: boolean;
 }
 
-const LEVEL_NAMES: Record<number, string> = { 1: "مبتدئ", 2: "متوسط", 3: "متقدم", 4: "متميز", 5: "خبير", 6: "حافظ" };
+const LEVEL_NAMES: Record<number, string> = { 1: "المستوى الأول", 2: "المستوى الثاني", 3: "المستوى الثالث", 4: "المستوى الرابع", 5: "المستوى الخامس", 6: "المستوى السادس", 7: "حافظ" };
 const LEVEL_COLORS: Record<number, string> = {
   1: "bg-amber-100 text-amber-700",
   2: "bg-blue-100 text-blue-700",
@@ -40,10 +40,11 @@ const LEVEL_COLORS: Record<number, string> = {
   4: "bg-purple-100 text-purple-700",
   5: "bg-orange-100 text-orange-700",
   6: "bg-yellow-100 text-yellow-800",
+  7: "bg-green-100 text-green-800",
 };
 function getTeacherLevels(t: Teacher): number[] {
-  if (!t.teacherLevels) return [1, 2, 3, 4, 5, 6];
-  return t.teacherLevels.split(",").map(Number).filter(n => n >= 1 && n <= 6);
+  if (!t.teacherLevels) return [1, 2, 3, 4, 5, 6, 7];
+  return t.teacherLevels.split(",").map(Number).filter(n => n >= 1 && n <= 7);
 }
 
 export default function TeachersPage() {
@@ -372,7 +373,7 @@ export default function TeachersPage() {
                     <Label>المستويات المسموح بها</Label>
                     <p className="text-xs text-muted-foreground">حدد مستويات الطلاب التي يمكن لهذا الأستاذ التعامل معها</p>
                     <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
-                      {[1, 2, 3, 4, 5, 6].map(lv => (
+                      {[1, 2, 3, 4, 5, 6, 7].map(lv => (
                         <div key={lv} className="flex items-center gap-2">
                           <Checkbox
                             id={`add-level-${lv}`}
@@ -387,7 +388,7 @@ export default function TeachersPage() {
                             <Badge variant="secondary" className={`text-xs ${LEVEL_COLORS[lv]}`}>{lv}</Badge>
                             <span>{LEVEL_NAMES[lv]}</span>
                             <span className="text-xs text-muted-foreground">
-                              ({lv === 1 ? "الجزء 30-26" : lv === 2 ? "الجزء 25-21" : lv === 3 ? "الجزء 20-16" : lv === 4 ? "الجزء 15-11" : lv === 5 ? "الجزء 10-6" : "الجزء 5-1"})
+                              ({lv === 1 ? "الجزء 30-26" : lv === 2 ? "الجزء 25-21" : lv === 3 ? "الجزء 20-16" : lv === 4 ? "الجزء 15-11" : lv === 5 ? "الجزء 10-6" : lv === 6 ? "الجزء 5-1" : "حافظ - 30 جزء"})
                             </span>
                           </label>
                         </div>
@@ -587,7 +588,7 @@ export default function TeachersPage() {
                 <p className="text-xs text-muted-foreground mt-1">حدد المستويات التي يمكن لهذا الأستاذ التعامل مع طلابها</p>
               </div>
               <div className="space-y-3">
-                {[1, 2, 3, 4, 5, 6].map(lv => (
+                {[1, 2, 3, 4, 5, 6, 7].map(lv => (
                   <div key={lv} className="flex items-center gap-3 p-2 rounded-lg border hover:bg-muted/30 transition-colors">
                     <Checkbox
                       id={`level-${lv}`}
@@ -612,6 +613,7 @@ export default function TeachersPage() {
                         {lv === 4 && "الجزء 15-11 (5 أجزاء)"}
                         {lv === 5 && "الجزء 10-6 (5 أجزاء)"}
                         {lv === 6 && "الجزء 5-1 (5 أجزاء)"}
+                        {lv === 7 && "حافظ القرآن كاملاً (30 جزء)"}
                       </p>
                     </label>
                   </div>

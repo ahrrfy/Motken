@@ -79,7 +79,7 @@ interface PointRecord {
   createdAt: string;
 }
 
-const LEVEL_NAMES = ["مبتدئ", "متوسط", "متقدم", "متميز", "خبير", "حافظ"];
+const LEVEL_NAMES = ["المستوى الأول", "المستوى الثاني", "المستوى الثالث", "المستوى الرابع", "المستوى الخامس", "المستوى السادس", "حافظ"];
 const LEVEL_COLORS = [
   "bg-gray-100 text-gray-700 border-gray-300",
   "bg-blue-100 text-blue-700 border-blue-300",
@@ -87,6 +87,7 @@ const LEVEL_COLORS = [
   "bg-purple-100 text-purple-700 border-purple-300",
   "bg-amber-100 text-amber-700 border-amber-300",
   "bg-emerald-100 text-emerald-700 border-emerald-300",
+  "bg-teal-100 text-teal-700 border-teal-300",
 ];
 
 export default function ParentPortalPage() {
@@ -195,12 +196,12 @@ export default function ParentPortalPage() {
   };
 
   const getLevelName = (level?: number | null) => {
-    if (!level || level < 1 || level > 6) return "غير محدد";
+    if (!level || level < 1 || level > 7) return "غير محدد";
     return LEVEL_NAMES[level - 1];
   };
 
   const getLevelColor = (level?: number | null) => {
-    if (!level || level < 1 || level > 6) return "bg-gray-100 text-gray-600 border-gray-300";
+    if (!level || level < 1 || level > 7) return "bg-gray-100 text-gray-600 border-gray-300";
     return LEVEL_COLORS[level - 1];
   };
 
