@@ -5518,9 +5518,14 @@ export async function registerRoutes(
         const totalAssignments = studentAssignments.length;
         const completedAssignments = studentAssignments.filter(a => a.status === "done").length;
         const avgGrade = studentAssignments.filter(a => a.grade != null).reduce((sum, a) => sum + (a.grade || 0), 0) / (studentAssignments.filter(a => a.grade != null).length || 1);
+        const studentAttendance = await storage.getAttendanceByStudent(student.id);
+        const presentCount = studentAttendance.filter(a => a.status === "present").length;
+        const studentPoints = await storage.getPointsByUser(student.id);
+        const totalPoints = studentPoints.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
         children.push({
-          id: student.id, name: student.name, level: student.level,
+          id: student.id, studentName: student.name, name: student.name, level: student.level,
           relationship: link.relationship,
+          attendance: presentCount, points: totalPoints, assignments: completedAssignments,
           stats: { totalAssignments, completedAssignments, avgGrade: Math.round(avgGrade) },
         });
       }
