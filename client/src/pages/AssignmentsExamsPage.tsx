@@ -21,8 +21,10 @@ import { useAuth } from "@/lib/auth-context";
 import {
   CalendarIcon, Clock, CheckCircle2, User, BookOpen, Loader2,
   Plus, Calendar as CalendarLucide, Users, FileText, Trash2, Search, X,
-  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight
+  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight, Mic
 } from "lucide-react";
+import AudioRecorder from "@/components/AudioRecorder";
+import AudioPlayer from "@/components/AudioPlayer";
 
 interface Student {
   id: string;
@@ -42,6 +44,10 @@ interface Assignment {
   type: string;
   grade?: number | null;
   notes?: string | null;
+  hasAudio?: boolean;
+  audioFileName?: string | null;
+  audioUploadedAt?: string | null;
+  audioGradedAt?: string | null;
   seenByStudent: boolean;
   seenAt: string | null;
 }
@@ -1222,6 +1228,12 @@ export default function AssignmentsExamsPage() {
                                 {task.grade}/100
                               </span>
                             )}
+                            {task.hasAudio && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 flex items-center gap-0.5" data-testid={`audio-badge-${task.id}`}>
+                                <Mic className="w-2.5 h-2.5" />
+                                تسميع صوتي
+                              </span>
+                            )}
                           </div>
                           {task.status === "pending" && (
                             <span className={cn("text-[10px] px-2 py-0.5 rounded-full block text-center", deadline.badgeVariant)} data-testid={`deadline-badge-${task.id}`}>
@@ -1368,6 +1380,32 @@ export default function AssignmentsExamsPage() {
                               </div>
                             ) : null}
                           </div>
+                        )}
+
+                        {isStudent && task.status === "pending" && (
+                          <AudioRecorder
+                            assignmentId={task.id}
+                            surahName={task.surahName}
+                            fromVerse={task.fromVerse}
+                            toVerse={task.toVerse}
+                            hasExistingAudio={task.hasAudio || false}
+                            onAudioUploaded={() => {
+                              setAssignments(prev => prev.map(a => a.id === task.id ? { ...a, hasAudio: true } : a));
+                            }}
+                            onAudioDeleted={() => {
+                              setAssignments(prev => prev.map(a => a.id === task.id ? { ...a, hasAudio: false } : a));
+                            }}
+                          />
+                        )}
+
+                        {(isTeacher || isSupervisor) && task.hasAudio && task.status === "pending" && (
+                          <AudioPlayer
+                            assignmentId={task.id}
+                            surahName={task.surahName}
+                            fromVerse={task.fromVerse}
+                            toVerse={task.toVerse}
+                            studentName={students.find(s => s.id === task.studentId)?.name}
+                          />
                         )}
                       </div>
                     );})
