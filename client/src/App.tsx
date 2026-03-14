@@ -9,7 +9,6 @@ import StudentsPage from "@/pages/StudentsPage";
 import QuranTracker from "@/pages/QuranTracker";
 import LibraryPage from "@/pages/LibraryPage";
 import ReportsPage from "@/pages/ReportsPage";
-import IDCardsPage from "@/pages/IDCardsPage";
 import IDCardsQRPage from "@/pages/IDCardsQRPage";
 import TeachersPage from "@/pages/TeachersPage";
 import SupervisorsPage from "@/pages/SupervisorsPage";

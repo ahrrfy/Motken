@@ -1,8 +1,10 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Route, Switch } from "wouter";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 import MobileLayout from "./MobileLayout";
 import MobileSidebar from "./MobileSidebar";
+import WelcomeWizard from "@/components/WelcomeWizard";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const TeacherDailyPage = lazy(() => import("@/pages/TeacherDailyPage"));
@@ -46,6 +48,7 @@ const MaintenancePage = lazy(() => import("@/pages/MaintenancePage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const ActivityLogsPage = lazy(() => import("@/pages/ActivityLogsPage"));
 const OnlineUsersPage = lazy(() => import("@/pages/OnlineUsersPage"));
+const ChangelogPage = lazy(() => import("@/pages/ChangelogPage"));
 
 function PageLoader() {
   return (
@@ -57,8 +60,24 @@ function PageLoader() {
 
 export default function MobileApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (user && !localStorage.getItem("mutqin_onboarding_done")) {
+      setShowWelcome(true);
+    }
+  }, [user]);
+
   return (
     <>
+      {showWelcome && user && (
+        <WelcomeWizard
+          role={(user as any).actualRole || user.role}
+          userName={user.name}
+          onComplete={() => setShowWelcome(false)}
+        />
+      )}
       <MobileSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <MobileLayout onMenuOpen={() => setSidebarOpen(true)}>
         <Suspense fallback={<PageLoader />}>
@@ -105,6 +124,7 @@ export default function MobileApp() {
             <Route path="/settings" component={SettingsPage} />
             <Route path="/activity-logs" component={ActivityLogsPage} />
             <Route path="/online-users" component={OnlineUsersPage} />
+            <Route path="/changelog" component={ChangelogPage} />
             <Route path="/" component={DashboardPage} />
             <Route>
               {() => (
