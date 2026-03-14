@@ -260,11 +260,15 @@ export type CourseTeacher = typeof courseTeachers.$inferSelect;
 // ==================== CERTIFICATES ====================
 export const certificates = pgTable("certificates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  courseId: varchar("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  courseId: varchar("course_id").references(() => courses.id, { onDelete: "cascade" }),
+  graduateId: varchar("graduate_id"),
   studentId: varchar("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   issuedBy: varchar("issued_by").notNull().references(() => users.id, { onDelete: "cascade" }),
   mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "cascade" }),
   certificateNumber: text("certificate_number").notNull(),
+  certificateType: text("certificate_type").notNull().default("course"),
+  templateId: text("template_id").default("classic"),
+  title: text("title"),
   notes: text("notes"),
   graduationGrade: text("graduation_grade"),
   issuedAt: timestamp("issued_at").notNull().defaultNow(),

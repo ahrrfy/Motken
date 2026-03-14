@@ -37,6 +37,7 @@ import SchedulesPage from "@/pages/SchedulesPage";
 import SmartAlertsPage from "@/pages/SmartAlertsPage";
 import CrisisManagementPage from "@/pages/CrisisManagementPage";
 import GraduationPage from "@/pages/GraduationPage";
+import CertificatesPage from "@/pages/CertificatesPage";
 import InstitutionalPage from "@/pages/InstitutionalPage";
 import FamilySystemPage from "@/pages/FamilySystemPage";
 import KnowledgeBasePage from "@/pages/KnowledgeBasePage";
@@ -231,6 +232,7 @@ function App() {
         <Route path="/smart-alerts" component={SmartAlertsPage} />
         <Route path="/crisis-management" component={CrisisManagementPage} />
         <Route path="/graduation" component={GraduationPage} />
+        <Route path="/certificates" component={CertificatesPage} />
         <Route path="/institutional" component={InstitutionalPage} />
         <Route path="/family-system" component={FamilySystemPage} />
         <Route path="/knowledge-base" component={KnowledgeBasePage} />

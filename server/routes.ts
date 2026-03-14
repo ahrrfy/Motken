@@ -2504,6 +2504,62 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/certificates/all", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      let certs: any[] = [];
+
+      if (currentUser.role === "admin") {
+        const allCourses = await storage.getCourses();
+        for (const course of allCourses) {
+          const courseCerts = await storage.getCertificatesByCourse(course.id);
+          certs.push(...courseCerts);
+        }
+        const mosqueCerts = currentUser.mosqueId ? await storage.getCertificatesByMosque(currentUser.mosqueId) : [];
+        for (const mc of mosqueCerts) {
+          if (!certs.find((c: any) => c.id === mc.id)) certs.push(mc);
+        }
+      } else if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+        certs = await storage.getCertificatesByMosque(currentUser.mosqueId);
+      } else if (currentUser.role === "teacher") {
+        const teacherCourses = await storage.getCoursesByCreator(currentUser.id);
+        for (const course of teacherCourses) {
+          const courseCerts = await storage.getCertificatesByCourse(course.id);
+          certs.push(...courseCerts);
+        }
+      } else if (currentUser.role === "student") {
+        certs = await storage.getCertificatesByStudent(currentUser.id);
+      }
+
+      const enriched = await Promise.all(certs.map(async (cert: any) => {
+        const student = await storage.getUser(cert.studentId);
+        const issuer = await storage.getUser(cert.issuedBy);
+        const course = cert.courseId ? await storage.getCourse(cert.courseId) : null;
+        const mosque = cert.mosqueId ? await storage.getMosque(cert.mosqueId) : null;
+
+        let graduateData: any = null;
+        if (cert.graduateId) {
+          try { graduateData = await storage.getGraduate(cert.graduateId); } catch {}
+        }
+
+        return {
+          ...cert,
+          studentName: student?.name || "",
+          issuerName: issuer?.name || "",
+          courseName: course?.title || "",
+          mosqueName: mosque?.name || "",
+          totalJuz: graduateData?.totalJuz || undefined,
+          recitationStyle: graduateData?.recitationStyle || undefined,
+          ijazahTeacher: graduateData?.ijazahTeacher || undefined,
+        };
+      }));
+
+      res.json(enriched);
+    } catch (err: any) {
+      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+    }
+  });
+
   app.delete("/api/courses/:id/students/:studentId", requireRole("teacher", "supervisor"), async (req, res) => {
     try {
       const currentUser = req.user!;
@@ -4956,6 +5012,35 @@ export async function registerRoutes(
         studentId, mosqueId, graduationDate: new Date(graduationDate),
         totalJuz: totalJuz || 30, ijazahChain, ijazahTeacher, recitationStyle, finalGrade, certificateId, notes,
       });
+
+      try {
+        const certNumber = `MTQ-GRAD-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+        const student = await storage.getUser(studentId);
+        const cert = await storage.createCertificate({
+          studentId,
+          issuedBy: currentUser.id,
+          mosqueId: mosqueId || null,
+          graduateId: grad.id,
+          certificateNumber: certNumber,
+          certificateType: "graduation",
+          templateId: req.body.templateId || "classic-gold",
+          title: `شهادة إتمام حفظ القرآن الكريم`,
+          graduationGrade: finalGrade || null,
+        });
+        await storage.updateGraduate(grad.id, { certificateId: cert.id });
+
+        await storage.createNotification({
+          userId: studentId,
+          mosqueId: mosqueId || null,
+          title: "تهانينا! شهادة تخرج جديدة",
+          message: `تم إصدار شهادة تخرج لكم بمناسبة إتمام حفظ ${totalJuz || 30} جزءاً من القرآن الكريم`,
+          type: "success",
+          isRead: false,
+        });
+      } catch (certErr: any) {
+        console.error("Failed to create graduation certificate:", certErr);
+      }
+
       await logActivity(currentUser, "تسجيل تخرج طالب", "graduates");
       res.status(201).json(grad);
     } catch (err: any) {

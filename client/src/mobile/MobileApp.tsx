@@ -17,6 +17,7 @@ const LibraryPage = lazy(() => import("@/pages/LibraryPage"));
 const KnowledgeBasePage = lazy(() => import("@/pages/KnowledgeBasePage"));
 const EducationalContentPage = lazy(() => import("@/pages/EducationalContentPage"));
 const GraduationPage = lazy(() => import("@/pages/GraduationPage"));
+const CertificatesPage = lazy(() => import("@/pages/CertificatesPage"));
 const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
 const PointsRewardsPage = lazy(() => import("@/pages/PointsRewardsPage"));
 const RatingsPage = lazy(() => import("@/pages/RatingsPage"));
@@ -76,6 +77,7 @@ export default function MobileApp() {
             <Route path="/knowledge-base" component={KnowledgeBasePage} />
             <Route path="/educational-content" component={EducationalContentPage} />
             <Route path="/graduation" component={GraduationPage} />
+            <Route path="/certificates" component={CertificatesPage} />
             <Route path="/attendance" component={AttendancePage} />
             <Route path="/points-rewards" component={PointsRewardsPage} />
             <Route path="/ratings" component={RatingsPage} />
