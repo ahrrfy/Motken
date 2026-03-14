@@ -174,6 +174,7 @@ const navCategories: NavCategory[] = [
       { href: "/crisis-management", label: "إدارة الأزمات", labelEn: "Crisis Management", icon: AlertTriangle, roles: ["admin", "supervisor"], featureKey: "crisis_management" },
       { href: "/institutional", label: "التكامل المؤسسي", labelEn: "Institutional Integration", icon: ArrowUpDown, roles: ["admin", "supervisor"], featureKey: "institutional" },
       { href: "/maintenance", label: "الملاحظات والتحسين", labelEn: "Feedback & Improvement", icon: Lightbulb, roles: ["admin", "supervisor", "teacher", "student"] },
+      { href: "/changelog", label: "سجل التغييرات", labelEn: "Changelog", icon: Sparkles, roles: ["admin", "supervisor", "teacher", "student"] },
       { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
     ],
   },

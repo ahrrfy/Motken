@@ -86,6 +86,37 @@ The system is built with a modern web stack:
 -   **Advanced Mosque Filtering**: Sort by name/date/student count, filter by student count range (min/max), filter inactive mosques only.
 -   **Mosque Excel Export**: Export filtered mosque data to Excel including stats (name, province, city, students, teachers, status, date).
 
+## Server Route Architecture
+The backend routes are split into modular files under `server/routes/`:
+- `shared.ts` — Helper functions (logActivity, canTeacherAccessStudent, etc.)
+- `feature-defaults.ts` — Feature flag definitions and route-to-feature mapping
+- `mosques.ts` — Mosque CRUD, dashboard, messages, registration/vouching
+- `users.ts` — User CRUD, approval, avatar, transfers
+- `assignments.ts` — Assignments CRUD with audio recitation
+- `ratings.ts` — Rating system
+- `exams.ts` — Exams and level management
+- `activity.ts` — Activity logs
+- `notifications.ts` — Notification CRUD
+- `courses.ts` — Courses and certificates
+- `admin.ts` — Seed data, sessions, banned devices, feature flags
+- `attendance.ts` — Attendance management
+- `messages.ts` — Internal messaging system
+- `points.ts` — Points and badges
+- `schedules.ts` — Class schedules
+- `competitions.ts` — Quran competitions
+- `reports.ts` — Parent reports and data export
+- `alerts.ts` — Smart alerts, emergency substitutions, incidents
+- `graduates.ts` — Graduation and student transfers
+- `family.ts` — Family links and feedback
+- `knowledge.ts` — Tajweed rules and similar verses (with seed endpoint)
+- `analytics.ts` — Student streaks, predictions, teacher performance, etc.
+- `communication.ts` — Message templates and communication logs
+- `quran.ts` — Quran surahs and progress tracking
+- `stats.ts` — Dashboard statistics
+- `public.ts` — Public testimonials and stats (no auth required)
+
+The main `server/routes.ts` orchestrates middleware setup and imports all modules.
+
 ## External Dependencies
 -   **api.alquran.cloud**: Fetches Quran text.
 -   **qrcode package**: Local QR code generation.

@@ -48,6 +48,8 @@ import FloorPlanPage from "@/pages/FloorPlanPage";
 import WhiteboardPage from "@/pages/WhiteboardPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import ChangelogPage from "@/pages/ChangelogPage";
+import WelcomeWizard from "@/components/WelcomeWizard";
 import PublicParentReportPage from "@/pages/PublicParentReportPage";
 import RegisterMosquePage from "@/pages/RegisterMosquePage";
 import LandingPage from "@/pages/LandingPage";
@@ -110,12 +112,19 @@ function UpdateBanner() {
 function App() {
   const { user, loading } = useAuth();
   const [isMobile] = useState(() => isMobileOrTablet());
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     registerServiceWorker();
     startUpdateChecker();
     return () => stopUpdateChecker();
   }, []);
+
+  useEffect(() => {
+    if (user && !localStorage.getItem("mutqin_onboarding_done")) {
+      setShowWelcome(true);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user && isNotificationsEnabled()) {
@@ -214,6 +223,13 @@ function App() {
   return (
     <SidebarLayout>
       <UpdateBanner />
+      {showWelcome && user && (
+        <WelcomeWizard
+          role={user.actualRole || user.role}
+          userName={user.name}
+          onComplete={() => setShowWelcome(false)}
+        />
+      )}
       <Switch>
         <Route path="/daily" component={TeacherDailyPage} />
         <Route path="/dashboard" component={DashboardPage} />
@@ -257,6 +273,7 @@ function App() {
         <Route path="/floor-plan" component={FloorPlanPage} />
         <Route path="/whiteboard" component={WhiteboardPage} />
         <Route path="/spread" component={SpreadPage} />
+        <Route path="/changelog" component={ChangelogPage} />
         <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">
