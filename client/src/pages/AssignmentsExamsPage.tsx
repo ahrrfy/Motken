@@ -132,6 +132,8 @@ export default function AssignmentsExamsPage() {
   const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [assignType, setAssignType] = useState("new");
 
+  const [surahEntries, setSurahEntries] = useState<Array<{surah: string; fromVerse: string; toVerse: string}>>([]);
+
   const assignCurrentSurah = surahs.find(s => String(s.number) === assignSelectedSurah);
 
   const [exams, setExams] = useState<Exam[]>([]);
@@ -326,6 +328,21 @@ export default function AssignmentsExamsPage() {
     setAssignToVerse(val);
   };
 
+  const handleAddSurahEntry = () => {
+    if (!assignSelectedSurah || !assignFromVerse || !assignToVerse) {
+      toast({ title: "خطأ", description: "يرجى اختيار السورة وتحديد الآيات أولاً", variant: "destructive" });
+      return;
+    }
+    setSurahEntries(prev => [...prev, { surah: assignSelectedSurah, fromVerse: assignFromVerse, toVerse: assignToVerse }]);
+    setAssignSelectedSurah("");
+    setAssignFromVerse("");
+    setAssignToVerse("");
+  };
+
+  const handleRemoveSurahEntry = (index: number) => {
+    setSurahEntries(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleAssign = async () => {
     const targetStudents = bulkMode ? bulkSelectedStudents : [assignSelectedStudent];
 
@@ -333,12 +350,21 @@ export default function AssignmentsExamsPage() {
       toast({ title: "خطأ في البيانات", description: "يرجى اختيار طالب واحد على الأقل", variant: "destructive" });
       return;
     }
-    if (!assignDate || !assignTime || !assignSelectedSurah) {
-      toast({ title: "خطأ في البيانات", description: "يرجى تعبئة جميع الحقول المطلوبة", variant: "destructive" });
+    if (!assignDate || !assignTime) {
+      toast({ title: "خطأ في البيانات", description: "يرجى تحديد التاريخ والوقت", variant: "destructive" });
       return;
     }
 
-    const surah = surahs.find(s => String(s.number) === assignSelectedSurah);
+    const allEntries = [...surahEntries];
+    if (assignSelectedSurah && assignFromVerse && assignToVerse) {
+      allEntries.push({ surah: assignSelectedSurah, fromVerse: assignFromVerse, toVerse: assignToVerse });
+    }
+
+    if (allEntries.length === 0) {
+      toast({ title: "خطأ في البيانات", description: "يرجى إضافة سورة واحدة على الأقل", variant: "destructive" });
+      return;
+    }
+
     const scheduledDate = new Date(assignDate);
     const [hours, minutes] = assignTime.split(":");
     scheduledDate.setHours(parseInt(hours), parseInt(minutes));
@@ -347,33 +373,44 @@ export default function AssignmentsExamsPage() {
     else setAssignSubmitting(true);
 
     try {
-      const results = await Promise.all(targetStudents.map(studentId =>
-        fetch("/api/assignments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            studentId,
-            teacherId: user?.id,
-            mosqueId: user?.mosqueId || null,
-            surahName: surah?.name || "",
-            fromVerse: parseInt(assignFromVerse) || 1,
-            toVerse: parseInt(assignToVerse) || 10,
-            type: assignType,
-            scheduledDate: scheduledDate.toISOString(),
-            status: "pending",
-          }),
-        }).then(res => res.ok ? res.json() : null)
-      ));
+      const requests: Promise<any>[] = [];
+      for (const entry of allEntries) {
+        const surah = surahs.find(s => String(s.number) === entry.surah);
+        for (const studentId of targetStudents) {
+          requests.push(
+            fetch("/api/assignments", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                studentId,
+                teacherId: user?.id,
+                mosqueId: user?.mosqueId || null,
+                surahName: surah?.name || "",
+                fromVerse: parseInt(entry.fromVerse) || 1,
+                toVerse: parseInt(entry.toVerse) || 10,
+                type: assignType,
+                scheduledDate: scheduledDate.toISOString(),
+                status: "pending",
+              }),
+            }).then(res => res.ok ? res.json() : null)
+          );
+        }
+      }
 
+      const results = await Promise.all(requests);
       const newAssignments = results.filter(Boolean);
       if (newAssignments.length > 0) {
         setAssignments(prev => [...newAssignments, ...prev]);
+        const surahCount = allEntries.length;
+        const studentCount = targetStudents.length;
         toast({
           title: "تم تحديد الواجب بنجاح",
-          description: bulkMode
-            ? `تم إنشاء ${newAssignments.length} واجب لـ ${newAssignments.length} طالب`
-            : `تم إرسال إشعار للطالب ${students.find(s => s.id === assignSelectedStudent)?.name} بموعد التسميع`,
+          description: surahCount > 1
+            ? `تم إنشاء ${newAssignments.length} واجب (${surahCount} سور × ${studentCount} طالب)`
+            : bulkMode
+              ? `تم إنشاء ${newAssignments.length} واجب لـ ${studentCount} طالب`
+              : `تم إرسال إشعار للطالب ${students.find(s => s.id === assignSelectedStudent)?.name} بموعد التسميع`,
           className: "bg-green-50 border-green-200 text-green-800"
         });
         setAssignSelectedStudent("");
@@ -383,6 +420,7 @@ export default function AssignmentsExamsPage() {
         setAssignTime("");
         setAssignDate(undefined);
         setAssignType("new");
+        setSurahEntries([]);
         setBulkSelectedStudents([]);
         setBulkMode(false);
       } else {
@@ -882,47 +920,91 @@ export default function AssignmentsExamsPage() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>السورة</Label>
-                    <Select value={assignSelectedSurah} onValueChange={handleAssignSurahChange}>
-                      <SelectTrigger className="bg-white" data-testid="select-surah">
-                        <SelectValue placeholder="اختر السورة" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {surahs.map((s) => (
-                          <SelectItem key={s.number} value={String(s.number)}>
-                            {s.number}. {s.name} ({s.versesCount} آية)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
+                {surahEntries.length > 0 && (
                   <div className="space-y-2">
-                    <Label>من الآية {assignCurrentSurah && <span className="text-xs text-muted-foreground">(1 - {assignCurrentSurah.versesCount})</span>}</Label>
-                    <Input
-                      type="number"
-                      placeholder="1"
-                      min={1}
-                      max={assignCurrentSurah?.versesCount}
-                      value={assignFromVerse}
-                      onChange={e => handleAssignFromVerseChange(e.target.value)}
-                      data-testid="input-from-verse"
-                    />
+                    <Label className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      السور المضافة ({surahEntries.length})
+                    </Label>
+                    <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
+                      {surahEntries.map((entry, index) => {
+                        const entrySurah = surahs.find(s => String(s.number) === entry.surah);
+                        return (
+                          <div key={index} className="flex items-center justify-between bg-white rounded-md px-3 py-2 border" data-testid={`surah-entry-${index}`}>
+                            <span className="text-sm font-medium">
+                              {entrySurah?.name || entry.surah} — الآيات {entry.fromVerse} إلى {entry.toVerse}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleRemoveSurahEntry(index)}
+                              data-testid={`button-remove-surah-${index}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>إلى الآية {assignCurrentSurah && <span className="text-xs text-muted-foreground">(حتى {assignCurrentSurah.versesCount})</span>}</Label>
-                    <Input
-                      type="number"
-                      placeholder="10"
-                      min={parseInt(assignFromVerse) || 1}
-                      max={assignCurrentSurah?.versesCount}
-                      value={assignToVerse}
-                      onChange={e => handleAssignToVerseChange(e.target.value)}
-                      data-testid="input-to-verse"
-                    />
+                )}
+
+                <div className="space-y-3 border rounded-lg p-4 bg-blue-50/30 border-blue-200/50">
+                  <Label className="text-sm font-medium">{surahEntries.length > 0 ? "إضافة سورة أخرى" : "اختيار السورة والآيات"}</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2 md:col-span-2">
+                      <Select value={assignSelectedSurah} onValueChange={handleAssignSurahChange}>
+                        <SelectTrigger className="bg-white" data-testid="select-surah">
+                          <SelectValue placeholder="اختر السورة" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {surahs.map((s) => (
+                            <SelectItem key={s.number} value={String(s.number)}>
+                              {s.number}. {s.name} ({s.versesCount} آية)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>من الآية {assignCurrentSurah && <span className="text-xs text-muted-foreground">(1 - {assignCurrentSurah.versesCount})</span>}</Label>
+                      <Input
+                        type="number"
+                        placeholder="1"
+                        min={1}
+                        max={assignCurrentSurah?.versesCount}
+                        value={assignFromVerse}
+                        onChange={e => handleAssignFromVerseChange(e.target.value)}
+                        data-testid="input-from-verse"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>إلى الآية {assignCurrentSurah && <span className="text-xs text-muted-foreground">(حتى {assignCurrentSurah.versesCount})</span>}</Label>
+                      <Input
+                        type="number"
+                        placeholder="10"
+                        min={parseInt(assignFromVerse) || 1}
+                        max={assignCurrentSurah?.versesCount}
+                        value={assignToVerse}
+                        onChange={e => handleAssignToVerseChange(e.target.value)}
+                        data-testid="input-to-verse"
+                      />
+                    </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-dashed border-blue-300 text-blue-600 hover:bg-blue-50"
+                    onClick={handleAddSurahEntry}
+                    disabled={!assignSelectedSurah || !assignFromVerse || !assignToVerse}
+                    data-testid="button-add-surah-entry"
+                  >
+                    <Plus className="w-4 h-4 ml-1" />
+                    إضافة سورة أخرى للواجب
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -971,7 +1053,11 @@ export default function AssignmentsExamsPage() {
 
                 <Button onClick={handleAssign} disabled={assignSubmitting || bulkSubmitting} className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-11 mt-4" data-testid="button-submit-assignment">
                   {(assignSubmitting || bulkSubmitting) ? <Loader2 className="w-5 h-5 ml-2 animate-spin" /> : <CheckCircle2 className="w-5 h-5 ml-2" />}
-                  {bulkMode ? `تأكيد وإرسال لـ ${bulkSelectedStudents.length} طالب` : "تأكيد وإرسال للطالب"}
+                  {bulkMode
+                    ? `تأكيد وإرسال لـ ${bulkSelectedStudents.length} طالب${surahEntries.length > 0 ? ` (${surahEntries.length + (assignSelectedSurah ? 1 : 0)} سور)` : ""}`
+                    : surahEntries.length > 0
+                      ? `تأكيد وإرسال (${surahEntries.length + (assignSelectedSurah ? 1 : 0)} سور)`
+                      : "تأكيد وإرسال للطالب"}
                 </Button>
               </CardContent>
             </Card>)}
