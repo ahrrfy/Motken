@@ -243,6 +243,55 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  app.get("/api/system/backup/stats", requireRole("admin"), async (req, res) => {
+    try {
+      const { sql } = await import("drizzle-orm");
+      const [
+        mosquesCount, usersCount, assignmentsCount, attendanceCount,
+        coursesCount, certificatesCount, examsCount
+      ] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` }).from(mosques),
+        db.select({ count: sql<number>`count(*)` }).from(users),
+        db.select({ count: sql<number>`count(*)` }).from(assignments),
+        db.select({ count: sql<number>`count(*)` }).from(attendance),
+        db.select({ count: sql<number>`count(*)` }).from(courses),
+        db.select({ count: sql<number>`count(*)` }).from(certificates),
+        db.select({ count: sql<number>`count(*)` }).from(exams),
+      ]);
+
+      const usersByRole = await db.select({
+        role: users.role,
+        count: sql<number>`count(*)`,
+      }).from(users).groupBy(users.role);
+
+      const roleMap: Record<string, number> = {};
+      usersByRole.forEach(r => { roleMap[r.role] = Number(r.count); });
+
+      const lastBackupLog = await db.select()
+        .from(activityLogs)
+        .where(sql`${activityLogs.action} = 'إنشاء نسخة احتياطية'`)
+        .orderBy(sql`${activityLogs.createdAt} DESC`)
+        .limit(1);
+
+      res.json({
+        mosques: Number(mosquesCount[0]?.count || 0),
+        supervisors: roleMap["supervisor"] || 0,
+        teachers: roleMap["teacher"] || 0,
+        students: roleMap["student"] || 0,
+        assignments: Number(assignmentsCount[0]?.count || 0),
+        attendance: Number(attendanceCount[0]?.count || 0),
+        courses: Number(coursesCount[0]?.count || 0),
+        certificates: Number(certificatesCount[0]?.count || 0),
+        exams: Number(examsCount[0]?.count || 0),
+        totalUsers: Number(usersCount[0]?.count || 0),
+        lastBackupDate: lastBackupLog[0]?.createdAt || null,
+      });
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
   app.get("/api/system/backup", requireRole("admin"), async (req, res) => {
     try {
       const [

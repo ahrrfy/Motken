@@ -12,7 +12,7 @@ import { usePhoneValidation, phoneInputClassName, isValidPhone } from "@/lib/pho
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2, Shield, Users, UserCheck, UserX, Download, Upload, CheckCircle, Database, HardDrive } from "lucide-react";
+import { Eye, EyeOff, AArrowUp, AArrowDown, RotateCcw, Minus, Plus, Camera, AlertTriangle, Trash2, Loader2, Shield, Users, UserCheck, UserX, Download, Upload, CheckCircle, Database, HardDrive, Building2, GraduationCap, BookOpen, ClipboardList, Award, FileText, Clock, CalendarDays, FolderDown, Save } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -930,6 +930,69 @@ function BackupSection() {
   const [restoring, setRestoring] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/system/backup/stats", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setStats(data); })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }, []);
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    let relative = "";
+    if (diffMins < 1) relative = "الآن";
+    else if (diffMins < 60) relative = `منذ ${diffMins} دقيقة`;
+    else if (diffHours < 24) relative = `منذ ${diffHours} ساعة`;
+    else if (diffDays < 30) relative = `منذ ${diffDays} يوم`;
+    else relative = `منذ ${Math.floor(diffDays / 30)} شهر`;
+
+    const formatted = d.toLocaleDateString("ar-SA", {
+      year: "numeric", month: "long", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+    return { relative, formatted };
+  };
+
+  const saveBlob = async (blob: Blob, fileName: string) => {
+    if ("showSaveFilePicker" in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: fileName,
+          types: [{
+            description: "JSON Backup",
+            accept: { "application/json": [".json"] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return true;
+      } catch (err: any) {
+        if (err.name === "AbortError") return false;
+        throw err;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return true;
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -938,16 +1001,15 @@ function BackupSection() {
       if (res.ok) {
         const data = await res.json();
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
         const dateStr = new Date().toISOString().split("T")[0];
-        a.href = url;
-        a.download = `mutqin_backup_${dateStr}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast({ title: "تم بنجاح", description: "تم تحميل النسخة الاحتياطية", className: "bg-green-50 border-green-200 text-green-800" });
+        const timeStr = new Date().toTimeString().split(" ")[0].replace(/:/g, "-");
+        const fileName = `mutqin_backup_${dateStr}_${timeStr}.json`;
+        const saved = await saveBlob(blob, fileName);
+        if (saved) {
+          const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+          toast({ title: "تم بنجاح", description: `تم حفظ النسخة الاحتياطية (${sizeMB} MB)`, className: "bg-green-50 border-green-200 text-green-800" });
+          setStats((prev: any) => prev ? { ...prev, lastBackupDate: new Date().toISOString() } : prev);
+        }
       } else {
         const err = await res.json();
         toast({ title: "خطأ", description: err.message || "فشل في إنشاء النسخة الاحتياطية", variant: "destructive" });
@@ -1018,28 +1080,89 @@ function BackupSection() {
     }
   };
 
+  const lastBackup = stats?.lastBackupDate ? formatDate(stats.lastBackupDate) : null;
+
+  const statItems = stats ? [
+    { label: "المساجد", value: stats.mosques, icon: Building2, color: "text-emerald-600" },
+    { label: "المشرفون", value: stats.supervisors, icon: Shield, color: "text-violet-600" },
+    { label: "الأساتذة", value: stats.teachers, icon: GraduationCap, color: "text-blue-600" },
+    { label: "الطلاب", value: stats.students, icon: Users, color: "text-sky-600" },
+    { label: "الواجبات", value: stats.assignments, icon: BookOpen, color: "text-amber-600" },
+    { label: "الحضور", value: stats.attendance, icon: ClipboardList, color: "text-teal-600" },
+    { label: "الدورات", value: stats.courses, icon: FileText, color: "text-indigo-600" },
+    { label: "الشهادات", value: stats.certificates, icon: Award, color: "text-rose-600" },
+    { label: "الامتحانات", value: stats.exams, icon: ClipboardList, color: "text-orange-600" },
+  ] : [];
+
   return (
     <div className="space-y-6">
+      {lastBackup && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border bg-gradient-to-l from-primary/5 to-transparent">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">آخر نسخة احتياطية</p>
+            <p className="text-base font-bold text-primary">{lastBackup.relative}</p>
+          </div>
+          <div className="text-left shrink-0">
+            <p className="text-xs text-muted-foreground">{lastBackup.formatted}</p>
+          </div>
+        </div>
+      )}
+      {!lastBackup && !statsLoading && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">لم يتم إنشاء أي نسخة احتياطية بعد</p>
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <Database className="w-5 h-5" />
+            ملخص بيانات النظام
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {statsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : stats ? (
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {statItems.map((item) => (
+                <div key={item.label} className="flex flex-col items-center gap-1.5 p-3 rounded-xl border bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <item.icon className={`w-5 h-5 ${item.color}`} />
+                  <span className="text-xl font-bold" data-testid={`text-backup-stat-${item.label}`}>{item.value.toLocaleString("ar-SA")}</span>
+                  <span className="text-[11px] text-muted-foreground text-center leading-tight">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <HardDrive className="w-5 h-5" />
+            <FolderDown className="w-5 h-5" />
             تصدير نسخة احتياطية
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-4 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
             <div className="flex items-start gap-3">
-              <Database className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <HardDrive className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-300">تصدير جميع بيانات النظام</p>
-                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">سيتم تحميل ملف JSON يحتوي على جميع بيانات المساجد والمستخدمين والواجبات والدورات والشهادات وجميع السجلات الأخرى.</p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">سيتم إنشاء ملف JSON يحتوي على جميع البيانات. يمكنك اختيار مكان حفظ الملف على جهازك.</p>
               </div>
             </div>
           </div>
-          <Button onClick={handleExport} disabled={exporting} className="gap-2" data-testid="button-export-backup">
-            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {exporting ? "جاري إنشاء النسخة..." : "إنشاء نسخة احتياطية وتحميلها"}
+          <Button onClick={handleExport} disabled={exporting} className="gap-2" size="lg" data-testid="button-export-backup">
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {exporting ? "جاري إنشاء النسخة..." : "إنشاء نسخة احتياطية وحفظها"}
           </Button>
         </CardContent>
       </Card>
