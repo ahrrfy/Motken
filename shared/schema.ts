@@ -63,6 +63,7 @@ export const users = pgTable("users", {
   privacyPolicyAcceptedAt: timestamp("privacy_policy_accepted_at"),
   adminNotes: text("admin_notes"),
   suspendedUntil: timestamp("suspended_until"),
+  studyMode: text("study_mode").notNull().default("in-person"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_users_mosque_id").on(table.mosqueId),
@@ -70,6 +71,7 @@ export const users = pgTable("users", {
   index("idx_users_role").on(table.role),
   index("idx_users_phone").on(table.phone),
   index("idx_users_is_active").on(table.isActive),
+  index("idx_users_study_mode").on(table.studyMode),
 ]);
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
