@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -847,20 +848,16 @@ export default function QuranTracker() {
           )}
 
           <div className="flex items-center gap-2 mb-4">
-            <Select value={selectedSurah} onValueChange={setSelectedSurah} data-testid="surah-select">
-              <SelectTrigger className="w-[220px]" data-testid="surah-select-trigger">
-                <SelectValue placeholder="اختر السورة" />
-              </SelectTrigger>
-              <SelectContent>
-                <ScrollArea className="h-[300px]">
-                  {quranSurahs.map((s) => (
-                    <SelectItem key={s.number} value={String(s.number)} data-testid={`surah-option-${s.number}`}>
-                      {s.number}. {s.name}
-                    </SelectItem>
-                  ))}
-                </ScrollArea>
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={quranSurahs.map((s) => ({ value: String(s.number), label: `${s.number}. ${s.name}` }))}
+              value={selectedSurah}
+              onValueChange={setSelectedSurah}
+              placeholder="اختر السورة"
+              searchPlaceholder="ابحث عن سورة..."
+              emptyText="لا توجد سورة بهذا الاسم"
+              triggerClassName="w-[220px]"
+              data-testid="surah-select-trigger"
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -186,29 +187,27 @@ export default function InstitutionalPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>الطالب *</Label>
-                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                    <SelectTrigger data-testid="select-transfer-student">
-                      <SelectValue placeholder="اختر الطالب" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {students.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={students.map(s => ({ value: s.id, label: s.name }))}
+                    value={selectedStudentId}
+                    onValueChange={setSelectedStudentId}
+                    placeholder="اختر الطالب"
+                    searchPlaceholder="ابحث عن طالب..."
+                    emptyText="لا يوجد طالب بهذا الاسم"
+                    data-testid="select-transfer-student"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>المسجد المستهدف *</Label>
-                  <Select value={targetMosqueId} onValueChange={setTargetMosqueId}>
-                    <SelectTrigger data-testid="select-target-mosque">
-                      <SelectValue placeholder="اختر المسجد المستهدف" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mosques.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={mosques.map(m => ({ value: m.id, label: m.name }))}
+                    value={targetMosqueId}
+                    onValueChange={setTargetMosqueId}
+                    placeholder="اختر المسجد المستهدف"
+                    searchPlaceholder="ابحث عن مسجد..."
+                    emptyText="لا يوجد مسجد بهذا الاسم"
+                    data-testid="select-target-mosque"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>سبب التحويل</Label>

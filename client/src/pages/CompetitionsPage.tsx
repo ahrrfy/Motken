@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -455,18 +456,15 @@ export default function CompetitionsPage() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>اختر الطالب</Label>
-                        <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                          <SelectTrigger data-testid="select-participant-student">
-                            <SelectValue placeholder="اختر الطالب" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {students.map(s => (
-                              <SelectItem key={s.id} value={s.id} data-testid={`option-participant-${s.id}`}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          options={students.map(s => ({ value: s.id, label: s.name }))}
+                          value={selectedStudentId}
+                          onValueChange={setSelectedStudentId}
+                          placeholder="اختر الطالب"
+                          searchPlaceholder="ابحث عن طالب..."
+                          emptyText="لا يوجد طالب بهذا الاسم"
+                          data-testid="select-participant-student"
+                        />
                       </div>
                       <Button
                         onClick={handleAddParticipant}
@@ -993,18 +991,15 @@ export default function CompetitionsPage() {
 
                 <div className="space-y-2">
                   <Label>السورة (اختياري)</Label>
-                  <Select value={selectedSurah} onValueChange={(val) => { setSelectedSurah(val); setFromVerse(""); setToVerse(""); }}>
-                    <SelectTrigger data-testid="select-competition-surah">
-                      <SelectValue placeholder="اختر السورة" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {surahs.map(s => (
-                        <SelectItem key={s.number} value={String(s.number)}>
-                          {s.number}. {s.name} ({s.versesCount} آية)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={surahs.map(s => ({ value: String(s.number), label: `${s.number}. ${s.name} (${s.versesCount} آية)` }))}
+                    value={selectedSurah}
+                    onValueChange={(val) => { setSelectedSurah(val); setFromVerse(""); setToVerse(""); }}
+                    placeholder="اختر السورة"
+                    searchPlaceholder="ابحث عن سورة..."
+                    emptyText="لا توجد سورة بهذا الاسم"
+                    data-testid="select-competition-surah"
+                  />
                 </div>
 
                 {selectedSurah && (

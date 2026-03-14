@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -926,16 +927,15 @@ export default function AssignmentsExamsPage() {
                       )}
                     </div>
                   ) : (
-                    <Select value={assignSelectedStudent} onValueChange={setAssignSelectedStudent}>
-                      <SelectTrigger className="bg-white" data-testid="select-student">
-                        <SelectValue placeholder="اختر الطالب" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {students.map((s) => (
-                          <SelectItem key={s.id} value={s.id} data-testid={`option-student-${s.id}`}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={students.map((s) => ({ value: s.id, label: s.name }))}
+                      value={assignSelectedStudent}
+                      onValueChange={setAssignSelectedStudent}
+                      placeholder="اختر الطالب"
+                      searchPlaceholder="ابحث عن طالب..."
+                      emptyText="لا يوجد طالب بهذا الاسم"
+                      data-testid="select-student"
+                    />
                   )}
                 </div>
 

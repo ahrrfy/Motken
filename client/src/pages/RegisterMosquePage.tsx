@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useTheme } from "@/lib/theme-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiPost } from "@/lib/api";
@@ -163,20 +164,15 @@ export default function RegisterMosquePage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="province">{isEn ? "Province" : "المحافظة"} <span className="text-destructive">*</span></Label>
-                  <Select 
-                    value={formData.province} 
+                  <SearchableSelect
+                    options={PROVINCES.map((p, i) => ({ value: p, label: isEn ? PROVINCES_EN[i] : p }))}
+                    value={formData.province}
                     onValueChange={(v) => handleChange("province", v)}
-                    required
-                  >
-                    <SelectTrigger id="province" data-testid="select-province">
-                      <SelectValue placeholder={isEn ? "Select province" : "اختر المحافظة"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROVINCES.map((p, i) => (
-                        <SelectItem key={p} value={p}>{isEn ? PROVINCES_EN[i] : p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder={isEn ? "Select province" : "اختر المحافظة"}
+                    searchPlaceholder={isEn ? "Search..." : "ابحث عن محافظة..."}
+                    emptyText={isEn ? "No results" : "لا توجد نتائج"}
+                    data-testid="select-province"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">{isEn ? "City / District" : "القضاء / المدينة"} <span className="text-destructive">*</span></Label>

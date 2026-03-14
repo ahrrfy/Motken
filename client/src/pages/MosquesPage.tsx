@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -756,14 +757,15 @@ export default function MosquesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>المحافظة <span className="text-red-500">*</span></Label>
-                  <Select value={vouchForm.province} onValueChange={(v) => setVouchForm({ ...vouchForm, province: v })}>
-                    <SelectTrigger data-testid="select-vouch-province">
-                      <SelectValue placeholder="اختر المحافظة" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {iraqProvinces.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={iraqProvinces.map(p => ({ value: p, label: p }))}
+                    value={vouchForm.province}
+                    onValueChange={(v) => setVouchForm({ ...vouchForm, province: v })}
+                    placeholder="اختر المحافظة"
+                    searchPlaceholder="ابحث عن محافظة..."
+                    emptyText="لا توجد محافظة بهذا الاسم"
+                    data-testid="select-vouch-province"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>المدينة/القضاء <span className="text-red-500">*</span></Label>

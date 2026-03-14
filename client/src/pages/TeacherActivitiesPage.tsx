@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Search, ClipboardList, Loader2, BarChart3, Users, BookOpen,
   TrendingUp, Clock, CheckCircle, AlertTriangle, Eye
@@ -320,16 +321,16 @@ export default function TeacherActivitiesPage() {
             <CardContent>
               {isAdmin && mosques.length > 0 && (
                 <div className="mb-4">
-                  <Select value={selectedMosqueId} onValueChange={(v) => { setSelectedMosqueId(v); fetchWeakness(v); }}>
-                    <SelectTrigger className="w-full sm:w-72" data-testid="select-weakness-mosque">
-                      <SelectValue placeholder="اختر المسجد" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mosques.filter((m: any) => m.isActive !== false).map((m: any) => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={mosques.filter((m: any) => m.isActive !== false).map((m: any) => ({ value: m.id, label: m.name }))}
+                    value={selectedMosqueId}
+                    onValueChange={(v) => { setSelectedMosqueId(v); fetchWeakness(v); }}
+                    placeholder="اختر المسجد"
+                    searchPlaceholder="ابحث عن مسجد..."
+                    emptyText="لا يوجد مسجد بهذا الاسم"
+                    triggerClassName="w-full sm:w-72"
+                    data-testid="select-weakness-mosque"
+                  />
                 </div>
               )}
               {weaknessLoading ? (

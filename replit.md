@@ -16,7 +16,7 @@ The system is built with a modern web stack:
 -   **Backend**: Express.js, TypeScript.
 -   **Database**: PostgreSQL with Drizzle ORM.
 -   **Authentication**: Passport.js with session-based authentication.
--   **UI/UX**: Full Arabic RTL support, dynamic theming (dark/light), language switching (Arabic/English), responsive design, 8 CSS animations, staggered children animations, page transitions, card hover effects, gradient text, custom scrollbar.
+-   **UI/UX**: Full Arabic RTL support, dynamic theming (dark/light), language switching (Arabic/English), responsive design, 8 CSS animations, staggered children animations, page transitions, card hover effects, gradient text, custom scrollbar. **SearchableSelect component** (`client/src/components/ui/searchable-select.tsx`) provides searchable dropdowns with filtering + scrolling — used across 15+ pages for student/teacher/mosque/surah selection. Base Select component also has max-height 300px for scrolling.
 -   **Multi-Tenancy**: Data isolation per mosque using `mosqueId` foreign keys.
 -   **Role-Based Access Control**:
     -   **Admin**: System-wide access, creates mosques and supervisors.

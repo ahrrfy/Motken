@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -568,16 +569,15 @@ export default function GraduationPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>الطالب *</Label>
-                    <Select value={studentId} onValueChange={handleStudentChange}>
-                      <SelectTrigger data-testid="select-graduate-student">
-                        <SelectValue placeholder="اختر الطالب" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {students.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={students.map(s => ({ value: s.id, label: s.name }))}
+                      value={studentId}
+                      onValueChange={handleStudentChange}
+                      placeholder="اختر الطالب"
+                      searchPlaceholder="ابحث عن طالب..."
+                      emptyText="لا يوجد طالب بهذا الاسم"
+                      data-testid="select-graduate-student"
+                    />
                   </div>
 
                   {studentId && (() => {

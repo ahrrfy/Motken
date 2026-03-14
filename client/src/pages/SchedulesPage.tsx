@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -536,18 +537,15 @@ export default function SchedulesPage() {
                   {(isSupervisor || isAdmin) && teachers.length > 0 && (
                     <div>
                       <Label>المعلم</Label>
-                      <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
-                        <SelectTrigger data-testid="select-teacher">
-                          <SelectValue placeholder="اختر المعلم" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teachers.map((t) => (
-                            <SelectItem key={t.id} value={t.id} data-testid={`option-teacher-${t.id}`}>
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        options={teachers.map((t) => ({ value: t.id, label: t.name }))}
+                        value={selectedTeacherId}
+                        onValueChange={setSelectedTeacherId}
+                        placeholder="اختر المعلم"
+                        searchPlaceholder="ابحث عن معلم..."
+                        emptyText="لا يوجد معلم بهذا الاسم"
+                        data-testid="select-teacher"
+                      />
                     </div>
                   )}
 
@@ -662,19 +660,19 @@ export default function SchedulesPage() {
       <div className="flex items-center gap-3 flex-wrap" data-testid="filters-bar">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={filterTeacherId} onValueChange={setFilterTeacherId}>
-            <SelectTrigger className="w-[200px]" data-testid="filter-teacher-select">
-              <SelectValue placeholder="جميع المعلمين" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">جميع المعلمين</SelectItem>
-              {uniqueTeacherIds.map(tid => (
-                <SelectItem key={tid} value={tid} data-testid={`filter-teacher-${tid}`}>
-                  {getTeacherName(tid)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={[
+              { value: "all", label: "جميع المعلمين" },
+              ...uniqueTeacherIds.map(tid => ({ value: tid, label: getTeacherName(tid) }))
+            ]}
+            value={filterTeacherId}
+            onValueChange={setFilterTeacherId}
+            placeholder="جميع المعلمين"
+            searchPlaceholder="ابحث عن معلم..."
+            emptyText="لا يوجد معلم بهذا الاسم"
+            triggerClassName="w-[200px]"
+            data-testid="filter-teacher-select"
+          />
         </div>
 
         {canManage && (

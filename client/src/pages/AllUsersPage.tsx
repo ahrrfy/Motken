@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -414,16 +415,15 @@ export default function AllUsersPage() {
               {form.role !== "admin" && (
                 <div>
                   <Label>الجامع/المركز *</Label>
-                  <Select value={form.mosqueId} onValueChange={(v) => setForm({ ...form, mosqueId: v })}>
-                    <SelectTrigger data-testid="select-user-mosque">
-                      <SelectValue placeholder="اختر الجامع/المركز" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mosques.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>{m.name} - {m.city}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={mosques.map((m) => ({ value: m.id, label: `${m.name} - ${m.city}` }))}
+                    value={form.mosqueId}
+                    onValueChange={(v) => setForm({ ...form, mosqueId: v })}
+                    placeholder="اختر الجامع/المركز"
+                    searchPlaceholder="ابحث عن جامع..."
+                    emptyText="لا يوجد جامع بهذا الاسم"
+                    data-testid="select-user-mosque"
+                  />
                 </div>
               )}
               <div>
@@ -502,17 +502,16 @@ export default function AllUsersPage() {
                   <SelectItem value="student">طلاب</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterMosque} onValueChange={setFilterMosque}>
-                <SelectTrigger className="w-full sm:w-48" data-testid="select-filter-mosque">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الجوامع والمراكز</SelectItem>
-                  {mosques.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={[{ value: "all", label: "جميع الجوامع والمراكز" }, ...mosques.map((m) => ({ value: m.id, label: m.name }))]}
+                value={filterMosque}
+                onValueChange={setFilterMosque}
+                placeholder="جميع الجوامع والمراكز"
+                searchPlaceholder="ابحث عن جامع..."
+                emptyText="لا يوجد جامع بهذا الاسم"
+                triggerClassName="w-full sm:w-48"
+                data-testid="select-filter-mosque"
+              />
             </div>
             <div className="flex flex-col sm:flex-row gap-3 items-end">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
