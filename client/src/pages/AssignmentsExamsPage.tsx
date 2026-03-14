@@ -21,8 +21,9 @@ import { useAuth } from "@/lib/auth-context";
 import {
   CalendarIcon, Clock, CheckCircle2, User, BookOpen, Loader2,
   Plus, Calendar as CalendarLucide, Users, FileText, Trash2, Search, X,
-  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight, Mic
+  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight, Mic, Download
 } from "lucide-react";
+import { exportJsonToExcel } from "@/lib/excel-utils";
 import AudioRecorder from "@/components/AudioRecorder";
 import AudioPlayer from "@/components/AudioPlayer";
 
@@ -774,6 +775,32 @@ export default function AssignmentsExamsPage() {
           الواجبات والامتحانات
         </h1>
         <p className="text-muted-foreground">إدارة واجبات الطلاب والامتحانات في مكان واحد</p>
+        {(user?.role === "admin" || user?.role === "supervisor" || user?.role === "teacher") && (
+          <Button variant="outline" className="gap-2 mt-2 sm:mt-0" data-testid="button-export-assignments" onClick={() => {
+            const typeLabels: Record<string, string> = { new: "حفظ جديد", review: "مراجعة", test: "اختبار", memorization: "تسميع", revision: "تثبيت" };
+            exportJsonToExcel(
+              assignments.map(a => {
+                const student = students.find(s => s.id === a.studentId);
+                return {
+                  "الطالب": student?.name || a.studentId,
+                  "السورة": a.surahName,
+                  "من آية": a.fromVerse,
+                  "إلى آية": a.toVerse,
+                  "النوع": typeLabels[a.type] || a.type,
+                  "التاريخ": a.scheduledDate,
+                  "الحالة": a.status === "done" ? "مُقيَّم" : a.status === "pending" ? "معلق" : a.status,
+                  "الدرجة": a.grade ?? "",
+                  "ملاحظات": a.notes || "",
+                };
+              }),
+              "Assignments",
+              "assignments_export.xlsx"
+            );
+          }}>
+            <Download className="w-4 h-4" />
+            تصدير الواجبات
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="stats-cards">

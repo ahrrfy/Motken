@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall } from "lucide-react";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -111,6 +111,58 @@ export default function StudentsPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  const [commLogOpen, setCommLogOpen] = useState(false);
+  const [commLogStudent, setCommLogStudent] = useState<Student | null>(null);
+  const [commLogs, setCommLogs] = useState<any[]>([]);
+  const [commLogsLoading, setCommLogsLoading] = useState(false);
+  const [commLogForm, setCommLogForm] = useState({ method: "whatsapp", subject: "", notes: "", parentPhone: "" });
+  const [commLogSubmitting, setCommLogSubmitting] = useState(false);
+
+  const openCommLog = async (student: Student) => {
+    setCommLogStudent(student);
+    setCommLogForm({ method: "whatsapp", subject: "", notes: "", parentPhone: student.parentPhone || "" });
+    setCommLogOpen(true);
+    setCommLogsLoading(true);
+    try {
+      const res = await fetch(`/api/communication-log/${student.id}`, { credentials: "include" });
+      if (res.ok) setCommLogs(await res.json());
+      else setCommLogs([]);
+    } catch {
+      setCommLogs([]);
+    } finally {
+      setCommLogsLoading(false);
+    }
+  };
+
+  const handleAddCommLog = async () => {
+    if (!commLogStudent || !commLogForm.subject) {
+      toast({ title: "خطأ", description: "الموضوع مطلوب", variant: "destructive" });
+      return;
+    }
+    setCommLogSubmitting(true);
+    try {
+      const res = await fetch("/api/communication-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ studentId: commLogStudent.id, ...commLogForm }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم تسجيل التواصل", className: "bg-green-50 border-green-200 text-green-800" });
+        setCommLogForm({ method: "whatsapp", subject: "", notes: "", parentPhone: commLogStudent.parentPhone || "" });
+        const logsRes = await fetch(`/api/communication-log/${commLogStudent.id}`, { credentials: "include" });
+        if (logsRes.ok) setCommLogs(await logsRes.json());
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في التسجيل", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setCommLogSubmitting(false);
+    }
+  };
 
   const [pendingStudents, setPendingStudents] = useState<any[]>([]);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -1193,6 +1245,18 @@ export default function StudentsPage() {
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </Button>
+                              {(isTeacher || isSupervisor) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  onClick={() => openCommLog(student)}
+                                  title="سجل التواصل"
+                                  data-testid={`button-comm-log-${student.id}`}
+                                >
+                                  <PhoneCall className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                               {isSupervisor && (
                                 <Button
                                   variant="outline"
@@ -1478,6 +1542,99 @@ export default function StudentsPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={commLogOpen} onOpenChange={setCommLogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PhoneCall className="w-5 h-5" />
+              سجل التواصل مع ولي الأمر
+            </DialogTitle>
+          </DialogHeader>
+          {commLogStudent && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="font-bold">{commLogStudent.name}</p>
+                <p className="text-sm text-muted-foreground">هاتف ولي الأمر: {commLogStudent.parentPhone || "غير محدد"}</p>
+              </div>
+
+              <div className="space-y-3 border rounded-lg p-4 bg-blue-50/30">
+                <h4 className="text-sm font-bold">تسجيل تواصل جديد</h4>
+                <div className="space-y-2">
+                  <Label>وسيلة التواصل</Label>
+                  <Select value={commLogForm.method} onValueChange={(v) => setCommLogForm(prev => ({ ...prev, method: v }))}>
+                    <SelectTrigger data-testid="select-comm-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="whatsapp">واتساب</SelectItem>
+                      <SelectItem value="phone">اتصال هاتفي</SelectItem>
+                      <SelectItem value="sms">رسالة نصية</SelectItem>
+                      <SelectItem value="in_person">شخصياً</SelectItem>
+                      <SelectItem value="other">أخرى</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>الموضوع *</Label>
+                  <Input
+                    value={commLogForm.subject}
+                    onChange={(e) => setCommLogForm(prev => ({ ...prev, subject: e.target.value }))}
+                    placeholder="مثال: متابعة غياب الطالب"
+                    data-testid="input-comm-subject"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>ملاحظات</Label>
+                  <Textarea
+                    value={commLogForm.notes}
+                    onChange={(e) => setCommLogForm(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="تفاصيل إضافية..."
+                    className="min-h-[60px]"
+                    data-testid="input-comm-notes"
+                  />
+                </div>
+                <Button
+                  onClick={handleAddCommLog}
+                  disabled={commLogSubmitting}
+                  className="w-full gap-2"
+                  data-testid="button-save-comm-log"
+                >
+                  {commLogSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  تسجيل التواصل
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-bold">السجلات السابقة ({commLogs.length})</h4>
+                {commLogsLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  </div>
+                ) : commLogs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">لا توجد سجلات تواصل سابقة</p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {commLogs.map((log: any) => {
+                      const methodLabels: Record<string, string> = { whatsapp: "واتساب", phone: "اتصال", sms: "رسالة نصية", in_person: "شخصياً", other: "أخرى" };
+                      return (
+                        <div key={log.id} className="p-3 border rounded-lg text-sm" data-testid={`comm-log-${log.id}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <Badge variant="outline" className="text-xs">{methodLabels[log.method] || log.method}</Badge>
+                            <span className="text-xs text-muted-foreground">{formatDateAr(log.createdAt)}</span>
+                          </div>
+                          <p className="font-medium mt-1">{log.subject}</p>
+                          {log.notes && <p className="text-muted-foreground text-xs mt-1">{log.notes}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

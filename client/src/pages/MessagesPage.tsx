@@ -10,8 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   MessageCircle, Send, Loader2, Search, Plus, ArrowRight, Users,
-  Trash2, CheckCheck, Check, MoreVertical, Megaphone, X, AlertTriangle, FileText
+  Trash2, CheckCheck, Check, MoreVertical, Megaphone, X, AlertTriangle, FileText, Settings, Edit
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
@@ -102,6 +103,62 @@ export default function MessagesPage() {
   const [deletingMessage, setDeletingMessage] = useState(false);
 
   const [convoSearch, setConvoSearch] = useState("");
+
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [newTemplateCategory, setNewTemplateCategory] = useState("general");
+  const [newTemplateTitle, setNewTemplateTitle] = useState("");
+  const [newTemplateContent, setNewTemplateContent] = useState("");
+  const [submittingTemplate, setSubmittingTemplate] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+
+  const canManageTemplates = user?.role === "admin" || user?.role === "supervisor";
+
+  const handleCreateTemplate = async () => {
+    if (!newTemplateTitle || !newTemplateContent) {
+      toast({ title: "خطأ", description: "العنوان والمحتوى مطلوبان", variant: "destructive" });
+      return;
+    }
+    setSubmittingTemplate(true);
+    try {
+      const res = await fetch("/api/message-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ category: newTemplateCategory, title: newTemplateTitle, content: newTemplateContent }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم إضافة القالب", className: "bg-green-50 border-green-200 text-green-800" });
+        setNewTemplateTitle("");
+        setNewTemplateContent("");
+        setNewTemplateCategory("general");
+        fetchTemplates();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في الإضافة", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSubmittingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    setDeletingTemplateId(id);
+    try {
+      const res = await fetch(`/api/message-templates/${id}`, { method: "DELETE", credentials: "include" });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم حذف القالب", className: "bg-green-50 border-green-200 text-green-800" });
+        fetchTemplates();
+      } else {
+        toast({ title: "خطأ", description: "فشل في الحذف", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setDeletingTemplateId(null);
+    }
+  };
 
   const fetchTemplates = useCallback(async () => {
     setLoadingTemplates(true);
@@ -818,11 +875,19 @@ export default function MessagesPage() {
           </h1>
           <p className="text-muted-foreground text-sm">تواصل مع المستخدمين الآخرين</p>
         </div>
-        {totalUnread > 0 && (
-          <Badge variant="destructive" className="text-sm px-3 py-1" data-testid="badge-header-unread">
-            {totalUnread} رسالة غير مقروءة
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {totalUnread > 0 && (
+            <Badge variant="destructive" className="text-sm px-3 py-1" data-testid="badge-header-unread">
+              {totalUnread} رسالة غير مقروءة
+            </Badge>
+          )}
+          {canManageTemplates && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setTemplateDialogOpen(true)} data-testid="button-manage-templates">
+              <Settings className="w-4 h-4" />
+              إدارة القوالب
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="overflow-hidden" style={{ height: "calc(100vh - 200px)", minHeight: "500px" }}>
@@ -1005,6 +1070,97 @@ export default function MessagesPage() {
               حذف
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              إدارة قوالب الرسائل
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+              <h4 className="text-sm font-bold">إضافة قالب جديد</h4>
+              <div className="space-y-2">
+                <Label>التصنيف</Label>
+                <Select value={newTemplateCategory} onValueChange={setNewTemplateCategory}>
+                  <SelectTrigger data-testid="select-template-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general">عام</SelectItem>
+                    <SelectItem value="congratulation">تهنئة</SelectItem>
+                    <SelectItem value="warning">تحذير</SelectItem>
+                    <SelectItem value="absence">غياب</SelectItem>
+                    <SelectItem value="reminder">تذكير</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>العنوان *</Label>
+                <Input
+                  value={newTemplateTitle}
+                  onChange={(e) => setNewTemplateTitle(e.target.value)}
+                  placeholder="مثال: تهنئة بإتمام الجزء"
+                  data-testid="input-template-title"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>المحتوى *</Label>
+                <Textarea
+                  value={newTemplateContent}
+                  onChange={(e) => setNewTemplateContent(e.target.value)}
+                  placeholder="نص الرسالة..."
+                  className="min-h-[80px]"
+                  data-testid="input-template-content"
+                />
+              </div>
+              <Button
+                onClick={handleCreateTemplate}
+                disabled={submittingTemplate}
+                className="w-full gap-2"
+                data-testid="button-save-template"
+              >
+                {submittingTemplate && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Plus className="w-4 h-4" />
+                إضافة القالب
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-bold">القوالب الحالية ({messageTemplates.length})</h4>
+              {loadingTemplates ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                </div>
+              ) : messageTemplates.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">لا توجد قوالب بعد</p>
+              ) : (
+                <div className="space-y-2">
+                  {messageTemplates.map(template => (
+                    <div key={template.id} className="flex items-start gap-2 p-3 border rounded-lg hover:bg-muted/50" data-testid={`template-item-${template.id}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{template.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{template.content}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
+                        onClick={() => handleDeleteTemplate(template.id)}
+                        disabled={deletingTemplateId === template.id}
+                        data-testid={`button-delete-template-${template.id}`}
+                      >
+                        {deletingTemplateId === template.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

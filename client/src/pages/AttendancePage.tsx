@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2, Save, Calendar, ClipboardList, Search,
   CheckCircle, XCircle, Clock, TrendingUp, Printer,
-  Phone, CalendarDays, BarChart3, Users, AlertTriangle
+  Phone, CalendarDays, BarChart3, Users, AlertTriangle, Download
 } from "lucide-react";
+import { exportJsonToExcel } from "@/lib/excel-utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAr } from "@/lib/utils";
@@ -509,10 +510,31 @@ export default function AttendancePage() {
           </h1>
           <p className="text-muted-foreground">إدارة حضور وغياب الطلاب</p>
         </div>
-        <Button variant="outline" onClick={handlePrint} className="gap-2" data-testid="button-print-attendance">
-          <Printer className="w-4 h-4" />
-          طباعة
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => {
+            const dataToExport = history.length > 0 ? history : Object.entries(attendanceData).map(([sid, entry]) => {
+              const student = students.find(s => s.id === sid);
+              return { studentId: sid, studentName: student?.name || sid, date: attendanceDate, status: entry.status, notes: entry.notes };
+            });
+            exportJsonToExcel(
+              dataToExport.map(r => ({
+                "اسم الطالب": r.studentName || r.studentId,
+                "التاريخ": r.date,
+                "الحالة": statusLabels[r.status] || r.status,
+                "ملاحظات": r.notes || "",
+              })),
+              "Attendance",
+              "attendance_export.xlsx"
+            );
+          }} className="gap-2" data-testid="button-export-attendance">
+            <Download className="w-4 h-4" />
+            تصدير
+          </Button>
+          <Button variant="outline" onClick={handlePrint} className="gap-2" data-testid="button-print-attendance">
+            <Printer className="w-4 h-4" />
+            طباعة
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="stats-cards">
