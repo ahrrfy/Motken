@@ -136,7 +136,7 @@ export default function TestimonialsManagePage() {
               </div>
               <div>
                 <Label>الدور / المكان</Label>
-                <Input placeholder="مثال: مشرف حلقات — الرياض" value={formRole} onChange={e => setFormRole(e.target.value)} data-testid="input-testimonial-role" />
+                <Input placeholder="مثال: مشرف حلقات — بغداد" value={formRole} onChange={e => setFormRole(e.target.value)} data-testid="input-testimonial-role" />
               </div>
               <div>
                 <Label>نص الرأي</Label>
