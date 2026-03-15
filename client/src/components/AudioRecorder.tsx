@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, Square, Upload, Trash2, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Mic, Square, Upload, Trash2, Loader2, CheckCircle2, AlertCircle, Volume2, Info, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AudioRecorderProps {
@@ -14,6 +14,63 @@ interface AudioRecorderProps {
 }
 
 const MAX_DURATION_SECONDS = 600;
+
+type MicStatus = "checking" | "ready" | "denied" | "error" | "idle";
+
+function detectBrowser(): string {
+  const ua = navigator.userAgent;
+  if (/CriOS/i.test(ua)) return "chrome-ios";
+  if (/FxiOS/i.test(ua)) return "firefox-ios";
+  if (/EdgiOS/i.test(ua)) return "edge-ios";
+  if (/Safari/i.test(ua) && /iPhone|iPad|iPod/i.test(ua) && !/CriOS|FxiOS/i.test(ua)) return "safari-ios";
+  if (/Chrome/i.test(ua) && !/Edge|Edg/i.test(ua)) return "chrome";
+  if (/Firefox/i.test(ua)) return "firefox";
+  if (/Edg/i.test(ua)) return "edge";
+  if (/Safari/i.test(ua)) return "safari";
+  return "other";
+}
+
+function getBrowserInstructions(browser: string): string[] {
+  switch (browser) {
+    case "chrome":
+    case "edge":
+      return [
+        "اضغط على أيقونة القفل 🔒 بجانب عنوان الموقع في الأعلى",
+        "ابحث عن \"الميكروفون\" واختر \"سماح\"",
+        "أعد تحميل الصفحة",
+      ];
+    case "safari":
+      return [
+        "اذهب إلى Safari ← الإعدادات ← المواقع ← الميكروفون",
+        "ابحث عن هذا الموقع واختر \"سماح\"",
+        "أعد تحميل الصفحة",
+      ];
+    case "safari-ios":
+      return [
+        "اذهب إلى الإعدادات ← Safari ← الميكروفون",
+        "تأكد أن \"السماح\" مفعّل",
+        "ارجع للتطبيق وأعد تحميل الصفحة",
+      ];
+    case "chrome-ios":
+      return [
+        "اذهب إلى الإعدادات ← Chrome ← الميكروفون",
+        "تأكد أن الميكروفون مفعّل",
+        "ارجع للتطبيق وأعد تحميل الصفحة",
+      ];
+    case "firefox":
+      return [
+        "اضغط على أيقونة القفل بجانب عنوان الموقع",
+        "اضغط \"مسح الأذونات والبيانات المخزنة\"",
+        "أعد تحميل الصفحة وسيظهر طلب الإذن مجدداً",
+      ];
+    default:
+      return [
+        "افتح إعدادات المتصفح",
+        "ابحث عن إعدادات الميكروفون وسمح لهذا الموقع",
+        "أعد تحميل الصفحة",
+      ];
+  }
+}
 
 export default function AudioRecorder({
   assignmentId,
@@ -32,12 +89,19 @@ export default function AudioRecorder({
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(hasExistingAudio);
   const [deleting, setDeleting] = useState(false);
-  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [micStatus, setMicStatus] = useState<MicStatus>("idle");
+  const [showHelp, setShowHelp] = useState(false);
+  const [testingMic, setTestingMic] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const analyzerRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  const browser = detectBrowser();
 
   useEffect(() => {
     setUploaded(hasExistingAudio);
@@ -50,8 +114,37 @@ export default function AudioRecorder({
         streamRef.current.getTracks().forEach(track => track.stop());
       }
       if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [audioUrl]);
+
+  useEffect(() => {
+    checkMicPermission();
+  }, []);
+
+  const checkMicPermission = async () => {
+    if (!navigator.permissions) {
+      setMicStatus("idle");
+      return;
+    }
+    try {
+      const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+      if (result.state === "granted") {
+        setMicStatus("ready");
+      } else if (result.state === "denied") {
+        setMicStatus("denied");
+      } else {
+        setMicStatus("idle");
+      }
+      result.onchange = () => {
+        if (result.state === "granted") setMicStatus("ready");
+        else if (result.state === "denied") setMicStatus("denied");
+        else setMicStatus("idle");
+      };
+    } catch {
+      setMicStatus("idle");
+    }
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -59,17 +152,75 @@ export default function AudioRecorder({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const requestAndGetStream = async (): Promise<MediaStream> => {
+    setMicStatus("checking");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        sampleRate: 44100,
+      }
+    });
+    setMicStatus("ready");
+    return stream;
+  };
+
+  const testMicrophone = async () => {
+    setTestingMic(true);
+    try {
+      const stream = await requestAndGetStream();
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyzer = audioCtx.createAnalyser();
+      analyzer.fftSize = 256;
+      source.connect(analyzer);
+      analyzerRef.current = analyzer;
+
+      const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+      const updateLevel = () => {
+        if (!analyzerRef.current) return;
+        analyzerRef.current.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        animFrameRef.current = requestAnimationFrame(updateLevel);
+      };
+      updateLevel();
+
+      toast({
+        title: "المايكروفون يعمل ✓",
+        description: "تحدث الآن لرؤية مستوى الصوت — سيتوقف الاختبار بعد 5 ثوانٍ",
+        className: "bg-green-50 border-green-200 text-green-800"
+      });
+
+      setTimeout(() => {
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        analyzerRef.current = null;
+        stream.getTracks().forEach(t => t.stop());
+        audioCtx.close();
+        setTestingMic(false);
+        setMicLevel(0);
+      }, 5000);
+
+    } catch (err: any) {
+      setTestingMic(false);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setMicStatus("denied");
+        setShowHelp(true);
+      } else {
+        setMicStatus("error");
+        toast({
+          title: "خطأ",
+          description: "لم يتم العثور على ميكروفون. تأكد من توصيل سماعة أو ميكروفون.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        }
-      });
+      const stream = await requestAndGetStream();
       streamRef.current = stream;
-      setPermissionDenied(false);
 
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
@@ -114,13 +265,10 @@ export default function AudioRecorder({
 
     } catch (err: any) {
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setPermissionDenied(true);
-        toast({
-          title: "تنبيه",
-          description: "يرجى السماح بالوصول للميكروفون لتسجيل التسميع",
-          variant: "destructive"
-        });
+        setMicStatus("denied");
+        setShowHelp(true);
       } else {
+        setMicStatus("error");
         toast({
           title: "خطأ",
           description: "فشل في بدء التسجيل. تأكد من وجود ميكروفون متصل.",
@@ -152,7 +300,6 @@ export default function AudioRecorder({
 
   const uploadRecording = async () => {
     if (!audioBlob) return;
-
     setUploading(true);
     try {
       const formData = new FormData();
@@ -257,26 +404,121 @@ export default function AudioRecorder({
         <Mic className="w-4 h-4 text-violet-600" />
         <span className="text-xs font-semibold text-violet-800">تسميع صوتي</span>
         <span className="text-[10px] text-violet-500">({surahName} — {fromVerse} إلى {toVerse})</span>
+        {micStatus === "ready" && (
+          <span className="text-[10px] text-green-600 mr-auto flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> المايكروفون جاهز
+          </span>
+        )}
       </div>
 
-      {permissionDenied && (
-        <div className="flex items-center gap-2 mb-2 p-2 bg-red-50 rounded text-xs text-red-700">
-          <AlertCircle className="w-3 h-3 flex-shrink-0" />
-          يرجى السماح بالوصول للميكروفون من إعدادات المتصفح
+      {micStatus === "denied" && (
+        <div className="mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-xs font-bold text-amber-800 mb-1">المايكروفون محظور — اتبع الخطوات التالية:</p>
+              <ol className="text-xs text-amber-700 space-y-1 list-decimal mr-4 mb-2">
+                {getBrowserInstructions(browser).map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => window.location.reload()}
+                  data-testid="button-reload-page"
+                >
+                  <RefreshCw className="w-3 h-3 ml-1" />
+                  إعادة تحميل الصفحة
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => { setMicStatus("idle"); setShowHelp(false); }}
+                  data-testid="button-retry-mic"
+                >
+                  المحاولة مجدداً
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {micStatus === "error" && (
+        <div className="mb-3 p-2.5 bg-red-50 rounded-lg border border-red-200">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-red-700 mb-1">لم يتم العثور على ميكروفون</p>
+              <p className="text-[10px] text-red-600">تأكد من توصيل سماعة أو ميكروفون بجهازك، ثم اضغط \"المحاولة مجدداً\"</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs mt-2 border-red-300 text-red-600 hover:bg-red-100"
+                onClick={() => { setMicStatus("idle"); }}
+                data-testid="button-retry-mic-error"
+              >
+                المحاولة مجدداً
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {testingMic && (
+        <div className="mb-3 p-2.5 bg-green-50 rounded-lg border border-green-200">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Volume2 className="w-4 h-4 text-green-600" />
+            <span className="text-xs font-bold text-green-800">اختبار المايكروفون — تحدث الآن</span>
+          </div>
+          <div className="w-full bg-green-100 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-green-500 h-3 rounded-full transition-all duration-100"
+              style={{ width: `${micLevel}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-green-600 mt-1 text-center">
+            {micLevel > 20 ? "ممتاز! المايكروفون يلتقط صوتك بوضوح ✓" : "تحدث بصوت أعلى قليلاً..."}
+          </p>
         </div>
       )}
 
       {!audioBlob && !isRecording && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full h-10 text-xs gap-2 border-violet-300 text-violet-700 hover:bg-violet-100"
-          onClick={startRecording}
-          data-testid={`button-start-recording-${assignmentId}`}
-        >
-          <Mic className="w-4 h-4" />
-          ابدأ التسجيل (حد أقصى 10 دقائق)
-        </Button>
+        <div className="space-y-2">
+          {micStatus !== "denied" && micStatus !== "error" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-10 text-xs gap-2 border-violet-300 text-violet-700 hover:bg-violet-100"
+              onClick={startRecording}
+              disabled={micStatus === "checking"}
+              data-testid={`button-start-recording-${assignmentId}`}
+            >
+              {micStatus === "checking" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Mic className="w-4 h-4" />
+              )}
+              {micStatus === "checking" ? "جاري التحقق من المايكروفون..." : "ابدأ التسجيل (حد أقصى 10 دقائق)"}
+            </Button>
+          )}
+          {micStatus !== "denied" && micStatus !== "error" && !testingMic && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full h-7 text-[10px] text-muted-foreground hover:text-violet-700"
+              onClick={testMicrophone}
+              data-testid={`button-test-mic-${assignmentId}`}
+            >
+              <Volume2 className="w-3 h-3 ml-1" />
+              اختبار المايكروفون أولاً
+            </Button>
+          )}
+        </div>
       )}
 
       {isRecording && (
