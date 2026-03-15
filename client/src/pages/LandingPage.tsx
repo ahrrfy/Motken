@@ -148,17 +148,17 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white" dir="rtl">
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm safe-area-top">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 shrink-0">
-            <img src="/logo.png" alt="مُتْقِن" className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg" />
-            <span className="font-bold text-base sm:text-lg text-[#16213e] font-serif">مُتْقِن</span>
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm" style={{ paddingTop: "env(safe-area-inset-top, 12px)" }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <img src="/logo.png" alt="مُتْقِن" className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg" />
+            <span className="font-bold text-lg sm:text-xl text-[#16213e] font-serif">مُتْقِن</span>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <a href="#features" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-features">المميزات</a>
             <a href="#testimonials" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-testimonials">آراء المستخدمين</a>
             <a href="/login" className="text-sm sm:text-base bg-red-600 text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-600/30 hover:shadow-red-600/50 hover:scale-[1.02] whitespace-nowrap" data-testid="link-login">تسجيل الدخول</a>
-            <a href="#register" className="text-xs sm:text-sm bg-emerald-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors whitespace-nowrap" data-testid="link-register-top">ابدأ مجاناً</a>
+            <a href="#register" className="hidden sm:inline-flex text-sm bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors whitespace-nowrap" data-testid="link-register-top">ابدأ مجاناً</a>
           </div>
         </div>
       </nav>
