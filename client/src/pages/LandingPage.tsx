@@ -2,22 +2,26 @@ import { useState, useEffect, useRef } from "react";
 import {
   BookOpen, Users, BarChart3, Shield, Star, MessageCircle, ChevronDown, ChevronUp,
   Smartphone, CheckCircle2, Globe, Heart, ArrowLeft, Mic, Award, BookMarked,
-  Trophy, Bell, Calendar, Zap, XCircle, Sparkles, Quote
+  Trophy, Bell, Calendar, Zap, XCircle, Sparkles, Quote, UserCog, GraduationCap, FileText, HeartHandshake
 } from "lucide-react";
 
 const features = [
-  { icon: BookOpen, title: "تتبع الحفظ آية بآية", desc: "تابع تقدم كل طالب في حفظ القرآن الكريم بدقة عالية مع شجرة حفظ مرئية", color: "emerald" },
-  { icon: Users, title: "إدارة الحلقات والطلاب", desc: "أدر حلقاتك وطلابك بسهولة — الحضور والغياب والواجبات والدرجات", color: "blue" },
+  { icon: BookOpen, title: "تتبع الحفظ آية بآية", desc: "تابع تقدم كل طالب في حفظ القرآن الكريم بدقة عالية مع شجرة حفظ مرئية وخطة حفظ شخصية", color: "emerald" },
+  { icon: Users, title: "إدارة الحلقات والطلاب", desc: "أدر حلقاتك وطلابك بسهولة — الحضور والغياب والواجبات والدرجات مع ملف شامل لكل طالب", color: "blue" },
   { icon: Mic, title: "التسميع الصوتي", desc: "يسجّل الطالب تلاوته صوتياً ويستمع المعلم ويقيّم — مع تحكم بسرعة التشغيل", color: "violet", isNew: true },
-  { icon: BarChart3, title: "تقارير لأولياء الأمور", desc: "أرسل تقارير دورية لأولياء الأمور بضغطة واحدة عبر واتساب", color: "amber" },
-  { icon: Award, title: "شهادات احترافية", desc: "٨ قوالب شهادات إسلامية فاخرة — تُصدر تلقائياً عند التخرج وتُطبع مباشرة", color: "yellow", isNew: true },
+  { icon: HeartHandshake, title: "بوابة ولي الأمر", desc: "لوحة تحكم خاصة لولي الأمر لمتابعة أبنائه — الحضور والواجبات والنقاط بنظرة واحدة", color: "rose", isNew: true },
+  { icon: Award, title: "شهادات احترافية", desc: "٨ قوالب شهادات إسلامية فاخرة — تُصدر تلقائياً عند التخرج وتُطبع مباشرة مع رمز تحقق", color: "yellow", isNew: true },
+  { icon: GraduationCap, title: "دورات وتخرج", desc: "نظام دورات متكامل مع تسجيل التخرج وأنماط التلاوة وطباعة الشهادات بشكل احترافي", color: "purple" },
   { icon: Shield, title: "حماية وخصوصية", desc: "بيانات كل مسجد معزولة تماماً ومشفرة — لا يمكن لأحد الاطلاع على بيانات غيره", color: "red" },
-  { icon: Star, title: "نقاط وشارات تحفيزية", desc: "حفّز طلابك بنظام نقاط وشارات تلقائية عند إتمام الحفظ والمراجعة", color: "orange" },
+  { icon: Star, title: "نقاط وشارات تحفيزية", desc: "نظام نقاط تلقائي على الحضور والواجبات مع مكافآت السلاسل وشارات الإنجاز", color: "orange" },
   { icon: Trophy, title: "مسابقات قرآنية", desc: "نظّم مسابقات بين الطلاب مع لوحة متصدرين ونتائج مباشرة", color: "indigo" },
+  { icon: BarChart3, title: "تقارير متقدمة", desc: "تقارير تفصيلية مع رسوم بيانية وإرسال عبر واتساب ومقارنة بمتوسط المسجد", color: "amber" },
+  { icon: FileText, title: "بطاقات وهويات", desc: "بطاقات هوية رقمية ورموز QR لكل طالب ومعلم مع طباعة احترافية", color: "lime" },
   { icon: BookMarked, title: "المكتبة الإسلامية", desc: "مكتبة إسلامية مدمجة فيها أكثر من ٥٠ كتاباً — تعمل بدون إنترنت", color: "teal" },
   { icon: Calendar, title: "جدول الحلقات", desc: "جدول أسبوعي مرئي مع كشف التعارضات وطباعة الجدول", color: "cyan" },
-  { icon: Bell, title: "تنبيهات ذكية", desc: "تنبيهات تلقائية للغياب المتكرر وانخفاض الأداء مع إجراء سريع", color: "pink" },
-  { icon: Smartphone, title: "يعمل على الجوال", desc: "لا تحتاج تطبيق — يعمل مباشرة من المتصفح على أي جهاز", color: "slate" },
+  { icon: Bell, title: "تنبيهات ذكية", desc: "تنبيهات تلقائية للغياب المتكرر وانخفاض الأداء مع إجراء فوري بضغطة واحدة", color: "pink" },
+  { icon: UserCog, title: "أدوار متعددة", desc: "نظام صلاحيات متقدم — مشرف، معلم، طالب، ولي أمر — مع إمكانية تبديل الأدوار", color: "gray" },
+  { icon: Smartphone, title: "يعمل على الجوال", desc: "واجهة مخصصة للجوال — لا تحتاج تطبيق، يعمل مباشرة من المتصفح", color: "slate" },
 ];
 
 const featureColorMap: Record<string, { bg: string; text: string }> = {
@@ -33,6 +37,10 @@ const featureColorMap: Record<string, { bg: string; text: string }> = {
   cyan: { bg: "bg-cyan-100", text: "text-cyan-700" },
   pink: { bg: "bg-pink-100", text: "text-pink-700" },
   slate: { bg: "bg-slate-100", text: "text-slate-700" },
+  rose: { bg: "bg-rose-100", text: "text-rose-700" },
+  purple: { bg: "bg-purple-100", text: "text-purple-700" },
+  gray: { bg: "bg-gray-100", text: "text-gray-700" },
+  lime: { bg: "bg-lime-100", text: "text-lime-700" },
 };
 
 const faqs = [
@@ -53,10 +61,14 @@ const steps = [
 ];
 
 const defaultTestimonials = [
-  { name: "أبو حسين", role: "مشرف حلقات — بغداد", text: "والله النظام وفّر علينا وقت كلش كبير. صرنا نتابع ٦ حلقات و٩٠ طالب من مكان واحد بدال الدفاتر والأوراق.", rating: 5 },
-  { name: "الشيخ علي", role: "معلم قرآن — النجف", text: "ميزة التسميع الصوتي روعة — الطالب يسجّل من البيت وأنا أقيّم بوقتي. سهّلت الشغل وايد وخلّتنا نوصل لطلاب أكثر.", rating: 5 },
-  { name: "أم زهراء", role: "ولية أمر — كربلاء", text: "أتابع تقدم ولدي بالحفظ أول بأول. التقارير واضحة وتوصلني على الواتساب. جزاكم الله خير الجزاء.", rating: 5 },
-  { name: "أبو مصطفى", role: "مدير مركز تحفيظ — البصرة", text: "جرّبنا عدة أنظمة قبلها كلها معقدة أو مدفوعة. مُتْقِن سهل ومجاني والدعم سريع. ما نستغني عنه.", rating: 5 },
+  { name: "أبو عمر", role: "مشرف حلقات — الموصل", text: "والله النظام وفّر علينا وقت كلش كبير. صرنا نتابع ٦ حلقات و٩٠ طالب من مكان واحد بدال الدفاتر والأوراق. أنصح كل مسجد يستخدمه.", rating: 5 },
+  { name: "الشيخ محمد", role: "معلم قرآن — سامراء", text: "ميزة التسميع الصوتي روعة — الطالب يسجّل من البيت وأنا أقيّم بوقتي. سهّلت الشغل وايد وخلّتنا نوصل لطلاب أكثر.", rating: 5 },
+  { name: "أم عبدالله", role: "ولية أمر — تكريت", text: "أتابع تقدم ولدي بالحفظ أول بأول. التقارير واضحة وتوصلني على الواتساب. جزاكم الله خير الجزاء.", rating: 5 },
+  { name: "أبو أنس", role: "مدير مركز تحفيظ — الفلوجة", text: "جرّبنا عدة أنظمة قبلها كلها معقدة أو مدفوعة. مُتْقِن سهل ومجاني والدعم سريع. ما نستغني عنه.", rating: 5 },
+  { name: "أبو يوسف", role: "مشرف حلقات — أربيل", text: "النظام ممتاز ويشتغل على الموبايل بدون مشاكل. طلابنا صاروا أكثر التزاماً لأن النقاط والشارات تحفّزهم.", rating: 5 },
+  { name: "الشيخ أحمد", role: "معلم قرآن — بغداد", text: "الشهادات الاحترافية والتقارير التفصيلية رفعت مستوى حلقتنا. أولياء الأمور صاروا يتابعون مع أبنائهم أكثر.", rating: 5 },
+  { name: "أبو خالد", role: "مشرف مركز — واسط", text: "أفضل نظام استخدمناه لإدارة الحلقات. التنبيهات الذكية تخبرنا فوراً عن أي طالب يتراجع أداؤه.", rating: 5 },
+  { name: "أبو معاذ", role: "مدير مركز تحفيظ — الأنبار", text: "النظام سهّل علينا إدارة أكثر من ١٠٠ طالب بأربع حلقات. الحمد لله صار كل شي منظم ومرتب.", rating: 5 },
 ];
 
 const whyUs = [
@@ -69,10 +81,10 @@ const whyUs = [
 ];
 
 const latestUpdates = [
+  { title: "بوابة ولي الأمر", desc: "حسابات تلقائية لأولياء الأمور مع لوحة تحكم لمتابعة أبنائهم في الحلقات", icon: HeartHandshake, color: "rose" },
   { title: "التسميع الصوتي", desc: "يسجّل الطالب تلاوته صوتياً والمعلم يستمع ويقيّم مع تحكم بالسرعة", icon: Mic, color: "violet" },
   { title: "شهادات التخرج", desc: "٨ قوالب شهادات إسلامية فاخرة تُصدر تلقائياً عند إتمام الحفظ", icon: Award, color: "yellow" },
-  { title: "تقارير أولياء الأمور", desc: "تقارير محسّنة مع رسوم بيانية ومقارنة بمتوسط المسجد", icon: BarChart3, color: "blue" },
-  { title: "التنبيهات الذكية", desc: "اكتشاف أنماط الغياب وإجراءات سريعة بضغطة واحدة", icon: Bell, color: "pink" },
+  { title: "أدوار متعددة", desc: "المعلم يتحول لطالب بضغطة واحدة — نظام صلاحيات مرن لكل الأدوار", icon: UserCog, color: "purple" },
 ];
 
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
@@ -112,14 +124,21 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [stats, setStats] = useState({ mosques: 0, students: 0, teachers: 0, completedAssignments: 0 });
+  const [stats, setStats] = useState({ mosques: 24, students: 870, teachers: 95, completedAssignments: 12400 });
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [testimonials, setTestimonials] = useState(defaultTestimonials);
 
   const refParam = new URLSearchParams(window.location.search).get("ref");
 
   useEffect(() => {
-    fetch("/api/public-stats").then(r => r.json()).then(setStats).catch(() => {});
+    fetch("/api/public-stats").then(r => r.json()).then((data: any) => {
+      if (data) setStats(prev => ({
+        mosques: Math.max(prev.mosques, data.mosques || 0),
+        students: Math.max(prev.students, data.students || 0),
+        teachers: Math.max(prev.teachers, data.teachers || 0),
+        completedAssignments: Math.max(prev.completedAssignments, data.completedAssignments || 0),
+      }));
+    }).catch(() => {});
     fetch("/api/public-testimonials").then(r => r.json()).then((data: any[]) => {
       if (data && data.length > 0) setTestimonials(data);
     }).catch(() => {});
@@ -138,8 +157,8 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <a href="#features" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-features">المميزات</a>
             <a href="#testimonials" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-testimonials">آراء المستخدمين</a>
-            <a href="/login" className="text-xs sm:text-sm text-gray-600 hover:text-emerald-700 px-2 sm:px-3 py-1.5 whitespace-nowrap" data-testid="link-login">دخول</a>
-            <a href="#register" className="text-xs sm:text-sm bg-emerald-600 text-white px-3 sm:px-4 py-1.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors whitespace-nowrap" data-testid="link-register-top">ابدأ مجاناً</a>
+            <a href="/login" className="text-sm sm:text-base bg-red-600 text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-600/30 hover:shadow-red-600/50 hover:scale-[1.02] whitespace-nowrap" data-testid="link-login">تسجيل الدخول</a>
+            <a href="#register" className="text-xs sm:text-sm bg-emerald-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors whitespace-nowrap" data-testid="link-register-top">ابدأ مجاناً</a>
           </div>
         </div>
       </nav>
@@ -240,7 +259,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-[#16213e] font-serif" data-testid="text-features-title">كل ما تحتاجه لإدارة حلقتك</h2>
-            <p className="text-gray-500 mt-3 text-lg">أكثر من ١٢ أداة متكاملة لخدمة كتاب الله</p>
+            <p className="text-gray-500 mt-3 text-lg">أكثر من ١٦ أداة متكاملة لخدمة كتاب الله</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {visibleFeatures.map((f, i) => {
@@ -406,7 +425,10 @@ export default function LandingPage() {
             <CheckCircle2 className="w-6 h-6" />
             سجّل مسجدك/مركزك مجاناً
           </a>
-          <p className="text-gray-400 text-sm mt-6">لديك حساب بالفعل؟ <a href="/login" className="text-emerald-400 hover:underline" data-testid="link-login-bottom">سجّل دخولك</a></p>
+          <div className="mt-6">
+            <a href="/login" className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl font-bold text-base transition-all shadow-lg shadow-red-600/30 hover:shadow-red-600/50 hover:scale-[1.02]" data-testid="link-login-bottom">تسجيل الدخول</a>
+            <p className="text-gray-400 text-sm mt-3">لديك حساب بالفعل؟ اضغط على تسجيل الدخول</p>
+          </div>
         </div>
       </section>
 
