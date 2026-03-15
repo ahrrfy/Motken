@@ -54,6 +54,7 @@ export const users = pgTable("users", {
   educationLevel: text("education_level"),
   level: integer("level"),
   teacherLevels: text("teacher_levels"),
+  isChild: boolean("is_child").notNull().default(false),
   isSpecialNeeds: boolean("is_special_needs").notNull().default(false),
   isOrphan: boolean("is_orphan").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),

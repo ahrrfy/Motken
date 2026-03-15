@@ -36,6 +36,7 @@ interface Student {
   parentPhone?: string | null;
   educationLevel?: string | null;
   level?: number | null;
+  isChild?: boolean;
   isSpecialNeeds?: boolean;
   isOrphan?: boolean;
   isActive: boolean;
@@ -95,7 +96,7 @@ export default function StudentsPage() {
   const [newTeacherId, setNewTeacherId] = useState("");
   const [formData, setFormData] = useState({
     name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male",
-    age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false, studyMode: "in-person"
+    age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isChild: false, isSpecialNeeds: false, isOrphan: false, studyMode: "in-person"
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
@@ -344,8 +345,9 @@ export default function StudentsPage() {
   };
 
   const handleAddStudent = async () => {
-    if (!formData.username || !formData.password || !formData.name || !formData.phone || !formData.parentPhone) {
-      toast({ title: "خطأ", description: "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف، هاتف ولي الأمر)", variant: "destructive" });
+    const phoneRequired = !formData.isChild;
+    if (!formData.username || !formData.password || !formData.name || !formData.parentPhone || (phoneRequired && !formData.phone)) {
+      toast({ title: "خطأ", description: phoneRequired ? "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف، هاتف ولي الأمر)" : "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، هاتف ولي الأمر)", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -372,7 +374,7 @@ export default function StudentsPage() {
         const savedPhone = formData.phone;
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isSpecialNeeds: false, isOrphan: false, studyMode: "in-person" });
+        setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isChild: false, isSpecialNeeds: false, isOrphan: false, studyMode: "in-person" });
         fetchData();
         setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "student" });
       } else {
@@ -778,14 +780,25 @@ export default function StudentsPage() {
                     <Label>العمر</Label>
                     <Input data-testid="input-age" type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>الهاتف <span className="text-red-500">*</span></Label>
-                    <InternationalPhoneInput
-                      value={formData.phone}
-                      onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}
-                      error={phoneValidation.message && !phoneValidation.valid ? phoneValidation.message : undefined}
+                  <div className="flex items-center gap-2 p-3 rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                    <Checkbox
+                      id="is-child"
+                      checked={formData.isChild}
+                      onCheckedChange={(v) => setFormData(prev => ({...prev, isChild: !!v, phone: !!v ? "" : prev.phone}))}
+                      data-testid="checkbox-is-child"
                     />
+                    <Label htmlFor="is-child" className="text-sm cursor-pointer">طالب طفل <span className="text-xs text-muted-foreground">(لا يملك هاتف شخصي)</span></Label>
                   </div>
+                  {!formData.isChild && (
+                    <div className="space-y-2">
+                      <Label>الهاتف <span className="text-red-500">*</span></Label>
+                      <InternationalPhoneInput
+                        value={formData.phone}
+                        onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}
+                        error={phoneValidation.message && !phoneValidation.valid ? phoneValidation.message : undefined}
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>هاتف ولي الأمر <span className="text-red-500">*</span></Label>
                     <InternationalPhoneInput
@@ -1498,6 +1511,7 @@ export default function StudentsPage() {
                       {profileStudent.isActive ? "نشط" : "متوقف"}
                     </Badge>
                     {(profileStudent.studyMode || "in-person") === "online" && <Badge variant="secondary" className="bg-cyan-100 text-cyan-700 border-cyan-200">إلكتروني</Badge>}
+                    {profileStudent.isChild && <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">طفل</Badge>}
                     {profileStudent.isSpecialNeeds && <Badge variant="secondary" className="bg-purple-100 text-purple-700">ذوي احتياجات</Badge>}
                     {profileStudent.isOrphan && <Badge variant="secondary" className="bg-amber-100 text-amber-700">يتيم</Badge>}
                   </div>
