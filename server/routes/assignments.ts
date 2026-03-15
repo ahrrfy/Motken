@@ -1,17 +1,17 @@
 import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { storage } from "../storage";
+import { db } from "../db";
 import { eq, and, min, max, sql as dsql } from "drizzle-orm";
 import {
   assignments,
+  assignmentAudio,
   type Assignment,
 } from "@shared/schema";
 import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateEnum, validateDate } from "@shared/security-utils";
 import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray } from "./shared";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 
 export function registerAssignmentsRoutes(app: Express) {
   // ==================== ASSIGNMENTS ====================
@@ -283,19 +283,8 @@ export function registerAssignmentsRoutes(app: Express) {
     }
   });
 
-  const audioUploadDir = path.join(process.cwd(), "uploads", "audio");
-  if (!fs.existsSync(audioUploadDir)) {
-    fs.mkdirSync(audioUploadDir, { recursive: true });
-  }
-  const audioStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, audioUploadDir),
-    filename: (req, file, cb) => {
-      const ext = file.originalname.split(".").pop() || "webm";
-      cb(null, `recitation_${req.params.id}_${Date.now()}.${ext}`);
-    },
-  });
   const audioUpload = multer({
-    storage: audioStorage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
       if (file.mimetype.startsWith("audio/")) cb(null, true);
@@ -307,33 +296,34 @@ export function registerAssignmentsRoutes(app: Express) {
     try {
       const currentUser = req.user!;
       if (currentUser.role !== "student") {
-        if (req.file) fs.unlinkSync(req.file.path);
         return res.status(403).json({ message: "فقط الطالب يمكنه رفع التسميع الصوتي" });
       }
       const assignment = await storage.getAssignment(req.params.id);
       if (!assignment) {
-        if (req.file) fs.unlinkSync(req.file.path);
         return res.status(404).json({ message: "الواجب غير موجود" });
       }
       if (assignment.studentId !== currentUser.id) {
-        if (req.file) fs.unlinkSync(req.file.path);
         return res.status(403).json({ message: "غير مصرح برفع تسجيل لهذا الواجب" });
       }
       if (assignment.status === "done") {
-        if (req.file) fs.unlinkSync(req.file.path);
         return res.status(400).json({ message: "لا يمكن رفع تسجيل لواجب مكتمل" });
       }
       if (!req.file) {
         return res.status(400).json({ message: "لم يتم إرسال ملف صوتي" });
       }
-      if (assignment.hasAudio && assignment.audioFileName) {
-        const safeOldName = path.basename(assignment.audioFileName);
-        const oldPath = path.join(audioUploadDir, safeOldName);
-        if (safeOldName === assignment.audioFileName && fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      const audioBase64 = req.file.buffer.toString("base64");
+      const mimeType = req.file.mimetype || "audio/webm";
+      if (assignment.hasAudio) {
+        await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, req.params.id));
       }
+      await db.insert(assignmentAudio).values({
+        assignmentId: req.params.id,
+        audioData: audioBase64,
+        mimeType: mimeType,
+      });
       const updated = await storage.updateAssignment(req.params.id, {
         hasAudio: true,
-        audioFileName: req.file.filename,
+        audioFileName: `db_audio_${Date.now()}`,
         audioUploadedAt: new Date(),
         audioGradedAt: null,
       });
@@ -347,7 +337,6 @@ export function registerAssignmentsRoutes(app: Express) {
       await logActivity(currentUser, "رفع تسميع صوتي", "assignments", `واجب ${req.params.id}`);
       res.json({ message: "تم رفع التسجيل بنجاح", assignment: updated });
     } catch (err: any) {
-      if (req.file) try { fs.unlinkSync(req.file.path); } catch {}
       res.status(500).json({ message: "حدث خطأ في رفع التسجيل" });
     }
   });
@@ -356,7 +345,7 @@ export function registerAssignmentsRoutes(app: Express) {
     try {
       const assignment = await storage.getAssignment(req.params.id);
       if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
-      if (!assignment.hasAudio || !assignment.audioFileName) {
+      if (!assignment.hasAudio) {
         return res.status(404).json({ message: "لا يوجد تسجيل صوتي لهذا الواجب" });
       }
       const currentUser = req.user!;
@@ -367,38 +356,29 @@ export function registerAssignmentsRoutes(app: Express) {
       if (!isOwner && !isTeacher && !isSupervisor && !isAdmin) {
         return res.status(403).json({ message: "غير مصرح بالاستماع لهذا التسجيل" });
       }
-      // SECURITY FIX: Sanitize filename to prevent path traversal
-      const safeFileName = path.basename(assignment.audioFileName);
-      if (safeFileName !== assignment.audioFileName || safeFileName.includes('..')) {
-        return res.status(400).json({ message: "اسم الملف غير صالح" });
+      const [audioRecord] = await db.select().from(assignmentAudio).where(eq(assignmentAudio.assignmentId, req.params.id));
+      if (!audioRecord) {
+        await storage.updateAssignment(req.params.id, { hasAudio: false, audioFileName: null });
+        return res.status(404).json({ message: "التسجيل الصوتي غير موجود" });
       }
-      const filePath = path.join(audioUploadDir, safeFileName);
-      // Verify the resolved path is within the upload directory
-      const resolvedPath = path.resolve(filePath);
-      if (!resolvedPath.startsWith(path.resolve(audioUploadDir))) {
-        return res.status(403).json({ message: "مسار الملف غير مصرح به" });
-      }
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: "ملف التسجيل غير موجود (ربما تم حذفه تلقائياً)" });
-      }
-      const stat = fs.statSync(filePath);
-      const ext = path.extname(filePath).toLowerCase();
-      const contentType = ext === ".mp4" ? "audio/mp4" : ext === ".ogg" ? "audio/ogg" : "audio/webm";
+      const audioBuffer = Buffer.from(audioRecord.audioData, "base64");
+      const contentType = audioRecord.mimeType || "audio/webm";
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Content-Length", stat.size);
+      res.setHeader("Content-Length", audioBuffer.length);
       res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Cache-Control", "no-cache");
       const range = req.headers.range;
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+        const end = parts[1] ? parseInt(parts[1], 10) : audioBuffer.length - 1;
         const chunkSize = end - start + 1;
         res.status(206);
-        res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${audioBuffer.length}`);
         res.setHeader("Content-Length", chunkSize);
-        fs.createReadStream(filePath, { start, end }).pipe(res);
+        res.end(audioBuffer.subarray(start, end + 1));
       } else {
-        fs.createReadStream(filePath).pipe(res);
+        res.end(audioBuffer);
       }
     } catch {
       res.status(500).json({ message: "حدث خطأ في تحميل التسجيل" });
@@ -416,11 +396,7 @@ export function registerAssignmentsRoutes(app: Express) {
       if (!isOwner && !isTeacher && !isAdmin) {
         return res.status(403).json({ message: "غير مصرح بحذف هذا التسجيل" });
       }
-      if (assignment.hasAudio && assignment.audioFileName) {
-        const safeDelName = path.basename(assignment.audioFileName);
-        const filePath = path.join(audioUploadDir, safeDelName);
-        if (safeDelName === assignment.audioFileName && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }
+      await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, req.params.id));
       await storage.updateAssignment(req.params.id, {
         hasAudio: false,
         audioFileName: null,
@@ -438,7 +414,7 @@ export function registerAssignmentsRoutes(app: Express) {
     try {
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
       const gradedAssignments = await db
-        .select()
+        .select({ id: assignments.id })
         .from(assignments)
         .where(
           and(
@@ -447,22 +423,14 @@ export function registerAssignmentsRoutes(app: Express) {
           )
         );
       for (const a of gradedAssignments) {
-        if (a.audioFileName) {
-          try {
-            const safeCleanName = path.basename(a.audioFileName);
-            if (safeCleanName === a.audioFileName) {
-              const filePath = path.join(audioUploadDir, safeCleanName);
-              if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-              }
-            }
-          } catch (fileErr) {
-            console.error(`خطأ في حذف ملف صوتي ${a.audioFileName}:`, fileErr);
-          }
+        try {
+          await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, a.id));
           await db
             .update(assignments)
             .set({ hasAudio: false, audioFileName: null })
             .where(eq(assignments.id, a.id));
+        } catch (cleanErr) {
+          console.error(`خطأ في تنظيف صوتي ${a.id}:`, cleanErr);
         }
       }
     } catch (err) {
