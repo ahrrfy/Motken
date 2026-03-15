@@ -99,6 +99,7 @@ export const assignments = pgTable("assignments", {
   audioGradedAt: timestamp("audio_graded_at"),
   seenByStudent: boolean("seen_by_student").notNull().default(false),
   seenAt: timestamp("seen_at"),
+  isArchived: boolean("is_archived").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_assignments_student_id").on(table.studentId),
@@ -107,6 +108,7 @@ export const assignments = pgTable("assignments", {
   index("idx_assignments_status").on(table.status),
   index("idx_assignments_scheduled_date").on(table.scheduledDate),
   index("idx_assignments_has_audio").on(table.hasAudio),
+  index("idx_assignments_is_archived").on(table.isArchived),
 ]);
 
 export const insertAssignmentSchema = createInsertSchema(assignments).omit({ id: true, createdAt: true });
