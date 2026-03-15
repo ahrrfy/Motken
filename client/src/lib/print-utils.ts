@@ -1,3 +1,5 @@
+import { formatDateAr, toHijri } from "./utils";
+
 function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
@@ -284,7 +286,7 @@ export function generateSemesterReportHtml(student: any, grades: any[], mosqueNa
         <tbody>
           ${grades.map(g => `
             <tr>
-              <td>${new Date(g.createdAt).toLocaleDateString("ar-SA")}</td>
+              <td>${formatDateAr(g.createdAt)}</td>
               <td>${escapeHtml(g.surahName || "")}</td>
               <td>${g.fromVerse}</td>
               <td>${g.toVerse}</td>
@@ -348,8 +350,12 @@ export function generateAnnualSummaryHtml(stats: any, topStudents: any[], mosque
 }
 
 export function generateCertificateHtml(cert: any, studentName: string, courseName: string, mosqueName: string): string {
-  const hijriDate = new Date(cert.issuedAt).toLocaleDateString("ar-SA-u-ca-islamic", { year: "numeric", month: "long", day: "numeric" });
-  const gregorianDate = new Date(cert.issuedAt).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+  const d = new Date(cert.issuedAt);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  const gregorianDate = `${day}/${month}/${year}`;
+  const hijriDate = toHijri(d) + " هـ";
   return `
     <div style="padding:40px 50px;border:3px solid #16213e;background:linear-gradient(135deg,#fefefe 0%,#f8f4e8 100%);position:relative;min-height:600px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'Tajawal',sans-serif;">
       <div style="position:absolute;inset:8px;border:2px solid #c9a84c;pointer-events:none;"></div>

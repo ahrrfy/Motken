@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { Link } from "wouter";
 import { authenticHadiths } from "@shared/hadiths";
+import { formatDateAr } from "@/lib/utils";
 
 interface Stats {
   totalStudents?: number;
@@ -276,7 +277,7 @@ export default function DashboardPage() {
           <Badge variant="outline" className="text-xs px-3 py-1">
             {isEn
               ? new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-              : new Date().toLocaleDateString("ar-IQ", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+              : formatDateAr(new Date())
             }
           </Badge>
         </div>
@@ -1194,7 +1195,7 @@ function PredictionCard({ userId, isEn }: { userId: string; isEn: boolean }) {
               <div>
                 <p className="text-[10px] text-muted-foreground">{isEn ? "Predicted Completion" : "تاريخ الإتمام المتوقع"}</p>
                 <p className="text-xs font-medium" data-testid="text-predicted-date">
-                  {prediction.predictedCompletionDate ? new Date(prediction.predictedCompletionDate).toLocaleDateString(isEn ? "en-US" : "ar-IQ", { year: "numeric", month: "short" }) : (isEn ? "N/A" : "غير محدد")}
+                  {prediction.predictedCompletionDate ? (isEn ? new Date(prediction.predictedCompletionDate).toLocaleDateString("en-US", { year: "numeric", month: "short" }) : formatDateAr(prediction.predictedCompletionDate)) : (isEn ? "N/A" : "غير محدد")}
                 </p>
               </div>
               <div className={`flex items-center gap-1 ${trendColor}`}>

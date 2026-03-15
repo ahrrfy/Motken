@@ -71,10 +71,19 @@ function wrapInPage(content: string, extraStyles: string = ""): string {
 
 function formatDates(issuedAt: string): { gregorian: string; hijri: string } {
   const d = new Date(issuedAt);
-  return {
-    gregorian: d.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" }),
-    hijri: d.toLocaleDateString("ar-SA-u-ca-islamic", { year: "numeric", month: "long", day: "numeric" }),
-  };
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  const gregorian = `${day}/${month}/${year}`;
+  try {
+    const parts = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", { day: "numeric", month: "numeric", year: "numeric" }).formatToParts(d);
+    const hDay = (parts.find(p => p.type === "day")?.value || "").padStart(2, "0");
+    const hMonth = (parts.find(p => p.type === "month")?.value || "").padStart(2, "0");
+    const hYear = parts.find(p => p.type === "year")?.value || "";
+    return { gregorian, hijri: `${hDay}/${hMonth}/${hYear} هـ` };
+  } catch {
+    return { gregorian, hijri: "" };
+  }
 }
 
 function buildBodyText(data: CertificateData): string {

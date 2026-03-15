@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
+import { formatDateAr } from "@/lib/utils";
 
 interface Student {
   id: string; name: string; avatar?: string;
@@ -200,7 +201,7 @@ export default function TeacherDailyPage() {
         <CalendarDays className="w-7 h-7 text-primary" />
         <h1 className="text-2xl font-bold font-serif text-primary" data-testid="text-page-title-teacher-daily">واجبات اليوم</h1>
         <span className="text-sm text-muted-foreground mr-auto">
-          {new Date().toLocaleDateString("ar-IQ", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}
+          {formatDateAr(new Date())}
         </span>
       </div>
 

@@ -893,7 +893,16 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
       ? `<div class="star-row star-row-top">⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐</div><div class="star-row star-row-bottom">⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐</div>`
       : "";
 
-    const hijriDate = new Date(cert.issuedAt).toLocaleDateString("ar-SA-u-ca-islamic", { year: "numeric", month: "long", day: "numeric" });
+    const certDate = new Date(cert.issuedAt);
+    const gDay = String(certDate.getDate()).padStart(2, "0");
+    const gMonth = String(certDate.getMonth() + 1).padStart(2, "0");
+    const gYear = certDate.getFullYear();
+    const gregorianStr = `${gDay}/${gMonth}/${gYear}`;
+    const hijriParts = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", { day: "numeric", month: "numeric", year: "numeric" }).formatToParts(certDate);
+    const hDay = (hijriParts.find(p => p.type === "day")?.value || "").padStart(2, "0");
+    const hMonth = (hijriParts.find(p => p.type === "month")?.value || "").padStart(2, "0");
+    const hYear = hijriParts.find(p => p.type === "year")?.value || "";
+    const hijriDate = `${hDay}/${hMonth}/${hYear} هـ`;
 
     const certHtml = `
       <div class="cert-container">
@@ -937,7 +946,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
               </div>
               <div class="cert-detail-item">
                 <div class="cert-detail-label">التاريخ الميلادي</div>
-                <div class="cert-detail-value">${issuedDate}</div>
+                <div class="cert-detail-value">${gregorianStr}</div>
               </div>
             </div>
             <div class="cert-signatures">

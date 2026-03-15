@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { formatDateAr, formatDateTimeAr } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import DevicePermissions from "@/components/DevicePermissions";
 
@@ -957,10 +958,7 @@ function BackupSection() {
     else if (diffDays < 30) relative = `منذ ${diffDays} يوم`;
     else relative = `منذ ${Math.floor(diffDays / 30)} شهر`;
 
-    const formatted = d.toLocaleDateString("ar-SA", {
-      year: "numeric", month: "long", day: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
+    const formatted = formatDateTimeAr(d);
     return { relative, formatted };
   };
 

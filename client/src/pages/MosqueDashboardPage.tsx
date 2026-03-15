@@ -14,6 +14,7 @@ import {
 import { MessagingPanel } from "@/components/messaging-panel";
 import { useToast } from "@/hooks/use-toast";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
+import { formatDateAr } from "@/lib/utils";
 
 export default function MosqueDashboardPage() {
   const { id } = useParams<{ id: string }>();
@@ -103,7 +104,7 @@ export default function MosqueDashboardPage() {
     if (diffDays === 1) return "أمس";
     if (diffDays < 7) return `منذ ${diffDays} أيام`;
     if (diffDays < 30) return `منذ ${Math.floor(diffDays / 7)} أسابيع`;
-    return date.toLocaleDateString("ar-IQ");
+    return formatDateAr(date);
   };
 
   return (
@@ -222,7 +223,7 @@ export default function MosqueDashboardPage() {
                 { label: "الهاتف", value: mosque.phone },
                 { label: "المسؤول", value: mosque.managerName },
                 { label: "الوصف", value: mosque.description },
-                { label: "تاريخ التسجيل", value: mosque.createdAt ? new Date(mosque.createdAt).toLocaleDateString("ar-IQ") : "—" },
+                { label: "تاريخ التسجيل", value: mosque.createdAt ? formatDateAr(mosque.createdAt) : "—" },
                 { label: "الحالة", value: statusLabel[mosque.status] || mosque.status },
               ].map((row, i) => (
                 <div key={i} className="space-y-1">
@@ -266,7 +267,7 @@ export default function MosqueDashboardPage() {
                   <Calendar className="h-4 w-4 text-gray-400" />
                   <div>
                     <div className="text-xs text-gray-400">تاريخ التسجيل</div>
-                    <div className="font-medium">{mosque.createdAt ? new Date(mosque.createdAt).toLocaleDateString("ar-IQ") : "—"}</div>
+                    <div className="font-medium">{mosque.createdAt ? formatDateAr(mosque.createdAt) : "—"}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
@@ -274,7 +275,7 @@ export default function MosqueDashboardPage() {
                   <div>
                     <div className="text-xs text-gray-400">آخر تسجيل دخول</div>
                     <div className="font-medium" data-testid="text-supervisor-last-login">
-                      {stats?.lastSupervisorLogin ? new Date(stats.lastSupervisorLogin).toLocaleDateString("ar-IQ") : "—"}
+                      {stats?.lastSupervisorLogin ? formatDateAr(stats.lastSupervisorLogin) : "—"}
                     </div>
                   </div>
                 </div>
