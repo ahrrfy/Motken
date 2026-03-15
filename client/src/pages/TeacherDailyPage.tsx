@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, CalendarDays, BookOpen, CheckCircle, Clock,
   AlertCircle, Users, MessageCircle, UserCheck, UserX,
-  ChevronDown, ChevronUp, Send,
+  ChevronDown, ChevronUp, Send, Search, Filter, X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +20,7 @@ interface Student {
 interface Assignment {
   id: string; studentId: string; surahName: string;
   fromVerse: number; toVerse: number; scheduledDate: string;
-  status: string; type: string;
+  status: string; type: string; grade?: number | null;
 }
 
 function isToday(dateStr: string): boolean {
@@ -38,6 +40,12 @@ export default function TeacherDailyPage() {
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
   const [weeklyReports, setWeeklyReports] = useState<Record<string, any>>({});
   const [loadingReport, setLoadingReport] = useState<string | null>(null);
+  const [gradeInputs, setGradeInputs] = useState<Record<string, string>>({});
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all"|"pending"|"done"|"cancelled">("all");
+  const [filterType, setFilterType] = useState<"all"|"new"|"review">("all");
+  const [filterAttendance, setFilterAttendance] = useState<"all"|"present"|"absent"|"late"|"unmarked">("all");
 
   const fetchData = useCallback(async () => {
     try {
@@ -67,20 +75,67 @@ export default function TeacherDailyPage() {
   const todayAssignments = assignments.filter(a => isToday(a.scheduledDate));
   const studentMap = new Map<string, Student>();
   students.forEach(s => studentMap.set(s.id, s));
-  const grouped = new Map<string, Assignment[]>();
-  todayAssignments.forEach(a => { grouped.set(a.studentId, [...(grouped.get(a.studentId)||[]), a]); });
+
+  const filteredGrouped = useMemo(() => {
+    let filtered = todayAssignments;
+
+    if (filterStatus !== "all") {
+      filtered = filtered.filter(a => a.status === filterStatus);
+    }
+    if (filterType !== "all") {
+      filtered = filtered.filter(a => filterType === "review" ? a.type === "review" : a.type !== "review");
+    }
+
+    const grouped = new Map<string, Assignment[]>();
+    filtered.forEach(a => {
+      grouped.set(a.studentId, [...(grouped.get(a.studentId) || []), a]);
+    });
+
+    if (searchTerm) {
+      const term = searchTerm.trim();
+      const result = new Map<string, Assignment[]>();
+      grouped.forEach((assignments, studentId) => {
+        const student = studentMap.get(studentId);
+        const nameMatch = student?.name?.includes(term);
+        const surahMatch = assignments.some(a => a.surahName.includes(term));
+        if (nameMatch || surahMatch) result.set(studentId, assignments);
+      });
+      return result;
+    }
+
+    if (filterAttendance !== "all") {
+      const result = new Map<string, Assignment[]>();
+      grouped.forEach((assignments, studentId) => {
+        const att = attendanceMap[studentId];
+        if (filterAttendance === "unmarked" && !att) result.set(studentId, assignments);
+        else if (att === filterAttendance) result.set(studentId, assignments);
+      });
+      return result;
+    }
+
+    return grouped;
+  }, [todayAssignments, filterStatus, filterType, searchTerm, filterAttendance, attendanceMap, studentMap]);
 
   const handleComplete = async (assignmentId: string) => {
+    const gradeStr = gradeInputs[assignmentId];
+    const grade = gradeStr ? Number(gradeStr) : undefined;
+    if (gradeStr && (isNaN(grade!) || grade! < 0 || grade! > 100)) {
+      toast({ title: "الدرجة يجب أن تكون بين 0 و 100", variant: "destructive" });
+      return;
+    }
     setCompletingId(assignmentId);
     try {
+      const body: any = { status: "done" };
+      if (grade !== undefined) body.grade = grade;
       const res = await fetch(`/api/assignments/${assignmentId}`, {
         method: "PATCH", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "done" }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
-        setAssignments(prev => prev.map(a => a.id===assignmentId ? {...a, status:"done"} : a));
-        toast({ title: "تم الإتمام", description: "تم منح النقاط تلقائياً" });
+        setAssignments(prev => prev.map(a => a.id===assignmentId ? {...a, status:"done", grade: grade ?? a.grade} : a));
+        setGradeInputs(prev => { const n = {...prev}; delete n[assignmentId]; return n; });
+        toast({ title: "تم الإتمام", description: grade !== undefined ? `الدرجة: ${grade}` : "تم منح النقاط تلقائياً" });
       }
     } catch { toast({ title: "خطأ", variant: "destructive" }); }
     finally { setCompletingId(null); }
@@ -123,6 +178,15 @@ export default function TeacherDailyPage() {
   const totalAssignments = todayAssignments.length;
   const completedCount = todayAssignments.filter(a => a.status==="done").length;
   const pendingCount = todayAssignments.filter(a => a.status==="pending").length;
+  const allStudentIds = new Set(todayAssignments.map(a => a.studentId));
+
+  const hasActiveFilters = searchTerm || filterStatus !== "all" || filterType !== "all" || filterAttendance !== "all";
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterStatus("all");
+    setFilterType("all");
+    setFilterAttendance("all");
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]" data-testid="status-loading-teacher-daily">
@@ -142,7 +206,7 @@ export default function TeacherDailyPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="stats-summary">
         {[
-          { icon:<Users className="w-5 h-5"/>, color:"blue", value:grouped.size, label:"طلاب اليوم" },
+          { icon:<Users className="w-5 h-5"/>, color:"blue", value:allStudentIds.size, label:"طلاب اليوم" },
           { icon:<BookOpen className="w-5 h-5"/>, color:"purple", value:totalAssignments, label:"إجمالي الواجبات" },
           { icon:<CheckCircle className="w-5 h-5"/>, color:"green", value:completedCount, label:"مكتملة" },
           { icon:<Clock className="w-5 h-5"/>, color:"yellow", value:pendingCount, label:"قيد الانتظار" },
@@ -154,14 +218,85 @@ export default function TeacherDailyPage() {
         ))}
       </div>
 
+      <Card className="bg-muted/30 border-dashed" data-testid="filters-section">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">تصفية</span>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-red-500 mr-auto" onClick={clearFilters} data-testid="button-clear-filters">
+                <X className="w-3 h-3" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-44">
+              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="بحث بالاسم أو السورة..."
+                className="pr-8 h-9 text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                data-testid="input-search-daily"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+              <SelectTrigger className="w-32 h-9 text-xs" data-testid="select-filter-status">
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الحالات</SelectItem>
+                <SelectItem value="pending">قيد الانتظار</SelectItem>
+                <SelectItem value="done">مكتملة</SelectItem>
+                <SelectItem value="cancelled">ملغية</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+              <SelectTrigger className="w-28 h-9 text-xs" data-testid="select-filter-type">
+                <SelectValue placeholder="النوع" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأنواع</SelectItem>
+                <SelectItem value="new">جديد</SelectItem>
+                <SelectItem value="review">مراجعة</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterAttendance} onValueChange={(v: any) => setFilterAttendance(v)}>
+              <SelectTrigger className="w-32 h-9 text-xs" data-testid="select-filter-attendance">
+                <SelectValue placeholder="الحضور" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الطلاب</SelectItem>
+                <SelectItem value="present">حاضر</SelectItem>
+                <SelectItem value="absent">غائب</SelectItem>
+                <SelectItem value="late">متأخر</SelectItem>
+                <SelectItem value="unmarked">لم يُسجل</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       {todayAssignments.length === 0 ? (
         <Card><CardContent className="p-12 text-center" data-testid="status-empty">
           <AlertCircle className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
           <p className="text-lg text-muted-foreground">لا توجد واجبات لهذا اليوم</p>
         </CardContent></Card>
+      ) : filteredGrouped.size === 0 ? (
+        <Card><CardContent className="p-8 text-center" data-testid="status-no-results">
+          <Search className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-muted-foreground">لا توجد نتائج مطابقة للفلاتر</p>
+          <Button variant="link" className="text-sm mt-1" onClick={clearFilters}>مسح الفلاتر</Button>
+        </CardContent></Card>
       ) : (
         <div className="space-y-4">
-          {Array.from(grouped.entries()).map(([studentId, studentAssignments]) => {
+          {hasActiveFilters && (
+            <p className="text-xs text-muted-foreground" data-testid="text-filter-count">
+              عرض {filteredGrouped.size} طالب من أصل {allStudentIds.size}
+            </p>
+          )}
+          {Array.from(filteredGrouped.entries()).map(([studentId, studentAssignments]) => {
             const student = studentMap.get(studentId);
             const name = student?.name || "—";
             const att = attendanceMap[studentId];
@@ -254,14 +389,32 @@ export default function TeacherDailyPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline" className="text-xs">{a.type==="review"?"مراجعة":"جديد"}</Badge>
+                          {a.status === "done" && a.grade != null && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              {a.grade}%
+                            </Badge>
+                          )}
                           <Badge variant="outline" className={`text-xs ${a.status==="done"?"bg-green-100 text-green-700":a.status==="cancelled"?"bg-gray-100 text-gray-500":"bg-yellow-100 text-yellow-700"}`}>
                             {a.status==="done"?"تم":a.status==="cancelled"?"ملغي":"قيد الانتظار"}
                           </Badge>
                           {a.status==="pending" && (
-                            <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                              disabled={completingId===a.id} onClick={()=>handleComplete(a.id)} data-testid={`btn-complete-${a.id}`}>
-                              {completingId===a.id ? <Loader2 className="w-3 h-3 animate-spin"/> : <><CheckCircle className="w-3 h-3 ml-1"/>أتمّ</>}
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                placeholder="الدرجة"
+                                className="w-16 h-7 text-xs text-center px-1"
+                                value={gradeInputs[a.id] || ""}
+                                onChange={(e) => setGradeInputs(prev => ({...prev, [a.id]: e.target.value}))}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleComplete(a.id); }}
+                                data-testid={`input-grade-${a.id}`}
+                              />
+                              <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"
+                                disabled={completingId===a.id} onClick={()=>handleComplete(a.id)} data-testid={`btn-complete-${a.id}`}>
+                                {completingId===a.id ? <Loader2 className="w-3 h-3 animate-spin"/> : <><CheckCircle className="w-3 h-3"/>أتمّ</>}
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>
