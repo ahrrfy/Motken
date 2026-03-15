@@ -74,6 +74,10 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
       { href: "/messages", label: "الرسائل", icon: MessageSquare, badge: unread },
       { href: "/notifications", label: "الإشعارات", icon: Bell, badge: unreadNotif },
     ];
+    if (role === "parent") return [
+      { href: "/parent-dashboard", label: "أبنائي", icon: Users },
+      { href: "/notifications", label: "الإشعارات", icon: Bell, badge: unreadNotif },
+    ];
     return [
       { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard },
       { href: "/assignments", label: "الواجبات", icon: ClipboardList },
@@ -124,9 +128,9 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
   return (
     <div className="flex flex-col min-h-screen bg-background" dir="rtl">
       <header className={cn(
-        "sticky top-0 z-40 flex items-center justify-between px-3 h-14 border-b border-white/10 shadow-lg bg-gradient-to-l safe-area-top",
+        "sticky top-0 z-40 flex items-center justify-between px-3 h-12 border-b border-white/10 shadow-lg bg-gradient-to-l",
         roleTheme.headerGradient
-      )}>
+      )} style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <button
           onClick={() => { hapticLight(); onMenuOpen(); }}
           className="p-2.5 rounded-xl hover:bg-white/10 active:bg-white/20 transition-colors text-white/90 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -176,10 +180,10 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
       <main ref={containerRef} className="flex-1 overflow-y-auto pb-20">{children}</main>
 
       <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-40 bg-card/98 backdrop-blur-xl border-t border-border/40",
+        "fixed bottom-0 left-0 right-0 z-40 bg-card/98 border-t border-border/40",
         `shadow-[0_-4px_20px_-4px] ${roleTheme.navGlow}`
-      )}>
-        <div className="flex items-center justify-around h-16 px-1 safe-area-bottom">
+      )} style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        <div className="flex items-center justify-around h-14 px-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
