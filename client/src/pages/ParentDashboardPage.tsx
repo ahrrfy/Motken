@@ -7,6 +7,19 @@ import {
   Loader2, Users, BookOpen, CalendarCheck, Gift, TrendingUp, GraduationCap, CheckCircle2, XCircle, Clock
 } from "lucide-react";
 
+const RELATIONSHIP_LABELS: Record<string, string> = {
+  parent: "ولي أمر",
+  father: "أب",
+  mother: "أم",
+  guardian: "وصي",
+  brother: "أخ",
+  sister: "أخت",
+  uncle: "عم / خال",
+  grandfather: "جد",
+  grandmother: "جدة",
+  other: "أخرى",
+};
+
 interface ChildData {
   id: string;
   name: string;
@@ -14,6 +27,7 @@ interface ChildData {
   gender: string;
   studyMode: string;
   isActive: boolean;
+  relationship?: string;
   stats: {
     totalAssignments: number;
     completedAssignments: number;
@@ -114,6 +128,9 @@ export default function ParentDashboardPage() {
               }`}
             >
               {c.name}
+              {c.relationship && c.relationship !== "parent" && (
+                <span className="text-[10px] opacity-75 mr-1">({RELATIONSHIP_LABELS[c.relationship] || c.relationship})</span>
+              )}
             </button>
           ))}
         </div>
@@ -300,7 +317,12 @@ export default function ParentDashboardPage() {
                   data-testid={`card-child-${c.id}`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-bold text-sm">{c.name}</p>
+                    <div>
+                      <p className="font-bold text-sm">{c.name}</p>
+                      {c.relationship && (
+                        <p className="text-[10px] text-muted-foreground">{RELATIONSHIP_LABELS[c.relationship] || c.relationship}</p>
+                      )}
+                    </div>
                     <Badge variant={c.isActive ? "default" : "secondary"} className="text-[10px]">
                       {c.isActive ? "نشط" : "متوقف"}
                     </Badge>

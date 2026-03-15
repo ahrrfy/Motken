@@ -98,35 +98,60 @@ export function registerFamilyRoutes(app: Express) {
           return res.status(403).json({ message: "غير مصرح بالوصول لهذا الرقم" });
         }
       }
-      const links = await storage.getFamilyLinksByParentPhone(phone);
-      if (links.length === 0) {
-        return res.json({ children: [] });
+      const cleanDigitsLocal = (s: string) => (s || "").replace(/[^\d]/g, "");
+      const cleanPhone = cleanDigitsLocal(phone);
+      if (!cleanPhone) return res.json({ children: [] });
+
+      const childrenMap = new Map<string, { student: any; relationship: string }>();
+
+      const mosqueId = currentUser.role === "admin" ? null : currentUser.mosqueId;
+
+      if (mosqueId) {
+        const mosqueLinks = await storage.getFamilyLinksByMosque(mosqueId);
+        for (const link of mosqueLinks) {
+          if (cleanDigitsLocal(link.parentPhone) === cleanPhone && !childrenMap.has(link.studentId)) {
+            const student = await storage.getUser(link.studentId);
+            if (student) childrenMap.set(link.studentId, { student, relationship: link.relationship || "parent" });
+          }
+        }
+        const allStudents = await storage.getUsersByMosqueAndRole(mosqueId, "student");
+        for (const student of allStudents) {
+          if (cleanDigitsLocal(student.parentPhone || "") === cleanPhone && !childrenMap.has(student.id)) {
+            childrenMap.set(student.id, { student, relationship: "parent" });
+          }
+        }
+      } else {
+        const allLinks = await storage.getFamilyLinksByParentPhone(phone);
+        for (const link of allLinks) {
+          if (cleanDigitsLocal(link.parentPhone) === cleanPhone && !childrenMap.has(link.studentId)) {
+            const student = await storage.getUser(link.studentId);
+            if (student) childrenMap.set(link.studentId, { student, relationship: link.relationship || "parent" });
+          }
+        }
       }
-      const filteredLinks = [];
-      for (const link of links) {
-        const student = await storage.getUser(link.studentId);
-        if (!student) continue;
-        if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId) continue;
-        filteredLinks.push({ link, student });
-      }
-      const children = await Promise.all(filteredLinks.map(async ({ link, student }) => {
-        const [studentAssignments, studentAttendance, studentPoints] = await Promise.all([
-          storage.getAssignmentsByStudent(student.id),
-          storage.getAttendanceByStudent(student.id),
-          storage.getPointsByUser(student.id),
-        ]);
-        const totalAssignments = studentAssignments.length;
-        const completedAssignments = studentAssignments.filter(a => a.status === "done").length;
-        const avgGrade = studentAssignments.filter(a => a.grade != null).reduce((sum, a) => sum + (a.grade || 0), 0) / (studentAssignments.filter(a => a.grade != null).length || 1);
-        const presentCount = studentAttendance.filter(a => a.status === "present").length;
-        const totalPoints = studentPoints.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-        return {
-          id: student.id, studentName: student.name, name: student.name, level: student.level,
-          relationship: link.relationship,
-          attendance: presentCount, points: totalPoints, assignments: completedAssignments,
-          stats: { totalAssignments, completedAssignments, avgGrade: Math.round(avgGrade) },
-        };
-      }));
+
+      if (childrenMap.size === 0) return res.json({ children: [] });
+
+      const children = await Promise.all(
+        Array.from(childrenMap.values()).map(async ({ student, relationship }) => {
+          const [studentAssignments, studentAttendance, studentPoints] = await Promise.all([
+            storage.getAssignmentsByStudent(student.id),
+            storage.getAttendanceByStudent(student.id),
+            storage.getPointsByUser(student.id),
+          ]);
+          const totalAssignments = studentAssignments.length;
+          const completedAssignments = studentAssignments.filter(a => a.status === "done").length;
+          const avgGrade = studentAssignments.filter(a => a.grade != null).reduce((sum, a) => sum + (a.grade || 0), 0) / (studentAssignments.filter(a => a.grade != null).length || 1);
+          const presentCount = studentAttendance.filter(a => a.status === "present").length;
+          const totalPoints = studentPoints.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+          return {
+            id: student.id, studentName: student.name, name: student.name, level: student.level,
+            relationship,
+            attendance: presentCount, points: totalPoints, assignments: completedAssignments,
+            stats: { totalAssignments, completedAssignments, avgGrade: Math.round(avgGrade) },
+          };
+        })
+      );
       res.json({ children });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
