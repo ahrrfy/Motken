@@ -90,6 +90,12 @@ export default function AttendancePage() {
   const [filterSearch, setFilterSearch] = useState("");
   const [filterLevel, setFilterLevel] = useState("all");
 
+  const [markSearchTerm, setMarkSearchTerm] = useState("");
+  const [markFilterTeacher, setMarkFilterTeacher] = useState("all");
+  const [markFilterStatus, setMarkFilterStatus] = useState<"all"|"present"|"absent"|"late"|"excused">("all");
+  const [markFilterLevel, setMarkFilterLevel] = useState("all");
+  const [teachers, setTeachers] = useState<{id: string; name: string}[]>([]);
+
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
   const [calendarData, setCalendarData] = useState<AttendanceRecord[]>([]);
@@ -113,14 +119,47 @@ export default function AttendancePage() {
     return { total, present, absent, late, rate };
   }, [attendanceData]);
 
+  const filteredMarkStudents = useMemo(() => {
+    return students.filter(s => {
+      if (markSearchTerm && !s.name.includes(markSearchTerm)) return false;
+      if (markFilterTeacher !== "all" && s.teacherId !== markFilterTeacher) return false;
+      if (markFilterLevel !== "all" && String(s.level || 1) !== markFilterLevel) return false;
+      if (markFilterStatus !== "all") {
+        const entry = attendanceData[s.id];
+        if (entry && entry.status !== markFilterStatus) return false;
+      }
+      return true;
+    });
+  }, [students, markSearchTerm, markFilterTeacher, markFilterLevel, markFilterStatus, attendanceData]);
+
+  const hasMarkFilters = markSearchTerm || markFilterTeacher !== "all" || markFilterStatus !== "all" || markFilterLevel !== "all";
+  const clearMarkFilters = () => {
+    setMarkSearchTerm("");
+    setMarkFilterTeacher("all");
+    setMarkFilterStatus("all");
+    setMarkFilterLevel("all");
+  };
+
+  const getTeacherNameById = (teacherId?: string | null) => {
+    if (!teacherId) return "";
+    const t = teachers.find(t => t.id === teacherId);
+    return t?.name || "";
+  };
+
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/users?role=student", { credentials: "include" });
+      const [res, teachersRes] = await Promise.all([
+        fetch("/api/users?role=student", { credentials: "include" }),
+        (isSupervisor || isAdmin) ? fetch("/api/users?role=teacher", { credentials: "include" }) : Promise.resolve(null),
+      ]);
+      if (teachersRes && teachersRes.ok) {
+        const tData = await teachersRes.json();
+        setTeachers(tData.map((t: any) => ({ id: t.id, name: t.name })));
+      }
       if (res.ok) {
         const data: Student[] = await res.json();
 
-        // Fetch patterns and discipline scores for each student
         const enrichedData = await Promise.all(data.map(async (student) => {
           try {
             const patternRes = await fetch(`/api/attendance-patterns/${student.id}`, { credentials: "include" });
@@ -648,6 +687,70 @@ export default function AttendancePage() {
                   تحديد الكل غائب
                 </Button>
               </div>
+
+              <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-dashed space-y-2">
+                <div className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">تصفية الطلاب</span>
+                  {hasMarkFilters && (
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-red-500 mr-auto" onClick={clearMarkFilters} data-testid="button-clear-mark-filters">
+                      <XCircle className="w-3 h-3" />
+                      مسح الفلاتر
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-44">
+                    <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="بحث بالاسم..."
+                      className="pr-8 h-9 text-sm"
+                      value={markSearchTerm}
+                      onChange={(e) => setMarkSearchTerm(e.target.value)}
+                      data-testid="input-mark-search"
+                    />
+                  </div>
+                  {(isSupervisor || isAdmin) && teachers.length > 0 && (
+                    <Select value={markFilterTeacher} onValueChange={setMarkFilterTeacher}>
+                      <SelectTrigger className="w-36 h-9 text-xs" data-testid="select-mark-teacher">
+                        <SelectValue placeholder="المعلم" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">كل المعلمين</SelectItem>
+                        {teachers.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Select value={markFilterStatus} onValueChange={(v: any) => setMarkFilterStatus(v)}>
+                    <SelectTrigger className="w-32 h-9 text-xs" data-testid="select-mark-status">
+                      <SelectValue placeholder="الحالة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل الحالات</SelectItem>
+                      <SelectItem value="present">حاضر</SelectItem>
+                      <SelectItem value="absent">غائب</SelectItem>
+                      <SelectItem value="late">متأخر</SelectItem>
+                      <SelectItem value="excused">معذور</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={markFilterLevel} onValueChange={setMarkFilterLevel}>
+                    <SelectTrigger className="w-28 h-9 text-xs" data-testid="select-mark-level">
+                      <SelectValue placeholder="المستوى" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل المستويات</SelectItem>
+                      {[1,2,3,4,5].map(l => (
+                        <SelectItem key={l} value={String(l)}>المستوى {l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {hasMarkFilters && (
+                  <p className="text-xs text-muted-foreground">عرض {filteredMarkStudents.length} من أصل {students.length} طالب</p>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -675,7 +778,7 @@ export default function AttendancePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {students.filter(s => filterLevel === "all" || String(s.level || 1) === filterLevel).map((student, index) => {
+                        {filteredMarkStudents.map((student, index) => {
                           const entry = attendanceData[student.id];
                           const showReason = entry?.status === "absent" || entry?.status === "excused";
                           const isAbsent = entry?.status === "absent";
@@ -719,6 +822,9 @@ export default function AttendancePage() {
                                         </Badge>
                                       )}
                                     </div>
+                                    {(isSupervisor || isAdmin) && getTeacherNameById(student.teacherId) && (
+                                      <span className="text-[10px] text-muted-foreground">المعلم: {getTeacherNameById(student.teacherId)}</span>
+                                    )}
                                     {student.patterns && student.patterns.length > 0 && (
                                       <div className="flex flex-wrap gap-1 mt-0.5">
                                         {student.patterns.map((p, i) => (
