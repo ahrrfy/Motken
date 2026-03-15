@@ -352,8 +352,8 @@ export function registerUsersRoutes(app: Express) {
     }
 
     const safeFields = ["name", "phone", "address", "gender", "avatar", "age", "telegramId", "parentPhone", "educationLevel", "isChild", "isSpecialNeeds", "isOrphan", "password"];
-    const supervisorFields = ["teacherId", "level", "teacherLevels", "studyMode"];
-    const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil"];
+    const supervisorFields = ["teacherId", "level", "teacherLevels", "studyMode", "isActive", "username", "adminNotes"];
+    const adminOnlyFields = ["role", "mosqueId", "canPrintIds", "suspendedUntil"];
     const allAllowedFields = [...safeFields, ...supervisorFields, ...adminOnlyFields];
     const receivedKeys = Object.keys(req.body);
     const forbiddenKeys = receivedKeys.filter(k => !allAllowedFields.includes(k));
@@ -457,6 +457,33 @@ export function registerUsersRoutes(app: Express) {
       await logActivity(currentUser, `تغيير كلمة مرور المستخدم ${targetUser.name} (${targetUser.username})`, "security");
     }
 
+    if (["admin", "supervisor"].includes(currentUser.role) && currentUser.id !== req.params.id) {
+      if (req.body.isActive !== undefined) {
+        if (targetUser.role === "admin" && req.body.isActive === false) {
+          return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
+        }
+        updateData.isActive = req.body.isActive;
+      }
+      if (req.body.username !== undefined) {
+        if (typeof req.body.username !== "string" || req.body.username.length < 3 || req.body.username.length > 50) {
+          return res.status(400).json({ message: "اسم المستخدم يجب أن يكون بين 3 و 50 حرف" });
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(req.body.username)) {
+          return res.status(400).json({ message: "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام فقط" });
+        }
+        const existingUser = await storage.getUserByUsername(req.body.username);
+        if (existingUser && existingUser.id !== req.params.id) {
+          return res.status(400).json({ message: "اسم المستخدم مستخدم بالفعل" });
+        }
+        updateData.username = req.body.username;
+      }
+      if (req.body.adminNotes !== undefined) {
+        const anCheck = validateFields({ adminNotes: req.body.adminNotes }, ["adminNotes"]);
+        if (!anCheck.valid) return res.status(400).json({ message: anCheck.error });
+        updateData.adminNotes = req.body.adminNotes;
+      }
+    }
+
     if (currentUser.role === "admin") {
       if (req.body.role !== undefined) {
         const validRoles = ["admin", "supervisor", "teacher", "student"];
@@ -466,30 +493,10 @@ export function registerUsersRoutes(app: Express) {
         updateData.role = req.body.role;
       }
       if (req.body.mosqueId !== undefined) updateData.mosqueId = req.body.mosqueId;
-      if (req.body.isActive !== undefined) {
-        if (targetUser.role === "admin" && req.body.isActive === false) {
-          return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
-        }
-        updateData.isActive = req.body.isActive;
-      }
       if (req.body.canPrintIds !== undefined) {
         const cpCheck = validateBoolean(req.body.canPrintIds, "canPrintIds");
         if (!cpCheck.valid) return res.status(400).json({ message: cpCheck.error });
         updateData.canPrintIds = req.body.canPrintIds;
-      }
-      if (req.body.username !== undefined) {
-        if (typeof req.body.username !== "string" || req.body.username.length < 3 || req.body.username.length > 50) {
-          return res.status(400).json({ message: "اسم المستخدم يجب أن يكون بين 3 و 50 حرف" });
-        }
-        if (!/^[a-zA-Z0-9_]+$/.test(req.body.username)) {
-          return res.status(400).json({ message: "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام فقط" });
-        }
-        updateData.username = req.body.username;
-      }
-      if (req.body.adminNotes !== undefined) {
-        const anCheck = validateFields({ adminNotes: req.body.adminNotes }, ["adminNotes"]);
-        if (!anCheck.valid) return res.status(400).json({ message: anCheck.error });
-        updateData.adminNotes = req.body.adminNotes;
       }
       if (req.body.suspendedUntil !== undefined) {
         if (targetUser.role === "admin") {
