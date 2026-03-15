@@ -139,6 +139,12 @@
   }
   body {
     @apply bg-background text-foreground antialiased font-sans;
+    overflow-y: auto !important;
+  }
+
+  html, body, #root {
+    min-height: 100vh;
+    overflow-y: auto;
   }
 }
 

@@ -14,6 +14,30 @@ export default function PublicParentReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.documentElement.style.overflow = "auto";
+    document.documentElement.style.height = "auto";
+    document.body.style.overflow = "auto";
+    document.body.style.height = "auto";
+    const root = document.getElementById("root");
+    if (root) {
+      root.style.overflow = "auto";
+      root.style.height = "auto";
+      root.style.minHeight = "100vh";
+    }
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.documentElement.style.height = "";
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+      if (root) {
+        root.style.overflow = "";
+        root.style.height = "";
+        root.style.minHeight = "";
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!token) return;
     fetch(`/api/parent-report/${token}`)
       .then(res => {
@@ -93,7 +117,7 @@ export default function PublicParentReportPage() {
   const mosqueAvgAttendance = 82;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background" dir="rtl">
+    <div className="bg-gradient-to-b from-primary/5 to-background pb-8" dir="rtl" style={{ minHeight: "100%", display: "block" }}>
       <div className="bg-primary text-primary-foreground py-4 px-6 print:bg-white print:text-black">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <img src="/logo.png" alt="متقن" className="w-10 h-10 rounded-lg" />
@@ -206,7 +230,7 @@ export default function PublicParentReportPage() {
                 <FileText className="w-4 h-4 text-primary" />
                 تفاصيل التقرير
               </h3>
-              <div className="whitespace-pre-wrap text-sm leading-relaxed font-sans bg-muted/20 rounded-lg p-5 border border-primary/5 text-foreground/90" data-testid="text-report-content">
+              <div className="whitespace-pre-wrap text-sm leading-relaxed font-sans bg-muted/20 rounded-lg p-5 border border-primary/5 text-foreground/90 overflow-y-auto" style={{ maxHeight: "70vh" }} data-testid="text-report-content">
                 {report.content}
               </div>
             </div>
