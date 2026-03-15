@@ -62,9 +62,13 @@ const retentionMap: Record<string, { label: string; color: string }> = {
 };
 
 const recitationStyles: Record<string, string> = {
-  hafs: "حفص",
-  warsh: "ورش",
-  qaloon: "قالون",
+  none: "بدون رواية",
+  hafs: "حفص عن عاصم",
+  warsh: "ورش عن نافع",
+  qaloon: "قالون عن نافع",
+  shubah: "شعبة عن عاصم",
+  alduri: "الدوري عن أبي عمرو",
+  alsusi: "السوسي عن أبي عمرو",
 };
 
 const gradeOptions = [
@@ -108,7 +112,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editGraduate, setEditGraduate] = useState<Graduate | null>(null);
-  const [editForm, setEditForm] = useState({ graduationDate: "", totalJuz: "30", ijazahChain: "", ijazahTeacher: "", finalGrade: "" });
+  const [editForm, setEditForm] = useState({ graduationDate: "", totalJuz: "30", ijazahChain: "", ijazahTeacher: "", finalGrade: "", recitationStyle: "hafs" });
 
   const canManage = user?.role === "admin" || user?.role === "supervisor" || user?.role === "teacher";
   const canDelete = user?.role === "admin" || user?.role === "supervisor";
@@ -169,6 +173,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
           totalJuz: parseInt(totalJuz) || 30,
           ijazahChain: ijazahChain || null,
           ijazahTeacher: ijazahTeacher || null,
+          recitationStyle: recitationStyle === "none" ? null : recitationStyle,
           finalGrade: finalGrade || null,
           templateId: selectedTemplateId,
         }),
@@ -270,6 +275,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
       ijazahChain: g.ijazahChain || "",
       ijazahTeacher: g.ijazahTeacher || "",
       finalGrade: g.finalGrade || "",
+      recitationStyle: g.recitationStyle || "none",
     });
     setEditDialogOpen(true);
   };
@@ -287,6 +293,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
           totalJuz: parseInt(editForm.totalJuz) || 30,
           ijazahChain: editForm.ijazahChain || null,
           ijazahTeacher: editForm.ijazahTeacher || null,
+          recitationStyle: editForm.recitationStyle === "none" ? null : editForm.recitationStyle,
           finalGrade: editForm.finalGrade || null,
         }),
       });
@@ -691,6 +698,19 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label>الرواية</Label>
+                    <Select value={recitationStyle} onValueChange={setRecitationStyle}>
+                      <SelectTrigger data-testid="select-recitation-style">
+                        <SelectValue placeholder="اختر الرواية" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(recitationStyles).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label>سند الإجازة</Label>
@@ -817,6 +837,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                     <TableHead className="text-right">اسم الخريج</TableHead>
                     <TableHead className="text-right">تاريخ التخرج</TableHead>
                     <TableHead className="text-right">الأجزاء</TableHead>
+                    <TableHead className="text-right">الرواية</TableHead>
                     <TableHead className="text-right">الإجازة</TableHead>
                     <TableHead className="text-right">التقدير</TableHead>
                     <TableHead className="text-right">الإجراءات</TableHead>
@@ -835,6 +856,9 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                       </TableCell>
                       <TableCell data-testid={`text-graduation-date-${g.id}`}>{formatDateAr(g.graduationDate)}</TableCell>
                       <TableCell data-testid={`text-juz-${g.id}`}>{g.totalJuz}</TableCell>
+                      <TableCell data-testid={`text-riwaya-${g.id}`}>
+                        {g.recitationStyle ? (recitationStyles[g.recitationStyle] || g.recitationStyle) : "—"}
+                      </TableCell>
                       <TableCell data-testid={`text-ijazah-${g.id}`}>
                         {g.ijazahChain ? (
                           <Badge className="bg-green-100 text-green-800 border-green-200">حاصل على إجازة</Badge>
@@ -931,6 +955,19 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                   <SelectContent>
                     {gradeOptions.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>الرواية</Label>
+                <Select value={editForm.recitationStyle} onValueChange={v => setEditForm(f => ({ ...f, recitationStyle: v }))}>
+                  <SelectTrigger data-testid="select-edit-recitation-style">
+                    <SelectValue placeholder="اختر الرواية" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(recitationStyles).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
