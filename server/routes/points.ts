@@ -14,8 +14,21 @@ export function registerPointsRoutes(app: Express) {
   // ==================== POINTS & BADGES ====================
   app.get("/api/points", requireAuth, async (req, res) => {
     try {
-      const userId = (req.query.userId as string) || req.user!.id;
-      const pts = await storage.getPointsByUser(userId);
+      const currentUser = req.user!;
+      const userId = req.query.userId as string | undefined;
+      if (userId) {
+        const pts = await storage.getPointsByUser(userId);
+        return res.json(pts);
+      }
+      if (["admin", "teacher", "supervisor"].includes(currentUser.role) && currentUser.mosqueId) {
+        const pts = await storage.getPointsByMosque(currentUser.mosqueId);
+        const enriched = await Promise.all(pts.map(async (p) => {
+          const u = await storage.getUser(p.userId);
+          return { ...p, userName: u?.name || p.userId };
+        }));
+        return res.json(enriched);
+      }
+      const pts = await storage.getPointsByUser(currentUser.id);
       res.json(pts);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب النقاط" });
@@ -84,14 +97,20 @@ export function registerPointsRoutes(app: Express) {
   app.get("/api/badges", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
-      let userId = (req.query.userId as string) || currentUser.id;
-      if (userId !== currentUser.id && currentUser.role !== "admin") {
-        const targetUser = await storage.getUser(userId);
-        if (targetUser && targetUser.mosqueId !== currentUser.mosqueId) {
-          return res.status(403).json({ message: "غير مصرح بالوصول لأوسمة مستخدم من جامع آخر" });
-        }
+      const userId = req.query.userId as string | undefined;
+      if (userId) {
+        const userBadges = await storage.getBadgesByUser(userId);
+        return res.json(userBadges);
       }
-      const userBadges = await storage.getBadgesByUser(userId);
+      if (["admin", "teacher", "supervisor"].includes(currentUser.role) && currentUser.mosqueId) {
+        const mosqueBadges = await storage.getBadgesByMosque(currentUser.mosqueId);
+        const enriched = await Promise.all(mosqueBadges.map(async (b) => {
+          const u = await storage.getUser(b.userId);
+          return { ...b, userName: u?.name || b.userId };
+        }));
+        return res.json(enriched);
+      }
+      const userBadges = await storage.getBadgesByUser(currentUser.id);
       res.json(userBadges);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب الأوسمة" });
