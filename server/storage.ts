@@ -296,7 +296,10 @@ export class DatabaseStorage implements IStorage {
 
   async getUsersByTeacher(teacherId: string): Promise<User[]> {
     return db.select().from(users).where(
-      and(eq(users.teacherId, teacherId), eq(users.role, "student"))
+      and(
+        eq(users.teacherId, teacherId),
+        or(eq(users.role, "student"), eq(users.role, "teacher"))
+      )
     ).orderBy(desc(users.createdAt));
   }
 

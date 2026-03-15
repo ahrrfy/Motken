@@ -416,7 +416,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               <p className="text-[10px] text-sidebar-foreground/50 truncate">{
                 user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
                 user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
-                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
+                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) :
+                user.role === "student" ? (isEn ? "Student" : (user.actualRole === "teacher" ? "طالب (أستاذ)" : "طالب")) : (isEn ? "Student" : "طالب")
               }</p>
             )}
           </div>
@@ -460,6 +461,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           {user?.role === "supervisor"
             ? (isEn ? "Teacher Mode" : "وضع الأستاذ")
             : (isEn ? "Supervisor Mode" : "وضع المشرف")}
+        </Button>
+      )}
+      {!previewRole && (user?.actualRole === "teacher" || (user?.role === "teacher" && !user?.actualRole)) && user?.teacherId && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={switchRole}
+          className="w-full h-8 text-xs bg-sky-900/20 border-sky-700/30 text-sky-400 hover:bg-sky-800/30 hover:text-sky-300"
+          data-testid="button-switch-role-teacher"
+        >
+          <ArrowLeftRight className="w-3.5 h-3.5 ml-1.5" />
+          {user?.role === "teacher"
+            ? (isEn ? "Student Mode" : "وضع الطالب")
+            : (isEn ? "Teacher Mode" : "وضع الأستاذ")}
         </Button>
       )}
       {previewRole && (

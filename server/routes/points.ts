@@ -16,8 +16,13 @@ export function registerPointsRoutes(app: Express) {
     try {
       const currentUser = req.user!;
       const userId = req.query.userId as string | undefined;
+      const asStudent = req.query.asStudent === "true" && currentUser.role === "teacher" && !!currentUser.teacherId;
       if (userId) {
         const pts = await storage.getPointsByUser(userId);
+        return res.json(pts);
+      }
+      if (asStudent) {
+        const pts = await storage.getPointsByUser(currentUser.id);
         return res.json(pts);
       }
       if (["admin", "teacher", "supervisor"].includes(currentUser.role) && currentUser.mosqueId) {
@@ -163,7 +168,7 @@ export function registerPointsRoutes(app: Express) {
       const conditions = [];
       if (studentId) {
         conditions.push(eq(pointRedemptions.studentId, studentId));
-      } else if (currentUser.role === "student") {
+      } else if (currentUser.role === "student" || (req.query.asStudent === "true" && currentUser.role === "teacher" && currentUser.teacherId)) {
         conditions.push(eq(pointRedemptions.studentId, currentUser.id));
       }
       if (currentUser.mosqueId && currentUser.role !== "admin") {

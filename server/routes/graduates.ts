@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import {
   graduates,
 } from "@shared/schema";
-import { logActivity, canTeacherAccessStudent } from "./shared";
+import { logActivity, canTeacherAccessStudent, isStudentOrTeacherAsStudent } from "./shared";
 
 export function registerGraduatesRoutes(app: Express) {
   // ==================== GRADUATES ====================
@@ -48,7 +48,7 @@ export function registerGraduatesRoutes(app: Express) {
         return res.status(400).json({ message: "البيانات المطلوبة غير مكتملة" });
       }
       const student = await storage.getUser(studentId);
-      if (!student || student.role !== "student") {
+      if (!student || !isStudentOrTeacherAsStudent(student)) {
         return res.status(400).json({ message: "الطالب غير موجود" });
       }
       if (currentUser.role === "teacher" && !canTeacherAccessStudent(currentUser, student)) {
