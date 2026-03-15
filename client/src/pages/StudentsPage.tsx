@@ -100,7 +100,7 @@ export default function StudentsPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
   const phoneValidation = usePhoneValidation(formData.phone, selectedStudent?.id);
-  const parentPhoneValidation = usePhoneValidation(formData.parentPhone, selectedStudent?.id);
+  const parentPhoneValidation = usePhoneValidation(formData.parentPhone, selectedStudent?.id, "parent");
 
   const [sortBy, setSortBy] = useState("name");
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());

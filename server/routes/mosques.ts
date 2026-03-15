@@ -506,11 +506,14 @@ export function registerMosquesRoutes(app: Express) {
       }
       const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
       const cleanPhone = cleanDigits(phone);
+      const isParentPhoneCheck = req.query.type === "parent";
       const exists = usersToCheck.some(u => {
         if (excludeId && u.id === excludeId) return false;
+        if (isParentPhoneCheck) {
+          return false;
+        }
         const up = cleanDigits(u.phone || "");
-        const upp = cleanDigits(u.parentPhone || "");
-        return (up && up === cleanPhone) || (upp && upp === cleanPhone);
+        return up && up === cleanPhone;
       });
       return res.json({ exists });
     } catch (error) {

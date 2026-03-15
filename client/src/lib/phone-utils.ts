@@ -48,7 +48,7 @@ export type PhoneValidationState = {
   checking: boolean;
 };
 
-export function usePhoneValidation(phone: string, excludeId?: string): PhoneValidationState {
+export function usePhoneValidation(phone: string, excludeId?: string, phoneType?: "personal" | "parent"): PhoneValidationState {
   const [state, setState] = useState<PhoneValidationState>({ valid: false, message: "", checking: false });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -63,6 +63,11 @@ export function usePhoneValidation(phone: string, excludeId?: string): PhoneVali
     }
     if (digits.length < 7) {
       setState({ valid: false, message: "رقم الهاتف قصير جداً", checking: false });
+      return;
+    }
+
+    if (phoneType === "parent") {
+      setState({ valid: true, message: "رقم الهاتف صالح", checking: false });
       return;
     }
 
@@ -86,7 +91,7 @@ export function usePhoneValidation(phone: string, excludeId?: string): PhoneVali
         setState({ valid: false, message: "", checking: false });
       }
     }
-  }, []);
+  }, [phoneType]);
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
