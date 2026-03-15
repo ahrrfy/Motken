@@ -48,6 +48,7 @@ const CrisisManagementPage = lazy(() => import("@/pages/CrisisManagementPage"));
 const InstitutionalPage = lazy(() => import("@/pages/InstitutionalPage"));
 const MaintenancePage = lazy(() => import("@/pages/MaintenancePage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const ParentDashboardPage = lazy(() => import("@/pages/ParentDashboardPage"));
 const ActivityLogsPage = lazy(() => import("@/pages/ActivityLogsPage"));
 const OnlineUsersPage = lazy(() => import("@/pages/OnlineUsersPage"));
 const ChangelogPage = lazy(() => import("@/pages/ChangelogPage"));
@@ -119,6 +120,7 @@ export default function MobileApp() {
                 <Route path="/notifications" component={NotificationsPage} />
                 <Route path="/smart-alerts" component={SmartAlertsPage} />
                 <Route path="/parent-portal" component={ParentPortalPage} />
+                <Route path="/parent-dashboard" component={ParentDashboardPage} />
                 <Route path="/family-system" component={FamilySystemPage} />
                 <Route path="/whiteboard" component={WhiteboardPage} />
                 <Route path="/spread" component={SpreadPage} />
@@ -137,7 +139,7 @@ export default function MobileApp() {
                 <Route path="/activity-logs" component={ActivityLogsPage} />
                 <Route path="/online-users" component={OnlineUsersPage} />
                 <Route path="/changelog" component={ChangelogPage} />
-                <Route path="/" component={DashboardPage} />
+                <Route path="/">{() => user?.role === "parent" ? <ParentDashboardPage /> : <DashboardPage />}</Route>
                 <Route>
                   {() => (
                     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-6" dir="rtl">

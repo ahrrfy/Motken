@@ -37,6 +37,13 @@ export const db = drizzle(pool, { schema });
 
 export async function createIndexes() {
   const client = await pool.connect();
+  try {
+    await client.query(`ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'parent'`);
+  } catch (e: any) {
+    if (!e.message?.includes("already exists")) {
+      console.warn("Could not add 'parent' to user_role enum:", e.message);
+    }
+  }
   const indexStatements = [
     `CREATE INDEX IF NOT EXISTS idx_users_mosque_id ON users(mosque_id)`,
     `CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`,
