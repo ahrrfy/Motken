@@ -179,11 +179,10 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex" dir="rtl">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div
         ref={sidebarRef}
-        className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col transition-transform duration-200"
-        style={{ transform: swipeOffset > 0 ? `translateX(${swipeOffset}px)` : undefined }}
+        className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

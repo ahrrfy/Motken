@@ -2,7 +2,6 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { Route, Switch, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { AnimatePresence, motion } from "framer-motion";
 import MobileLayout from "./MobileLayout";
 import MobileSidebar from "./MobileSidebar";
 import MobileFAB from "./MobileFAB";
@@ -60,12 +59,7 @@ function getSkeleton(path: string) {
   return <GenericSkeleton />;
 }
 
-const pageTransition = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.2, ease: "easeOut" },
-};
+
 
 export default function MobileApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -91,8 +85,6 @@ export default function MobileApp() {
       <MobileSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <MobileOfflineBanner />
       <MobileLayout onMenuOpen={() => setSidebarOpen(true)}>
-        <AnimatePresence mode="wait">
-          <motion.div key={location} {...pageTransition}>
             <Suspense fallback={getSkeleton(location)}>
               <Switch>
                 <Route path="/daily" component={TeacherDailyPage} />
@@ -154,8 +146,6 @@ export default function MobileApp() {
                 </Route>
               </Switch>
             </Suspense>
-          </motion.div>
-        </AnimatePresence>
       </MobileLayout>
       <MobileFAB />
     </>
