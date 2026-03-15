@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers, Pencil, Save } from "lucide-react";
 import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
@@ -29,8 +30,13 @@ interface Teacher {
   address?: string;
   avatar?: string;
   gender?: string | null;
+  age?: number | null;
+  telegramId?: string | null;
+  educationLevel?: string | null;
   teacherLevels?: string | null;
+  adminNotes?: string | null;
   isActive: boolean;
+  createdAt?: string;
 }
 
 const LEVEL_NAMES: Record<number, string> = { 1: "المستوى الأول", 2: "المستوى الثاني", 3: "المستوى الثالث", 4: "المستوى الرابع", 5: "المستوى الخامس", 6: "المستوى السادس", 7: "حافظ" };
@@ -67,6 +73,11 @@ export default function TeachersPage() {
   const [levelDialogOpen, setLevelDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const editAvatarRef = useRef<HTMLInputElement>(null);
   const phoneValidation = usePhoneValidation(formData.phone);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -225,6 +236,93 @@ export default function TeachersPage() {
       toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openEditTeacher = (teacher: Teacher) => {
+    setEditTeacher(teacher);
+    setEditFormData({
+      name: teacher.name || "",
+      username: teacher.username || "",
+      phone: teacher.phone || "",
+      address: teacher.address || "",
+      gender: teacher.gender || "male",
+      age: teacher.age ? String(teacher.age) : "",
+      educationLevel: teacher.educationLevel || "",
+      telegramId: teacher.telegramId || "",
+      avatar: teacher.avatar || "",
+      isActive: teacher.isActive,
+      adminNotes: teacher.adminNotes || "",
+      password: "",
+      teacherLevels: teacher.teacherLevels ? teacher.teacherLevels.split(",").map(Number) : [1, 2, 3, 4, 5, 6, 7],
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "خطأ", description: "يرجى اختيار ملف صورة", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result as string;
+      if (base64.length > 500000) {
+        toast({ title: "خطأ", description: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)", variant: "destructive" });
+        return;
+      }
+      setEditFormData((prev: any) => ({ ...prev, avatar: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveTeacher = async () => {
+    if (!editTeacher) return;
+    setEditSubmitting(true);
+    try {
+      const body: any = {};
+      if (editFormData.name !== editTeacher.name) body.name = editFormData.name;
+      if (editFormData.username !== editTeacher.username) body.username = editFormData.username;
+      if (editFormData.phone !== (editTeacher.phone || "")) body.phone = editFormData.phone;
+      if (editFormData.address !== (editTeacher.address || "")) body.address = editFormData.address;
+      if (editFormData.gender !== (editTeacher.gender || "male")) body.gender = editFormData.gender;
+      if (editFormData.age !== (editTeacher.age ? String(editTeacher.age) : "")) body.age = editFormData.age ? parseInt(editFormData.age) : null;
+      if (editFormData.educationLevel !== (editTeacher.educationLevel || "")) body.educationLevel = editFormData.educationLevel || null;
+      if (editFormData.telegramId !== (editTeacher.telegramId || "")) body.telegramId = editFormData.telegramId || null;
+      if (editFormData.avatar !== (editTeacher.avatar || "")) body.avatar = editFormData.avatar;
+      if (editFormData.isActive !== editTeacher.isActive) body.isActive = editFormData.isActive;
+      if (editFormData.adminNotes !== (editTeacher.adminNotes || "")) body.adminNotes = editFormData.adminNotes;
+      if (editFormData.password && editFormData.password.length >= 8) body.password = editFormData.password;
+      const newLevels = editFormData.teacherLevels.sort().join(",");
+      const oldLevels = editTeacher.teacherLevels || "1,2,3,4,5,6,7";
+      if (newLevels !== oldLevels) body.teacherLevels = newLevels;
+
+      if (Object.keys(body).length === 0) {
+        toast({ title: "تنبيه", description: "لم يتم تغيير أي بيانات" });
+        setEditDialogOpen(false);
+        return;
+      }
+
+      const res = await fetch(`/api/users/${editTeacher.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم تحديث بيانات الأستاذ", className: "bg-green-50 border-green-200 text-green-800" });
+        setEditDialogOpen(false);
+        fetchTeachers();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في تحديث البيانات", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -530,17 +628,30 @@ export default function TeachersPage() {
                       <TableCell>
                         <div className="flex gap-1 justify-end">
                           {(user?.role === "supervisor" || user?.role === "admin") && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-xs h-7"
-                              onClick={() => openLevelDialog(teacher)}
-                              title="إدارة المستويات"
-                              data-testid={`button-levels-${teacher.id}`}
-                            >
-                              <Layers className="w-3 h-3" />
-                              المستويات
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 text-xs h-7"
+                                onClick={() => openEditTeacher(teacher)}
+                                title="تعديل بيانات الأستاذ"
+                                data-testid={`button-edit-${teacher.id}`}
+                              >
+                                <Pencil className="w-3 h-3" />
+                                تعديل
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 text-xs h-7"
+                                onClick={() => openLevelDialog(teacher)}
+                                title="إدارة المستويات"
+                                data-testid={`button-levels-${teacher.id}`}
+                              >
+                                <Layers className="w-3 h-3" />
+                                المستويات
+                              </Button>
+                            </>
                           )}
                           {teacher.phone && (
                             <Button
@@ -631,6 +742,129 @@ export default function TeachersPage() {
                   حفظ المستويات
                 </Button>
                 <Button variant="outline" onClick={() => setLevelDialogOpen(false)} data-testid="button-cancel-levels">
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5" />
+              تعديل بيانات الأستاذ
+            </DialogTitle>
+          </DialogHeader>
+          {editTeacher && (
+            <div className="space-y-4 mt-2">
+              <input type="file" accept="image/*" ref={editAvatarRef} className="hidden" onChange={handleEditAvatarSelect} />
+              <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold shrink-0 overflow-hidden cursor-pointer relative group" onClick={() => editAvatarRef.current?.click()} data-testid="button-edit-teacher-avatar">
+                  {editFormData.avatar ? (
+                    <img src={editFormData.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    editTeacher.name?.charAt(0)
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                    <Camera className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1 text-sm text-muted-foreground">اضغط على الصورة لتغييرها</div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>الاسم *</Label>
+                  <Input value={editFormData.name} onChange={e => setEditFormData((p: any) => ({ ...p, name: e.target.value }))} data-testid="input-edit-teacher-name" />
+                </div>
+                <div className="space-y-1">
+                  <Label>اسم المستخدم *</Label>
+                  <Input value={editFormData.username} onChange={e => setEditFormData((p: any) => ({ ...p, username: e.target.value }))} dir="ltr" data-testid="input-edit-teacher-username" />
+                </div>
+                <div className="space-y-1">
+                  <Label>كلمة المرور الجديدة</Label>
+                  <Input type="password" placeholder="اتركها فارغة إذا لم تُرد تغييرها" value={editFormData.password} onChange={e => setEditFormData((p: any) => ({ ...p, password: e.target.value }))} dir="ltr" data-testid="input-edit-teacher-password" />
+                  <p className="text-xs text-muted-foreground">8 أحرف على الأقل، تحتوي على حروف وأرقام</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>رقم الهاتف</Label>
+                  <Input value={editFormData.phone} onChange={e => setEditFormData((p: any) => ({ ...p, phone: e.target.value }))} dir="ltr" data-testid="input-edit-teacher-phone" />
+                </div>
+                <div className="space-y-1">
+                  <Label>العنوان</Label>
+                  <Input value={editFormData.address} onChange={e => setEditFormData((p: any) => ({ ...p, address: e.target.value }))} data-testid="input-edit-teacher-address" />
+                </div>
+                <div className="space-y-1">
+                  <Label>الجنس</Label>
+                  <Select value={editFormData.gender} onValueChange={v => setEditFormData((p: any) => ({ ...p, gender: v }))}>
+                    <SelectTrigger data-testid="select-edit-teacher-gender"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">ذكر</SelectItem>
+                      <SelectItem value="female">أنثى</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>العمر</Label>
+                  <Input type="number" value={editFormData.age} onChange={e => setEditFormData((p: any) => ({ ...p, age: e.target.value }))} data-testid="input-edit-teacher-age" />
+                </div>
+                <div className="space-y-1">
+                  <Label>المستوى الدراسي</Label>
+                  <Input value={editFormData.educationLevel} onChange={e => setEditFormData((p: any) => ({ ...p, educationLevel: e.target.value }))} placeholder="بكالوريوس / ماجستير..." data-testid="input-edit-teacher-education" />
+                </div>
+                <div className="space-y-1">
+                  <Label>تلغرام</Label>
+                  <Input value={editFormData.telegramId} onChange={e => setEditFormData((p: any) => ({ ...p, telegramId: e.target.value }))} dir="ltr" placeholder="@username" data-testid="input-edit-teacher-telegram" />
+                </div>
+                <div className="space-y-1">
+                  <Label>الحالة</Label>
+                  <Select value={editFormData.isActive ? "active" : "inactive"} onValueChange={v => setEditFormData((p: any) => ({ ...p, isActive: v === "active" }))}>
+                    <SelectTrigger data-testid="select-edit-teacher-status"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">نشط</SelectItem>
+                      <SelectItem value="inactive">متوقف</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>المستويات المسموح بها</Label>
+                <div className="flex flex-wrap gap-3">
+                  {[1, 2, 3, 4, 5, 6, 7].map(lv => (
+                    <label key={lv} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={editFormData.teacherLevels?.includes(lv)}
+                        onCheckedChange={(checked) => {
+                          setEditFormData((p: any) => ({
+                            ...p,
+                            teacherLevels: checked
+                              ? [...(p.teacherLevels || []), lv].sort()
+                              : (p.teacherLevels || []).filter((l: number) => l !== lv),
+                          }));
+                        }}
+                        data-testid={`check-edit-teacher-level-${lv}`}
+                      />
+                      <Badge variant="secondary" className={`text-xs ${LEVEL_COLORS[lv]}`}>{LEVEL_NAMES[lv]}</Badge>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label>ملاحظات المشرف</Label>
+                <Textarea value={editFormData.adminNotes} onChange={e => setEditFormData((p: any) => ({ ...p, adminNotes: e.target.value }))} placeholder="ملاحظات حول الأستاذ..." className="min-h-[60px]" data-testid="textarea-edit-teacher-notes" />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveTeacher} disabled={editSubmitting} className="flex-1 gap-1" data-testid="button-save-teacher">
+                  {editSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  حفظ التعديلات
+                </Button>
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)} data-testid="button-cancel-edit-teacher">
                   إلغاء
                 </Button>
               </div>

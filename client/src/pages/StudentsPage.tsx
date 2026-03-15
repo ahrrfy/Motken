@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, Pencil, Save } from "lucide-react";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -116,6 +116,11 @@ export default function StudentsPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  const [editMode, setEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const editAvatarRef = useRef<HTMLInputElement>(null);
 
   const [commLogOpen, setCommLogOpen] = useState(false);
   const [commLogStudent, setCommLogStudent] = useState<Student | null>(null);
@@ -519,6 +524,105 @@ export default function StudentsPage() {
       setProfileStats(null);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const startEditProfile = (student: Student) => {
+    setEditFormData({
+      name: student.name || "",
+      username: student.username || "",
+      phone: student.phone || "",
+      parentPhone: student.parentPhone || "",
+      address: student.address || "",
+      gender: student.gender || "male",
+      age: student.age ? String(student.age) : "",
+      educationLevel: student.educationLevel || "",
+      studyMode: student.studyMode || "in-person",
+      isActive: student.isActive,
+      isChild: student.isChild || false,
+      isSpecialNeeds: student.isSpecialNeeds || false,
+      isOrphan: student.isOrphan || false,
+      avatar: student.avatar || "",
+      password: "",
+      level: String(student.level || 1),
+      teacherId: student.teacherId || "",
+      telegramId: student.telegramId || "",
+      adminNotes: student.adminNotes || "",
+    });
+    setEditMode(true);
+  };
+
+  const handleEditAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "خطأ", description: "يرجى اختيار ملف صورة", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result as string;
+      if (base64.length > 500000) {
+        toast({ title: "خطأ", description: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)", variant: "destructive" });
+        return;
+      }
+      setEditFormData((prev: any) => ({ ...prev, avatar: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profileStudent) return;
+    setEditSubmitting(true);
+    try {
+      const body: any = {};
+      if (editFormData.name !== profileStudent.name) body.name = editFormData.name;
+      if (editFormData.username !== profileStudent.username) body.username = editFormData.username;
+      if (editFormData.phone !== (profileStudent.phone || "")) body.phone = editFormData.phone;
+      if (editFormData.parentPhone !== (profileStudent.parentPhone || "")) body.parentPhone = editFormData.parentPhone;
+      if (editFormData.address !== (profileStudent.address || "")) body.address = editFormData.address;
+      if (editFormData.gender !== (profileStudent.gender || "male")) body.gender = editFormData.gender;
+      if (editFormData.age !== (profileStudent.age ? String(profileStudent.age) : "")) body.age = editFormData.age ? parseInt(editFormData.age) : null;
+      if (editFormData.educationLevel !== (profileStudent.educationLevel || "")) body.educationLevel = editFormData.educationLevel || null;
+      if (editFormData.studyMode !== (profileStudent.studyMode || "in-person")) body.studyMode = editFormData.studyMode;
+      if (editFormData.isActive !== profileStudent.isActive) body.isActive = editFormData.isActive;
+      if (editFormData.isChild !== (profileStudent.isChild || false)) body.isChild = editFormData.isChild;
+      if (editFormData.isSpecialNeeds !== (profileStudent.isSpecialNeeds || false)) body.isSpecialNeeds = editFormData.isSpecialNeeds;
+      if (editFormData.isOrphan !== (profileStudent.isOrphan || false)) body.isOrphan = editFormData.isOrphan;
+      if (editFormData.avatar !== (profileStudent.avatar || "")) body.avatar = editFormData.avatar;
+      if (editFormData.level !== String(profileStudent.level || 1)) body.level = parseInt(editFormData.level);
+      if (editFormData.teacherId && editFormData.teacherId !== (profileStudent.teacherId || "")) body.teacherId = editFormData.teacherId;
+      if (editFormData.telegramId !== (profileStudent.telegramId || "")) body.telegramId = editFormData.telegramId || null;
+      if (editFormData.adminNotes !== (profileStudent.adminNotes || "")) body.adminNotes = editFormData.adminNotes;
+      if (editFormData.password && editFormData.password.length >= 8) body.password = editFormData.password;
+
+      if (Object.keys(body).length === 0) {
+        toast({ title: "تنبيه", description: "لم يتم تغيير أي بيانات" });
+        setEditMode(false);
+        return;
+      }
+
+      const res = await fetch(`/api/users/${profileStudent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تم تحديث بيانات الطالب", className: "bg-green-50 border-green-200 text-green-800" });
+        setEditMode(false);
+        fetchData();
+        const updatedStudent = { ...profileStudent, ...body, age: body.age !== undefined ? body.age : profileStudent.age };
+        setProfileStudent(updatedStudent);
+        setStudents(prev => prev.map(s => s.id === profileStudent.id ? { ...s, ...body } : s));
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في تحديث البيانات", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -1482,15 +1586,162 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+      <Dialog open={profileDialogOpen} onOpenChange={(open) => { setProfileDialogOpen(open); if (!open) setEditMode(false); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              الملف الشخصي للطالب
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                {editMode ? "تعديل بيانات الطالب" : "الملف الشخصي للطالب"}
+              </DialogTitle>
+              {!isStudent && profileStudent && !editMode && (
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => startEditProfile(profileStudent)} data-testid="button-start-edit-student">
+                  <Pencil className="w-4 h-4" />
+                  تعديل
+                </Button>
+              )}
+            </div>
           </DialogHeader>
-          {profileStudent && (
+          {profileStudent && editMode ? (
+            <div className="space-y-4 mt-2">
+              <input type="file" accept="image/*" ref={editAvatarRef} className="hidden" onChange={handleEditAvatarSelect} />
+              <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold shrink-0 overflow-hidden cursor-pointer relative group" onClick={() => editAvatarRef.current?.click()} data-testid="button-edit-avatar">
+                  {editFormData.avatar ? (
+                    <img src={editFormData.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    profileStudent.name?.charAt(0)
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                    <Camera className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1 text-sm text-muted-foreground">اضغط على الصورة لتغييرها</div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>الاسم *</Label>
+                  <Input value={editFormData.name} onChange={e => setEditFormData((p: any) => ({ ...p, name: e.target.value }))} data-testid="input-edit-name" />
+                </div>
+                <div className="space-y-1">
+                  <Label>اسم المستخدم *</Label>
+                  <Input value={editFormData.username} onChange={e => setEditFormData((p: any) => ({ ...p, username: e.target.value }))} dir="ltr" data-testid="input-edit-username" />
+                </div>
+                <div className="space-y-1">
+                  <Label>كلمة المرور الجديدة</Label>
+                  <Input type="password" placeholder="اتركها فارغة إذا لم تُرد تغييرها" value={editFormData.password} onChange={e => setEditFormData((p: any) => ({ ...p, password: e.target.value }))} dir="ltr" data-testid="input-edit-password" />
+                  <p className="text-xs text-muted-foreground">8 أحرف على الأقل، تحتوي على حروف وأرقام</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>رقم الهاتف</Label>
+                  <Input value={editFormData.phone} onChange={e => setEditFormData((p: any) => ({ ...p, phone: e.target.value }))} dir="ltr" data-testid="input-edit-phone" />
+                </div>
+                <div className="space-y-1">
+                  <Label>هاتف ولي الأمر</Label>
+                  <Input value={editFormData.parentPhone} onChange={e => setEditFormData((p: any) => ({ ...p, parentPhone: e.target.value }))} dir="ltr" data-testid="input-edit-parent-phone" />
+                </div>
+                <div className="space-y-1">
+                  <Label>العنوان</Label>
+                  <Input value={editFormData.address} onChange={e => setEditFormData((p: any) => ({ ...p, address: e.target.value }))} data-testid="input-edit-address" />
+                </div>
+                <div className="space-y-1">
+                  <Label>الجنس</Label>
+                  <Select value={editFormData.gender} onValueChange={v => setEditFormData((p: any) => ({ ...p, gender: v }))}>
+                    <SelectTrigger data-testid="select-edit-gender"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">ذكر</SelectItem>
+                      <SelectItem value="female">أنثى</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>العمر</Label>
+                  <Input type="number" value={editFormData.age} onChange={e => setEditFormData((p: any) => ({ ...p, age: e.target.value }))} data-testid="input-edit-age" />
+                </div>
+                <div className="space-y-1">
+                  <Label>المستوى الدراسي</Label>
+                  <Input value={editFormData.educationLevel} onChange={e => setEditFormData((p: any) => ({ ...p, educationLevel: e.target.value }))} placeholder="ابتدائي / متوسط / إعدادي..." data-testid="input-edit-education" />
+                </div>
+                <div className="space-y-1">
+                  <Label>نوع الدراسة</Label>
+                  <Select value={editFormData.studyMode} onValueChange={v => setEditFormData((p: any) => ({ ...p, studyMode: v }))}>
+                    <SelectTrigger data-testid="select-edit-study-mode"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in-person">حضوري</SelectItem>
+                      <SelectItem value="online">إلكتروني</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>مستوى الحفظ</Label>
+                  <Select value={editFormData.level} onValueChange={v => setEditFormData((p: any) => ({ ...p, level: v }))}>
+                    <SelectTrigger data-testid="select-edit-level"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(LEVEL_NAMES).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>الأستاذ</Label>
+                  <Select value={editFormData.teacherId || ""} onValueChange={v => setEditFormData((p: any) => ({ ...p, teacherId: v }))}>
+                    <SelectTrigger data-testid="select-edit-teacher"><SelectValue placeholder="اختر الأستاذ" /></SelectTrigger>
+                    <SelectContent>
+                      {teachers.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>تلغرام</Label>
+                  <Input value={editFormData.telegramId} onChange={e => setEditFormData((p: any) => ({ ...p, telegramId: e.target.value }))} dir="ltr" placeholder="@username" data-testid="input-edit-telegram" />
+                </div>
+                <div className="space-y-1">
+                  <Label>الحالة</Label>
+                  <Select value={editFormData.isActive ? "active" : "inactive"} onValueChange={v => setEditFormData((p: any) => ({ ...p, isActive: v === "active" }))}>
+                    <SelectTrigger data-testid="select-edit-status"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">نشط</SelectItem>
+                      <SelectItem value="inactive">متوقف</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-4 px-1">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={editFormData.isChild} onCheckedChange={v => setEditFormData((p: any) => ({ ...p, isChild: !!v }))} data-testid="check-edit-child" />
+                  طفل
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={editFormData.isSpecialNeeds} onCheckedChange={v => setEditFormData((p: any) => ({ ...p, isSpecialNeeds: !!v }))} data-testid="check-edit-special" />
+                  ذوي احتياجات خاصة
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={editFormData.isOrphan} onCheckedChange={v => setEditFormData((p: any) => ({ ...p, isOrphan: !!v }))} data-testid="check-edit-orphan" />
+                  يتيم
+                </label>
+              </div>
+
+              <div className="space-y-1">
+                <Label>ملاحظات المشرف</Label>
+                <Textarea value={editFormData.adminNotes} onChange={e => setEditFormData((p: any) => ({ ...p, adminNotes: e.target.value }))} placeholder="ملاحظات حول الطالب..." className="min-h-[60px]" data-testid="textarea-edit-notes" />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveProfile} disabled={editSubmitting} className="flex-1 gap-1" data-testid="button-save-profile">
+                  {editSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  حفظ التعديلات
+                </Button>
+                <Button variant="outline" onClick={() => setEditMode(false)} data-testid="button-cancel-edit">
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          ) : profileStudent && (
             <div className="space-y-4 mt-2">
               <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold shrink-0 overflow-hidden">
@@ -1502,6 +1753,7 @@ export default function StudentsPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold" data-testid="text-profile-name">{profileStudent.name}</h3>
+                  <p className="text-xs text-muted-foreground" dir="ltr">@{profileStudent.username}</p>
                   <div className="flex flex-wrap gap-2 mt-1">
                     <Badge variant="secondary" className={getStudentLevel(profileStudent).color} data-testid="badge-profile-level">
                       المستوى {getStudentLevel(profileStudent).level}: {getStudentLevel(profileStudent).label}
@@ -1535,13 +1787,7 @@ export default function StudentsPage() {
                   <div className="flex items-center gap-1">
                     <p className="font-medium" dir="ltr" data-testid="text-profile-parent-phone">{profileStudent.parentPhone || "—"}</p>
                     {profileStudent.parentPhone && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-green-600"
-                        onClick={() => window.open(getWhatsAppUrl(profileStudent.parentPhone!), "_blank")}
-                        data-testid="button-profile-whatsapp-parent"
-                      >
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600" onClick={() => window.open(getWhatsAppUrl(profileStudent.parentPhone!), "_blank")} data-testid="button-profile-whatsapp-parent">
                         <MessageCircle className="w-3.5 h-3.5" />
                       </Button>
                     )}
@@ -1561,50 +1807,9 @@ export default function StudentsPage() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-muted-foreground">مستوى الحفظ</span>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className={getStudentLevel(profileStudent).color}>
-                      {getStudentLevel(profileStudent).label} - {LEVEL_RANGES[profileStudent.level || 1]}
-                    </Badge>
-                    {!isStudent && (
-                      <Select
-                        value={String(profileStudent.level || 1)}
-                        onValueChange={async (val) => {
-                          try {
-                            const res = await fetch(`/api/levels/student/${profileStudent.id}`, {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              credentials: "include",
-                              body: JSON.stringify({ level: Number(val) }),
-                            });
-                            if (res.ok) {
-                              toast({ title: "تم بنجاح", description: `تم تغيير المستوى إلى ${LEVEL_NAMES[Number(val)]}`, className: "bg-green-50 border-green-200 text-green-800" });
-                              setProfileStudent(prev => prev ? { ...prev, level: Number(val) } : null);
-                              setStudents(prev => prev.map(s => s.id === profileStudent.id ? { ...s, level: Number(val) } : s));
-                            } else {
-                              const err = await res.json();
-                              toast({ title: "خطأ", description: err.message, variant: "destructive" });
-                            }
-                          } catch {
-                            toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
-                          }
-                        }}
-                        data-testid="select-change-level"
-                      >
-                        <SelectTrigger className="h-7 w-24 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">المستوى الأول</SelectItem>
-                          <SelectItem value="2">المستوى الثاني</SelectItem>
-                          <SelectItem value="3">المستوى الثالث</SelectItem>
-                          <SelectItem value="4">المستوى الرابع</SelectItem>
-                          <SelectItem value="5">المستوى الخامس</SelectItem>
-                          <SelectItem value="6">المستوى السادس</SelectItem>
-                          <SelectItem value="7">حافظ</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
+                  <Badge variant="secondary" className={getStudentLevel(profileStudent).color}>
+                    {getStudentLevel(profileStudent).label} - {LEVEL_RANGES[profileStudent.level || 1]}
+                  </Badge>
                 </div>
                 <div className="space-y-1">
                   <span className="text-muted-foreground">الأستاذ</span>
@@ -1663,30 +1868,13 @@ export default function StudentsPage() {
                 )}
               </div>
 
-              {!isStudent && (
+              {!isStudent && profileStudent.adminNotes && (
                 <div className="border-t pt-4">
                   <h4 className="font-bold text-sm mb-2 flex items-center gap-1">
                     <FileText className="w-4 h-4" />
                     ملاحظات المشرف
                   </h4>
-                  <Textarea
-                    value={notesText}
-                    onChange={(e) => setNotesText(e.target.value)}
-                    placeholder="أضف ملاحظات حول الطالب..."
-                    className="min-h-[80px]"
-                    data-testid="textarea-admin-notes"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 gap-1"
-                    onClick={handleSaveNotes}
-                    disabled={savingNotes}
-                    data-testid="button-save-notes"
-                  >
-                    {savingNotes && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    حفظ الملاحظات
-                  </Button>
+                  <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">{profileStudent.adminNotes}</p>
                 </div>
               )}
             </div>
