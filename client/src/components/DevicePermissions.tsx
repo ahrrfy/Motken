@@ -1,10 +1,62 @@
-import { useState, useEffect } from "react";
-import { Camera, MapPin, Bell, Mic, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Camera, MapPin, Bell, Mic, CheckCircle, XCircle, AlertCircle, Volume2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 type PermissionStatus = "granted" | "denied" | "prompt" | "unsupported";
+
+function detectBrowser(): string {
+  const ua = navigator.userAgent;
+  if (/CriOS/i.test(ua)) return "chrome-ios";
+  if (/FxiOS/i.test(ua)) return "firefox-ios";
+  if (/Safari/i.test(ua) && /iPhone|iPad|iPod/i.test(ua) && !/CriOS|FxiOS/i.test(ua)) return "safari-ios";
+  if (/Chrome/i.test(ua) && !/Edge|Edg/i.test(ua)) return "chrome";
+  if (/Firefox/i.test(ua)) return "firefox";
+  if (/Edg/i.test(ua)) return "edge";
+  if (/Safari/i.test(ua)) return "safari";
+  return "other";
+}
+
+function getMicInstructions(browser: string): string[] {
+  switch (browser) {
+    case "chrome":
+    case "edge":
+      return [
+        "اضغط على أيقونة القفل 🔒 بجانب عنوان الموقع",
+        "ابحث عن \"الميكروفون\" واختر \"سماح\"",
+        "أعد تحميل الصفحة",
+      ];
+    case "safari":
+      return [
+        "اذهب إلى Safari ← الإعدادات ← المواقع ← الميكروفون",
+        "اختر \"سماح\" لهذا الموقع",
+        "أعد تحميل الصفحة",
+      ];
+    case "safari-ios":
+      return [
+        "اذهب إلى الإعدادات ← Safari ← الميكروفون",
+        "تأكد أن \"السماح\" مفعّل",
+        "ارجع وأعد تحميل الصفحة",
+      ];
+    case "chrome-ios":
+      return [
+        "اذهب إلى الإعدادات ← Chrome ← الميكروفون",
+        "تأكد أن الميكروفون مفعّل",
+        "ارجع وأعد تحميل الصفحة",
+      ];
+    case "firefox":
+      return [
+        "اضغط على أيقونة القفل بجانب عنوان الموقع",
+        "اضغط \"مسح الأذونات\" ثم أعد التحميل",
+      ];
+    default:
+      return [
+        "افتح إعدادات المتصفح واسمح بالميكروفون لهذا الموقع",
+        "أعد تحميل الصفحة",
+      ];
+  }
+}
 
 function usePermissionStatus(name: PermissionName): PermissionStatus {
   const [status, setStatus] = useState<PermissionStatus>("prompt");
@@ -29,14 +81,67 @@ export default function DevicePermissions() {
   const cameraStatus = usePermissionStatus("camera" as PermissionName);
   const geoStatus = usePermissionStatus("geolocation" as PermissionName);
   const notifStatus = usePermissionStatus("notifications" as PermissionName);
+  const [testingMic, setTestingMic] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [showMicHelp, setShowMicHelp] = useState(false);
+  const analyzerRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  const browser = detectBrowser();
+
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, []);
 
   const requestMicrophone = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(t => t.stop());
-      toast({ title: "تم", description: "تم منح إذن الميكروفون بنجاح" });
+      toast({ title: "تم", description: "تم منح إذن الميكروفون بنجاح ✓", className: "bg-green-50 border-green-200 text-green-800" });
+      setShowMicHelp(false);
     } catch {
-      toast({ title: "تنبيه", description: "تم رفض إذن الميكروفون. يرجى تفعيله من إعدادات المتصفح", variant: "destructive" });
+      setShowMicHelp(true);
+      toast({ title: "تنبيه", description: "تم رفض إذن الميكروفون — اتبع التعليمات أدناه", variant: "destructive" });
+    }
+  };
+
+  const testMicrophone = async () => {
+    setTestingMic(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyzer = audioCtx.createAnalyser();
+      analyzer.fftSize = 256;
+      source.connect(analyzer);
+      analyzerRef.current = analyzer;
+
+      const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+      const updateLevel = () => {
+        if (!analyzerRef.current) return;
+        analyzerRef.current.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        animFrameRef.current = requestAnimationFrame(updateLevel);
+      };
+      updateLevel();
+
+      setTimeout(() => {
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        analyzerRef.current = null;
+        stream.getTracks().forEach(t => t.stop());
+        audioCtx.close();
+        setTestingMic(false);
+        setMicLevel(0);
+      }, 5000);
+
+      toast({ title: "المايكروفون يعمل ✓", description: "تحدث الآن لاختبار الصوت", className: "bg-green-50 border-green-200 text-green-800" });
+    } catch {
+      setTestingMic(false);
+      setShowMicHelp(true);
+      toast({ title: "فشل الاختبار", description: "لا يمكن الوصول للمايكروفون", variant: "destructive" });
     }
   };
 
@@ -98,25 +203,71 @@ export default function DevicePermissions() {
       </CardHeader>
       <CardContent className="space-y-4">
         {permissions.map((perm) => (
-          <div key={perm.name} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30" data-testid={`permission-row-${perm.name}`}>
-            <div className="flex items-center gap-3">
-              <perm.icon className="w-5 h-5 text-primary" />
-              <div>
-                <p className="font-medium text-sm">{perm.name}</p>
-                <p className="text-xs text-muted-foreground">{perm.description}</p>
+          <div key={perm.name}>
+            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30" data-testid={`permission-row-${perm.name}`}>
+              <div className="flex items-center gap-3">
+                <perm.icon className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-sm">{perm.name}</p>
+                  <p className="text-xs text-muted-foreground">{perm.description}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  {getStatusIcon(perm.status)}
+                  <span className="text-xs">{getStatusText(perm.status)}</span>
+                </div>
+                {perm.status !== "granted" && perm.status !== "unsupported" && (
+                  <Button size="sm" variant="outline" onClick={perm.request} data-testid={`button-request-${perm.name}`}>
+                    طلب الإذن
+                  </Button>
+                )}
+                {perm.name === "الميكروفون" && perm.status === "granted" && !testingMic && (
+                  <Button size="sm" variant="outline" onClick={testMicrophone} data-testid="button-test-mic">
+                    <Volume2 className="w-3 h-3 ml-1" />
+                    اختبار
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                {getStatusIcon(perm.status)}
-                <span className="text-xs">{getStatusText(perm.status)}</span>
+
+            {perm.name === "الميكروفون" && testingMic && (
+              <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Volume2 className="w-4 h-4 text-green-600" />
+                  <span className="text-xs font-bold text-green-800">اختبار المايكروفون — تحدث الآن</span>
+                </div>
+                <div className="w-full bg-green-100 rounded-full h-4 overflow-hidden">
+                  <div
+                    className="bg-green-500 h-4 rounded-full transition-all duration-100"
+                    style={{ width: `${micLevel}%` }}
+                  />
+                </div>
+                <p className="text-xs text-green-600 mt-1 text-center">
+                  {micLevel > 20 ? "ممتاز! المايكروفون يلتقط صوتك بوضوح ✓" : "تحدث بصوت أعلى قليلاً..."}
+                </p>
               </div>
-              {perm.status !== "granted" && perm.status !== "unsupported" && (
-                <Button size="sm" variant="outline" onClick={perm.request} data-testid={`button-request-${perm.name}`}>
-                  طلب الإذن
+            )}
+
+            {perm.name === "الميكروفون" && (showMicHelp || perm.status === "denied") && (
+              <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <p className="text-xs font-bold text-amber-800 mb-2">كيف تسمح بالمايكروفون:</p>
+                <ol className="text-xs text-amber-700 space-y-1 list-decimal mr-5 mb-2">
+                  {getMicInstructions(browser).map((step, i) => (
+                    <li key={i}>{step}</li>
+                  ))}
+                </ol>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="w-3 h-3 ml-1" />
+                  إعادة تحميل الصفحة
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ))}
       </CardContent>
