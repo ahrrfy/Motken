@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat } from "lucide-react";
@@ -1459,19 +1460,17 @@ export default function StudentsPage() {
               </div>
               <div className="space-y-2">
                 <Label>الأستاذ الجديد *</Label>
-                <Select value={newTeacherId} onValueChange={setNewTeacherId}>
-                  <SelectTrigger data-testid="select-new-teacher">
-                    <SelectValue placeholder="اختر الأستاذ الجديد" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers
-                      .filter(t => t.id !== selectedStudent.teacherId)
-                      .map(t => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                      ))
-                    }
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={teachers
+                    .filter(t => t.id !== selectedStudent.teacherId)
+                    .map(t => ({ value: t.id, label: t.name }))}
+                  value={newTeacherId}
+                  onValueChange={setNewTeacherId}
+                  placeholder="اختر الأستاذ الجديد"
+                  searchPlaceholder="ابحث عن أستاذ..."
+                  emptyText="لا يوجد أستاذ بهذا الاسم"
+                  data-testid="select-new-teacher"
+                />
               </div>
               <p className="text-xs text-muted-foreground">سيتم نقل جميع واجبات الطالب إلى الأستاذ الجديد أيضاً.</p>
               <Button onClick={handleTransfer} disabled={submitting || !newTeacherId} className="w-full" data-testid="button-confirm-transfer">

@@ -169,6 +169,7 @@ export default function PointsRewardsPage() {
   const [badgeForm, setBadgeForm] = useState({ userId: "", badgeType: "", badgeName: "", description: "" });
 
   const [batchSelectedStudents, setBatchSelectedStudents] = useState<string[]>([]);
+  const [batchStudentSearch, setBatchStudentSearch] = useState("");
   const [batchForm, setBatchForm] = useState({ amount: "", reason: "", category: "", isDeducting: false });
 
   const [redemptions, setRedemptions] = useState<any[]>([]);
@@ -1469,7 +1470,14 @@ export default function PointsRewardsPage() {
 
             <div className="space-y-2">
               <Label>اختر الطلاب * ({batchSelectedStudents.length} محدد)</Label>
-              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2" data-testid="batch-student-list">
+              <div className="border rounded-lg p-3 space-y-2" data-testid="batch-student-list">
+                <Input
+                  placeholder="ابحث عن طالب..."
+                  value={batchStudentSearch}
+                  onChange={e => setBatchStudentSearch(e.target.value)}
+                  className="h-8 text-xs"
+                  data-testid="input-batch-student-search"
+                />
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <Checkbox
                     checked={batchSelectedStudents.length === students.length && students.length > 0}
@@ -1484,22 +1492,26 @@ export default function PointsRewardsPage() {
                   />
                   <Label className="text-sm font-medium cursor-pointer">تحديد الكل</Label>
                 </div>
-                {students.map(s => (
-                  <div key={s.id} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={batchSelectedStudents.includes(s.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setBatchSelectedStudents([...batchSelectedStudents, s.id]);
-                        } else {
-                          setBatchSelectedStudents(batchSelectedStudents.filter(id => id !== s.id));
-                        }
-                      }}
-                      data-testid={`checkbox-student-${s.id}`}
-                    />
-                    <Label className="text-sm cursor-pointer">{s.name}</Label>
-                  </div>
-                ))}
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {students
+                    .filter(s => !batchStudentSearch.trim() || s.name.toLowerCase().includes(batchStudentSearch.trim().toLowerCase()))
+                    .map(s => (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={batchSelectedStudents.includes(s.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setBatchSelectedStudents([...batchSelectedStudents, s.id]);
+                          } else {
+                            setBatchSelectedStudents(batchSelectedStudents.filter(id => id !== s.id));
+                          }
+                        }}
+                        data-testid={`checkbox-student-${s.id}`}
+                      />
+                      <Label className="text-sm cursor-pointer">{s.name}</Label>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

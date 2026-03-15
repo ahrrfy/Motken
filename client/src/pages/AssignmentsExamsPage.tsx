@@ -223,6 +223,7 @@ export default function AssignmentsExamsPage() {
   const [examDescription, setExamDescription] = useState("");
   const [isForAll, setIsForAll] = useState(true);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [examStudentSearch, setExamStudentSearch] = useState("");
 
   const [assignGradeInput, setAssignGradeInput] = useState<Record<string, string>>({});
   const [markingDone, setMarkingDone] = useState<string | null>(null);
@@ -233,6 +234,7 @@ export default function AssignmentsExamsPage() {
 
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelectedStudents, setBulkSelectedStudents] = useState<string[]>([]);
+  const [bulkStudentSearch, setBulkStudentSearch] = useState("");
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -1042,17 +1044,28 @@ export default function AssignmentsExamsPage() {
                       <Loader2 className="w-4 h-4 animate-spin" /> جاري التحميل...
                     </div>
                   ) : bulkMode ? (
-                    <div className="space-y-2 border rounded-lg p-3 max-h-40 overflow-y-auto">
-                      {students.map(s => (
-                        <div key={s.id} className="flex items-center gap-2">
-                          <Checkbox
-                            data-testid={`checkbox-bulk-student-${s.id}`}
-                            checked={bulkSelectedStudents.includes(s.id)}
-                            onCheckedChange={() => toggleBulkStudent(s.id)}
-                          />
-                          <span className="text-sm">{s.name}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-2 border rounded-lg p-3">
+                      <Input
+                        placeholder="ابحث عن طالب..."
+                        value={bulkStudentSearch}
+                        onChange={e => setBulkStudentSearch(e.target.value)}
+                        className="h-8 text-xs"
+                        data-testid="input-bulk-student-search"
+                      />
+                      <div className="max-h-40 overflow-y-auto space-y-2">
+                        {students
+                          .filter(s => !bulkStudentSearch.trim() || s.name.toLowerCase().includes(bulkStudentSearch.trim().toLowerCase()))
+                          .map(s => (
+                          <div key={s.id} className="flex items-center gap-2">
+                            <Checkbox
+                              data-testid={`checkbox-bulk-student-${s.id}`}
+                              checked={bulkSelectedStudents.includes(s.id)}
+                              onCheckedChange={() => toggleBulkStudent(s.id)}
+                            />
+                            <span className="text-sm">{s.name}</span>
+                          </div>
+                        ))}
+                      </div>
                       {bulkSelectedStudents.length > 0 && (
                         <p className="text-xs text-muted-foreground mt-1" data-testid="text-bulk-selected-count">
                           تم اختيار {bulkSelectedStudents.length} طالب
@@ -1846,18 +1859,29 @@ export default function AssignmentsExamsPage() {
                           {students.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-2" data-testid="text-no-students">لا يوجد طلاب</p>
                           ) : (
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                              {students.map(s => (
-                                <div key={s.id} className="flex items-center gap-2">
-                                  <Checkbox
-                                    data-testid={`checkbox-student-${s.id}`}
-                                    checked={selectedStudentIds.includes(s.id)}
-                                    onCheckedChange={() => toggleStudentSelection(s.id)}
-                                  />
-                                  <span className="text-sm">{s.name}</span>
-                                </div>
-                              ))}
-                            </div>
+                            <>
+                              <Input
+                                placeholder="ابحث عن طالب..."
+                                value={examStudentSearch}
+                                onChange={e => setExamStudentSearch(e.target.value)}
+                                className="h-8 text-xs"
+                                data-testid="input-exam-student-search"
+                              />
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {students
+                                  .filter(s => !examStudentSearch.trim() || s.name.toLowerCase().includes(examStudentSearch.trim().toLowerCase()))
+                                  .map(s => (
+                                  <div key={s.id} className="flex items-center gap-2">
+                                    <Checkbox
+                                      data-testid={`checkbox-student-${s.id}`}
+                                      checked={selectedStudentIds.includes(s.id)}
+                                      onCheckedChange={() => toggleStudentSelection(s.id)}
+                                    />
+                                    <span className="text-sm">{s.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
                           )}
                           {selectedStudentIds.length > 0 && (
                             <p className="text-xs text-muted-foreground" data-testid="text-selected-count">
