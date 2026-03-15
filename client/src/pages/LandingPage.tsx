@@ -129,7 +129,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white" dir="rtl">
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm safe-area-top">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 shrink-0">
             <img src="/logo.png" alt="مُتْقِن" className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg" />

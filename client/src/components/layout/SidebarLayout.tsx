@@ -517,7 +517,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir={dir}>
-      <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg">
+      <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg safe-area-top">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="مُتْقِن" className="w-8 h-8 rounded-lg" />
           <span className="font-bold text-lg">مُتْقِن</span>
@@ -546,7 +546,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <SidebarFooter />
       </aside>
 
-      <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0 flex flex-col min-h-screen">
+      <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 safe-area-top-offset md:pt-0 min-w-0 flex flex-col min-h-screen">
         {previewRole && (
           <div className={cn(
             "flex items-center justify-between gap-3 px-4 py-2.5 text-white text-sm font-medium shadow-md z-20",

@@ -124,7 +124,7 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
   return (
     <div className="flex flex-col min-h-screen bg-background" dir="rtl">
       <header className={cn(
-        "sticky top-0 z-40 flex items-center justify-between px-3 h-14 border-b border-white/10 shadow-lg bg-gradient-to-l",
+        "sticky top-0 z-40 flex items-center justify-between px-3 h-14 border-b border-white/10 shadow-lg bg-gradient-to-l safe-area-top",
         roleTheme.headerGradient
       )}>
         <button
