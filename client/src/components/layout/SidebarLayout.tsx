@@ -97,6 +97,7 @@ const navCategories: NavCategory[] = [
     defaultOpen: true,
     items: [
       { href: "/dashboard", label: "لوحة التحكم", labelEn: "Dashboard", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/parent-dashboard", label: "متابعة أبنائي", labelEn: "My Children", icon: Users, roles: ["parent"] },
       { href: "/daily", label: "واجبات اليوم", labelEn: "Daily Tasks", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
     ],
   },
@@ -146,7 +147,7 @@ const navCategories: NavCategory[] = [
     icon: Megaphone,
     items: [
       { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "messaging" },
-      { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor", "parent"] },
       { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
       { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
       { href: "/family-system", label: "نظام الأسرة", labelEn: "Family System", icon: HeartHandshake, roles: ["admin", "supervisor", "teacher"], featureKey: "family_system" },
@@ -172,7 +173,7 @@ const navCategories: NavCategory[] = [
       { href: "/institutional", label: "التكامل المؤسسي", labelEn: "Institutional Integration", icon: ArrowUpDown, roles: ["admin", "supervisor"], featureKey: "institutional" },
       { href: "/maintenance", label: "الملاحظات والتحسين", labelEn: "Feedback & Improvement", icon: Lightbulb, roles: ["admin", "supervisor", "teacher", "student"] },
       { href: "/changelog", label: "سجل التغييرات", labelEn: "Changelog", icon: Sparkles, roles: ["admin", "supervisor", "teacher", "student"] },
-      { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
+      { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor", "parent"] },
     ],
   },
 ];

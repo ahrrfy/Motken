@@ -3,7 +3,7 @@ import { pgTable, text, varchar, integer, timestamp, boolean, pgEnum, index } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const roleEnum = pgEnum("user_role", ["admin", "teacher", "student", "supervisor"]);
+export const roleEnum = pgEnum("user_role", ["admin", "teacher", "student", "supervisor", "parent"]);
 export const assignmentStatusEnum = pgEnum("assignment_status", ["pending", "done", "cancelled"]);
 export const verseStatusEnum = pgEnum("verse_status", ["memorized", "review", "new"]);
 

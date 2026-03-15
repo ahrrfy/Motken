@@ -35,9 +35,10 @@ const allNavItems = [
   { href: "/schedules", label: "جدول الحلقات", icon: Clock, roles: ["admin","teacher","supervisor"], group: "track", featureKey: "schedules" },
   { href: "/competitions", label: "المسابقات القرآنية", icon: Trophy, roles: ["admin","teacher","supervisor","student"], group: "track", featureKey: "competitions" },
   { href: "/messages", label: "المحادثات", icon: MessageSquare, roles: ["admin","teacher","student","supervisor"], group: "comm", featureKey: "messaging" },
-  { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin","teacher","student","supervisor"], group: "comm" },
+  { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin","teacher","student","supervisor","parent"], group: "comm" },
   { href: "/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "smart_alerts" },
   { href: "/parent-portal", label: "بوابة ولي الأمر", icon: UserCog, roles: ["admin","teacher","supervisor"], group: "comm", featureKey: "parent_portal" },
+  { href: "/parent-dashboard", label: "متابعة أبنائي", icon: UserCog, roles: ["parent"], group: "comm" },
   { href: "/family-system", label: "نظام الأسرة", icon: HeartHandshake, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "family_system" },
   { href: "/whiteboard", label: "السبورة التفاعلية", icon: Pen, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "whiteboard" },
   { href: "/spread", label: "انشر النظام", icon: Share2, roles: ["admin","supervisor","teacher"], group: "comm" },
@@ -53,7 +54,7 @@ const allNavItems = [
   { href: "/institutional", label: "التكامل المؤسسي", icon: ArrowUpDown, roles: ["admin","supervisor"], group: "admin", featureKey: "institutional" },
   { href: "/maintenance", label: "الملاحظات والتحسين", icon: Lightbulb, roles: ["admin","supervisor","teacher","student"], group: "admin" },
   { href: "/changelog", label: "سجل التغييرات", icon: Sparkles, roles: ["admin","supervisor","teacher","student"], group: "admin" },
-  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin","teacher","student","supervisor"], group: "admin" },
+  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin","teacher","student","supervisor","parent"], group: "admin" },
 ];
 
 const groupLabels: Record<string,string> = {

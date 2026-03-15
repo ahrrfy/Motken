@@ -21,8 +21,9 @@ The system is built with a modern web stack:
 -   **Role-Based Access Control**:
     -   **Admin**: System-wide access, creates mosques and supervisors.
     -   **Supervisor**: Mosque-scoped, manages teachers and students, rates teachers. Includes a teacher student approval system.
-    -   **Teacher**: Mosque-scoped, manages students, rates students, creates assignments and exams.
+    -   **Teacher**: Mosque-scoped, manages students, rates students, creates assignments and exams. Teachers with `teacherId` can switch to student mode (`?asStudent=true`).
     -   **Student**: Accesses personal data and assignments.
+    -   **Parent**: Read-only access to children's data via Parent Dashboard. Auto-generated accounts from student `parentPhone` fields. Username format: `parent_<last10digits>`. Redirected to `/parent-dashboard` on login. Can view attendance, assignments, points for linked children.
 
 ### Sidebar Navigation Structure (Categorized Groups)
 1. **الرئيسية (Main)**: Dashboard, Today's Assignments
