@@ -67,8 +67,15 @@ export default function FamilySystemPage() {
 
   const [generatingParents, setGeneratingParents] = useState(false);
   const [parentAccounts, setParentAccounts] = useState<any[]>([]);
-  const [parentCredentials, setParentCredentials] = useState<{ parentName: string; username: string; password: string; phone: string; childrenNames: string[] }[]>([]);
-  const [showCredentials, setShowCredentials] = useState(false);
+  const [parentCredentials, setParentCredentials] = useState<{ parentName: string; username: string; password: string; phone: string; childrenNames: string[] }[]>(() => {
+    try {
+      const saved = sessionStorage.getItem("parentCredentials");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [showCredentials, setShowCredentials] = useState(() => {
+    try { return !!sessionStorage.getItem("parentCredentials"); } catch { return false; }
+  });
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<{ username: string; password: string } | null>(null);
 
@@ -185,8 +192,10 @@ export default function FamilySystemPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setParentCredentials(data.created || []);
+        const creds = data.created || [];
+        setParentCredentials(creds);
         setShowCredentials(true);
+        try { sessionStorage.setItem("parentCredentials", JSON.stringify(creds)); } catch {}
         fetchParentAccounts();
         toast({
           title: "تم بنجاح",
@@ -209,7 +218,7 @@ export default function FamilySystemPage() {
     setResetResult(null);
     try {
       const res = await fetch(`/api/parents/${parentId}/reset-password`, {
-        method: "POST",
+        method: "PATCH",
         credentials: "include",
       });
       if (res.ok) {
@@ -413,7 +422,7 @@ export default function FamilySystemPage() {
                       <Copy className="w-4 h-4 ml-1" />
                       نسخ الكل
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setShowCredentials(false)}>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowCredentials(false); setParentCredentials([]); try { sessionStorage.removeItem("parentCredentials"); } catch {} }}>
                       <EyeOff className="w-4 h-4" />
                     </Button>
                   </div>

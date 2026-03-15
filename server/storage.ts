@@ -352,6 +352,19 @@ export class DatabaseStorage implements IStorage {
     await db.delete(assignments).where(eq(assignments.studentId, id));
     await db.delete(assignments).where(eq(assignments.teacherId, id));
     await db.delete(exams).where(eq(exams.teacherId, id));
+    await db.delete(familyLinks).where(eq(familyLinks.studentId, id));
+    const deletingUser = await this.getUser(id);
+    if (deletingUser?.role === "parent" && deletingUser.phone) {
+      const cleanPhone = (deletingUser.phone || "").replace(/[^\d]/g, "");
+      if (cleanPhone) {
+        const allLinks = await db.select().from(familyLinks);
+        for (const link of allLinks) {
+          if ((link.parentPhone || "").replace(/[^\d]/g, "") === cleanPhone) {
+            await db.delete(familyLinks).where(eq(familyLinks.id, link.id));
+          }
+        }
+      }
+    }
     await db.delete(users).where(eq(users.id, id));
   }
 

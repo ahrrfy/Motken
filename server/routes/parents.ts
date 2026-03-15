@@ -273,40 +273,43 @@ export function registerParentsRoutes(app: Express) {
       const cleanPhone = cleanDigits(currentUser.phone || "");
       if (!cleanPhone) return res.json([]);
 
-      const links = await storage.getFamilyLinksByParentPhone(currentUser.phone || "");
-      const phoneLinkMatches: any[] = [];
-      for (const link of links) {
-        if (cleanDigits(link.parentPhone) === cleanPhone) {
-          phoneLinkMatches.push(link);
+      const childrenMap = new Map<string, { child: any; relationship: string }>();
+
+      const allLinks = currentUser.mosqueId
+        ? await storage.getFamilyLinksByMosque(currentUser.mosqueId)
+        : [];
+      for (const link of allLinks) {
+        if (cleanDigits(link.parentPhone) === cleanPhone && !childrenMap.has(link.studentId)) {
+          const child = await storage.getUser(link.studentId);
+          if (child) childrenMap.set(link.studentId, { child, relationship: link.relationship || "parent" });
         }
       }
 
-      if (phoneLinkMatches.length === 0) {
-        const allStudents = currentUser.mosqueId ? await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student") : [];
-        const childrenByPhone = allStudents.filter(s => cleanDigits(s.parentPhone || "") === cleanPhone);
-        const children = await Promise.all(childrenByPhone.map(async (child) => {
+      const allStudents = currentUser.mosqueId
+        ? await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student")
+        : [];
+      const teacherStudents = currentUser.mosqueId
+        ? (await storage.getUsersByMosque(currentUser.mosqueId)).filter(u => u.role === "teacher" && u.teacherId)
+        : [];
+
+      for (const student of [...allStudents, ...teacherStudents]) {
+        if (cleanDigits(student.parentPhone || "") === cleanPhone && !childrenMap.has(student.id)) {
+          childrenMap.set(student.id, { child: student, relationship: "parent" });
+        }
+      }
+
+      const children = await Promise.all(
+        Array.from(childrenMap.values()).map(async ({ child, relationship }) => {
           const [studentAssignments, studentAttendance, studentPoints] = await Promise.all([
             storage.getAssignmentsByStudent(child.id),
             storage.getAttendanceByStudent(child.id),
             storage.getPointsByUser(child.id),
           ]);
-          return buildChildData(child, studentAssignments, studentAttendance, studentPoints);
-        }));
-        return res.json(children);
-      }
+          return buildChildData(child, studentAssignments, studentAttendance, studentPoints, relationship);
+        })
+      );
 
-      const children = await Promise.all(phoneLinkMatches.map(async (link: any) => {
-        const child = await storage.getUser(link.studentId);
-        if (!child) return null;
-        const [studentAssignments, studentAttendance, studentPoints] = await Promise.all([
-          storage.getAssignmentsByStudent(child.id),
-          storage.getAttendanceByStudent(child.id),
-          storage.getPointsByUser(child.id),
-        ]);
-        return buildChildData(child, studentAssignments, studentAttendance, studentPoints);
-      }));
-
-      res.json(children.filter(Boolean));
+      res.json(children);
     } catch (err: any) {
       console.error("Error fetching parent children:", err);
       res.status(500).json({ message: "حدث خطأ" });
@@ -325,6 +328,15 @@ export function registerParentsRoutes(app: Express) {
       }
       if (currentUser.role !== "admin" && parent.mosqueId !== currentUser.mosqueId) {
         return res.status(403).json({ message: "غير مصرح" });
+      }
+      const parentPhone = cleanDigits(parent.phone || "");
+      if (parentPhone && parent.mosqueId) {
+        const mosqueLinks = await storage.getFamilyLinksByMosque(parent.mosqueId);
+        for (const link of mosqueLinks) {
+          if (cleanDigits(link.parentPhone) === parentPhone) {
+            await storage.deleteFamilyLink(link.id);
+          }
+        }
       }
       await storage.deleteUser(req.params.id);
       await logActivity(currentUser, `حذف حساب ولي أمر: ${parent.name}`, "parents");
@@ -361,19 +373,30 @@ export function registerParentsRoutes(app: Express) {
 async function enrichParents(parents: any[]) {
   return Promise.all(parents.map(async (p) => {
     const cleanPhone = cleanDigits(p.phone || "");
-    const links = await storage.getFamilyLinksByParentPhone(p.phone || "");
-    const matchedLinks = links.filter(l => cleanDigits(l.parentPhone) === cleanPhone);
-    const children = [];
-    for (const link of matchedLinks) {
-      const child = await storage.getUser(link.studentId);
-      if (child) children.push({ id: child.id, name: child.name, level: child.level });
+    const childrenMap = new Map<string, { id: string; name: string; level: number | null }>();
+
+    if (p.mosqueId) {
+      const mosqueLinks = await storage.getFamilyLinksByMosque(p.mosqueId);
+      for (const link of mosqueLinks) {
+        if (cleanDigits(link.parentPhone) === cleanPhone && !childrenMap.has(link.studentId)) {
+          const child = await storage.getUser(link.studentId);
+          if (child) childrenMap.set(link.studentId, { id: child.id, name: child.name, level: child.level });
+        }
+      }
+      const allStudents = await storage.getUsersByMosqueAndRole(p.mosqueId, "student");
+      for (const student of allStudents) {
+        if (cleanDigits(student.parentPhone || "") === cleanPhone && !childrenMap.has(student.id)) {
+          childrenMap.set(student.id, { id: student.id, name: student.name, level: student.level });
+        }
+      }
     }
+
     const { password, ...safe } = p;
-    return { ...safe, children };
+    return { ...safe, children: Array.from(childrenMap.values()) };
   }));
 }
 
-function buildChildData(child: any, assignments: any[], attendance: any[], pts: any[]) {
+function buildChildData(child: any, assignments: any[], attendance: any[], pts: any[], relationship?: string) {
   const totalAssignments = assignments.length;
   const completedAssignments = assignments.filter((a: any) => a.status === "done").length;
   const recentAssignments = assignments
@@ -398,6 +421,7 @@ function buildChildData(child: any, assignments: any[], attendance: any[], pts: 
     gender: child.gender,
     studyMode: child.studyMode,
     isActive: child.isActive,
+    relationship: relationship || "parent",
     stats: {
       totalAssignments, completedAssignments,
       completionRate: totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0,
