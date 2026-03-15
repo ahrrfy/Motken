@@ -6,6 +6,16 @@ import {
 } from "@shared/schema";
 import { logActivity, canTeacherAccessStudent } from "./shared";
 
+  const enrichWithStudentNames = async (records: any[]) => {
+    const studentIds = [...new Set(records.map(r => r.studentId))];
+    const nameMap = new Map<string, string>();
+    await Promise.all(studentIds.map(async (id) => {
+      const student = await storage.getUser(id);
+      if (student) nameMap.set(id, student.name);
+    }));
+    return records.map(r => ({ ...r, studentName: nameMap.get(r.studentId) || r.studentId }));
+  };
+
 export function registerAttendanceRoutes(app: Express) {
   // ==================== ATTENDANCE ====================
   app.get("/api/attendance", requireAuth, async (req, res) => {
@@ -21,7 +31,7 @@ export function registerAttendanceRoutes(app: Express) {
           }
         }
         const records = await storage.getAttendanceByDate(new Date(date as string), teacherId as string);
-        return res.json(records);
+        return res.json(await enrichWithStudentNames(records));
       }
       if (studentId) {
         if (currentUser.role === "student" && studentId !== currentUser.id) {
@@ -37,7 +47,7 @@ export function registerAttendanceRoutes(app: Express) {
           }
         }
         const records = await storage.getAttendanceByStudent(studentId as string);
-        return res.json(records);
+        return res.json(await enrichWithStudentNames(records));
       }
       if (teacherId) {
         if (currentUser.role === "student") {
@@ -50,7 +60,7 @@ export function registerAttendanceRoutes(app: Express) {
           }
         }
         const records = await storage.getAttendanceByTeacher(teacherId as string);
-        return res.json(records);
+        return res.json(await enrichWithStudentNames(records));
       }
       if (mosqueId) {
         if (currentUser.role === "student") {
@@ -60,19 +70,19 @@ export function registerAttendanceRoutes(app: Express) {
           return res.status(403).json({ message: "غير مصرح بالوصول لحضور مسجد آخر" });
         }
         const records = await storage.getAttendanceByMosque(mosqueId as string);
-        return res.json(records);
+        return res.json(await enrichWithStudentNames(records));
       }
       if (currentUser.role === "student") {
         const records = await storage.getAttendanceByStudent(currentUser.id);
-        return res.json(records);
+        return res.json(await enrichWithStudentNames(records));
       }
       if (currentUser.role === "teacher") {
         const records = await storage.getAttendanceByTeacher(currentUser.id);
-        return res.json(records);
+        return res.json(await enrichWithStudentNames(records));
       }
       if (currentUser.mosqueId) {
         const records = await storage.getAttendanceByMosque(currentUser.mosqueId);
-        return res.json(records);
+        return res.json(await enrichWithStudentNames(records));
       }
       res.json([]);
     } catch (err: any) {
