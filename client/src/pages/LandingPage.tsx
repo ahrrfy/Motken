@@ -201,7 +201,7 @@ export default function LandingPage() {
             ].map((s, i) => (
               <div key={i} className="text-center bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10" data-testid={`stat-card-${i}`}>
                 <div className="text-2xl mb-1">{s.icon}</div>
-                <AnimatedCounter target={s.value} suffix="+" />
+                <AnimatedCounter target={s.value} suffix={s.value >= 10 ? "+" : ""} />
                 <p className="text-xs sm:text-sm text-gray-400 mt-1">{s.label}</p>
               </div>
             ))}
