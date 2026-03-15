@@ -476,7 +476,14 @@ export default function AttendancePage() {
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
   };
 
-  const filteredHistory = history.filter((record) => {
+  const resolvedHistory = useMemo(() => {
+    return history.map(r => ({
+      ...r,
+      studentName: r.studentName || students.find(s => s.id === r.studentId)?.name || r.studentId,
+    }));
+  }, [history, students]);
+
+  const filteredHistory = resolvedHistory.filter((record) => {
     if (filterSearch && !record.studentName?.includes(filterSearch)) return false;
     if (filterLevel !== "all") {
       const student = students.find(s => s.id === record.studentId);
@@ -521,7 +528,8 @@ export default function AttendancePage() {
 
     const byStudent: Record<string, { name: string; total: number; present: number }> = {};
     allHistory.forEach(r => {
-      const name = r.studentName || r.studentId;
+      const student = students.find(s => s.id === r.studentId);
+      const name = r.studentName || student?.name || r.studentId;
       if (!byStudent[r.studentId]) {
         byStudent[r.studentId] = { name, total: 0, present: 0 };
       }
@@ -541,7 +549,7 @@ export default function AttendancePage() {
     const worst = [...studentStats].sort((a, b) => a.rate - b.rate).slice(0, 5);
 
     return { rate, studentStats, best, worst };
-  }, [allHistory]);
+  }, [allHistory, students]);
 
   const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
@@ -1167,7 +1175,7 @@ export default function AttendancePage() {
                         <div className="space-y-2">
                           {selectedDateRecords.map((r, i) => (
                             <div key={r.id || i} className="flex items-center justify-between py-1.5 border-b last:border-0">
-                              <span className="text-sm">{r.studentName || r.studentId}</span>
+                              <span className="text-sm">{r.studentName || students.find(s => s.id === r.studentId)?.name || r.studentId}</span>
                               <Badge variant="outline" className={statusColors[r.status] || ""}>
                                 {statusLabels[r.status] || r.status}
                               </Badge>
