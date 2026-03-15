@@ -327,7 +327,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
       ["الاسم", "تاريخ التخرج", "الأجزاء", "الإجازة", "التقدير"].join(","),
       ...graduates.map(g => [
         g.studentName || getStudentName(g.studentId),
-        new Date(g.graduationDate).toLocaleDateString("ar-SA"),
+        formatDateAr(g.graduationDate),
         g.totalJuz,
         g.ijazahChain ? "نعم" : "لا",
         g.finalGrade || "",

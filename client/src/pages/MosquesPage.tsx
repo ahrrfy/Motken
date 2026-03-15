@@ -27,6 +27,7 @@ import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { Building2, Plus, Edit, Trash2, Users, MapPin, Phone, Search, PauseCircle, XCircle, PlayCircle, ImagePlus, X, CheckCircle2, ShieldCheck, UserCheck, FileText, Clock, LayoutDashboard, Download, Bell, BarChart3, AlertTriangle, ArrowUpDown, Trophy } from "lucide-react";
 import type { Mosque, MosqueRegistration } from "@shared/schema";
 import { exportJsonToExcel } from "@/lib/excel-utils";
+import { formatDateAr } from "@/lib/utils";
 
 interface MosqueStats {
   supervisors: number;
@@ -475,7 +476,7 @@ export default function MosquesPage() {
           "عدد الطلاب": mosqueStats.students,
           "عدد المعلمين": mosqueStats.teachers,
           "الحالة": statusLabels[(m as any).status] || (m as any).status,
-          "تاريخ الإنشاء": new Date(m.createdAt).toLocaleDateString("ar-IQ"),
+          "تاريخ الإنشاء": formatDateAr(m.createdAt),
         };
       });
 
@@ -627,7 +628,7 @@ export default function MosquesPage() {
                     </Badge>
                   </div>
                   <div className="text-muted-foreground">تاريخ الطلب:</div>
-                  <div className="font-medium text-left">{new Date(reg.createdAt).toLocaleDateString('ar-IQ')}</div>
+                  <div className="font-medium text-left">{formatDateAr(reg.createdAt)}</div>
                 </div>
 
                 {reg.registrationType === 'vouching' && (
@@ -720,7 +721,7 @@ export default function MosquesPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">التاريخ:</span>
-                    <span>{new Date(v.createdAt).toLocaleDateString('ar-IQ')}</span>
+                    <span>{formatDateAr(v.createdAt)}</span>
                   </div>
                 </div>
                 {v.status === 'rejected' && v.rejectionReason && (
@@ -1321,7 +1322,7 @@ export default function MosquesPage() {
                               </div>
                               <div className={`font-bold ${section.color}`}>
                                 {section.valueKey === "lastActivity"
-                                  ? (m.lastActivity ? new Date(m.lastActivity).toLocaleDateString("ar-IQ") : "—")
+                                  ? (m.lastActivity ? formatDateAr(m.lastActivity) : "—")
                                   : `${m[section.valueKey]}${section.valueLabel}`
                                 }
                               </div>

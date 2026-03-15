@@ -35,6 +35,7 @@ import { useAuth } from "@/lib/auth-context";
 import { exportMultiSheetExcel } from "@/lib/excel-utils";
 import { openPrintWindow, generateStatsHtml, generateUsersTableHtml, generateSemesterReportHtml, generateAnnualSummaryHtml } from "@/lib/print-utils";
 import { quranSurahs } from "@shared/quran-surahs";
+import { formatDateAr } from "@/lib/utils";
 import {
   BarChart,
   Bar,
@@ -153,8 +154,8 @@ function QuranPassport({ studentId }: { studentId: string }) {
   const levelName = LEVEL_NAMES[Math.min(level, LEVEL_NAMES.length) - 1] || LEVEL_NAMES[0];
 
   const joinDate = student.createdAt
-    ? new Date(student.createdAt).toLocaleDateString("ar-SA")
-    : new Date().toLocaleDateString("ar-SA");
+    ? formatDateAr(student.createdAt)
+    : formatDateAr(new Date());
 
   const recentGrades = assignments
     .filter((a: any) => a.grade != null)
