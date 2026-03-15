@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -724,17 +725,16 @@ export default function AttendancePage() {
                     />
                   </div>
                   {(isSupervisor || isAdmin) && teachers.length > 0 && (
-                    <Select value={markFilterTeacher} onValueChange={setMarkFilterTeacher}>
-                      <SelectTrigger className="w-36 h-9 text-xs" data-testid="select-mark-teacher">
-                        <SelectValue placeholder="المعلم" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">كل المعلمين</SelectItem>
-                        {teachers.map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={[{ value: "all", label: "كل المعلمين" }, ...teachers.map(t => ({ value: t.id, label: t.name }))]}
+                      value={markFilterTeacher}
+                      onValueChange={setMarkFilterTeacher}
+                      placeholder="المعلم"
+                      searchPlaceholder="ابحث عن معلم..."
+                      emptyText="لا يوجد معلم بهذا الاسم"
+                      triggerClassName="w-36 h-9 text-xs"
+                      data-testid="select-mark-teacher"
+                    />
                   )}
                   <Select value={markFilterStatus} onValueChange={(v: any) => setMarkFilterStatus(v)}>
                     <SelectTrigger className="w-32 h-9 text-xs" data-testid="select-mark-status">
