@@ -207,7 +207,7 @@ export function registerUsersRoutes(app: Express) {
         return res.status(400).json({ message: contentCheck.reason });
       }
 
-      const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels, studyMode } = req.body;
+      const { username, name, role: userRole, mosqueId: bodyMosqueId, teacherId, phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isChild, isSpecialNeeds, isOrphan, level, teacherLevels, studyMode } = req.body;
       if (!username || typeof username !== "string" || username.length < 3 || username.length > 50) {
         return res.status(400).json({ message: "اسم المستخدم مطلوب ويجب أن يكون بين 3 و 50 حرف" });
       }
@@ -234,6 +234,7 @@ export function registerUsersRoutes(app: Express) {
       const ageCheck = validateAge(age);
       if (!ageCheck.valid) return res.status(400).json({ message: ageCheck.error });
       const boolChecks = [
+        validateBoolean(isChild, "isChild"),
         validateBoolean(isSpecialNeeds, "isSpecialNeeds"),
         validateBoolean(isOrphan, "isOrphan"),
       ];
@@ -276,7 +277,7 @@ export function registerUsersRoutes(app: Express) {
       const data: any = {
         username, name, password: await hashPassword(rawPassword),
         role: req.body.role, mosqueId: req.body.mosqueId, teacherId,
-        phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan,
+        phone, address, gender, avatar, isActive, canPrintIds, age, telegramId, parentPhone, educationLevel, isChild, isSpecialNeeds, isOrphan,
         studyMode: req.body.role === "student" ? (studyMode || "in-person") : undefined,
         level: req.body.role === "student" ? (level || 1) : undefined,
         teacherLevels: req.body.role === "teacher" ? (teacherLevels || "1,2,3,4,5,6") : undefined,
@@ -350,7 +351,7 @@ export function registerUsersRoutes(app: Express) {
       return res.status(403).json({ message: "غير مصرح بتعديل هذا المستخدم" });
     }
 
-    const safeFields = ["name", "phone", "address", "gender", "avatar", "age", "telegramId", "parentPhone", "educationLevel", "isSpecialNeeds", "isOrphan", "password"];
+    const safeFields = ["name", "phone", "address", "gender", "avatar", "age", "telegramId", "parentPhone", "educationLevel", "isChild", "isSpecialNeeds", "isOrphan", "password"];
     const supervisorFields = ["teacherId", "level", "teacherLevels", "studyMode"];
     const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil"];
     const allAllowedFields = [...safeFields, ...supervisorFields, ...adminOnlyFields];
@@ -379,7 +380,7 @@ export function registerUsersRoutes(app: Express) {
     }
 
     const updateData: any = {};
-    const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isSpecialNeeds, isOrphan, level, teacherLevels, studyMode } = req.body;
+    const { name, phone, address, gender, avatar, teacherId, age, telegramId, parentPhone, educationLevel, isChild, isSpecialNeeds, isOrphan, level, teacherLevels, studyMode } = req.body;
 
     const patchFieldCheck = validateFields(req.body, ["name", "phone", "parentPhone", "address", "telegramId", "educationLevel"]);
     if (!patchFieldCheck.valid) return res.status(400).json({ message: patchFieldCheck.error });
@@ -388,6 +389,10 @@ export function registerUsersRoutes(app: Express) {
     if (gender !== undefined && gender !== null) {
       const gCheck = validateEnum(gender, "gender", ["male", "female", "ذكر", "أنثى"]);
       if (!gCheck.valid) return res.status(400).json({ message: gCheck.error });
+    }
+    if (isChild !== undefined) {
+      const bCheck = validateBoolean(isChild, "isChild");
+      if (!bCheck.valid) return res.status(400).json({ message: bCheck.error });
     }
     if (isSpecialNeeds !== undefined) {
       const bCheck = validateBoolean(isSpecialNeeds, "isSpecialNeeds");
@@ -421,6 +426,7 @@ export function registerUsersRoutes(app: Express) {
     if (telegramId !== undefined) updateData.telegramId = telegramId;
     if (parentPhone !== undefined) updateData.parentPhone = parentPhone;
     if (educationLevel !== undefined) updateData.educationLevel = educationLevel;
+    if (isChild !== undefined) updateData.isChild = isChild;
     if (isSpecialNeeds !== undefined) updateData.isSpecialNeeds = isSpecialNeeds;
     if (isOrphan !== undefined) updateData.isOrphan = isOrphan;
     if (level !== undefined) updateData.level = level;
