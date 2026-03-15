@@ -126,43 +126,32 @@ export function registerAnalyticsRoutes(app: Express) {
         return res.json({ star: null });
       }
 
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const eligibleStudents = students.filter(s => {
-        const createdAt = s.createdAt ? new Date(s.createdAt) : now;
-        return createdAt < sevenDaysAgo;
-      });
-
-      if (eligibleStudents.length === 0) {
-        return res.json({ star: null, topStudents: [] });
-      }
-
       const studentScores: { student: any; score: number; details: any }[] = [];
 
-      for (const student of eligibleStudents) {
-        let score = 0;
-        const details: any = { attendance: 0, assignments: 0, points: 0 };
+      for (const student of students) {
+        const points = await storage.getPointsByUser(student.id);
+        const weekPoints = points.filter(p => new Date(p.createdAt) >= weekStart);
+        const weekPointsTotal = weekPoints.reduce((sum, p) => sum + p.amount, 0);
+
+        if (weekPointsTotal <= 0) continue;
 
         const attendance = await storage.getAttendanceByStudent(student.id);
         const weekAttendance = attendance.filter(a => new Date(a.date) >= weekStart);
-        details.attendance = weekAttendance.filter(a => a.status === "present").length;
-        score += details.attendance * 10;
+        const attendanceCount = weekAttendance.filter(a => a.status === "present").length;
 
-        const assignments = await storage.getAssignmentsByStudent(student.id);
-        const weekAssignments = assignments.filter(a => new Date(a.createdAt) >= weekStart && a.status === "done");
-        details.assignments = weekAssignments.length;
-        score += weekAssignments.reduce((sum, a) => sum + (a.grade || 0), 0);
+        const allAssignments = await storage.getAssignmentsByStudent(student.id);
+        const weekAssignments = allAssignments.filter(a => new Date(a.createdAt) >= weekStart && a.status === "done");
 
-        const points = await storage.getPointsByUser(student.id);
-        const weekPoints = points.filter(p => new Date(p.createdAt) >= weekStart);
-        details.points = weekPoints.reduce((sum, p) => sum + p.amount, 0);
-        score += details.points;
-
-        studentScores.push({ student: { id: student.id, name: student.name, level: student.level, avatar: student.avatar }, score, details });
+        studentScores.push({
+          student: { id: student.id, name: student.name, level: student.level, avatar: student.avatar },
+          score: weekPointsTotal,
+          details: { points: weekPointsTotal, attendance: attendanceCount, assignments: weekAssignments.length },
+        });
       }
 
       studentScores.sort((a, b) => b.score - a.score);
 
-      const top3 = studentScores.filter(s => s.score > 0).slice(0, 3);
+      const top3 = studentScores.slice(0, 3);
 
       res.json({ star: top3[0] || null, topStudents: top3 });
     } catch (err: any) {
