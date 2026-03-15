@@ -138,7 +138,8 @@ export function registerAssignmentsRoutes(app: Express) {
         type: "info",
         isRead: false,
       });
-      await logActivity(currentUser, `إنشاء واجب: ${req.body.surahName}`, "assignments", `للطالب ${req.body.studentId}`);
+      const studentForLog = await storage.getUser(req.body.studentId);
+      await logActivity(currentUser, `إنشاء واجب: ${req.body.surahName}`, "assignments", `للطالب ${studentForLog?.name || req.body.studentId}`);
       res.status(201).json(assignment);
     } catch (err: any) {
       console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
@@ -239,7 +240,8 @@ export function registerAssignmentsRoutes(app: Express) {
       } catch (e) { console.error("خطأ في منح نقاط الإتمام:", e); }
     }
     if (req.body.grade !== undefined) {
-      await logActivity(req.user!, `تقييم واجب بدرجة ${req.body.grade}`, "assignments", `واجب ${req.params.id}`);
+      const gradeStudent = await storage.getUser(assignment.studentId);
+      await logActivity(req.user!, `تقييم واجب بدرجة ${req.body.grade}`, "assignments", `واجب ${assignment.surahName} للطالب ${gradeStudent?.name || assignment.studentId}`);
     }
     if (req.body.grade !== undefined && assignment.grade === null) {
       const g = Number(req.body.grade);
@@ -334,7 +336,8 @@ export function registerAssignmentsRoutes(app: Express) {
         message: `قام الطالب ${currentUser.name} برفع تسميع صوتي لسورة ${assignment.surahName} (${assignment.fromVerse}-${assignment.toVerse})`,
         type: "info",
       });
-      await logActivity(currentUser, "رفع تسميع صوتي", "assignments", `واجب ${req.params.id}`);
+      const audioStudent = await storage.getUser(assignment.studentId);
+      await logActivity(currentUser, "رفع تسميع صوتي", "assignments", `واجب ${assignment.surahName} للطالب ${audioStudent?.name || assignment.studentId}`);
       res.json({ message: "تم رفع التسجيل بنجاح", assignment: updated });
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في رفع التسجيل" });
@@ -403,7 +406,8 @@ export function registerAssignmentsRoutes(app: Express) {
         audioUploadedAt: null,
         audioGradedAt: null,
       });
-      await logActivity(currentUser, "حذف تسميع صوتي", "assignments", `واجب ${req.params.id}`);
+      const delAudioStudent = await storage.getUser(assignment.studentId);
+      await logActivity(currentUser, "حذف تسميع صوتي", "assignments", `واجب ${assignment.surahName} للطالب ${delAudioStudent?.name || assignment.studentId}`);
       res.json({ message: "تم حذف التسجيل بنجاح" });
     } catch {
       res.status(500).json({ message: "حدث خطأ في حذف التسجيل" });
