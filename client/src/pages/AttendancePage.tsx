@@ -238,7 +238,12 @@ export default function AttendancePage() {
 
       const res = await fetch(url, { credentials: "include" });
       if (res.ok) {
-        setHistory(await res.json());
+        const records: AttendanceRecord[] = await res.json();
+        const enriched = records.map(r => ({
+          ...r,
+          studentName: r.studentName || students.find(s => s.id === r.studentId)?.name || r.studentId,
+        }));
+        setHistory(enriched);
       } else {
         toast({ title: "خطأ", description: "فشل في تحميل سجل الحضور", variant: "destructive" });
       }
