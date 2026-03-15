@@ -161,9 +161,11 @@ function QuranPassport({ studentId }: { studentId: string }) {
     .sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime())
     .slice(0, 5)
     .map((a: any) => {
-      const surah = quranSurahs.find((s) => s.number === a.surahNumber);
+      const surahByName = quranSurahs.find((s) => s.name === a.surahName || a.surahName?.includes(s.name));
+      const surahByNum = a.surahNumber ? quranSurahs.find((s) => s.number === a.surahNumber) : null;
+      const resolvedName = surahByName?.name || surahByNum?.name || a.surahName || "سورة";
       return {
-        surahName: surah?.name || `سورة ${a.surahNumber || ""}`,
+        surahName: resolvedName,
         fromVerse: a.fromVerse || 1,
         toVerse: a.toVerse || 1,
         grade: a.grade,
@@ -230,12 +232,20 @@ function QuranPassport({ studentId }: { studentId: string }) {
           </h3>
           <div className="flex flex-wrap gap-2">
             {badges.length > 0 ? (
-              badges.map((badge: any) => (
+              badges.map((badge: any) => {
+                let displayName = badge.badgeName || badge.name;
+                const numMatch = displayName?.match(/حافظ سورة رقم (\d+)/);
+                if (numMatch) {
+                  const surah = quranSurahs.find(s => s.number === Number(numMatch[1]));
+                  if (surah) displayName = `حافظ سورة ${surah.name}`;
+                }
+                return (
                 <div key={badge.id} className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-xs font-medium" data-testid={`passport-badge-${badge.id}`}>
                   <Star className="w-3 h-3" />
-                  {badge.badgeName || badge.name}
+                  {displayName}
                 </div>
-              ))
+              );})
+
             ) : (
               <p className="text-sm text-muted-foreground">لا توجد أوسمة بعد</p>
             )}
@@ -599,10 +609,11 @@ export default function ReportsPage() {
       ]);
       
       const gradedAssignments = assignmentsData.filter((a: any) => a.grade != null).map((a: any) => {
-        const surah = quranSurahs.find(s => s.number === a.surahNumber);
+        const surahByName = quranSurahs.find(s => s.name === a.surahName || a.surahName?.includes(s.name));
+        const surahByNum = a.surahNumber ? quranSurahs.find(s => s.number === a.surahNumber) : null;
         return {
           ...a,
-          surahName: surah?.name || `سورة ${a.surahNumber}`
+          surahName: surahByName?.name || surahByNum?.name || a.surahName || "سورة"
         };
       });
 

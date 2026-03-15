@@ -51,21 +51,23 @@ export function registerQuranRoutes(app: Express) {
           const existing = await db.select().from(badges)
             .where(and(eq(badges.userId, currentUser.id), eq(badges.badgeType, `surah_complete_${surahNumber}`)));
           if (existing.length === 0) {
+            const surahInfo = quranSurahs.find(s => s.number === Number(surahNumber));
+            const surahDisplayName = surahInfo ? surahInfo.name : `سورة رقم ${surahNumber}`;
             await storage.createBadge({
               userId: currentUser.id, mosqueId: currentUser.mosqueId,
               badgeType: `surah_complete_${surahNumber}`,
-              badgeName: `حافظ سورة رقم ${surahNumber}`,
-              description: `تم حفظ السورة كاملاً`,
+              badgeName: `حافظ سورة ${surahDisplayName}`,
+              description: `تم حفظ سورة ${surahDisplayName} كاملاً`,
             });
             await storage.createPoint({
               userId: currentUser.id, mosqueId: currentUser.mosqueId,
               amount: Math.min(totalVerses * 2, 100), category: "achievement",
-              reason: `إتمام حفظ سورة كاملة (${totalVerses} آية)`,
+              reason: `إتمام حفظ سورة ${surahDisplayName} كاملة (${totalVerses} آية)`,
             });
             await storage.createNotification({
               userId: currentUser.id, mosqueId: currentUser.mosqueId,
               title: "إنجاز رائع!", type: "success",
-              message: `أتممت حفظ السورة رقم ${surahNumber} كاملاً — تم منحك شارة ونقاط!`,
+              message: `أتممت حفظ سورة ${surahDisplayName} كاملاً — تم منحك شارة ونقاط!`,
             });
           }
         }
