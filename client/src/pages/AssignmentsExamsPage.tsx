@@ -85,6 +85,39 @@ interface Exam {
   students?: ExamStudent[];
 }
 
+const JUZ_DATA: { juz: number; label: string; surahs: { number: number; fromVerse: number; toVerse: number }[] }[] = [
+  { juz: 1, label: "الجزء الأول", surahs: [{ number: 1, fromVerse: 1, toVerse: 7 }, { number: 2, fromVerse: 1, toVerse: 141 }] },
+  { juz: 2, label: "الجزء الثاني", surahs: [{ number: 2, fromVerse: 142, toVerse: 252 }] },
+  { juz: 3, label: "الجزء الثالث", surahs: [{ number: 2, fromVerse: 253, toVerse: 286 }, { number: 3, fromVerse: 1, toVerse: 91 }] },
+  { juz: 4, label: "الجزء الرابع", surahs: [{ number: 3, fromVerse: 92, toVerse: 200 }, { number: 4, fromVerse: 1, toVerse: 23 }] },
+  { juz: 5, label: "الجزء الخامس", surahs: [{ number: 4, fromVerse: 24, toVerse: 147 }] },
+  { juz: 6, label: "الجزء السادس", surahs: [{ number: 4, fromVerse: 148, toVerse: 176 }, { number: 5, fromVerse: 1, toVerse: 81 }] },
+  { juz: 7, label: "الجزء السابع", surahs: [{ number: 5, fromVerse: 82, toVerse: 120 }, { number: 6, fromVerse: 1, toVerse: 110 }] },
+  { juz: 8, label: "الجزء الثامن", surahs: [{ number: 6, fromVerse: 111, toVerse: 165 }, { number: 7, fromVerse: 1, toVerse: 87 }] },
+  { juz: 9, label: "الجزء التاسع", surahs: [{ number: 7, fromVerse: 88, toVerse: 206 }, { number: 8, fromVerse: 1, toVerse: 40 }] },
+  { juz: 10, label: "الجزء العاشر", surahs: [{ number: 8, fromVerse: 41, toVerse: 75 }, { number: 9, fromVerse: 1, toVerse: 92 }] },
+  { juz: 11, label: "الجزء الحادي عشر", surahs: [{ number: 9, fromVerse: 93, toVerse: 129 }, { number: 10, fromVerse: 1, toVerse: 109 }, { number: 11, fromVerse: 1, toVerse: 5 }] },
+  { juz: 12, label: "الجزء الثاني عشر", surahs: [{ number: 11, fromVerse: 6, toVerse: 123 }, { number: 12, fromVerse: 1, toVerse: 52 }] },
+  { juz: 13, label: "الجزء الثالث عشر", surahs: [{ number: 12, fromVerse: 53, toVerse: 111 }, { number: 13, fromVerse: 1, toVerse: 43 }, { number: 14, fromVerse: 1, toVerse: 52 }] },
+  { juz: 14, label: "الجزء الرابع عشر", surahs: [{ number: 15, fromVerse: 1, toVerse: 99 }, { number: 16, fromVerse: 1, toVerse: 128 }] },
+  { juz: 15, label: "الجزء الخامس عشر", surahs: [{ number: 17, fromVerse: 1, toVerse: 111 }, { number: 18, fromVerse: 1, toVerse: 74 }] },
+  { juz: 16, label: "الجزء السادس عشر", surahs: [{ number: 18, fromVerse: 75, toVerse: 110 }, { number: 19, fromVerse: 1, toVerse: 98 }, { number: 20, fromVerse: 1, toVerse: 135 }] },
+  { juz: 17, label: "الجزء السابع عشر", surahs: [{ number: 21, fromVerse: 1, toVerse: 112 }, { number: 22, fromVerse: 1, toVerse: 78 }] },
+  { juz: 18, label: "الجزء الثامن عشر", surahs: [{ number: 23, fromVerse: 1, toVerse: 118 }, { number: 24, fromVerse: 1, toVerse: 64 }, { number: 25, fromVerse: 1, toVerse: 20 }] },
+  { juz: 19, label: "الجزء التاسع عشر", surahs: [{ number: 25, fromVerse: 21, toVerse: 77 }, { number: 26, fromVerse: 1, toVerse: 227 }, { number: 27, fromVerse: 1, toVerse: 55 }] },
+  { juz: 20, label: "الجزء العشرون", surahs: [{ number: 27, fromVerse: 56, toVerse: 93 }, { number: 28, fromVerse: 1, toVerse: 88 }, { number: 29, fromVerse: 1, toVerse: 45 }] },
+  { juz: 21, label: "الجزء الحادي والعشرون", surahs: [{ number: 29, fromVerse: 46, toVerse: 69 }, { number: 30, fromVerse: 1, toVerse: 60 }, { number: 31, fromVerse: 1, toVerse: 34 }, { number: 32, fromVerse: 1, toVerse: 30 }, { number: 33, fromVerse: 1, toVerse: 30 }] },
+  { juz: 22, label: "الجزء الثاني والعشرون", surahs: [{ number: 33, fromVerse: 31, toVerse: 73 }, { number: 34, fromVerse: 1, toVerse: 54 }, { number: 35, fromVerse: 1, toVerse: 45 }, { number: 36, fromVerse: 1, toVerse: 27 }] },
+  { juz: 23, label: "الجزء الثالث والعشرون", surahs: [{ number: 36, fromVerse: 28, toVerse: 83 }, { number: 37, fromVerse: 1, toVerse: 182 }, { number: 38, fromVerse: 1, toVerse: 88 }, { number: 39, fromVerse: 1, toVerse: 31 }] },
+  { juz: 24, label: "الجزء الرابع والعشرون", surahs: [{ number: 39, fromVerse: 32, toVerse: 75 }, { number: 40, fromVerse: 1, toVerse: 85 }, { number: 41, fromVerse: 1, toVerse: 46 }] },
+  { juz: 25, label: "الجزء الخامس والعشرون", surahs: [{ number: 41, fromVerse: 47, toVerse: 54 }, { number: 42, fromVerse: 1, toVerse: 53 }, { number: 43, fromVerse: 1, toVerse: 89 }, { number: 44, fromVerse: 1, toVerse: 59 }, { number: 45, fromVerse: 1, toVerse: 37 }] },
+  { juz: 26, label: "الجزء السادس والعشرون", surahs: [{ number: 46, fromVerse: 1, toVerse: 35 }, { number: 47, fromVerse: 1, toVerse: 38 }, { number: 48, fromVerse: 1, toVerse: 29 }, { number: 49, fromVerse: 1, toVerse: 18 }, { number: 50, fromVerse: 1, toVerse: 45 }, { number: 51, fromVerse: 1, toVerse: 30 }] },
+  { juz: 27, label: "الجزء السابع والعشرون", surahs: [{ number: 51, fromVerse: 31, toVerse: 60 }, { number: 52, fromVerse: 1, toVerse: 49 }, { number: 53, fromVerse: 1, toVerse: 62 }, { number: 54, fromVerse: 1, toVerse: 55 }, { number: 55, fromVerse: 1, toVerse: 78 }, { number: 56, fromVerse: 1, toVerse: 96 }, { number: 57, fromVerse: 1, toVerse: 29 }] },
+  { juz: 28, label: "الجزء الثامن والعشرون", surahs: [{ number: 58, fromVerse: 1, toVerse: 22 }, { number: 59, fromVerse: 1, toVerse: 24 }, { number: 60, fromVerse: 1, toVerse: 13 }, { number: 61, fromVerse: 1, toVerse: 14 }, { number: 62, fromVerse: 1, toVerse: 11 }, { number: 63, fromVerse: 1, toVerse: 11 }, { number: 64, fromVerse: 1, toVerse: 18 }, { number: 65, fromVerse: 1, toVerse: 12 }, { number: 66, fromVerse: 1, toVerse: 12 }] },
+  { juz: 29, label: "الجزء التاسع والعشرون", surahs: [{ number: 67, fromVerse: 1, toVerse: 30 }, { number: 68, fromVerse: 1, toVerse: 52 }, { number: 69, fromVerse: 1, toVerse: 52 }, { number: 70, fromVerse: 1, toVerse: 44 }, { number: 71, fromVerse: 1, toVerse: 28 }, { number: 72, fromVerse: 1, toVerse: 28 }, { number: 73, fromVerse: 1, toVerse: 20 }, { number: 74, fromVerse: 1, toVerse: 56 }, { number: 75, fromVerse: 1, toVerse: 40 }, { number: 76, fromVerse: 1, toVerse: 31 }, { number: 77, fromVerse: 1, toVerse: 50 }] },
+  { juz: 30, label: "جزء عمّ", surahs: [{ number: 78, fromVerse: 1, toVerse: 40 }, { number: 79, fromVerse: 1, toVerse: 46 }, { number: 80, fromVerse: 1, toVerse: 42 }, { number: 81, fromVerse: 1, toVerse: 29 }, { number: 82, fromVerse: 1, toVerse: 19 }, { number: 83, fromVerse: 1, toVerse: 36 }, { number: 84, fromVerse: 1, toVerse: 25 }, { number: 85, fromVerse: 1, toVerse: 22 }, { number: 86, fromVerse: 1, toVerse: 17 }, { number: 87, fromVerse: 1, toVerse: 19 }, { number: 88, fromVerse: 1, toVerse: 26 }, { number: 89, fromVerse: 1, toVerse: 30 }, { number: 90, fromVerse: 1, toVerse: 20 }, { number: 91, fromVerse: 1, toVerse: 15 }, { number: 92, fromVerse: 1, toVerse: 21 }, { number: 93, fromVerse: 1, toVerse: 11 }, { number: 94, fromVerse: 1, toVerse: 8 }, { number: 95, fromVerse: 1, toVerse: 8 }, { number: 96, fromVerse: 1, toVerse: 19 }, { number: 97, fromVerse: 1, toVerse: 5 }, { number: 98, fromVerse: 1, toVerse: 8 }, { number: 99, fromVerse: 1, toVerse: 8 }, { number: 100, fromVerse: 1, toVerse: 11 }, { number: 101, fromVerse: 1, toVerse: 11 }, { number: 102, fromVerse: 1, toVerse: 8 }, { number: 103, fromVerse: 1, toVerse: 3 }, { number: 104, fromVerse: 1, toVerse: 9 }, { number: 105, fromVerse: 1, toVerse: 5 }, { number: 106, fromVerse: 1, toVerse: 4 }, { number: 107, fromVerse: 1, toVerse: 7 }, { number: 108, fromVerse: 1, toVerse: 3 }, { number: 109, fromVerse: 1, toVerse: 6 }, { number: 110, fromVerse: 1, toVerse: 3 }, { number: 111, fromVerse: 1, toVerse: 5 }, { number: 112, fromVerse: 1, toVerse: 4 }, { number: 113, fromVerse: 1, toVerse: 5 }, { number: 114, fromVerse: 1, toVerse: 6 }] },
+];
+
 function getDeadlineInfo(scheduledDate: string, status: string) {
   const now = new Date();
   const date = new Date(scheduledDate);
@@ -170,7 +203,10 @@ export default function AssignmentsExamsPage() {
   const [filterLevel, setFilterLevel] = useState("all");
 
   const [examTitle, setExamTitle] = useState("");
+  const [examScope, setExamScope] = useState<"verses" | "surahs" | "juz">("verses");
   const [examSelectedSurah, setExamSelectedSurah] = useState("");
+  const [examSelectedSurahs, setExamSelectedSurahs] = useState<string[]>([]);
+  const [examSelectedJuz, setExamSelectedJuz] = useState<number[]>([]);
   const [examFromVerse, setExamFromVerse] = useState("");
   const [examToVerse, setExamToVerse] = useState("");
   const [examDate, setExamDate] = useState("");
@@ -522,7 +558,10 @@ export default function AssignmentsExamsPage() {
 
   const resetExamForm = () => {
     setExamTitle("");
+    setExamScope("verses");
     setExamSelectedSurah("");
+    setExamSelectedSurahs([]);
+    setExamSelectedJuz([]);
     setExamFromVerse("");
     setExamToVerse("");
     setExamDate("");
@@ -533,24 +572,59 @@ export default function AssignmentsExamsPage() {
   };
 
   const handleCreateExam = async () => {
-    if (!examTitle || !examSelectedSurah || !examFromVerse || !examToVerse || !examDate) {
-      toast({ title: "خطأ", description: "يرجى تعبئة جميع الحقول المطلوبة", variant: "destructive" });
+    if (!examTitle || !examDate) {
+      toast({ title: "خطأ", description: "يرجى تعبئة عنوان الامتحان والتاريخ", variant: "destructive" });
       return;
     }
 
-    const surah = surahs.find(s => s.number.toString() === examSelectedSurah);
-    if (!surah) return;
+    let surahName = "";
+    let fromVerse = 1;
+    let toVerse = 1;
 
-    const fv = parseInt(examFromVerse);
-    const tv = parseInt(examToVerse);
-
-    if (fv < 1 || fv > surah.versesCount) {
-      toast({ title: "خطأ", description: `رقم آية البداية يجب أن يكون بين 1 و ${surah.versesCount}`, variant: "destructive" });
-      return;
-    }
-    if (tv < fv || tv > surah.versesCount) {
-      toast({ title: "خطأ", description: `رقم آية النهاية يجب أن يكون بين ${fv} و ${surah.versesCount}`, variant: "destructive" });
-      return;
+    if (examScope === "verses") {
+      if (!examSelectedSurah || !examFromVerse || !examToVerse) {
+        toast({ title: "خطأ", description: "يرجى تحديد السورة والآيات", variant: "destructive" });
+        return;
+      }
+      const surah = surahs.find(s => s.number.toString() === examSelectedSurah);
+      if (!surah) return;
+      const fv = parseInt(examFromVerse);
+      const tv = parseInt(examToVerse);
+      if (fv < 1 || fv > surah.versesCount) {
+        toast({ title: "خطأ", description: `رقم آية البداية يجب أن يكون بين 1 و ${surah.versesCount}`, variant: "destructive" });
+        return;
+      }
+      if (tv < fv || tv > surah.versesCount) {
+        toast({ title: "خطأ", description: `رقم آية النهاية يجب أن يكون بين ${fv} و ${surah.versesCount}`, variant: "destructive" });
+        return;
+      }
+      surahName = surah.name;
+      fromVerse = fv;
+      toVerse = tv;
+    } else if (examScope === "surahs") {
+      if (examSelectedSurahs.length === 0) {
+        toast({ title: "خطأ", description: "يرجى اختيار سورة واحدة على الأقل", variant: "destructive" });
+        return;
+      }
+      const selectedNames = examSelectedSurahs.map(num => {
+        const s = surahs.find(su => su.number.toString() === num);
+        return s?.name || "";
+      }).filter(Boolean);
+      surahName = selectedNames.join(" ، ");
+      fromVerse = 1;
+      toVerse = 1;
+    } else if (examScope === "juz") {
+      if (examSelectedJuz.length === 0) {
+        toast({ title: "خطأ", description: "يرجى اختيار جزء واحد على الأقل", variant: "destructive" });
+        return;
+      }
+      const juzLabels = examSelectedJuz.sort((a, b) => a - b).map(j => {
+        const jd = JUZ_DATA.find(jj => jj.juz === j);
+        return jd?.label || `الجزء ${j}`;
+      });
+      surahName = juzLabels.join(" ، ");
+      fromVerse = 1;
+      toVerse = 1;
     }
 
     if (!isForAll && selectedStudentIds.length === 0) {
@@ -566,9 +640,9 @@ export default function AssignmentsExamsPage() {
         credentials: "include",
         body: JSON.stringify({
           title: examTitle,
-          surahName: surah.name,
-          fromVerse: fv,
-          toVerse: tv,
+          surahName,
+          fromVerse,
+          toVerse,
           examDate,
           examTime: examTime || null,
           description: examDescription || null,
@@ -1519,57 +1593,119 @@ export default function AssignmentsExamsPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>السورة *</Label>
-                        <Select value={examSelectedSurah} onValueChange={(val) => { setExamSelectedSurah(val); setExamFromVerse("1"); setExamToVerse(""); }}>
-                          <SelectTrigger data-testid="select-surah">
-                            <SelectValue placeholder="اختر السورة" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {surahs.map(s => (
-                              <SelectItem key={s.number} value={s.number.toString()} data-testid={`option-surah-${s.number}`}>
-                                {s.number}. {s.name} ({s.versesCount} آية)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label>نطاق الامتحان *</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {([
+                            { value: "verses" as const, label: "آيات محددة" },
+                            { value: "surahs" as const, label: "سور محددة" },
+                            { value: "juz" as const, label: "أجزاء محددة" },
+                          ]).map(opt => (
+                            <Button
+                              key={opt.value}
+                              type="button"
+                              variant={examScope === opt.value ? "default" : "outline"}
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => { setExamScope(opt.value); setExamSelectedSurah(""); setExamSelectedSurahs([]); setExamSelectedJuz([]); setExamFromVerse(""); setExamToVerse(""); }}
+                              data-testid={`button-scope-${opt.value}`}
+                            >
+                              {opt.label}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      {examScope === "verses" && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>السورة *</Label>
+                            <Select value={examSelectedSurah} onValueChange={(val) => { setExamSelectedSurah(val); setExamFromVerse("1"); setExamToVerse(""); }}>
+                              <SelectTrigger data-testid="select-surah">
+                                <SelectValue placeholder="اختر السورة" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                {surahs.map(s => (
+                                  <SelectItem key={s.number} value={s.number.toString()} data-testid={`option-surah-${s.number}`}>
+                                    {s.number}. {s.name} ({s.versesCount} آية)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>من آية *</Label>
+                              <Input
+                                data-testid="input-from-verse"
+                                type="number"
+                                min={1}
+                                max={examCurrentSurah?.versesCount || 1}
+                                value={examFromVerse}
+                                onChange={e => setExamFromVerse(e.target.value)}
+                                placeholder="1"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>إلى آية *</Label>
+                              <Input
+                                data-testid="input-to-verse"
+                                type="number"
+                                min={parseInt(examFromVerse) || 1}
+                                max={examCurrentSurah?.versesCount || 1}
+                                value={examToVerse}
+                                onChange={e => setExamToVerse(e.target.value)}
+                                placeholder={examCurrentSurah?.versesCount.toString() || ""}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {examScope === "surahs" && (
                         <div className="space-y-2">
-                          <Label>من آية *</Label>
-                          <Input
-                            data-testid="input-from-verse"
-                            type="number"
-                            min={1}
-                            max={examCurrentSurah?.versesCount || 1}
-                            value={examFromVerse}
-                            onChange={e => setExamFromVerse(e.target.value)}
-                            placeholder="1"
-                          />
-                          {examCurrentSurah && (
-                            <p className="text-xs text-muted-foreground" data-testid="text-max-verses-from">
-                              الحد الأقصى: {examCurrentSurah.versesCount}
-                            </p>
-                          )}
+                          <Label>اختر السور * ({examSelectedSurahs.length} مختارة)</Label>
+                          <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-1">
+                            {surahs.map(s => (
+                              <label key={s.number} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                                <Checkbox
+                                  checked={examSelectedSurahs.includes(s.number.toString())}
+                                  onCheckedChange={(checked) => {
+                                    setExamSelectedSurahs(prev =>
+                                      checked ? [...prev, s.number.toString()] : prev.filter(n => n !== s.number.toString())
+                                    );
+                                  }}
+                                  data-testid={`checkbox-surah-${s.number}`}
+                                />
+                                <span>{s.number}. {s.name} ({s.versesCount} آية)</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
+                      )}
+
+                      {examScope === "juz" && (
                         <div className="space-y-2">
-                          <Label>إلى آية *</Label>
-                          <Input
-                            data-testid="input-to-verse"
-                            type="number"
-                            min={parseInt(examFromVerse) || 1}
-                            max={examCurrentSurah?.versesCount || 1}
-                            value={examToVerse}
-                            onChange={e => setExamToVerse(e.target.value)}
-                            placeholder={examCurrentSurah?.versesCount.toString() || ""}
-                          />
-                          {examCurrentSurah && (
-                            <p className="text-xs text-muted-foreground" data-testid="text-max-verses-to">
-                              الحد الأقصى: {examCurrentSurah.versesCount}
-                            </p>
-                          )}
+                          <Label>اختر الأجزاء * ({examSelectedJuz.length} مختارة)</Label>
+                          <div className="border rounded-lg p-3 max-h-48 overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-1">
+                              {JUZ_DATA.map(j => (
+                                <label key={j.juz} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                                  <Checkbox
+                                    checked={examSelectedJuz.includes(j.juz)}
+                                    onCheckedChange={(checked) => {
+                                      setExamSelectedJuz(prev =>
+                                        checked ? [...prev, j.juz] : prev.filter(n => n !== j.juz)
+                                      );
+                                    }}
+                                    data-testid={`checkbox-juz-${j.juz}`}
+                                  />
+                                  <span>{j.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="space-y-2">
                         <Label>تاريخ الامتحان (يوم) *</Label>
@@ -1685,7 +1821,12 @@ export default function AssignmentsExamsPage() {
                       <div className="flex items-center gap-2 text-sm">
                         <BookOpen className="w-4 h-4 text-primary shrink-0" />
                         <span data-testid={`text-exam-surah-${exam.id}`}>
-                          {exam.surahName} ({exam.fromVerse}-{exam.toVerse})
+                          {exam.fromVerse === 1 && exam.toVerse === 1 && exam.surahName.includes("،")
+                            ? exam.surahName
+                            : exam.fromVerse === 1 && exam.toVerse === 1
+                              ? `سورة ${exam.surahName} كاملة`
+                              : `${exam.surahName} (${exam.fromVerse}-${exam.toVerse})`
+                          }
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
