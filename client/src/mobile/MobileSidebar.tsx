@@ -187,7 +187,7 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className={cn("sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-l shadow-lg", roleStyles.headerGradient)}>
+        <div className={cn("sticky top-0 z-10 flex items-center justify-between p-3 border-b border-white/10 bg-gradient-to-l shadow-lg", roleStyles.headerGradient)} style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="متقن" className="w-9 h-9 rounded-xl shadow-sm" />
             <div>
