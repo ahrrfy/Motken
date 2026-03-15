@@ -72,14 +72,17 @@ export function registerRatingsRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح بتقييم مستخدم من جامع آخر" });
       }
 
-      if (currentUser.role === "supervisor" && targetUser.role !== "teacher") {
-        return res.status(403).json({ message: "المشرف يمكنه تقييم الأساتذة فقط" });
-      }
-      if (currentUser.role === "teacher" && targetUser.role !== "student") {
-        return res.status(403).json({ message: "الأستاذ يمكنه تقييم الطلاب فقط" });
-      }
-      if (currentUser.role === "teacher" && !canTeacherAccessStudent(currentUser, targetUser)) {
-        return res.status(403).json({ message: "لا يمكنك تقييم طالب غير تابع لك" });
+      if (currentUser.role === "supervisor") {
+        if (targetUser.role !== "teacher" && targetUser.role !== "student") {
+          return res.status(403).json({ message: "المشرف يمكنه تقييم الأساتذة والطلاب فقط" });
+        }
+      } else if (currentUser.role === "teacher") {
+        if (targetUser.role !== "student") {
+          return res.status(403).json({ message: "الأستاذ يمكنه تقييم الطلاب فقط" });
+        }
+        if (!canTeacherAccessStudent(currentUser, targetUser)) {
+          return res.status(403).json({ message: "لا يمكنك تقييم طالب غير تابع لك" });
+        }
       }
 
       const rating = await storage.createRating({
