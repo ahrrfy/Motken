@@ -518,27 +518,41 @@ export default function PointsRewardsPage() {
       .sort((a, b) => b.total - a.total);
   }, [points, students]);
 
-  const checkAchievement = (achievementId: string): boolean => {
+  const checkAchievementForPoints = (achievementId: string, studentPoints: PointRecord[], studentId?: string): boolean => {
     switch (achievementId) {
       case "hafiz": {
-        const memPoints = points.filter(p => p.category === "memorization");
+        const memPoints = studentPoints.filter(p => p.category === "memorization");
         return memPoints.length >= 5;
       }
       case "consistent": {
-        const attendancePoints = points.filter(p => p.category === "attendance");
+        const attendancePoints = studentPoints.filter(p => p.category === "attendance");
         return attendancePoints.length >= 30;
       }
       case "hardworker": {
-        const assignPoints = points.filter(p => p.category === "assignment");
+        const assignPoints = studentPoints.filter(p => p.category === "assignment");
         return assignPoints.length >= 50;
       }
       case "star": {
         if (leaderboard.length === 0) return false;
-        return isStudent && leaderboard[0]?.id === user?.id;
+        const checkId = studentId || user?.id;
+        return leaderboard[0]?.id === checkId;
       }
       default:
         return false;
     }
+  };
+
+  const checkAchievement = (achievementId: string): boolean => {
+    return checkAchievementForPoints(achievementId, points);
+  };
+
+  const getStudentsWithAchievement = (achievementId: string): string[] => {
+    if (!isTeacherOrAdmin) return [];
+    const studentIds = [...new Set(points.map(p => p.userId))];
+    return studentIds.filter(sid => {
+      const studentPoints = points.filter(p => p.userId === sid);
+      return checkAchievementForPoints(achievementId, studentPoints, sid);
+    });
   };
 
   const handleExport = async () => {
@@ -924,6 +938,7 @@ export default function PointsRewardsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {isTeacherOrAdmin && <TableHead className="text-right">الطالب</TableHead>}
                       <TableHead className="text-right">التاريخ</TableHead>
                       <TableHead className="text-right">النقاط</TableHead>
                       <TableHead className="text-right">السبب</TableHead>
@@ -933,6 +948,11 @@ export default function PointsRewardsPage() {
                   <TableBody>
                     {filteredPoints.map((p) => (
                       <TableRow key={p.id} data-testid={`row-point-${p.id}`}>
+                        {isTeacherOrAdmin && (
+                          <TableCell className="text-sm font-medium" data-testid={`text-point-student-${p.id}`}>
+                            {(p as any).userName || students.find(s => s.id === p.userId)?.name || p.userId}
+                          </TableCell>
+                        )}
                         <TableCell className="text-sm text-muted-foreground" data-testid={`text-point-date-${p.id}`}>
                           {formatDateAr(p.createdAt)}
                         </TableCell>
@@ -1068,6 +1088,11 @@ export default function PointsRewardsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-sm" data-testid={`text-badge-name-${b.id}`}>{b.badgeName}</h3>
+                        {isTeacherOrAdmin && (b as any).userName && (
+                          <p className="text-xs text-blue-600 font-medium mt-0.5" data-testid={`text-badge-student-${b.id}`}>
+                            🎓 {(b as any).userName}
+                          </p>
+                        )}
                         <Badge variant="outline" className={`text-xs mt-1 ${colorClass}`} data-testid={`badge-type-${b.id}`}>
                           {getBadgeTypeLabel(b.badgeType)}
                         </Badge>
@@ -1251,36 +1276,59 @@ export default function PointsRewardsPage() {
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {ACHIEVEMENTS.map(achievement => {
-                  const earned = checkAchievement(achievement.id);
+                  const earned = isTeacherOrAdmin ? false : checkAchievement(achievement.id);
+                  const achieverIds = isTeacherOrAdmin ? getStudentsWithAchievement(achievement.id) : [];
+                  const achieverCount = achieverIds.length;
+                  const hasAchievers = achieverCount > 0;
+                  const isActive = isTeacherOrAdmin ? hasAchievers : earned;
                   const IconComp = achievement.icon;
                   return (
                     <div
                       key={achievement.id}
                       className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
-                        earned
+                        isActive
                           ? "border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-50 shadow-md"
                           : "border-gray-200 bg-gray-50 opacity-60"
                       }`}
                       data-testid={`card-achievement-${achievement.id}`}
                     >
                       <div className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 ${
-                        earned
+                        isActive
                           ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-lg"
                           : "bg-gray-200 text-gray-400"
                       }`}>
                         <IconComp className="w-7 h-7" />
                       </div>
                       <div className="flex-1">
-                        <h3 className={`font-bold ${earned ? "text-amber-800" : "text-gray-500"}`} data-testid={`text-achievement-name-${achievement.id}`}>
+                        <h3 className={`font-bold ${isActive ? "text-amber-800" : "text-gray-500"}`} data-testid={`text-achievement-name-${achievement.id}`}>
                           {achievement.name}
                         </h3>
-                        <p className={`text-sm ${earned ? "text-amber-600" : "text-gray-400"}`} data-testid={`text-achievement-desc-${achievement.id}`}>
+                        <p className={`text-sm ${isActive ? "text-amber-600" : "text-gray-400"}`} data-testid={`text-achievement-desc-${achievement.id}`}>
                           {achievement.description}
                         </p>
-                        {earned && (
-                          <Badge className="mt-1 bg-amber-100 text-amber-700 border-amber-300" variant="outline">
-                            تم الإنجاز ✓
-                          </Badge>
+                        {isTeacherOrAdmin ? (
+                          hasAchievers ? (
+                            <div className="mt-1">
+                              <Badge className="bg-amber-100 text-amber-700 border-amber-300" variant="outline">
+                                {achieverCount} طالب حققوا هذا الإنجاز
+                              </Badge>
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {achieverIds.slice(0, 5).map(sid => {
+                                  const st = students.find(s => s.id === sid);
+                                  return st ? <Badge key={sid} variant="secondary" className="text-xs">{st.name}</Badge> : null;
+                                })}
+                                {achieverIds.length > 5 && <Badge variant="secondary" className="text-xs">+{achieverIds.length - 5}</Badge>}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-1">لا يوجد طلاب حققوا هذا الإنجاز بعد</p>
+                          )
+                        ) : (
+                          earned && (
+                            <Badge className="mt-1 bg-amber-100 text-amber-700 border-amber-300" variant="outline">
+                              تم الإنجاز ✓
+                            </Badge>
+                          )
                         )}
                       </div>
                     </div>
