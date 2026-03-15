@@ -1,10 +1,14 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { AnimatePresence, motion } from "framer-motion";
 import MobileLayout from "./MobileLayout";
 import MobileSidebar from "./MobileSidebar";
+import MobileFAB from "./MobileFAB";
+import MobileOfflineBanner from "./MobileOfflineBanner";
 import WelcomeWizard from "@/components/WelcomeWizard";
+import { DashboardSkeleton, ListSkeleton, CardsSkeleton, GenericSkeleton } from "./MobileSkeleton";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const TeacherDailyPage = lazy(() => import("@/pages/TeacherDailyPage"));
@@ -48,18 +52,25 @@ const ActivityLogsPage = lazy(() => import("@/pages/ActivityLogsPage"));
 const OnlineUsersPage = lazy(() => import("@/pages/OnlineUsersPage"));
 const ChangelogPage = lazy(() => import("@/pages/ChangelogPage"));
 
-function PageLoader() {
-  return (
-    <div className="flex items-center justify-center min-h-[40vh]">
-      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-    </div>
-  );
+function getSkeleton(path: string) {
+  if (path === "/" || path === "/dashboard") return <DashboardSkeleton />;
+  if (["/students", "/teachers", "/supervisors", "/users"].some(p => path.startsWith(p))) return <ListSkeleton />;
+  if (["/assignments", "/attendance", "/points-rewards", "/ratings"].some(p => path.startsWith(p))) return <CardsSkeleton />;
+  return <GenericSkeleton />;
 }
+
+const pageTransition = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.2, ease: "easeOut" },
+};
 
 export default function MobileApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [location] = useLocation();
 
   useEffect(() => {
     if (user && !localStorage.getItem("mutqin_onboarding_done")) {
@@ -77,68 +88,74 @@ export default function MobileApp() {
         />
       )}
       <MobileSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <MobileOfflineBanner />
       <MobileLayout onMenuOpen={() => setSidebarOpen(true)}>
-        <Suspense fallback={<PageLoader />}>
-          <Switch>
-            <Route path="/daily" component={TeacherDailyPage} />
-            <Route path="/dashboard" component={DashboardPage} />
-            <Route path="/mosques/:id/dashboard" component={MosqueDashboardPage} />
-            <Route path="/mosques" component={MosquesPage} />
-            <Route path="/students" component={StudentsPage} />
-            <Route path="/teachers" component={TeachersPage} />
-            <Route path="/supervisors" component={SupervisorsPage} />
-            <Route path="/users" component={AllUsersPage} />
-            <Route path="/assignments" component={AssignmentsExamsPage} />
-            <Route path="/quran" component={QuranTracker} />
-            <Route path="/courses" component={CoursesGraduationPage} />
-            <Route path="/library" component={LibraryPage} />
-            <Route path="/knowledge-base" component={KnowledgeBasePage} />
-            <Route path="/educational-content" component={EducationalContentPage} />
-            <Route path="/graduation" component={CoursesGraduationPage} />
-            <Route path="/certificates" component={CoursesGraduationPage} />
-            <Route path="/attendance" component={AttendancePage} />
-            <Route path="/points-rewards" component={PointsRewardsPage} />
-            <Route path="/ratings" component={RatingsPage} />
-            <Route path="/schedules" component={SchedulesPage} />
-            <Route path="/competitions" component={CompetitionsPage} />
-            <Route path="/messages" component={MessagesPage} />
-            <Route path="/notifications" component={NotificationsPage} />
-            <Route path="/smart-alerts" component={SmartAlertsPage} />
-            <Route path="/parent-portal" component={ParentPortalPage} />
-            <Route path="/family-system" component={FamilySystemPage} />
-            <Route path="/whiteboard" component={WhiteboardPage} />
-            <Route path="/spread" component={SpreadPage} />
-            <Route path="/floor-plan" component={FloorPlanPage} />
-            <Route path="/reports" component={ReportsPage} />
-            <Route path="/id-cards" component={IDCardsQRPage} />
-            <Route path="/scan-qr" component={QRScannerPage} />
-            <Route path="/monitoring" component={MonitoringPage} />
-            <Route path="/teacher-activities" component={TeacherActivitiesPage} />
-            <Route path="/feature-control" component={FeatureControlPage} />
-            <Route path="/testimonials-manage" component={TestimonialsManagePage} />
-            <Route path="/crisis-management" component={CrisisManagementPage} />
-            <Route path="/institutional" component={InstitutionalPage} />
-            <Route path="/maintenance" component={MaintenancePage} />
-            <Route path="/settings" component={SettingsPage} />
-            <Route path="/activity-logs" component={ActivityLogsPage} />
-            <Route path="/online-users" component={OnlineUsersPage} />
-            <Route path="/changelog" component={ChangelogPage} />
-            <Route path="/" component={DashboardPage} />
-            <Route>
-              {() => (
-                <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-6" dir="rtl">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <span className="text-2xl">404</span>
-                  </div>
-                  <h2 className="text-lg font-bold mb-2">الصفحة غير موجودة</h2>
-                  <p className="text-sm text-muted-foreground mb-4">الصفحة التي تبحث عنها غير متوفرة</p>
-                  <a href="/dashboard" className="text-sm text-primary font-medium hover:underline">العودة للوحة التحكم</a>
-                </div>
-              )}
-            </Route>
-          </Switch>
-        </Suspense>
+        <AnimatePresence mode="wait">
+          <motion.div key={location} {...pageTransition}>
+            <Suspense fallback={getSkeleton(location)}>
+              <Switch>
+                <Route path="/daily" component={TeacherDailyPage} />
+                <Route path="/dashboard" component={DashboardPage} />
+                <Route path="/mosques/:id/dashboard" component={MosqueDashboardPage} />
+                <Route path="/mosques" component={MosquesPage} />
+                <Route path="/students" component={StudentsPage} />
+                <Route path="/teachers" component={TeachersPage} />
+                <Route path="/supervisors" component={SupervisorsPage} />
+                <Route path="/users" component={AllUsersPage} />
+                <Route path="/assignments" component={AssignmentsExamsPage} />
+                <Route path="/quran" component={QuranTracker} />
+                <Route path="/courses" component={CoursesGraduationPage} />
+                <Route path="/library" component={LibraryPage} />
+                <Route path="/knowledge-base" component={KnowledgeBasePage} />
+                <Route path="/educational-content" component={EducationalContentPage} />
+                <Route path="/graduation" component={CoursesGraduationPage} />
+                <Route path="/certificates" component={CoursesGraduationPage} />
+                <Route path="/attendance" component={AttendancePage} />
+                <Route path="/points-rewards" component={PointsRewardsPage} />
+                <Route path="/ratings" component={RatingsPage} />
+                <Route path="/schedules" component={SchedulesPage} />
+                <Route path="/competitions" component={CompetitionsPage} />
+                <Route path="/messages" component={MessagesPage} />
+                <Route path="/notifications" component={NotificationsPage} />
+                <Route path="/smart-alerts" component={SmartAlertsPage} />
+                <Route path="/parent-portal" component={ParentPortalPage} />
+                <Route path="/family-system" component={FamilySystemPage} />
+                <Route path="/whiteboard" component={WhiteboardPage} />
+                <Route path="/spread" component={SpreadPage} />
+                <Route path="/floor-plan" component={FloorPlanPage} />
+                <Route path="/reports" component={ReportsPage} />
+                <Route path="/id-cards" component={IDCardsQRPage} />
+                <Route path="/scan-qr" component={QRScannerPage} />
+                <Route path="/monitoring" component={MonitoringPage} />
+                <Route path="/teacher-activities" component={TeacherActivitiesPage} />
+                <Route path="/feature-control" component={FeatureControlPage} />
+                <Route path="/testimonials-manage" component={TestimonialsManagePage} />
+                <Route path="/crisis-management" component={CrisisManagementPage} />
+                <Route path="/institutional" component={InstitutionalPage} />
+                <Route path="/maintenance" component={MaintenancePage} />
+                <Route path="/settings" component={SettingsPage} />
+                <Route path="/activity-logs" component={ActivityLogsPage} />
+                <Route path="/online-users" component={OnlineUsersPage} />
+                <Route path="/changelog" component={ChangelogPage} />
+                <Route path="/" component={DashboardPage} />
+                <Route>
+                  {() => (
+                    <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-6" dir="rtl">
+                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                        <span className="text-2xl">404</span>
+                      </div>
+                      <h2 className="text-lg font-bold mb-2">الصفحة غير موجودة</h2>
+                      <p className="text-sm text-muted-foreground mb-4">الصفحة التي تبحث عنها غير متوفرة</p>
+                      <a href="/dashboard" className="text-sm text-primary font-medium hover:underline">العودة للوحة التحكم</a>
+                    </div>
+                  )}
+                </Route>
+              </Switch>
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
       </MobileLayout>
+      <MobileFAB />
     </>
   );
 }

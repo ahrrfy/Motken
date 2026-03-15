@@ -777,7 +777,7 @@ export default function AttendancePage() {
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <Table data-testid="table-mark-attendance">
+                    <Table mobileCards data-testid="table-mark-attendance">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-right w-12">#</TableHead>
@@ -1033,7 +1033,7 @@ export default function AttendancePage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table data-testid="table-attendance-history">
+                  <Table mobileCards data-testid="table-attendance-history">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-right">#</TableHead>

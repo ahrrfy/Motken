@@ -1253,7 +1253,7 @@ export default function StudentsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table mobileCards>
                 <TableHeader>
                   <TableRow>
                     {!isStudent && (

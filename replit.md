@@ -117,6 +117,21 @@ The backend routes are split into modular files under `server/routes/`:
 
 The main `server/routes.ts` orchestrates middleware setup and imports all modules.
 
+## Mobile Experience (PWA)
+The app includes a full Progressive Web App with dedicated mobile UI:
+- **MobileLayout** (`client/src/mobile/MobileLayout.tsx`): Bottom nav bar (role-themed), header with search icon, pull-to-refresh
+- **MobileSidebar** (`client/src/mobile/MobileSidebar.tsx`): Swipe-to-close sidebar with all nav items grouped by category
+- **MobileApp** (`client/src/mobile/MobileApp.tsx`): Page transitions via framer-motion AnimatePresence, contextual loading skeletons
+- **MobileFAB** (`client/src/mobile/MobileFAB.tsx`): Floating action button with role-specific quick actions
+- **MobileGlobalSearch** (`client/src/mobile/MobileGlobalSearch.tsx`): Full-screen search overlay for students/teachers/surahs
+- **MobileOfflineBanner** (`client/src/mobile/MobileOfflineBanner.tsx`): Offline detection with auto-reconnect
+- **Haptic feedback**: Auto-triggered on all toast notifications via `use-toast.ts`; utility in `client/src/lib/haptic.ts`
+- **Touch targets**: All buttons/inputs min 44px on mobile (responsive sm: breakpoint for desktop)
+- **Tables → Cards**: `mobile-card-table` CSS class auto-converts tables to card layout on mobile
+- **Pull-to-refresh**: Custom hook `client/src/hooks/use-pull-refresh.ts`
+- **Service Worker**: `client/public/sw.js` (v4) with offline.html fallback page
+- **Safe area**: viewport-fit=cover + env(safe-area-inset-bottom) for notched devices
+
 ## External Dependencies
 -   **api.alquran.cloud**: Fetches Quran text.
 -   **qrcode package**: Local QR code generation.
