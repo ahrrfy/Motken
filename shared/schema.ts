@@ -112,6 +112,18 @@ export const insertAssignmentSchema = createInsertSchema(assignments).omit({ id:
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignments.$inferSelect;
 
+export const assignmentAudio = pgTable("assignment_audio", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: varchar("assignment_id").notNull().references(() => assignments.id, { onDelete: "cascade" }).unique(),
+  audioData: text("audio_data").notNull(),
+  mimeType: text("mime_type").notNull().default("audio/webm"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_assignment_audio_assignment_id").on(table.assignmentId),
+]);
+
+export type AssignmentAudio = typeof assignmentAudio.$inferSelect;
+
 // ==================== RATINGS ====================
 export const ratings = pgTable("ratings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

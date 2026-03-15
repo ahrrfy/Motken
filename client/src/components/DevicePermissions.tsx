@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Camera, MapPin, Bell, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Camera, MapPin, Bell, Mic, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -25,9 +25,20 @@ function usePermissionStatus(name: PermissionName): PermissionStatus {
 
 export default function DevicePermissions() {
   const { toast } = useToast();
+  const micStatus = usePermissionStatus("microphone" as PermissionName);
   const cameraStatus = usePermissionStatus("camera" as PermissionName);
   const geoStatus = usePermissionStatus("geolocation" as PermissionName);
   const notifStatus = usePermissionStatus("notifications" as PermissionName);
+
+  const requestMicrophone = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+      toast({ title: "تم", description: "تم منح إذن الميكروفون بنجاح" });
+    } catch {
+      toast({ title: "تنبيه", description: "تم رفض إذن الميكروفون. يرجى تفعيله من إعدادات المتصفح", variant: "destructive" });
+    }
+  };
 
   const requestCamera = async () => {
     try {
@@ -74,6 +85,7 @@ export default function DevicePermissions() {
   };
 
   const permissions = [
+    { name: "الميكروفون", description: "مطلوب لتسجيل التسميع الصوتي", icon: Mic, status: micStatus, request: requestMicrophone },
     { name: "الكاميرا", description: "مطلوب لمسح رمز QR", icon: Camera, status: cameraStatus, request: requestCamera },
     { name: "الموقع الجغرافي", description: "لتحديد مواقيت الصلاة تلقائياً", icon: MapPin, status: geoStatus, request: requestGeolocation },
     { name: "الإشعارات", description: "لاستقبال التنبيهات والتذكيرات", icon: Bell, status: notifStatus, request: requestNotification },
