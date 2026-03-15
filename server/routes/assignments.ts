@@ -469,4 +469,29 @@ export function registerAssignmentsRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/assignments/:id/archive", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role === "student") {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const assignment = await storage.getAssignment(req.params.id);
+      if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+      if (currentUser.role === "teacher") {
+        const student = await storage.getUser(assignment.studentId);
+        if (!student || !canTeacherAccessStudent(currentUser, student)) {
+          return res.status(403).json({ message: "غير مصرح" });
+        }
+      }
+      if (currentUser.role === "supervisor" && assignment.mosqueId !== currentUser.mosqueId) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const isArchived = req.body.isArchived !== undefined ? req.body.isArchived : true;
+      const updated = await storage.updateAssignment(req.params.id, { isArchived });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  });
+
 }

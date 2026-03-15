@@ -22,7 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   CalendarIcon, Clock, CheckCircle2, User, BookOpen, Loader2,
   Plus, Calendar as CalendarLucide, Users, FileText, Trash2, Search, X,
-  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight, Mic, Download, MessageCircle, PhoneCall
+  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight, Mic, Download, MessageCircle, PhoneCall, Archive, ArchiveRestore, Ban, UserCircle
 } from "lucide-react";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
 import { exportJsonToExcel } from "@/lib/excel-utils";
@@ -41,6 +41,7 @@ interface Student {
 interface Assignment {
   id: string;
   studentId: string;
+  teacherId: string;
   surahName: string;
   fromVerse: number;
   toVerse: number;
@@ -55,6 +56,12 @@ interface Assignment {
   audioGradedAt?: string | null;
   seenByStudent: boolean;
   seenAt: string | null;
+  isArchived?: boolean;
+}
+
+interface Teacher {
+  id: string;
+  name: string;
 }
 
 interface QuranSurah {
@@ -169,6 +176,8 @@ export default function AssignmentsExamsPage() {
   const [assignToVerse, setAssignToVerse] = useState("");
   const [assignTime, setAssignTime] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [showArchive, setShowArchive] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [surahs, setSurahs] = useState<QuranSurah[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
@@ -295,6 +304,11 @@ export default function AssignmentsExamsPage() {
       .then(data => setStudents(data))
       .catch(() => {})
       .finally(() => setLoadingStudents(false));
+
+    fetch("/api/users?role=teacher", { credentials: "include" })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setTeachers(data))
+      .catch(() => {});
 
     fetch("/api/assignments", { credentials: "include" })
       .then(res => res.ok ? res.json() : [])
@@ -556,6 +570,44 @@ export default function AssignmentsExamsPage() {
     return students.find(s => s.id === studentId)?.name || "—";
   };
 
+  const getTeacherName = (teacherId: string) => {
+    return teachers.find(t => t.id === teacherId)?.name || "";
+  };
+
+  const handleArchive = async (assignmentId: string, archive: boolean) => {
+    try {
+      const res = await fetch(`/api/assignments/${assignmentId}/archive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isArchived: archive }),
+      });
+      if (res.ok) {
+        setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, isArchived: archive } : a));
+        toast({ title: "تم بنجاح", description: archive ? "تم نقل الواجب إلى الأرشيف" : "تم إرجاع الواجب من الأرشيف", className: "bg-green-50 border-green-200 text-green-800" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "فشل في تحديث الواجب", variant: "destructive" });
+    }
+  };
+
+  const handleCancelAssignment = async (assignmentId: string) => {
+    try {
+      const res = await fetch(`/api/assignments/${assignmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+      if (res.ok) {
+        setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, status: "cancelled" } : a));
+        toast({ title: "تم بنجاح", description: "تم إلغاء الواجب", className: "bg-green-50 border-green-200 text-green-800" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "فشل في إلغاء الواجب", variant: "destructive" });
+    }
+  };
+
   const resetExamForm = () => {
     setExamTitle("");
     setExamScope("verses");
@@ -813,6 +865,8 @@ export default function AssignmentsExamsPage() {
   };
 
   const filteredAssignments = assignments.filter(a => {
+    const archived = a.isArchived || false;
+    if (showArchive !== archived) return false;
     if (assignSearchTerm) {
       const studentName = getAssignStudentName(a.studentId);
       if (!studentName.includes(assignSearchTerm) && !a.surahName.includes(assignSearchTerm)) return false;
@@ -833,6 +887,8 @@ export default function AssignmentsExamsPage() {
     }
     return true;
   });
+
+  const archivedCount = assignments.filter(a => a.isArchived).length;
 
   const uniqueSurahNames = Array.from(new Set(assignments.map(a => a.surahName)));
 
@@ -1175,7 +1231,21 @@ export default function AssignmentsExamsPage() {
             <div className="space-y-6">
               <Card className="bg-muted/30 border-none" dir="rtl">
                 <CardHeader>
-                  <CardTitle className="text-lg">الواجبات ({filteredAssignments.length})</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{showArchive ? "أرشيف الواجبات" : "الواجبات"} ({filteredAssignments.length})</CardTitle>
+                    {!isStudent && (
+                      <Button
+                        variant={showArchive ? "default" : "outline"}
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={() => setShowArchive(!showArchive)}
+                        data-testid="button-toggle-archive"
+                      >
+                        {showArchive ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                        {showArchive ? "الواجبات الحالية" : `الأرشيف (${archivedCount})`}
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-end gap-3 mt-3">
                     <div className="relative w-full sm:w-48">
                       <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -1307,6 +1377,12 @@ export default function AssignmentsExamsPage() {
                                 </div>
                               )}
                             </div>
+                            {getTeacherName(task.teacherId) && (
+                              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground" data-testid={`text-teacher-${task.id}`}>
+                                <UserCircle className="w-3 h-3" />
+                                <span>الأستاذ: {getTeacherName(task.teacherId)}</span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2 mt-0.5">
                               <p className="text-xs text-muted-foreground">{task.surahName} ({task.fromVerse}-{task.toVerse})</p>
                               <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", typeBadge.className)} data-testid={`badge-type-${task.id}`}>
@@ -1533,6 +1609,33 @@ export default function AssignmentsExamsPage() {
                             toVerse={task.toVerse}
                             studentName={students.find(s => s.id === task.studentId)?.name}
                           />
+                        )}
+
+                        {(isTeacher || isSupervisor) && (
+                          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
+                            {task.status === "pending" && !task.isArchived && (
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleCancelAssignment(task.id)} data-testid={`button-cancel-${task.id}`}>
+                                <Ban className="w-3 h-3" />
+                                إلغاء
+                              </Button>
+                            )}
+                            {!task.isArchived && (task.status === "done" || task.status === "cancelled") && (
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={() => handleArchive(task.id, true)} data-testid={`button-archive-${task.id}`}>
+                                <Archive className="w-3 h-3" />
+                                نقل للأرشيف
+                              </Button>
+                            )}
+                            {task.isArchived && (
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => handleArchive(task.id, false)} data-testid={`button-unarchive-${task.id}`}>
+                                <ArchiveRestore className="w-3 h-3" />
+                                إرجاع من الأرشيف
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => { if (confirm("هل أنت متأكد من حذف هذا الواجب نهائياً؟")) { fetch(`/api/assignments/${task.id}`, { method: "DELETE", credentials: "include" }).then(() => { setAssignments(prev => prev.filter(a => a.id !== task.id)); toast({ title: "تم الحذف", className: "bg-green-50 border-green-200 text-green-800" }); }); } }} data-testid={`button-delete-${task.id}`}>
+                              <Trash2 className="w-3 h-3" />
+                              حذف
+                            </Button>
+                          </div>
                         )}
                       </div>
                     );})
