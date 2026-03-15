@@ -166,7 +166,7 @@ function getGradeColor(grade: number) {
 }
 
 export default function AssignmentsExamsPage() {
-  const { user } = useAuth();
+  const { user, isTeacherAsStudent } = useAuth();
   const { toast } = useToast();
 
   const [assignDate, setAssignDate] = useState<Date>();
@@ -312,7 +312,7 @@ export default function AssignmentsExamsPage() {
       .then(data => setTeachers(data))
       .catch(() => {});
 
-    fetch("/api/assignments", { credentials: "include" })
+    fetch(`/api/assignments${isTeacherAsStudent ? '?asStudent=true' : ''}`, { credentials: "include" })
       .then(res => res.ok ? res.json() : [])
       .then(data => setAssignments(data))
       .catch(() => {})

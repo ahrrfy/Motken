@@ -8,7 +8,7 @@ import {
 import { sessionTracker } from "../session-tracker";
 import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateAge, validateBoolean, validateEnum, validateDate, sanitizeImageUrl, validateTeacherLevels } from "@shared/security-utils";
-import { logActivity, canTeacherAccessStudent } from "./shared";
+import { logActivity, canTeacherAccessStudent, isStudentOrTeacherAsStudent } from "./shared";
 import crypto from "crypto";
 
 export function registerUsersRoutes(app: Express) {
@@ -34,6 +34,10 @@ export function registerUsersRoutes(app: Express) {
         if (role === "student" && currentUser.mosqueId) {
           const allStudents = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
           result = allStudents.filter(s => canTeacherAccessStudent(currentUser, s) && !s.pendingApproval);
+          const teacherStudents = (await storage.getUsersByTeacher(currentUser.id)).filter(s => s.role === "teacher");
+          for (const ts of teacherStudents) {
+            if (!result.find(r => r.id === ts.id)) result.push(ts);
+          }
         } else if (currentUser.mosqueId) {
           if (role) {
             result = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role);
@@ -46,6 +50,13 @@ export function registerUsersRoutes(app: Express) {
       } else if (currentUser.mosqueId) {
         if (role) {
           result = (await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role)).filter(s => role === "student" ? !s.pendingApproval : true);
+          if (role === "student") {
+            const allMosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+            const teachersAsStudents = allMosqueUsers.filter(u => u.role === "teacher" && u.teacherId);
+            for (const ts of teachersAsStudents) {
+              if (!result.find(r => r.id === ts.id)) result.push(ts);
+            }
+          }
         } else {
           result = await storage.getUsersByMosque(currentUser.mosqueId);
         }
@@ -137,7 +148,7 @@ export function registerUsersRoutes(app: Express) {
       let updated = 0;
       for (const id of studentIds) {
         const student = await storage.getUser(id);
-        if (!student || student.role !== "student") continue;
+        if (!student || !isStudentOrTeacherAsStudent(student)) continue;
         if (currentUser.role === "supervisor" && student.mosqueId !== currentUser.mosqueId) continue;
         await storage.updateUser(id, { studyMode });
         updated++;
@@ -686,7 +697,7 @@ export function registerUsersRoutes(app: Express) {
     }
 
     const student = await storage.getUser(req.params.id);
-    if (!student || student.role !== "student") {
+    if (!student || !isStudentOrTeacherAsStudent(student)) {
       return res.status(404).json({ message: "الطالب غير موجود" });
     }
 

@@ -10,7 +10,7 @@ import {
 } from "@shared/schema";
 import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateEnum, validateDate } from "@shared/security-utils";
-import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray } from "./shared";
+import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray, isStudentOrTeacherAsStudent } from "./shared";
 import multer from "multer";
 
 export function registerAssignmentsRoutes(app: Express) {
@@ -21,6 +21,8 @@ export function registerAssignmentsRoutes(app: Express) {
       const { studentId, teacherId } = req.query;
       let result: Assignment[] = [];
 
+      const asStudent = req.query.asStudent === "true" && currentUser.role === "teacher" && !!currentUser.teacherId;
+
       if (currentUser.role === "admin") {
         if (studentId) {
           result = await storage.getAssignmentsByStudent(studentId as string);
@@ -29,7 +31,7 @@ export function registerAssignmentsRoutes(app: Express) {
         } else {
           result = await storage.getAssignments();
         }
-      } else if (currentUser.role === "student") {
+      } else if (currentUser.role === "student" || asStudent) {
         result = await storage.getAssignmentsByStudent(currentUser.id);
       } else if (currentUser.role === "teacher") {
         if (studentId) {
@@ -106,7 +108,7 @@ export function registerAssignmentsRoutes(app: Express) {
       }
 
       const student = await storage.getUser(studentId);
-      if (!student || student.role !== "student") {
+      if (!student || !isStudentOrTeacherAsStudent(student)) {
         return res.status(400).json({ message: "الطالب غير موجود" });
       }
 

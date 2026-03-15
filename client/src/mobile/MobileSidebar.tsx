@@ -291,6 +291,15 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
               </button>
             )}
 
+            {!previewRole && (user?.actualRole === "teacher" || (user?.role === "teacher" && !user?.actualRole)) && user?.teacherId && (
+              <button onClick={() => { hapticLight(); switchRole(); onClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs bg-sky-500/15 text-sky-400 hover:bg-sky-500/25 transition-colors min-h-[44px]"
+                data-testid="button-mobile-switch-teacher-student">
+                <ArrowLeftRight className="w-4 h-4" />
+                {effectiveRole === "student" ? "العودة لوضع الأستاذ" : "التبديل لوضع الطالب"}
+              </button>
+            )}
+
             {previewRole && (
               <button onClick={() => { hapticLight(); stopPreview(); onClose(); }}
                 className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors min-h-[44px]">

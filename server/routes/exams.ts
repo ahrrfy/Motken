@@ -5,7 +5,7 @@ import {
   exams,
 } from "@shared/schema";
 import { validateFields, validateDate } from "@shared/security-utils";
-import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray, calculateStudentLevel, LEVEL_NAMES } from "./shared";
+import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray, calculateStudentLevel, LEVEL_NAMES, isStudentOrTeacherAsStudent } from "./shared";
 
 export function registerExamsRoutes(app: Express) {
   // ==================== EXAMS ====================
@@ -217,7 +217,7 @@ export function registerExamsRoutes(app: Express) {
       const { studentId, juzCount } = req.body;
       if (!studentId) return res.status(400).json({ message: "معرف الطالب مطلوب" });
       const student = await storage.getUser(studentId);
-      if (!student || student.role !== "student") return res.status(404).json({ message: "الطالب غير موجود" });
+      if (!student || !isStudentOrTeacherAsStudent(student)) return res.status(404).json({ message: "الطالب غير موجود" });
       if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId) {
         return res.status(403).json({ message: "غير مصرح بتعديل مستوى طالب من جامع آخر" });
       }
@@ -274,7 +274,7 @@ export function registerExamsRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح" });
       }
       const student = await storage.getUser(req.params.studentId);
-      if (!student || student.role !== "student") return res.status(404).json({ message: "الطالب غير موجود" });
+      if (!student || !isStudentOrTeacherAsStudent(student)) return res.status(404).json({ message: "الطالب غير موجود" });
       if (currentUser.role === "supervisor" && student.mosqueId !== currentUser.mosqueId) {
         return res.status(403).json({ message: "غير مصرح" });
       }

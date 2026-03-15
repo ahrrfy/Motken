@@ -86,9 +86,16 @@ The system is built with a modern web stack:
 -   **Advanced Mosque Filtering**: Sort by name/date/student count, filter by student count range (min/max), filter inactive mosques only.
 -   **Mosque Excel Export**: Export filtered mosque data to Excel including stats (name, province, city, students, teachers, status, date).
 
+## Teacher Dual-Role System (Phase 2)
+Teachers who have a `teacherId` assigned can switch to student mode. The switch is client-side (`actualRole: "teacher"`, `role: "student"` in auth context), and the backend uses `?asStudent=true` query parameter to serve student-perspective data.
+- **`isStudentOrTeacherAsStudent(user)`** helper in `shared.ts` — checks if a user is a student or a teacher with a teacherId
+- **`isTeacherAsStudent`** boolean in auth context — true when teacher is viewing as student
+- Backend routes (assignments, attendance, points, points-redemptions) accept `?asStudent=true` to return student-perspective data for teachers
+- Role checks across assignments, exams, graduates, users, ratings routes updated to accept teacher-as-student as valid student targets
+
 ## Server Route Architecture
 The backend routes are split into modular files under `server/routes/`:
-- `shared.ts` — Helper functions (logActivity, canTeacherAccessStudent, etc.)
+- `shared.ts` — Helper functions (logActivity, canTeacherAccessStudent, isStudentOrTeacherAsStudent, etc.)
 - `feature-defaults.ts` — Feature flag definitions and route-to-feature mapping
 - `mosques.ts` — Mosque CRUD, dashboard, messages, registration/vouching
 - `users.ts` — User CRUD, approval, avatar, transfers

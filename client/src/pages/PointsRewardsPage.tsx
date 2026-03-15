@@ -148,7 +148,7 @@ function getLastWeekStart(): Date {
 }
 
 export default function PointsRewardsPage() {
-  const { user } = useAuth();
+  const { user, isTeacherAsStudent } = useAuth();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("leaderboard");
@@ -201,7 +201,7 @@ export default function PointsRewardsPage() {
 
   const fetchPoints = async () => {
     try {
-      const res = await fetch("/api/points", { credentials: "include" });
+      const res = await fetch(`/api/points${isTeacherAsStudent ? '?asStudent=true' : ''}`, { credentials: "include" });
       if (res.ok) {
         setPoints(await res.json());
       }
