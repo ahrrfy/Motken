@@ -67,9 +67,16 @@ interface MosqueRanking {
   rank: number;
 }
 
+interface StarStudent {
+  id: string;
+  name: string;
+  level?: string;
+  avatar?: string;
+}
+
 interface StarOfWeek {
   star: {
-    student: string;
+    student: StarStudent;
     score: number;
     details: {
       attendance?: number;
@@ -78,7 +85,7 @@ interface StarOfWeek {
     };
   } | null;
   topStudents: Array<{
-    student: string;
+    student: StarStudent;
     score: number;
   }>;
 }
@@ -646,7 +653,7 @@ export default function CompetitionsPage() {
               <div className="flex-1">
                 <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">نجم الأسبوع</p>
                 <h2 className="text-2xl font-bold text-amber-900 dark:text-amber-200" data-testid="text-star-name">
-                  {starOfWeek.star.student}
+                  {typeof starOfWeek.star.student === "string" ? starOfWeek.star.student : starOfWeek.star.student.name}
                 </h2>
                 <div className="flex items-center gap-1 mt-1">
                   <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
@@ -695,7 +702,7 @@ export default function CompetitionsPage() {
                 {starOfWeek.topStudents.slice(0, 3).map((s, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50" data-testid={`top-student-${i}`}>
                     <Award className={`w-5 h-5 ${medalColors[i] || "text-gray-400"}`} />
-                    <span className="flex-1 font-medium" data-testid={`text-top-student-name-${i}`}>{s.student}</span>
+                    <span className="flex-1 font-medium" data-testid={`text-top-student-name-${i}`}>{typeof s.student === "string" ? s.student : s.student.name}</span>
                     <Badge variant="secondary" data-testid={`text-top-student-score-${i}`}>{s.score} نقطة</Badge>
                   </div>
                 ))}
