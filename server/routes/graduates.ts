@@ -11,6 +11,13 @@ export function registerGraduatesRoutes(app: Express) {
   app.get("/api/graduates", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
+      const enrichGraduates = async (grads: any[]) => {
+        return Promise.all(grads.map(async (g) => {
+          const student = await storage.getUser(g.studentId);
+          const mosque = g.mosqueId ? await storage.getMosque(g.mosqueId) : null;
+          return { ...g, studentName: student?.name || g.studentId, mosqueName: mosque?.name || "" };
+        }));
+      };
       if (currentUser.role === "admin") {
         const allMosques = await storage.getMosques();
         let all: any[] = [];
@@ -18,11 +25,11 @@ export function registerGraduatesRoutes(app: Express) {
           const grads = await storage.getGraduatesByMosque(m.id);
           all.push(...grads);
         }
-        return res.json(all);
+        return res.json(await enrichGraduates(all));
       }
       if (currentUser.mosqueId) {
         const grads = await storage.getGraduatesByMosque(currentUser.mosqueId);
-        return res.json(grads);
+        return res.json(await enrichGraduates(grads));
       }
       res.json([]);
     } catch (err: any) {

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
 import {
-  Loader2, Plus, GraduationCap, ArrowRight, Award, Users, Download, BookOpen, ClipboardList, Printer
+  Loader2, Plus, GraduationCap, ArrowRight, Award, Users, Download, BookOpen, ClipboardList, Printer, Pencil, Trash2
 } from "lucide-react";
 import { CERTIFICATE_TEMPLATES, printCertificate, type CertificateData } from "@/lib/certificate-templates";
 
@@ -106,7 +106,12 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [printTemplateId, setPrintTemplateId] = useState("classic-gold");
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editGraduate, setEditGraduate] = useState<Graduate | null>(null);
+  const [editForm, setEditForm] = useState({ graduationDate: "", totalJuz: "30", ijazahChain: "", ijazahTeacher: "", finalGrade: "" });
+
   const canManage = user?.role === "admin" || user?.role === "supervisor" || user?.role === "teacher";
+  const canDelete = user?.role === "admin" || user?.role === "supervisor";
 
   const fetchGraduates = async () => {
     try {
@@ -162,7 +167,6 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
           studentId,
           graduationDate,
           totalJuz: parseInt(totalJuz) || 30,
-          recitationStyle,
           ijazahChain: ijazahChain || null,
           ijazahTeacher: ijazahTeacher || null,
           finalGrade: finalGrade || null,
@@ -258,14 +262,73 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
     printCertificate(certData, templateId);
   };
 
+  const openEditDialog = (g: Graduate) => {
+    setEditGraduate(g);
+    setEditForm({
+      graduationDate: g.graduationDate ? g.graduationDate.split("T")[0] : "",
+      totalJuz: String(g.totalJuz),
+      ijazahChain: g.ijazahChain || "",
+      ijazahTeacher: g.ijazahTeacher || "",
+      finalGrade: g.finalGrade || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditGraduate = async () => {
+    if (!editGraduate) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/graduates/${editGraduate.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          graduationDate: editForm.graduationDate || undefined,
+          totalJuz: parseInt(editForm.totalJuz) || 30,
+          ijazahChain: editForm.ijazahChain || null,
+          ijazahTeacher: editForm.ijazahTeacher || null,
+          finalGrade: editForm.finalGrade || null,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: "تم التعديل", description: "تم تحديث بيانات الخريج بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
+        setEditDialogOpen(false);
+        setEditGraduate(null);
+        fetchGraduates();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteGraduate = async (g: Graduate) => {
+    if (!confirm(`هل أنت متأكد من حذف سجل الخريج "${g.studentName || getStudentName(g.studentId)}"؟`)) return;
+    try {
+      const res = await fetch(`/api/graduates/${g.id}`, { method: "DELETE", credentials: "include" });
+      if (res.ok) {
+        toast({ title: "تم الحذف", description: "تم حذف سجل الخريج", className: "bg-green-50 border-green-200 text-green-800" });
+        fetchGraduates();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    }
+  };
+
   const handleExport = () => {
     const csvRows = [
-      ["الاسم", "تاريخ التخرج", "الأجزاء", "الرواية", "الإجازة", "التقدير"].join(","),
+      ["الاسم", "تاريخ التخرج", "الأجزاء", "الإجازة", "التقدير"].join(","),
       ...graduates.map(g => [
         g.studentName || getStudentName(g.studentId),
         new Date(g.graduationDate).toLocaleDateString("ar-SA"),
         g.totalJuz,
-        recitationStyles[g.recitationStyle] || g.recitationStyle,
         g.ijazahChain ? "نعم" : "لا",
         g.finalGrade || "",
       ].join(","))
@@ -333,10 +396,12 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                 <span className="text-muted-foreground">عدد الأجزاء: </span>
                 <span data-testid="text-total-juz">{selectedGraduate.totalJuz}</span>
               </div>
-              <div>
-                <span className="text-muted-foreground">رواية القراءة: </span>
-                <span data-testid="text-recitation">{recitationStyles[selectedGraduate.recitationStyle] || selectedGraduate.recitationStyle}</span>
-              </div>
+              {selectedGraduate.mosqueName && (
+                <div>
+                  <span className="text-muted-foreground">المركز: </span>
+                  <span className="font-medium" data-testid="text-mosque-name">{selectedGraduate.mosqueName}</span>
+                </div>
+              )}
               {selectedGraduate.ijazahChain && (
                 <div>
                   <span className="text-muted-foreground">سند الإجازة: </span>
@@ -604,29 +669,14 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                       data-testid="input-graduation-date"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>عدد الأجزاء</Label>
-                      <Input
-                        type="number"
-                        value={totalJuz}
-                        onChange={e => setTotalJuz(e.target.value)}
-                        data-testid="input-total-juz"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>رواية القراءة</Label>
-                      <Select value={recitationStyle} onValueChange={setRecitationStyle}>
-                        <SelectTrigger data-testid="select-recitation-style">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hafs">حفص</SelectItem>
-                          <SelectItem value="warsh">ورش</SelectItem>
-                          <SelectItem value="qaloon">قالون</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label>عدد الأجزاء</Label>
+                    <Input
+                      type="number"
+                      value={totalJuz}
+                      onChange={e => setTotalJuz(e.target.value)}
+                      data-testid="input-total-juz"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>التقدير النهائي</Label>
@@ -767,10 +817,9 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                     <TableHead className="text-right">اسم الخريج</TableHead>
                     <TableHead className="text-right">تاريخ التخرج</TableHead>
                     <TableHead className="text-right">الأجزاء</TableHead>
-                    <TableHead className="text-right">الرواية</TableHead>
                     <TableHead className="text-right">الإجازة</TableHead>
                     <TableHead className="text-right">التقدير</TableHead>
-                    <TableHead className="text-right">الشهادة</TableHead>
+                    <TableHead className="text-right">الإجراءات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -786,9 +835,6 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                       </TableCell>
                       <TableCell data-testid={`text-graduation-date-${g.id}`}>{formatDateAr(g.graduationDate)}</TableCell>
                       <TableCell data-testid={`text-juz-${g.id}`}>{g.totalJuz}</TableCell>
-                      <TableCell data-testid={`text-style-${g.id}`}>
-                        {recitationStyles[g.recitationStyle] || g.recitationStyle}
-                      </TableCell>
                       <TableCell data-testid={`text-ijazah-${g.id}`}>
                         {g.ijazahChain ? (
                           <Badge className="bg-green-100 text-green-800 border-green-200">حاصل على إجازة</Badge>
@@ -802,14 +848,42 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                         ) : "—"}
                       </TableCell>
                       <TableCell>
-                        {g.certificateId ? (
-                          <Badge className="bg-primary/10 text-primary border-primary/20">
-                            <Award className="w-3 h-3 ml-1" />
-                            صادرة
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
+                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedGraduate(g);
+                              setPrintDialogOpen(true);
+                            }}
+                            title="طباعة الشهادة"
+                            data-testid={`button-print-cert-${g.id}`}
+                          >
+                            <Printer className="w-4 h-4 text-blue-600" />
+                          </Button>
+                          {canManage && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditDialog(g)}
+                              title="تعديل"
+                              data-testid={`button-edit-graduate-${g.id}`}
+                            >
+                              <Pencil className="w-4 h-4 text-amber-600" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteGraduate(g)}
+                              title="حذف"
+                              data-testid={`button-delete-graduate-${g.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -819,6 +893,128 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>تعديل بيانات الخريج</DialogTitle>
+          </DialogHeader>
+          {editGraduate && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg text-sm font-medium">
+                {editGraduate.studentName || getStudentName(editGraduate.studentId)}
+              </div>
+              <div className="space-y-2">
+                <Label>تاريخ التخرج *</Label>
+                <Input
+                  type="date"
+                  value={editForm.graduationDate}
+                  onChange={e => setEditForm(f => ({ ...f, graduationDate: e.target.value }))}
+                  data-testid="input-edit-graduation-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>عدد الأجزاء</Label>
+                <Input
+                  type="number"
+                  value={editForm.totalJuz}
+                  onChange={e => setEditForm(f => ({ ...f, totalJuz: e.target.value }))}
+                  data-testid="input-edit-total-juz"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>التقدير النهائي</Label>
+                <Select value={editForm.finalGrade} onValueChange={v => setEditForm(f => ({ ...f, finalGrade: v }))}>
+                  <SelectTrigger data-testid="select-edit-final-grade">
+                    <SelectValue placeholder="اختر التقدير" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gradeOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>سلسلة الإجازة</Label>
+                <Input
+                  value={editForm.ijazahChain}
+                  onChange={e => setEditForm(f => ({ ...f, ijazahChain: e.target.value }))}
+                  data-testid="input-edit-ijazah-chain"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>معلم الإجازة</Label>
+                <Input
+                  value={editForm.ijazahTeacher}
+                  onChange={e => setEditForm(f => ({ ...f, ijazahTeacher: e.target.value }))}
+                  data-testid="input-edit-ijazah-teacher"
+                />
+              </div>
+              <Button
+                onClick={handleEditGraduate}
+                disabled={submitting}
+                className="w-full"
+                data-testid="button-confirm-edit-graduate"
+              >
+                {submitting && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
+                حفظ التعديلات
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {selectedGraduate && (
+        <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-primary" />
+                طباعة شهادة التخرج
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                <strong>{selectedGraduate.studentName || getStudentName(selectedGraduate.studentId)}</strong>
+                <span className="text-muted-foreground"> — حفظ {selectedGraduate.totalJuz} جزءاً</span>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold">اختر قالب الشهادة</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {CERTIFICATE_TEMPLATES.map(tmpl => (
+                    <div
+                      key={tmpl.id}
+                      className={`p-2.5 border rounded-lg cursor-pointer transition-all text-sm ${printTemplateId === tmpl.id ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-gray-200 hover:border-primary/50"}`}
+                      onClick={() => setPrintTemplateId(tmpl.id)}
+                      data-testid={`list-print-template-${tmpl.id}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{tmpl.preview}</span>
+                        <div>
+                          <div className="font-medium">{tmpl.name}</div>
+                          <div className="text-xs text-muted-foreground">{tmpl.description}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  handlePrintGraduateCert(selectedGraduate, printTemplateId);
+                  setPrintDialogOpen(false);
+                }}
+                data-testid="button-list-confirm-print-cert"
+              >
+                <Printer className="w-4 h-4 ml-2" />
+                طباعة
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
