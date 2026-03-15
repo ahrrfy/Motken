@@ -22,8 +22,9 @@ import { useAuth } from "@/lib/auth-context";
 import {
   CalendarIcon, Clock, CheckCircle2, User, BookOpen, Loader2,
   Plus, Calendar as CalendarLucide, Users, FileText, Trash2, Search, X,
-  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight, Mic, Download
+  BarChart3, TrendingUp, Award, Percent, Edit, Save, ChevronLeft, ChevronRight, Mic, Download, MessageCircle, PhoneCall
 } from "lucide-react";
+import { getWhatsAppUrl } from "@/lib/phone-utils";
 import { exportJsonToExcel } from "@/lib/excel-utils";
 import AudioRecorder from "@/components/AudioRecorder";
 import AudioPlayer from "@/components/AudioPlayer";
@@ -33,6 +34,8 @@ interface Student {
   name: string;
   username?: string;
   level?: number;
+  phone?: string | null;
+  parentPhone?: string | null;
 }
 
 interface Assignment {
@@ -1236,8 +1239,30 @@ export default function AssignmentsExamsPage() {
                                 {typeBadge.label}
                               </Badge>
                             </div>
+                            <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground" data-testid={`date-assignment-${task.id}`}>
+                              <CalendarIcon className="w-3 h-3" />
+                              {formatDateAr(task.scheduledDate)}
+                            </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                          {!isStudent && (() => {
+                            const student = students.find(s => s.id === task.studentId);
+                            return student ? (
+                              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                {student.phone && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => window.open(getWhatsAppUrl(student.phone!), "_blank")} title="واتساب الطالب" data-testid={`button-whatsapp-student-${task.id}`}>
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                                {student.parentPhone && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => window.open(getWhatsAppUrl(student.parentPhone!), "_blank")} title="واتساب ولي الأمر" data-testid={`button-whatsapp-parent-${task.id}`}>
+                                    <PhoneCall className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            ) : null;
+                          })()}
                         <div className="text-left space-y-1">
                           <div className="flex items-center gap-1 text-sm font-bold text-primary">
                             <Clock className="w-3 h-3" />
@@ -1285,6 +1310,7 @@ export default function AssignmentsExamsPage() {
                             )}
                           </div>
                           )}
+                        </div>
                         </div>
                         </div>
 
