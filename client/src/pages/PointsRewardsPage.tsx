@@ -65,6 +65,8 @@ const POINT_CATEGORIES = [
   { value: "graduation", label: "تخرج" },
   { value: "memorization", label: "حفظ" },
   { value: "participation", label: "مشاركة" },
+  { value: "redemption", label: "تصريف" },
+  { value: "reset", label: "تصفير" },
 ];
 
 const BADGE_TYPES = [
@@ -93,6 +95,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   graduation: "bg-teal-100 text-teal-700 border-teal-200",
   memorization: "bg-emerald-100 text-emerald-700 border-emerald-200",
   participation: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  redemption: "bg-orange-100 text-orange-700 border-orange-200",
+  reset: "bg-red-100 text-red-700 border-red-200",
 };
 
 const BADGE_TYPE_COLORS: Record<string, string> = {
@@ -167,6 +171,13 @@ export default function PointsRewardsPage() {
   const [batchSelectedStudents, setBatchSelectedStudents] = useState<string[]>([]);
   const [batchForm, setBatchForm] = useState({ amount: "", reason: "", category: "", isDeducting: false });
 
+  const [redemptions, setRedemptions] = useState<any[]>([]);
+  const [redeemDialogOpen, setRedeemDialogOpen] = useState(false);
+  const [redeemForm, setRedeemForm] = useState({ studentId: "", amount: "", rewardName: "" });
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetStudentId, setResetStudentId] = useState("");
+  const [studentTotals, setStudentTotals] = useState<Record<string, number>>({});
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -215,10 +226,31 @@ export default function PointsRewardsPage() {
     } catch {}
   };
 
+  const fetchRedemptions = async () => {
+    try {
+      const res = await fetch("/api/point-redemptions", { credentials: "include" });
+      if (res.ok) setRedemptions(await res.json());
+    } catch {}
+  };
+
+  const fetchStudentTotals = async (studentList: StudentUser[]) => {
+    const totals: Record<string, number> = {};
+    await Promise.all(studentList.map(async (s) => {
+      try {
+        const res = await fetch(`/api/points/total/${s.id}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          totals[s.id] = data.total || 0;
+        }
+      } catch {}
+    }));
+    setStudentTotals(totals);
+  };
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      await Promise.all([fetchLeaderboard(), fetchPoints(), fetchBadges(), fetchStudents()]);
+      await Promise.all([fetchLeaderboard(), fetchPoints(), fetchBadges(), fetchStudents(), fetchRedemptions()]);
       setLoading(false);
     };
     load();
@@ -308,6 +340,93 @@ export default function PointsRewardsPage() {
       fetchLeaderboard();
     } catch {
       toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRedeem = async () => {
+    if (!redeemForm.studentId || !redeemForm.amount || !redeemForm.rewardName) {
+      toast({ title: "خطأ", description: "يرجى ملء جميع الحقول", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/point-redemptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(redeemForm),
+      });
+      if (res.ok) {
+        toast({ title: "تم التصريف", description: `تم صرف ${redeemForm.amount} نقطة`, className: "bg-green-50 border-green-200 text-green-800" });
+        setRedeemDialogOpen(false);
+        setRedeemForm({ studentId: "", amount: "", rewardName: "" });
+        fetchRedemptions();
+        fetchPoints();
+        fetchLeaderboard();
+        if (students.length > 0) fetchStudentTotals(students);
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!resetStudentId) {
+      toast({ title: "خطأ", description: "يرجى اختيار طالب", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/points/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ studentId: resetStudentId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast({ title: "تم التصفير", description: data.message, className: "bg-green-50 border-green-200 text-green-800" });
+        setResetDialogOpen(false);
+        setResetStudentId("");
+        fetchPoints();
+        fetchLeaderboard();
+        if (students.length > 0) fetchStudentTotals(students);
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetAll = async () => {
+    if (!confirm("هل أنت متأكد من تصفير نقاط جميع الطلاب؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/points/reset-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast({ title: "تم التصفير الجماعي", description: data.message, className: "bg-green-50 border-green-200 text-green-800" });
+        fetchPoints();
+        fetchLeaderboard();
+        if (students.length > 0) fetchStudentTotals(students);
+      }
+    } catch {
+      toast({ title: "خطأ", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -533,6 +652,13 @@ export default function PointsRewardsPage() {
             <span className="hidden sm:inline">الشارات</span>
             <span className="sm:hidden">شارات</span>
           </TabsTrigger>
+          {isTeacherOrAdmin && (
+            <TabsTrigger value="redemption" data-testid="tab-redemption" onClick={() => { if (students.length > 0) fetchStudentTotals(students); }}>
+              <Zap className="w-4 h-4 ml-1" />
+              <span className="hidden sm:inline">تصريف النقاط</span>
+              <span className="sm:hidden">تصريف</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="achievements" data-testid="tab-achievements">
             <Target className="w-4 h-4 ml-1" />
             <span className="hidden sm:inline">الإنجازات</span>
@@ -959,6 +1085,160 @@ export default function PointsRewardsPage() {
             </div>
           )}
         </TabsContent>
+
+        {isTeacherOrAdmin && (
+        <TabsContent value="redemption" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-lg font-serif flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  تصريف النقاط
+                </CardTitle>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" className="gap-1 bg-amber-600 hover:bg-amber-700" onClick={() => setRedeemDialogOpen(true)} data-testid="button-open-redeem">
+                    <MinusCircle className="w-4 h-4" />
+                    صرف نقاط
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1 text-red-600 border-red-300 hover:bg-red-50" onClick={() => setResetDialogOpen(true)} data-testid="button-open-reset">
+                    <Target className="w-4 h-4" />
+                    تصفير نقاط طالب
+                  </Button>
+                  {(user?.role === "admin" || user?.role === "supervisor") && (
+                    <Button size="sm" variant="outline" className="gap-1 text-red-700 border-red-400 hover:bg-red-100" onClick={handleResetAll} disabled={submitting} data-testid="button-reset-all">
+                      <Users className="w-4 h-4" />
+                      تصفير جماعي
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-500" />
+                  أرصدة الطلاب
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
+                  {students.filter(s => (studentTotals[s.id] || 0) > 0).sort((a, b) => (studentTotals[b.id] || 0) - (studentTotals[a.id] || 0)).map(s => (
+                    <div key={s.id} className="flex items-center justify-between p-2 rounded-lg border bg-muted/20" data-testid={`student-balance-${s.id}`}>
+                      <span className="text-sm">{s.name}</span>
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                        {studentTotals[s.id] || 0} نقطة
+                      </Badge>
+                    </div>
+                  ))}
+                  {students.filter(s => (studentTotals[s.id] || 0) > 0).length === 0 && (
+                    <p className="text-sm text-muted-foreground col-span-full text-center py-4">لا يوجد طلاب لديهم نقاط</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  سجل التصريف
+                </h3>
+                {redemptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">لا يوجد سجل تصريف بعد</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">#</TableHead>
+                          <TableHead className="text-right">الطالب</TableHead>
+                          <TableHead className="text-right">المكافأة</TableHead>
+                          <TableHead className="text-center">النقاط</TableHead>
+                          <TableHead className="text-right">بواسطة</TableHead>
+                          <TableHead className="text-right">التاريخ</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {redemptions.map((r, i) => (
+                          <TableRow key={r.id} data-testid={`row-redemption-${r.id}`}>
+                            <TableCell>{i + 1}</TableCell>
+                            <TableCell>{r.studentName}</TableCell>
+                            <TableCell>{r.rewardName}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">-{r.amount}</Badge>
+                            </TableCell>
+                            <TableCell>{r.redeemedByName}</TableCell>
+                            <TableCell>{formatDateAr(r.createdAt)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={redeemDialogOpen} onOpenChange={setRedeemDialogOpen}>
+            <DialogContent dir="rtl">
+              <DialogHeader>
+                <DialogTitle>صرف نقاط</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>الطالب</Label>
+                  <SearchableSelect
+                    options={students.map(s => ({ value: s.id, label: `${s.name} (${studentTotals[s.id] || 0} نقطة)` }))}
+                    value={redeemForm.studentId}
+                    onValueChange={(v) => setRedeemForm(prev => ({...prev, studentId: v}))}
+                    placeholder="اختر الطالب..."
+                  />
+                </div>
+                <div>
+                  <Label>عدد النقاط</Label>
+                  <Input type="number" min={1} max={redeemForm.studentId ? (studentTotals[redeemForm.studentId] || 0) : 9999} value={redeemForm.amount} onChange={e => setRedeemForm(prev => ({...prev, amount: e.target.value}))} placeholder="مثال: 50" data-testid="input-redeem-amount" />
+                  {redeemForm.studentId && <p className="text-xs text-muted-foreground mt-1">الرصيد المتاح: {studentTotals[redeemForm.studentId] || 0} نقطة</p>}
+                </div>
+                <div>
+                  <Label>المكافأة / السبب</Label>
+                  <Input value={redeemForm.rewardName} onChange={e => setRedeemForm(prev => ({...prev, rewardName: e.target.value}))} placeholder="مثال: هدية، جائزة، رحلة..." data-testid="input-redeem-reward" />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {["هدية", "جائزة", "رحلة", "شهادة تقدير", "وجبة", "قرطاسية"].map(r => (
+                    <Button key={r} variant="outline" size="sm" className="text-xs h-7" onClick={() => setRedeemForm(prev => ({...prev, rewardName: r}))}>{r}</Button>
+                  ))}
+                </div>
+                <Button className="w-full bg-amber-600 hover:bg-amber-700" onClick={handleRedeem} disabled={submitting} data-testid="button-confirm-redeem">
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد الصرف"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+            <DialogContent dir="rtl">
+              <DialogHeader>
+                <DialogTitle>تصفير نقاط طالب</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>الطالب</Label>
+                  <SearchableSelect
+                    options={students.map(s => ({ value: s.id, label: `${s.name} (${studentTotals[s.id] || 0} نقطة)` }))}
+                    value={resetStudentId}
+                    onValueChange={setResetStudentId}
+                    placeholder="اختر الطالب..."
+                  />
+                </div>
+                {resetStudentId && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                    سيتم تصفير جميع نقاط هذا الطالب ({studentTotals[resetStudentId] || 0} نقطة). لا يمكن التراجع.
+                  </div>
+                )}
+                <Button className="w-full" variant="destructive" onClick={handleReset} disabled={submitting} data-testid="button-confirm-reset">
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد التصفير"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+        )}
 
         <TabsContent value="achievements" className="space-y-4">
           <Card>
