@@ -130,16 +130,16 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white" dir="rtl">
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="مُتْقِن" className="w-8 h-8 rounded-lg" />
-            <span className="font-bold text-lg text-[#16213e] font-serif">مُتْقِن</span>
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <img src="/logo.png" alt="مُتْقِن" className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg" />
+            <span className="font-bold text-base sm:text-lg text-[#16213e] font-serif">مُتْقِن</span>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             <a href="#features" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-features">المميزات</a>
             <a href="#testimonials" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-testimonials">آراء المستخدمين</a>
-            <a href="/login" className="text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-login">دخول</a>
-            <a href="#register" className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors" data-testid="link-register-top">ابدأ مجاناً</a>
+            <a href="/login" className="text-xs sm:text-sm text-gray-600 hover:text-emerald-700 px-2 sm:px-3 py-1.5 whitespace-nowrap" data-testid="link-login">دخول</a>
+            <a href="#register" className="text-xs sm:text-sm bg-emerald-600 text-white px-3 sm:px-4 py-1.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors whitespace-nowrap" data-testid="link-register-top">ابدأ مجاناً</a>
           </div>
         </div>
       </nav>
