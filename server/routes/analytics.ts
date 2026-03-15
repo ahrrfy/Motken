@@ -126,9 +126,19 @@ export function registerAnalyticsRoutes(app: Express) {
         return res.json({ star: null });
       }
 
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const eligibleStudents = students.filter(s => {
+        const createdAt = s.createdAt ? new Date(s.createdAt) : now;
+        return createdAt < sevenDaysAgo;
+      });
+
+      if (eligibleStudents.length === 0) {
+        return res.json({ star: null, topStudents: [] });
+      }
+
       const studentScores: { student: any; score: number; details: any }[] = [];
 
-      for (const student of students) {
+      for (const student of eligibleStudents) {
         let score = 0;
         const details: any = { attendance: 0, assignments: 0, points: 0 };
 
@@ -152,7 +162,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       studentScores.sort((a, b) => b.score - a.score);
 
-      const top3 = studentScores.slice(0, 3);
+      const top3 = studentScores.filter(s => s.score > 0).slice(0, 3);
 
       res.json({ star: top3[0] || null, topStudents: top3 });
     } catch (err: any) {
