@@ -485,7 +485,7 @@ export default function TeachersPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table mobileCards>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">الاسم</TableHead>

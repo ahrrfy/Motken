@@ -458,3 +458,56 @@
     scroll-snap-align: start;
   }
 }
+
+/* Safe area for mobile bottom nav */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile touch active state */
+@media (max-width: 768px) {
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Pull to refresh overscroll prevention */
+@media (max-width: 768px) {
+  html, body {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Mobile card table pattern */
+@media (max-width: 640px) {
+  .mobile-card-table thead {
+    display: none;
+  }
+  .mobile-card-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .mobile-card-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+  }
+  .mobile-card-table td {
+    border: none !important;
+    padding: 0.125rem 0 !important;
+    font-size: 0.8125rem;
+  }
+  .mobile-card-table td:first-child {
+    width: 100%;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+}

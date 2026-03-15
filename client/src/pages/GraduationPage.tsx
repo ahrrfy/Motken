@@ -524,7 +524,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table data-testid="table-followups">
+                <Table mobileCards data-testid="table-followups">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-right">التاريخ</TableHead>
@@ -811,7 +811,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table data-testid="table-graduates">
+              <Table mobileCards data-testid="table-graduates">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">اسم الخريج</TableHead>

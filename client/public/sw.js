@@ -1,9 +1,10 @@
-const CACHE_NAME = "mutqin-cache-v3";
+const CACHE_NAME = "mutqin-cache-v4";
 const STATIC_ASSETS = [
   "/logo.png",
   "/icon-192.png",
   "/favicon.ico",
   "/apple-touch-icon.png",
+  "/offline.html",
 ];
 
 self.addEventListener("install", (event) => {
@@ -67,7 +68,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    fetch(request).catch(() => caches.match(request))
+    fetch(request).catch(() =>
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        if (request.mode === "navigate") {
+          return caches.match("/offline.html");
+        }
+        return new Response("", { status: 503 });
+      })
+    )
   );
 });
 
