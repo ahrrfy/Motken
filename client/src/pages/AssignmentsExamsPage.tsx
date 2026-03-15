@@ -1339,7 +1339,7 @@ export default function AssignmentsExamsPage() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-0">
                   {loadingAssignments ? (
                     <div className="flex items-center justify-center py-8" data-testid="status-loading-assignments">
                       <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
@@ -1350,7 +1350,8 @@ export default function AssignmentsExamsPage() {
                       لا توجد واجبات
                     </div>
                   ) : (
-                    (isStudent ? filteredAssignments : filteredAssignments).map((task) => {
+                    <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-1">
+                    {filteredAssignments.map((task) => {
                       const deadline = getDeadlineInfo(task.scheduledDate, task.status);
                       const typeBadge = getTypeBadge(task.type);
                       const studentRate = studentCompletionRates[task.studentId];
@@ -1651,7 +1652,9 @@ export default function AssignmentsExamsPage() {
                           </div>
                         )}
                       </div>
-                    );})
+                    )
+                    })}
+                    </div>
                   )}
                 </CardContent>
               </Card>
