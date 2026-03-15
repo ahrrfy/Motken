@@ -459,9 +459,19 @@
   }
 }
 
-/* Safe area for mobile bottom nav */
+/* Safe area for mobile top/bottom nav */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@supports (padding-top: env(safe-area-inset-top)) {
+  @media (max-width: 767px) {
+    .safe-area-top-offset {
+      padding-top: calc(3.5rem + env(safe-area-inset-top, 0px)) !important;
+    }
+  }
 }
 
 /* Mobile touch active state */
