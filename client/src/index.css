@@ -510,4 +510,10 @@
     font-weight: 600;
     font-size: 0.875rem;
   }
+  .mobile-card-table td:last-child {
+    width: 100%;
+    padding-top: 0.5rem !important;
+    border-top: 1px solid hsl(var(--border)) !important;
+    margin-top: 0.25rem;
+  }
 }
