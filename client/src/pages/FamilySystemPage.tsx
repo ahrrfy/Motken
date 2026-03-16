@@ -193,15 +193,31 @@ export default function FamilySystemPage() {
       if (res.ok) {
         const data = await res.json();
         const creds = data.created || [];
-        setParentCredentials(creds);
-        setShowCredentials(true);
-        try { sessionStorage.setItem("parentCredentials", JSON.stringify(creds)); } catch {}
+        if (creds.length > 0) {
+          setParentCredentials(creds);
+          setShowCredentials(true);
+          try { sessionStorage.setItem("parentCredentials", JSON.stringify(creds)); } catch {}
+        }
         fetchParentAccounts();
-        toast({
-          title: "تم بنجاح",
-          description: `تم إنشاء ${data.totalCreated || 0} حساب ولي أمر جديد`,
-          className: "bg-green-50 border-green-200 text-green-800",
-        });
+        if (data.totalCreated === 0 && data.totalSkipped === 0) {
+          toast({
+            title: "تنبيه",
+            description: data.message || "لا يوجد طلاب لديهم أرقام هواتف أولياء أمور. أضف رقم ولي الأمر في بيانات الطالب أولاً",
+            variant: "destructive",
+          });
+        } else if (data.totalCreated === 0 && data.totalSkipped > 0) {
+          toast({
+            title: "تم بالفعل",
+            description: `جميع حسابات أولياء الأمور (${data.totalSkipped}) موجودة مسبقاً`,
+            className: "bg-blue-50 border-blue-200 text-blue-800",
+          });
+        } else {
+          toast({
+            title: "تم بنجاح",
+            description: `تم إنشاء ${data.totalCreated} حساب ولي أمر جديد${data.totalSkipped > 0 ? ` (${data.totalSkipped} موجود مسبقاً)` : ""}`,
+            className: "bg-green-50 border-green-200 text-green-800",
+          });
+        }
       } else {
         const err = await res.json();
         toast({ title: "خطأ", description: err.message || "فشل في إنشاء الحسابات", variant: "destructive" });

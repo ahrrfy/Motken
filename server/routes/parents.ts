@@ -33,14 +33,38 @@ export function registerParentsRoutes(app: Express) {
       }
 
       const mosqueId = currentUser.role === "admin" ? (req.body.mosqueId || currentUser.mosqueId) : currentUser.mosqueId;
-      if (!mosqueId) {
+
+      let allStudents: any[] = [];
+      let allMosqueUsers: any[] = [];
+
+      if (mosqueId) {
+        allStudents = await storage.getUsersByMosqueAndRole(mosqueId, "student");
+        allMosqueUsers = (await storage.getUsersByMosque(mosqueId)).filter(u => u.role === "teacher" && u.teacherId);
+      } else if (currentUser.role === "admin") {
+        const mosques = await storage.getMosques();
+        for (const m of mosques) {
+          const ms = await storage.getUsersByMosqueAndRole(m.id, "student");
+          allStudents.push(...ms);
+          const mt = (await storage.getUsersByMosque(m.id)).filter(u => u.role === "teacher" && u.teacherId);
+          allMosqueUsers.push(...mt);
+        }
+      } else {
         return res.status(400).json({ message: "يجب تحديد المسجد" });
       }
 
-      const allStudents = await storage.getUsersByMosqueAndRole(mosqueId, "student");
-      const teacherStudents = (await storage.getUsersByMosque(mosqueId)).filter(u => u.role === "teacher" && u.teacherId);
+      const teacherStudents = allMosqueUsers;
 
       const studentsWithParentPhone = [...allStudents, ...teacherStudents].filter(s => s.parentPhone && cleanDigits(s.parentPhone).length >= 10);
+
+      if (studentsWithParentPhone.length === 0) {
+        return res.json({
+          message: `لا يوجد طلاب لديهم أرقام هواتف أولياء أمور مسجلة. يرجى إضافة رقم هاتف ولي الأمر في بيانات الطالب أولاً. (إجمالي الطلاب: ${allStudents.length})`,
+          created: [],
+          totalCreated: 0,
+          totalSkipped: 0,
+          totalStudentsWithoutPhone: allStudents.length - studentsWithParentPhone.length,
+        });
+      }
 
       const phoneGroups: Record<string, typeof studentsWithParentPhone> = {};
       for (const s of studentsWithParentPhone) {
@@ -49,8 +73,14 @@ export function registerParentsRoutes(app: Express) {
         phoneGroups[cleanPhone].push(s);
       }
 
-      const existingParents = (await storage.getUsersByMosqueAndRole(mosqueId, "parent" as any));
-      const existingParentPhones = new Set(existingParents.map(p => cleanDigits(p.phone || "")));
+      let existingParentPhones: Set<string>;
+      if (mosqueId) {
+        const existingParents = await storage.getUsersByMosqueAndRole(mosqueId, "parent" as any);
+        existingParentPhones = new Set(existingParents.map(p => cleanDigits(p.phone || "")));
+      } else {
+        const allUsers = await storage.getUsers();
+        existingParentPhones = new Set(allUsers.filter(u => u.role === "parent").map(p => cleanDigits(p.phone || "")));
+      }
 
       const created: { parentName: string; username: string; password: string; phone: string; childrenNames: string[] }[] = [];
       let skipped = 0;
@@ -68,6 +98,7 @@ export function registerParentsRoutes(app: Express) {
         }
 
         const firstChild = children[0];
+        const childMosqueId = mosqueId || firstChild.mosqueId;
         const parentName = `ولي أمر ${firstChild.name}`;
         const username = generateParentUsername(firstChild.parentPhone!);
         const rawPassword = generatePassword();
@@ -78,7 +109,7 @@ export function registerParentsRoutes(app: Express) {
           password: hashedPw,
           name: parentName,
           role: "parent" as any,
-          mosqueId,
+          mosqueId: childMosqueId,
           phone: firstChild.parentPhone,
           isActive: true,
           pendingApproval: false,
@@ -86,16 +117,19 @@ export function registerParentsRoutes(app: Express) {
           isSpecialNeeds: false,
           isOrphan: false,
           studyMode: "in-person",
+          acceptedPrivacyPolicy: true,
+          privacyPolicyAcceptedAt: new Date(),
         });
 
         for (const child of children) {
-          const existingLinks = await storage.getFamilyLinksByParentPhone(cleanDigits(child.parentPhone!));
-          const alreadyLinked = existingLinks.some(l => l.studentId === child.id);
-          if (!alreadyLinked) {
+          const linkMosqueId = mosqueId || child.mosqueId;
+          const existingLinks = linkMosqueId ? await storage.getFamilyLinksByMosque(linkMosqueId) : [];
+          const alreadyLinked = existingLinks.some(l => l.studentId === child.id && cleanDigits(l.parentPhone) === phone);
+          if (!alreadyLinked && linkMosqueId) {
             await storage.createFamilyLink({
               parentPhone: firstChild.parentPhone!,
               studentId: child.id,
-              mosqueId,
+              mosqueId: linkMosqueId,
               relationship: "parent",
             });
           }
@@ -196,6 +230,8 @@ export function registerParentsRoutes(app: Express) {
         isSpecialNeeds: false,
         isOrphan: false,
         studyMode: "in-person",
+        acceptedPrivacyPolicy: true,
+        privacyPolicyAcceptedAt: new Date(),
       });
 
       if (mosqueId) {
