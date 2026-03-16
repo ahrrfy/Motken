@@ -128,27 +128,29 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
   return (
     <div className="flex flex-col min-h-screen bg-background" dir="rtl">
       <header className={cn(
-        "sticky top-0 z-40 flex items-center justify-between px-3 h-12 border-b border-white/10 shadow-lg bg-gradient-to-l",
+        "sticky top-0 z-40 border-b border-white/10 shadow-lg bg-gradient-to-l",
         roleTheme.headerGradient
-      )} style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
-        <button
-          onClick={() => { hapticLight(); onMenuOpen(); }}
-          className="p-2.5 rounded-xl hover:bg-white/10 active:bg-white/20 transition-colors text-white/90 min-w-[44px] min-h-[44px] flex items-center justify-center"
-          data-testid="button-mobile-menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="متقن" className="w-7 h-7 rounded-lg shadow-sm" />
-          <span className="font-bold text-base tracking-wide text-white">متقن</span>
+      )} style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 20px)" }}>
+        <div className="flex items-center justify-between px-3 h-12">
+          <button
+            onClick={() => { hapticLight(); onMenuOpen(); }}
+            className="p-2.5 rounded-xl hover:bg-white/10 active:bg-white/20 transition-colors text-white/90 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            data-testid="button-mobile-menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="متقن" className="w-7 h-7 rounded-lg shadow-sm" />
+            <span className="font-bold text-base tracking-wide text-white">متقن</span>
+          </div>
+          <button
+            onClick={() => { hapticLight(); setSearchOpen(true); }}
+            className="p-2.5 rounded-xl hover:bg-white/10 active:bg-white/20 transition-colors text-white/90 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            data-testid="button-mobile-search"
+          >
+            <Search className="w-5 h-5" />
+          </button>
         </div>
-        <button
-          onClick={() => { hapticLight(); setSearchOpen(true); }}
-          className="p-2.5 rounded-xl hover:bg-white/10 active:bg-white/20 transition-colors text-white/90 min-w-[44px] min-h-[44px] flex items-center justify-center"
-          data-testid="button-mobile-search"
-        >
-          <Search className="w-5 h-5" />
-        </button>
       </header>
 
       {pullDistance > 0 && (
