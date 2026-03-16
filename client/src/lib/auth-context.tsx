@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
 
-export type UserRole = "admin" | "teacher" | "student" | "supervisor" | "parent";
+export type UserRole = "admin" | "teacher" | "student" | "supervisor";
 
 export interface User {
   id: string;
@@ -26,7 +26,6 @@ export type PreviewRole = UserRole | null;
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  isTeacherAsStudent: boolean;
   login: (username: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => Promise<void>;
   switchRole: () => void;
@@ -101,19 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchRole = () => {
     if (!user) return;
     const actualRole = user.actualRole || user.role;
+    if (actualRole !== "supervisor") return;
 
-    if (actualRole === "supervisor") {
-      if (user.role === "supervisor") {
-        setUser({ ...user, role: "teacher", actualRole: "supervisor" });
-      } else {
-        setUser({ ...user, role: "supervisor", actualRole: "supervisor" });
-      }
-    } else if (actualRole === "teacher") {
-      if (user.role === "teacher") {
-        setUser({ ...user, role: "student", actualRole: "teacher" });
-      } else {
-        setUser({ ...user, role: "teacher", actualRole: "teacher" });
-      }
+    if (user.role === "supervisor") {
+      setUser({ ...user, role: "teacher", actualRole: "supervisor" });
+    } else {
+      setUser({ ...user, role: "supervisor", actualRole: "supervisor" });
     }
   };
 
@@ -128,10 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const effectiveRole = previewRole || user?.role;
-  const isTeacherAsStudent = !!(user?.actualRole === "teacher" && user?.role === "student");
 
   return (
-    <AuthContext.Provider value={{ user, loading, isTeacherAsStudent, login, logout, switchRole, refreshUser, previewRole, startPreview, stopPreview, effectiveRole }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, switchRole, refreshUser, previewRole, startPreview, stopPreview, effectiveRole }}>
       {children}
     </AuthContext.Provider>
   );

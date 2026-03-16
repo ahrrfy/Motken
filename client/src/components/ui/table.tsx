@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils"
 
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement> & { mobileCards?: boolean }
->(({ className, mobileCards, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableElement>
+>(({ className, ...props }, ref) => (
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", mobileCards && "mobile-card-table", className)}
+      className={cn("w-full caption-bottom text-sm", className)}
       {...props}
     />
   </div>

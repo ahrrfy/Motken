@@ -166,7 +166,7 @@ function getGradeColor(grade: number) {
 }
 
 export default function AssignmentsExamsPage() {
-  const { user, isTeacherAsStudent } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [assignDate, setAssignDate] = useState<Date>();
@@ -312,7 +312,7 @@ export default function AssignmentsExamsPage() {
       .then(data => setTeachers(data))
       .catch(() => {});
 
-    fetch(`/api/assignments${isTeacherAsStudent ? '?asStudent=true' : ''}`, { credentials: "include" })
+    fetch("/api/assignments", { credentials: "include" })
       .then(res => res.ok ? res.json() : [])
       .then(data => setAssignments(data))
       .catch(() => {})
@@ -1339,7 +1339,7 @@ export default function AssignmentsExamsPage() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-0">
+                <CardContent className="space-y-4">
                   {loadingAssignments ? (
                     <div className="flex items-center justify-center py-8" data-testid="status-loading-assignments">
                       <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
@@ -1350,8 +1350,7 @@ export default function AssignmentsExamsPage() {
                       لا توجد واجبات
                     </div>
                   ) : (
-                    <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-1">
-                    {filteredAssignments.map((task) => {
+                    (isStudent ? filteredAssignments : filteredAssignments).map((task) => {
                       const deadline = getDeadlineInfo(task.scheduledDate, task.status);
                       const typeBadge = getTypeBadge(task.type);
                       const studentRate = studentCompletionRates[task.studentId];
@@ -1652,9 +1651,7 @@ export default function AssignmentsExamsPage() {
                           </div>
                         )}
                       </div>
-                    )
-                    })}
-                    </div>
+                    );})
                   )}
                 </CardContent>
               </Card>

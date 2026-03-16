@@ -97,7 +97,6 @@ const navCategories: NavCategory[] = [
     defaultOpen: true,
     items: [
       { href: "/dashboard", label: "لوحة التحكم", labelEn: "Dashboard", icon: LayoutDashboard, roles: ["admin", "teacher", "student", "supervisor"] },
-      { href: "/parent-dashboard", label: "متابعة أبنائي", labelEn: "My Children", icon: Users, roles: ["parent"] },
       { href: "/daily", label: "واجبات اليوم", labelEn: "Daily Tasks", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"] },
     ],
   },
@@ -147,7 +146,7 @@ const navCategories: NavCategory[] = [
     icon: Megaphone,
     items: [
       { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "messaging" },
-      { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor", "parent"] },
+      { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
       { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
       { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
       { href: "/family-system", label: "نظام الأسرة", labelEn: "Family System", icon: HeartHandshake, roles: ["admin", "supervisor", "teacher"], featureKey: "family_system" },
@@ -173,7 +172,7 @@ const navCategories: NavCategory[] = [
       { href: "/institutional", label: "التكامل المؤسسي", labelEn: "Institutional Integration", icon: ArrowUpDown, roles: ["admin", "supervisor"], featureKey: "institutional" },
       { href: "/maintenance", label: "الملاحظات والتحسين", labelEn: "Feedback & Improvement", icon: Lightbulb, roles: ["admin", "supervisor", "teacher", "student"] },
       { href: "/changelog", label: "سجل التغييرات", labelEn: "Changelog", icon: Sparkles, roles: ["admin", "supervisor", "teacher", "student"] },
-      { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor", "parent"] },
+      { href: "/settings", label: "الإعدادات", labelEn: "Settings", icon: Settings, roles: ["admin", "teacher", "student", "supervisor"] },
     ],
   },
 ];
@@ -417,8 +416,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               <p className="text-[10px] text-sidebar-foreground/50 truncate">{
                 user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
                 user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
-                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) :
-                user.role === "student" ? (isEn ? "Student" : (user.actualRole === "teacher" ? "طالب (أستاذ)" : "طالب")) : (isEn ? "Student" : "طالب")
+                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
               }</p>
             )}
           </div>
@@ -462,20 +460,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           {user?.role === "supervisor"
             ? (isEn ? "Teacher Mode" : "وضع الأستاذ")
             : (isEn ? "Supervisor Mode" : "وضع المشرف")}
-        </Button>
-      )}
-      {!previewRole && (user?.actualRole === "teacher" || (user?.role === "teacher" && !user?.actualRole)) && user?.teacherId && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={switchRole}
-          className="w-full h-8 text-xs bg-sky-900/20 border-sky-700/30 text-sky-400 hover:bg-sky-800/30 hover:text-sky-300"
-          data-testid="button-switch-role-teacher"
-        >
-          <ArrowLeftRight className="w-3.5 h-3.5 ml-1.5" />
-          {user?.role === "teacher"
-            ? (isEn ? "Student Mode" : "وضع الطالب")
-            : (isEn ? "Teacher Mode" : "وضع الأستاذ")}
         </Button>
       )}
       {previewRole && (
@@ -533,7 +517,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir={dir}>
-      <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg safe-area-top">
+      <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="مُتْقِن" className="w-8 h-8 rounded-lg" />
           <span className="font-bold text-lg">مُتْقِن</span>
@@ -562,7 +546,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <SidebarFooter />
       </aside>
 
-      <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 safe-area-top-offset md:pt-0 min-w-0 flex flex-col min-h-screen">
+      <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0 flex flex-col min-h-screen">
         {previewRole && (
           <div className={cn(
             "flex items-center justify-between gap-3 px-4 py-2.5 text-white text-sm font-medium shadow-md z-20",

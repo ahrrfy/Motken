@@ -72,8 +72,7 @@ export function registerAttendanceRoutes(app: Express) {
         const records = await storage.getAttendanceByMosque(mosqueId as string);
         return res.json(await enrichWithStudentNames(records));
       }
-      const asStudent = req.query.asStudent === "true" && currentUser.role === "teacher" && !!currentUser.teacherId;
-      if (currentUser.role === "student" || asStudent) {
+      if (currentUser.role === "student") {
         const records = await storage.getAttendanceByStudent(currentUser.id);
         return res.json(await enrichWithStudentNames(records));
       }

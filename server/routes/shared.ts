@@ -18,10 +18,6 @@ export function getTeacherLevelsArray(teacher: any): number[] {
   return teacher.teacherLevels.split(",").map(Number).filter((n: number) => n >= 1 && n <= 7);
 }
 
-export function isStudentOrTeacherAsStudent(user: any): boolean {
-  return user.role === "student" || (user.role === "teacher" && !!user.teacherId);
-}
-
 export function canTeacherAccessStudent(teacher: any, student: any): boolean {
   if (!teacher.mosqueId || teacher.mosqueId !== student.mosqueId) return false;
   const teacherLevels = getTeacherLevelsArray(teacher);

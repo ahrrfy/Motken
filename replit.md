@@ -21,9 +21,8 @@ The system is built with a modern web stack:
 -   **Role-Based Access Control**:
     -   **Admin**: System-wide access, creates mosques and supervisors.
     -   **Supervisor**: Mosque-scoped, manages teachers and students, rates teachers. Includes a teacher student approval system.
-    -   **Teacher**: Mosque-scoped, manages students, rates students, creates assignments and exams. Teachers with `teacherId` can switch to student mode (`?asStudent=true`).
+    -   **Teacher**: Mosque-scoped, manages students, rates students, creates assignments and exams.
     -   **Student**: Accesses personal data and assignments.
-    -   **Parent**: Read-only access to children's data via Parent Dashboard. Auto-generated accounts from student `parentPhone` fields. Username format: `parent_<last10digits>`. Redirected to `/parent-dashboard` on login. Can view attendance, assignments, points for linked children.
 
 ### Sidebar Navigation Structure (Categorized Groups)
 1. **الرئيسية (Main)**: Dashboard, Today's Assignments
@@ -43,7 +42,7 @@ The system is built with a modern web stack:
 -   **Ratings**: Stats cards, weekly rating system, rating history, auto-honor badge suggestion, badges showcase.
 -   **Quran Tracker**: Stats with streak/juz/milestones, visual memorization tree, personal plan, daily review, tajweed error tracking, achievement milestones.
 -   **Courses & Graduation** (`CoursesGraduationPage`): Unified page merging former CoursesPage, GraduationPage, and CertificatesPage into 4 tabs (الدورات, التخرج, الشهادات, التحقق). Sub-pages accept `embedded` prop to hide headers/stats when rendered inside tabs. Routes `/graduation` and `/certificates` redirect to the unified page with the correct tab. Stats, search/filter, edit, duplicate, graduation grades, public verification, batch printing.
--   **User Management**: Comprehensive student, teacher, and supervisor management with detailed profiles, credential sharing, and transfer capabilities. **Supervisor/Admin can fully edit student and teacher profiles** (name, username, password, phone, address, gender, age, education level, study mode, status, avatar, telegram, admin notes, teacher assignment, memorization level, child/special needs/orphan flags). TeachersPage has inline edit dialog with level checkboxes. StudentsPage profile dialog has edit mode toggle.
+-   **User Management**: Comprehensive student, teacher, and supervisor management with detailed profiles, credential sharing, and transfer capabilities.
 -   **Internal Islamic Library**: Offline-capable reader with 50+ books, bookmarking, and progress tracking.
 -   **Activity & Monitoring**: Combined monitoring page (online users, activity logs, teacher activities). Session management.
 -   **Reporting & Analytics**: Student progress, attendance, points, ID cards, reports with print/export. Quran Passport, Mosque infographic. Export buttons on AttendancePage and AssignmentsExamsPage (Excel export via client-side exportJsonToExcel).
@@ -87,16 +86,9 @@ The system is built with a modern web stack:
 -   **Advanced Mosque Filtering**: Sort by name/date/student count, filter by student count range (min/max), filter inactive mosques only.
 -   **Mosque Excel Export**: Export filtered mosque data to Excel including stats (name, province, city, students, teachers, status, date).
 
-## Teacher Dual-Role System (Phase 2)
-Teachers who have a `teacherId` assigned can switch to student mode. The switch is client-side (`actualRole: "teacher"`, `role: "student"` in auth context), and the backend uses `?asStudent=true` query parameter to serve student-perspective data.
-- **`isStudentOrTeacherAsStudent(user)`** helper in `shared.ts` — checks if a user is a student or a teacher with a teacherId
-- **`isTeacherAsStudent`** boolean in auth context — true when teacher is viewing as student
-- Backend routes (assignments, attendance, points, points-redemptions) accept `?asStudent=true` to return student-perspective data for teachers
-- Role checks across assignments, exams, graduates, users, ratings routes updated to accept teacher-as-student as valid student targets
-
 ## Server Route Architecture
 The backend routes are split into modular files under `server/routes/`:
-- `shared.ts` — Helper functions (logActivity, canTeacherAccessStudent, isStudentOrTeacherAsStudent, etc.)
+- `shared.ts` — Helper functions (logActivity, canTeacherAccessStudent, etc.)
 - `feature-defaults.ts` — Feature flag definitions and route-to-feature mapping
 - `mosques.ts` — Mosque CRUD, dashboard, messages, registration/vouching
 - `users.ts` — User CRUD, approval, avatar, transfers
@@ -124,21 +116,6 @@ The backend routes are split into modular files under `server/routes/`:
 - `public.ts` — Public testimonials and stats (no auth required)
 
 The main `server/routes.ts` orchestrates middleware setup and imports all modules.
-
-## Mobile Experience (PWA)
-The app includes a full Progressive Web App with dedicated mobile UI:
-- **MobileLayout** (`client/src/mobile/MobileLayout.tsx`): Bottom nav bar (role-themed), header with search icon, pull-to-refresh
-- **MobileSidebar** (`client/src/mobile/MobileSidebar.tsx`): Swipe-to-close sidebar with all nav items grouped by category
-- **MobileApp** (`client/src/mobile/MobileApp.tsx`): Page transitions via framer-motion AnimatePresence, contextual loading skeletons
-- **MobileFAB** (`client/src/mobile/MobileFAB.tsx`): Floating action button with role-specific quick actions
-- **MobileGlobalSearch** (`client/src/mobile/MobileGlobalSearch.tsx`): Full-screen search overlay for students/teachers/surahs
-- **MobileOfflineBanner** (`client/src/mobile/MobileOfflineBanner.tsx`): Offline detection with auto-reconnect
-- **Haptic feedback**: Auto-triggered on all toast notifications via `use-toast.ts`; utility in `client/src/lib/haptic.ts`
-- **Touch targets**: All buttons/inputs min 44px on mobile (responsive sm: breakpoint for desktop)
-- **Tables → Cards**: `mobile-card-table` CSS class auto-converts tables to card layout on mobile
-- **Pull-to-refresh**: Custom hook `client/src/hooks/use-pull-refresh.ts`
-- **Service Worker**: `client/public/sw.js` (v4) with offline.html fallback page
-- **Safe area**: viewport-fit=cover + env(safe-area-inset-bottom) for notched devices
 
 ## External Dependencies
 -   **api.alquran.cloud**: Fetches Quran text.

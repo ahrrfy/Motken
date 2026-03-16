@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import {
   ratings,
 } from "@shared/schema";
-import { logActivity, canTeacherAccessStudent, isStudentOrTeacherAsStudent } from "./shared";
+import { logActivity, canTeacherAccessStudent } from "./shared";
 
 export function registerRatingsRoutes(app: Express) {
   // ==================== RATINGS ====================
@@ -73,11 +73,11 @@ export function registerRatingsRoutes(app: Express) {
       }
 
       if (currentUser.role === "supervisor") {
-        if (targetUser.role !== "teacher" && !isStudentOrTeacherAsStudent(targetUser)) {
+        if (targetUser.role !== "teacher" && targetUser.role !== "student") {
           return res.status(403).json({ message: "المشرف يمكنه تقييم الأساتذة والطلاب فقط" });
         }
       } else if (currentUser.role === "teacher") {
-        if (!isStudentOrTeacherAsStudent(targetUser)) {
+        if (targetUser.role !== "student") {
           return res.status(403).json({ message: "الأستاذ يمكنه تقييم الطلاب فقط" });
         }
         if (!canTeacherAccessStudent(currentUser, targetUser)) {

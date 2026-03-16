@@ -139,21 +139,8 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function triggerHaptic(variant?: string) {
-  try {
-    if (!navigator.vibrate) return;
-    if (variant === "destructive") {
-      navigator.vibrate([50, 30, 50]);
-    } else {
-      navigator.vibrate([10, 50, 20]);
-    }
-  } catch {}
-}
-
 function toast({ ...props }: Toast) {
   const id = genId()
-
-  triggerHaptic(props.variant as string);
 
   const update = (props: ToasterToast) =>
     dispatch({
