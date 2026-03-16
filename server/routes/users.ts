@@ -8,7 +8,7 @@ import {
 import { sessionTracker } from "../session-tracker";
 import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateAge, validateBoolean, validateEnum, validateDate, sanitizeImageUrl, validateTeacherLevels } from "@shared/security-utils";
-import { logActivity, canTeacherAccessStudent, isStudentOrTeacherAsStudent } from "./shared";
+import { logActivity, canTeacherAccessStudent } from "./shared";
 import crypto from "crypto";
 
 export function registerUsersRoutes(app: Express) {
@@ -34,10 +34,6 @@ export function registerUsersRoutes(app: Express) {
         if (role === "student" && currentUser.mosqueId) {
           const allStudents = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student");
           result = allStudents.filter(s => canTeacherAccessStudent(currentUser, s) && !s.pendingApproval);
-          const teacherStudents = (await storage.getUsersByTeacher(currentUser.id)).filter(s => s.role === "teacher");
-          for (const ts of teacherStudents) {
-            if (!result.find(r => r.id === ts.id)) result.push(ts);
-          }
         } else if (currentUser.mosqueId) {
           if (role) {
             result = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role);
@@ -50,13 +46,6 @@ export function registerUsersRoutes(app: Express) {
       } else if (currentUser.mosqueId) {
         if (role) {
           result = (await storage.getUsersByMosqueAndRole(currentUser.mosqueId, role)).filter(s => role === "student" ? !s.pendingApproval : true);
-          if (role === "student") {
-            const allMosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
-            const teachersAsStudents = allMosqueUsers.filter(u => u.role === "teacher" && u.teacherId);
-            for (const ts of teachersAsStudents) {
-              if (!result.find(r => r.id === ts.id)) result.push(ts);
-            }
-          }
         } else {
           result = await storage.getUsersByMosque(currentUser.mosqueId);
         }
@@ -148,7 +137,7 @@ export function registerUsersRoutes(app: Express) {
       let updated = 0;
       for (const id of studentIds) {
         const student = await storage.getUser(id);
-        if (!student || !isStudentOrTeacherAsStudent(student)) continue;
+        if (!student || student.role !== "student") continue;
         if (currentUser.role === "supervisor" && student.mosqueId !== currentUser.mosqueId) continue;
         await storage.updateUser(id, { studyMode });
         updated++;
@@ -363,8 +352,8 @@ export function registerUsersRoutes(app: Express) {
     }
 
     const safeFields = ["name", "phone", "address", "gender", "avatar", "age", "telegramId", "parentPhone", "educationLevel", "isChild", "isSpecialNeeds", "isOrphan", "password"];
-    const supervisorFields = ["teacherId", "level", "teacherLevels", "studyMode", "isActive", "username", "adminNotes"];
-    const adminOnlyFields = ["role", "mosqueId", "canPrintIds", "suspendedUntil"];
+    const supervisorFields = ["teacherId", "level", "teacherLevels", "studyMode"];
+    const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil"];
     const allAllowedFields = [...safeFields, ...supervisorFields, ...adminOnlyFields];
     const receivedKeys = Object.keys(req.body);
     const forbiddenKeys = receivedKeys.filter(k => !allAllowedFields.includes(k));
@@ -468,33 +457,6 @@ export function registerUsersRoutes(app: Express) {
       await logActivity(currentUser, `تغيير كلمة مرور المستخدم ${targetUser.name} (${targetUser.username})`, "security");
     }
 
-    if (["admin", "supervisor"].includes(currentUser.role) && currentUser.id !== req.params.id) {
-      if (req.body.isActive !== undefined) {
-        if (targetUser.role === "admin" && req.body.isActive === false) {
-          return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
-        }
-        updateData.isActive = req.body.isActive;
-      }
-      if (req.body.username !== undefined) {
-        if (typeof req.body.username !== "string" || req.body.username.length < 3 || req.body.username.length > 50) {
-          return res.status(400).json({ message: "اسم المستخدم يجب أن يكون بين 3 و 50 حرف" });
-        }
-        if (!/^[a-zA-Z0-9_]+$/.test(req.body.username)) {
-          return res.status(400).json({ message: "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام فقط" });
-        }
-        const existingUser = await storage.getUserByUsername(req.body.username);
-        if (existingUser && existingUser.id !== req.params.id) {
-          return res.status(400).json({ message: "اسم المستخدم مستخدم بالفعل" });
-        }
-        updateData.username = req.body.username;
-      }
-      if (req.body.adminNotes !== undefined) {
-        const anCheck = validateFields({ adminNotes: req.body.adminNotes }, ["adminNotes"]);
-        if (!anCheck.valid) return res.status(400).json({ message: anCheck.error });
-        updateData.adminNotes = req.body.adminNotes;
-      }
-    }
-
     if (currentUser.role === "admin") {
       if (req.body.role !== undefined) {
         const validRoles = ["admin", "supervisor", "teacher", "student"];
@@ -504,10 +466,30 @@ export function registerUsersRoutes(app: Express) {
         updateData.role = req.body.role;
       }
       if (req.body.mosqueId !== undefined) updateData.mosqueId = req.body.mosqueId;
+      if (req.body.isActive !== undefined) {
+        if (targetUser.role === "admin" && req.body.isActive === false) {
+          return res.status(403).json({ message: "لا يمكن التحكم بحساب مدير النظام" });
+        }
+        updateData.isActive = req.body.isActive;
+      }
       if (req.body.canPrintIds !== undefined) {
         const cpCheck = validateBoolean(req.body.canPrintIds, "canPrintIds");
         if (!cpCheck.valid) return res.status(400).json({ message: cpCheck.error });
         updateData.canPrintIds = req.body.canPrintIds;
+      }
+      if (req.body.username !== undefined) {
+        if (typeof req.body.username !== "string" || req.body.username.length < 3 || req.body.username.length > 50) {
+          return res.status(400).json({ message: "اسم المستخدم يجب أن يكون بين 3 و 50 حرف" });
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(req.body.username)) {
+          return res.status(400).json({ message: "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام فقط" });
+        }
+        updateData.username = req.body.username;
+      }
+      if (req.body.adminNotes !== undefined) {
+        const anCheck = validateFields({ adminNotes: req.body.adminNotes }, ["adminNotes"]);
+        if (!anCheck.valid) return res.status(400).json({ message: anCheck.error });
+        updateData.adminNotes = req.body.adminNotes;
       }
       if (req.body.suspendedUntil !== undefined) {
         if (targetUser.role === "admin") {
@@ -697,7 +679,7 @@ export function registerUsersRoutes(app: Express) {
     }
 
     const student = await storage.getUser(req.params.id);
-    if (!student || !isStudentOrTeacherAsStudent(student)) {
+    if (!student || student.role !== "student") {
       return res.status(404).json({ message: "الطالب غير موجود" });
     }
 

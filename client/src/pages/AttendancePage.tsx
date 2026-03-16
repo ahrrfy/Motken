@@ -72,7 +72,7 @@ const absenceReasons = [
 const DAYS_AR = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
 export default function AttendancePage() {
-  const { user, isTeacherAsStudent } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("mark");
@@ -229,11 +229,7 @@ export default function AttendancePage() {
     try {
       let url = "/api/attendance";
       const params = new URLSearchParams();
-      if (isTeacherAsStudent) {
-        params.set("asStudent", "true");
-      } else if (isTeacher && user?.id) {
-        params.set("teacherId", user.id);
-      }
+      if (isTeacher && user?.id) params.set("teacherId", user.id);
       if (isSupervisor && user?.mosqueId) params.set("mosqueId", user.mosqueId);
       if (filterDateFrom) params.set("dateFrom", filterDateFrom);
       if (filterDateTo) params.set("dateTo", filterDateTo);
@@ -266,11 +262,7 @@ export default function AttendancePage() {
       const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
       const lastDayStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
       const params = new URLSearchParams({ dateFrom: firstDay, dateTo: lastDayStr });
-      if (isTeacherAsStudent) {
-        params.set("asStudent", "true");
-      } else if (isTeacher && user?.id) {
-        params.set("teacherId", user.id);
-      }
+      if (isTeacher && user?.id) params.set("teacherId", user.id);
       if (isSupervisor && user?.mosqueId) params.set("mosqueId", user.mosqueId);
       const res = await fetch(`/api/attendance?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -286,11 +278,7 @@ export default function AttendancePage() {
     setStatsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (isTeacherAsStudent) {
-        params.set("asStudent", "true");
-      } else if (isTeacher && user?.id) {
-        params.set("teacherId", user.id);
-      }
+      if (isTeacher && user?.id) params.set("teacherId", user.id);
       if (isSupervisor && user?.mosqueId) params.set("mosqueId", user.mosqueId);
       const res = await fetch(`/api/attendance?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -355,11 +343,7 @@ export default function AttendancePage() {
   const checkConsecutiveAbsences = async () => {
     try {
       const params = new URLSearchParams();
-      if (isTeacherAsStudent) {
-        params.set("asStudent", "true");
-      } else if (isTeacher && user?.id) {
-        params.set("teacherId", user.id);
-      }
+      if (isTeacher && user?.id) params.set("teacherId", user.id);
       if (isSupervisor && user?.mosqueId) params.set("mosqueId", user.mosqueId);
       const res = await fetch(`/api/attendance?${params.toString()}`, { credentials: "include" });
       if (!res.ok) return;
@@ -793,7 +777,7 @@ export default function AttendancePage() {
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <Table mobileCards data-testid="table-mark-attendance">
+                    <Table data-testid="table-mark-attendance">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-right w-12">#</TableHead>
@@ -1049,7 +1033,7 @@ export default function AttendancePage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table mobileCards data-testid="table-attendance-history">
+                  <Table data-testid="table-attendance-history">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-right">#</TableHead>

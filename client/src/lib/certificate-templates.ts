@@ -47,15 +47,8 @@ function gradeArabic(grade?: string): string {
 }
 
 function recitationArabic(style?: string): string {
-  if (!style || style === "none") return "";
-  const map: Record<string, string> = {
-    hafs: "حفص عن عاصم",
-    warsh: "ورش عن نافع",
-    qaloon: "قالون عن نافع",
-    shubah: "شعبة عن عاصم",
-    alduri: "الدوري عن أبي عمرو",
-    alsusi: "السوسي عن أبي عمرو",
-  };
+  if (!style) return "";
+  const map: Record<string, string> = { hafs: "حفص عن عاصم", warsh: "ورش عن نافع", qaloon: "قالون عن نافع" };
   return map[style] || style;
 }
 

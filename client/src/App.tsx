@@ -38,7 +38,6 @@ import SmartAlertsPage from "@/pages/SmartAlertsPage";
 import CrisisManagementPage from "@/pages/CrisisManagementPage";
 import InstitutionalPage from "@/pages/InstitutionalPage";
 import FamilySystemPage from "@/pages/FamilySystemPage";
-import ParentDashboardPage from "@/pages/ParentDashboardPage";
 import KnowledgeBasePage from "@/pages/KnowledgeBasePage";
 import MaintenancePage from "@/pages/MaintenancePage";
 import EducationalContentPage from "@/pages/EducationalContentPage";
@@ -230,7 +229,7 @@ function App() {
       )}
       <Switch>
         <Route path="/daily" component={TeacherDailyPage} />
-        <Route path="/dashboard">{() => user?.role === "parent" ? <ParentDashboardPage /> : <DashboardPage />}</Route>
+        <Route path="/dashboard" component={DashboardPage} />
         <Route path="/mosques/:id/dashboard" component={MosqueDashboardPage} />
         <Route path="/mosques">{() => <RoleGuard roles={["admin"]} Component={MosquesPage} />}</Route>
         <Route path="/students" component={StudentsPage} />
@@ -269,11 +268,10 @@ function App() {
         <Route path="/maintenance" component={MaintenancePage} />
         <Route path="/educational-content" component={EducationalContentPage} />
         <Route path="/floor-plan" component={FloorPlanPage} />
-        <Route path="/parent-dashboard" component={ParentDashboardPage} />
         <Route path="/whiteboard" component={WhiteboardPage} />
         <Route path="/spread" component={SpreadPage} />
         <Route path="/changelog" component={ChangelogPage} />
-        <Route path="/">{() => user?.role === "parent" ? <ParentDashboardPage /> : <DashboardPage />}</Route>
+        <Route path="/" component={DashboardPage} />
         <Route>
           <div className="p-10 text-center">
             <h2 className="text-2xl font-bold text-muted-foreground">الصفحة غير موجودة</h2>
