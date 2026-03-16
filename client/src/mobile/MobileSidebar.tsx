@@ -77,25 +77,43 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const isSwiping = useRef(false);
 
+  const touchStartY = useRef(0);
+  const isScrolling = useRef(false);
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
-    isSwiping.current = true;
+    touchStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
+    isScrolling.current = false;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isSwiping.current) return;
-    touchCurrentX.current = e.touches[0].clientX;
-    const diff = touchCurrentX.current - touchStartX.current;
-    if (diff > 10) {
-      setSwipeOffset(Math.min(diff, 300));
+    const diffX = e.touches[0].clientX - touchStartX.current;
+    const diffY = e.touches[0].clientY - touchStartY.current;
+
+    if (!isSwiping.current && !isScrolling.current) {
+      if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 10) {
+        isScrolling.current = true;
+        return;
+      }
+      if (Math.abs(diffX) > Math.abs(diffY) && diffX > 10) {
+        isSwiping.current = true;
+      }
+    }
+
+    if (isScrolling.current) return;
+
+    if (isSwiping.current && diffX > 0) {
+      setSwipeOffset(Math.min(diffX, 300));
     }
   }, []);
 
   const handleTouchEnd = useCallback(() => {
-    isSwiping.current = false;
-    if (swipeOffset > 100) {
+    if (isSwiping.current && swipeOffset > 100) {
       onClose();
     }
+    isSwiping.current = false;
+    isScrolling.current = false;
     setSwipeOffset(0);
   }, [swipeOffset, onClose]);
 
@@ -154,6 +172,13 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     student: { pill: "text-sky-400 bg-sky-500/20", active: "text-sky-400 bg-sky-500/15 font-semibold", headerGradient: "from-sky-600/90 via-sky-700/80 to-sky-900/90", avatarRing: "ring-sky-500/40" },
   }[role] || { pill: "text-emerald-400 bg-emerald-500/20", active: "text-emerald-400 bg-emerald-500/15 font-semibold", headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90", avatarRing: "ring-emerald-500/40" };
 
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [open]);
+
   const roleLabel = previewRole
     ? { admin:"معاينة: مدير", supervisor:"معاينة: مشرف", teacher:"معاينة: أستاذ", student:"معاينة: طالب" }[previewRole] || ""
     : { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب" }[role] || "";
@@ -178,11 +203,11 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex" dir="rtl">
+    <div className="fixed inset-0 z-50 flex touch-none" dir="rtl">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div
         ref={sidebarRef}
-        className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col"
+        className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col touch-auto overscroll-contain"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
