@@ -138,7 +138,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-1 sm:gap-2">
             <a href="#features" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-features">المميزات</a>
             <a href="#testimonials" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-testimonials">آراء المستخدمين</a>
-            <a href="/login" className="text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-login">دخول</a>
+            <a href="/login" className="text-sm bg-red-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors" data-testid="link-login">دخول</a>
             <a href="#register" className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-semibold hover:bg-emerald-700 transition-colors" data-testid="link-register-top">ابدأ مجاناً</a>
           </div>
         </div>
