@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,34 +24,26 @@ export default function LinkedAccountsBadge({ userId, userRole, userName }: Link
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetched, setFetched] = useState(false);
-  const [hasLinked, setHasLinked] = useState<boolean | null>(null);
+  const [hasLinked, setHasLinked] = useState(false);
 
-  if (user?.role !== "admin") return null;
-  if (!["teacher", "supervisor"].includes(userRole)) return null;
+  const isVisible = user?.role === "admin" && ["teacher", "supervisor"].includes(userRole);
 
-  const fetchLinked = async () => {
-    if (fetched) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/users/${userId}/linked-accounts`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setAccounts(data);
-        setHasLinked(data.length > 0);
-      }
-    } catch {}
-    setLoading(false);
-    setFetched(true);
-  };
+  useEffect(() => {
+    if (!isVisible) return;
+    let cancelled = false;
+    fetch(`/api/users/${userId}/linked-accounts`, { credentials: "include" })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (!cancelled) {
+          setAccounts(data);
+          setHasLinked(data.length > 0);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [userId, isVisible]);
 
-  if (!fetched) {
-    fetchLinked();
-    return null;
-  }
-
-  if (!hasLinked) return null;
+  if (!isVisible || !hasLinked) return null;
 
   const roleLabel = (r: string) => r === "teacher" ? "أستاذ" : r === "supervisor" ? "مشرف" : r;
 
