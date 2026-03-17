@@ -104,8 +104,8 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
   }, [target]);
 
   return (
-    <div ref={ref} className="text-3xl sm:text-4xl font-bold text-white font-mono tabular-nums" data-testid="animated-counter">
-      {current.toLocaleString("ar-SA")}{suffix}
+    <div ref={ref} className="text-3xl sm:text-4xl font-bold text-white font-mono tabular-nums" dir="ltr" data-testid="animated-counter">
+      {suffix}{current.toLocaleString("ar-SA")}
     </div>
   );
 }
