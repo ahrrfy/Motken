@@ -191,22 +191,24 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-16 relative z-10">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-            {[
-              { label: "مسجد ومركز", value: stats.mosques, icon: "🕌" },
-              { label: "طالب وطالبة", value: stats.students, icon: "👨‍🎓" },
-              { label: "معلم ومعلمة", value: stats.teachers, icon: "👨‍🏫" },
-              { label: "تسميع مكتمل", value: stats.completedAssignments, icon: "✅" },
-            ].map((s, i) => (
-              <div key={i} className="text-center bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10" data-testid={`stat-card-${i}`}>
-                <div className="text-2xl mb-1">{s.icon}</div>
-                <AnimatedCounter target={s.value} suffix="+" />
-                <p className="text-xs sm:text-sm text-gray-400 mt-1">{s.label}</p>
-              </div>
-            ))}
+        {(stats.mosques + stats.students + stats.teachers + stats.completedAssignments) >= 10 && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-16 relative z-10">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+              {[
+                { label: "مسجد ومركز", value: stats.mosques, icon: "🕌" },
+                { label: "طالب وطالبة", value: stats.students, icon: "👨‍🎓" },
+                { label: "معلم ومعلمة", value: stats.teachers, icon: "👨‍🏫" },
+                { label: "تسميع مكتمل", value: stats.completedAssignments, icon: "✅" },
+              ].map((s, i) => (
+                <div key={i} className="text-center bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10" data-testid={`stat-card-${i}`}>
+                  <div className="text-2xl mb-1">{s.icon}</div>
+                  <AnimatedCounter target={s.value} suffix="+" />
+                  <p className="text-xs sm:text-sm text-gray-400 mt-1">{s.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       <section id="updates" className="py-14 sm:py-16 bg-gradient-to-b from-emerald-50/80 to-white">
