@@ -59,6 +59,7 @@ import { useTheme } from "@/lib/theme-context";
 import { t } from "@/lib/translations";
 import DateTimePrayerBar from "@/components/DateTimePrayerBar";
 import HadithTicker from "@/components/HadithTicker";
+import MicPermissionPrompt from "@/components/MicPermissionPrompt";
 import {
   requestNotificationPermission,
   getNotificationPermission,
@@ -578,6 +579,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             </Button>
           </div>
         )}
+        <MicPermissionPrompt />
         <DateTimePrayerBar />
         <div className="flex-1">
           {children}
