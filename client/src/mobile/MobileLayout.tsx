@@ -30,7 +30,7 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
     refetchInterval: 30000,
     enabled: !!user,
   });
-  const unreadNotif = notifications.filter((n: any) => !n.read).length;
+  const unreadNotif = notifications.filter((n: any) => !n.isRead).length;
 
   const navItems = (() => {
     if (role === "admin") return [
