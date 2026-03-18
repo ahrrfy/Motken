@@ -19,10 +19,13 @@ type MicStatus = "checking" | "ready" | "denied" | "error" | "idle";
 
 function detectBrowser(): string {
   const ua = navigator.userAgent;
+  const isAndroid = /Android/i.test(ua);
   if (/CriOS/i.test(ua)) return "chrome-ios";
   if (/FxiOS/i.test(ua)) return "firefox-ios";
   if (/EdgiOS/i.test(ua)) return "edge-ios";
   if (/Safari/i.test(ua) && /iPhone|iPad|iPod/i.test(ua) && !/CriOS|FxiOS/i.test(ua)) return "safari-ios";
+  if (isAndroid && /Chrome/i.test(ua) && !/Edge|Edg/i.test(ua)) return "chrome-android";
+  if (isAndroid) return "android-other";
   if (/Chrome/i.test(ua) && !/Edge|Edg/i.test(ua)) return "chrome";
   if (/Firefox/i.test(ua)) return "firefox";
   if (/Edg/i.test(ua)) return "edge";
@@ -30,45 +33,77 @@ function detectBrowser(): string {
   return "other";
 }
 
-function getBrowserInstructions(browser: string): string[] {
+function getBrowserInstructions(browser: string): { steps: string[]; extra?: string } {
   switch (browser) {
+    case "chrome-android":
+      return {
+        steps: [
+          "اضغط على أيقونة القفل 🔒 في شريط العنوان أعلى الشاشة",
+          "اضغط على \"الأذونات\"",
+          "اضغط على \"الميكروفون\" واختر \"سماح\"",
+          "اضغط زر \"إعادة تحميل الصفحة\" أدناه",
+        ],
+        extra: "إذا لم تجده: إعدادات الهاتف ← التطبيقات ← Chrome ← الأذونات ← الميكروفون ← سماح"
+      };
+    case "android-other":
+      return {
+        steps: [
+          "اضغط على النقاط الثلاث ⋮ أو أيقونة القفل في المتصفح",
+          "ابحث عن إعدادات الموقع أو الأذونات",
+          "فعّل إذن الميكروفون",
+          "أعد تحميل الصفحة",
+        ],
+        extra: "أو: إعدادات الهاتف ← التطبيقات ← المتصفح ← الأذونات ← الميكروفون"
+      };
     case "chrome":
     case "edge":
-      return [
-        "اضغط على أيقونة القفل 🔒 بجانب عنوان الموقع في الأعلى",
-        "ابحث عن \"الميكروفون\" واختر \"سماح\"",
-        "أعد تحميل الصفحة",
-      ];
+      return {
+        steps: [
+          "اضغط على أيقونة القفل 🔒 بجانب عنوان الموقع في الأعلى",
+          "ابحث عن \"الميكروفون\" واختر \"سماح\"",
+          "أعد تحميل الصفحة",
+        ]
+      };
     case "safari":
-      return [
-        "اذهب إلى Safari ← الإعدادات ← المواقع ← الميكروفون",
-        "ابحث عن هذا الموقع واختر \"سماح\"",
-        "أعد تحميل الصفحة",
-      ];
+      return {
+        steps: [
+          "اذهب إلى Safari ← الإعدادات ← المواقع ← الميكروفون",
+          "ابحث عن هذا الموقع واختر \"سماح\"",
+          "أعد تحميل الصفحة",
+        ]
+      };
     case "safari-ios":
-      return [
-        "اذهب إلى الإعدادات ← Safari ← الميكروفون",
-        "تأكد أن \"السماح\" مفعّل",
-        "ارجع للتطبيق وأعد تحميل الصفحة",
-      ];
+      return {
+        steps: [
+          "اذهب إلى الإعدادات ← Safari ← الميكروفون",
+          "تأكد أن \"السماح\" مفعّل",
+          "ارجع للتطبيق وأعد تحميل الصفحة",
+        ]
+      };
     case "chrome-ios":
-      return [
-        "اذهب إلى الإعدادات ← Chrome ← الميكروفون",
-        "تأكد أن الميكروفون مفعّل",
-        "ارجع للتطبيق وأعد تحميل الصفحة",
-      ];
+      return {
+        steps: [
+          "اذهب إلى الإعدادات ← Chrome ← الميكروفون",
+          "تأكد أن الميكروفون مفعّل",
+          "ارجع للتطبيق وأعد تحميل الصفحة",
+        ]
+      };
     case "firefox":
-      return [
-        "اضغط على أيقونة القفل بجانب عنوان الموقع",
-        "اضغط \"مسح الأذونات والبيانات المخزنة\"",
-        "أعد تحميل الصفحة وسيظهر طلب الإذن مجدداً",
-      ];
+      return {
+        steps: [
+          "اضغط على أيقونة القفل بجانب عنوان الموقع",
+          "اضغط \"مسح الأذونات والبيانات المخزنة\"",
+          "أعد تحميل الصفحة وسيظهر طلب الإذن مجدداً",
+        ]
+      };
     default:
-      return [
-        "افتح إعدادات المتصفح",
-        "ابحث عن إعدادات الميكروفون وسمح لهذا الموقع",
-        "أعد تحميل الصفحة",
-      ];
+      return {
+        steps: [
+          "افتح إعدادات المتصفح",
+          "ابحث عن إعدادات الميكروفون وسمح لهذا الموقع",
+          "أعد تحميل الصفحة",
+        ]
+      };
   }
 }
 
@@ -418,10 +453,15 @@ export default function AudioRecorder({
             <div className="flex-1">
               <p className="text-xs font-bold text-amber-800 mb-1">المايكروفون محظور — اتبع الخطوات التالية:</p>
               <ol className="text-xs text-amber-700 space-y-1 list-decimal mr-4 mb-2">
-                {getBrowserInstructions(browser).map((step, i) => (
+                {getBrowserInstructions(browser).steps.map((step, i) => (
                   <li key={i}>{step}</li>
                 ))}
               </ol>
+              {getBrowserInstructions(browser).extra && (
+                <p className="text-[10px] text-amber-600 bg-amber-100 rounded p-1.5 mb-2">
+                  💡 {getBrowserInstructions(browser).extra}
+                </p>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
