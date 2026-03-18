@@ -2,8 +2,9 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { isNotificationsEnabled, setNotificationsEnabled, startNotificationPolling, stopNotificationPolling } from "@/lib/notifications";
+import { hapticLight } from "@/lib/haptic";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Bell, Users, CalendarCheck,
   MessageSquare, Star, BarChart3, GraduationCap, Trophy, Settings, LogOut,
@@ -34,9 +35,10 @@ const allNavItems = [
   { href: "/schedules", label: "جدول الحلقات", icon: Clock, roles: ["admin","teacher","supervisor"], group: "track", featureKey: "schedules" },
   { href: "/competitions", label: "المسابقات القرآنية", icon: Trophy, roles: ["admin","teacher","supervisor","student"], group: "track", featureKey: "competitions" },
   { href: "/messages", label: "المحادثات", icon: MessageSquare, roles: ["admin","teacher","student","supervisor"], group: "comm", featureKey: "messaging" },
-  { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin","teacher","student","supervisor"], group: "comm" },
+  { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin","teacher","student","supervisor","parent"], group: "comm" },
   { href: "/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "smart_alerts" },
   { href: "/parent-portal", label: "بوابة ولي الأمر", icon: UserCog, roles: ["admin","teacher","supervisor"], group: "comm", featureKey: "parent_portal" },
+  { href: "/parent-dashboard", label: "متابعة أبنائي", icon: UserCog, roles: ["parent"], group: "comm" },
   { href: "/family-system", label: "نظام الأسرة", icon: HeartHandshake, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "family_system" },
   { href: "/whiteboard", label: "السبورة التفاعلية", icon: Pen, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "whiteboard" },
   { href: "/spread", label: "انشر النظام", icon: Share2, roles: ["admin","supervisor","teacher"], group: "comm" },
@@ -52,7 +54,7 @@ const allNavItems = [
   { href: "/institutional", label: "التكامل المؤسسي", icon: ArrowUpDown, roles: ["admin","supervisor"], group: "admin", featureKey: "institutional" },
   { href: "/maintenance", label: "الملاحظات والتحسين", icon: Lightbulb, roles: ["admin","supervisor","teacher","student"], group: "admin" },
   { href: "/changelog", label: "سجل التغييرات", icon: Sparkles, roles: ["admin","supervisor","teacher","student"], group: "admin" },
-  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin","teacher","student","supervisor"], group: "admin" },
+  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin","teacher","student","supervisor","parent"], group: "admin" },
 ];
 
 const groupLabels: Record<string,string> = {
@@ -68,6 +70,34 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
   const [canInstall, setCanInstall] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const role = effectiveRole || user?.role || "student";
+
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+  const touchCurrentX = useRef(0);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const isSwiping = useRef(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    isSwiping.current = true;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isSwiping.current) return;
+    touchCurrentX.current = e.touches[0].clientX;
+    const diff = touchCurrentX.current - touchStartX.current;
+    if (diff > 10) {
+      setSwipeOffset(Math.min(diff, 300));
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    isSwiping.current = false;
+    if (swipeOffset > 100) {
+      onClose();
+    }
+    setSwipeOffset(0);
+  }, [swipeOffset, onClose]);
 
   useEffect(() => {
     async function loadFeatures() {
@@ -149,9 +179,15 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex" dir="rtl">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col">
-        <div className={cn("sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-l shadow-lg", roleStyles.headerGradient)}>
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div
+        ref={sidebarRef}
+        className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className={cn("sticky top-0 z-10 flex items-center justify-between p-3 border-b border-white/10 bg-gradient-to-l shadow-lg", roleStyles.headerGradient)} style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="متقن" className="w-9 h-9 rounded-xl shadow-sm" />
             <div>
@@ -159,7 +195,13 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
               <p className="text-xs text-white/60">إدارة حلقات التحفيظ</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/80"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-2.5 rounded-xl hover:bg-white/10 active:bg-white/20 text-white/80 min-w-[44px] min-h-[44px] flex items-center justify-center">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-3 text-center text-[10px] text-muted-foreground/60 border-b border-border/30">
+          اسحب لليمين لإغلاق القائمة
         </div>
 
         <div className="p-4 border-b border-border/50">
@@ -184,10 +226,10 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
             const Icon = item.icon;
             const isActive = location === item.href;
             return (
-              <Link key={item.href} href={item.href} onClick={onClose}>
-                <button className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 text-right",
-                  isActive ? roleStyles.active : "text-foreground/80 hover:bg-accent")}>
-                  <Icon className="w-4 h-4 flex-shrink-0" />{item.label}
+              <Link key={item.href} href={item.href} onClick={() => { hapticLight(); onClose(); }}>
+                <button className={cn("w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all duration-200 text-right min-h-[44px]",
+                  isActive ? roleStyles.active : "text-foreground/80 hover:bg-accent active:bg-accent/80")}>
+                  <Icon className="w-5 h-5 flex-shrink-0" />{item.label}
                 </button>
               </Link>
             );
@@ -200,10 +242,10 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
               const Icon = item.icon;
               const isActive = location === item.href || (location.startsWith(item.href) && item.href !== "/");
               return (
-                <Link key={item.href} href={item.href} onClick={onClose}>
-                  <button className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 text-right",
-                    isActive ? roleStyles.active : "text-foreground/80 hover:bg-accent")}>
-                    <Icon className="w-4 h-4 flex-shrink-0" />{item.label}
+                <Link key={item.href} href={item.href} onClick={() => { hapticLight(); onClose(); }}>
+                  <button className={cn("w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all duration-200 text-right min-h-[44px]",
+                    isActive ? roleStyles.active : "text-foreground/80 hover:bg-accent active:bg-accent/80")}>
+                    <Icon className="w-5 h-5 flex-shrink-0" />{item.label}
                   </button>
                 </Link>
               );
@@ -214,52 +256,61 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
         <div className="sticky bottom-0 border-t border-border/50 bg-card/95 backdrop-blur mt-auto">
           <div className="p-3 space-y-1.5">
             <div className="flex items-center gap-1.5">
-              <button onClick={toggleDark}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors bg-accent/50 hover:bg-accent">
-                {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              <button onClick={() => { hapticLight(); toggleDark(); }}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs transition-colors bg-accent/50 hover:bg-accent active:bg-accent/80 min-h-[44px]">
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 {isDark ? "فاتح" : "داكن"}
               </button>
-              <button onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors bg-accent/50 hover:bg-accent">
-                <Languages className="w-3.5 h-3.5" />
+              <button onClick={() => { hapticLight(); setLanguage(language === "ar" ? "en" : "ar"); }}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs transition-colors bg-accent/50 hover:bg-accent active:bg-accent/80 min-h-[44px]">
+                <Languages className="w-4 h-4" />
                 {language === "ar" ? "English" : "عربي"}
               </button>
             </div>
 
-            <button onClick={togglePush}
-              className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
+            <button onClick={() => { hapticLight(); togglePush(); }}
+              className={cn("w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs transition-colors min-h-[44px]",
                 pushEnabled ? "bg-green-500/15 text-green-400" : "bg-accent/50 hover:bg-accent text-muted-foreground")}>
-              <BellRing className="w-3.5 h-3.5" />
+              <BellRing className="w-4 h-4" />
               {pushEnabled ? "الإشعارات: مفعّلة" : "تفعيل الإشعارات"}
             </button>
 
             {canInstall && !isInstalled && (
               <button onClick={handleInstall}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors animate-pulse">
-                <Download className="w-3.5 h-3.5" />
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors animate-pulse min-h-[44px]">
+                <Download className="w-4 h-4" />
                 تثبيت التطبيق
               </button>
             )}
 
             {!previewRole && (user?.actualRole === "supervisor" || user?.role === "supervisor") && (
-              <button onClick={() => { switchRole(); onClose(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors">
-                <ArrowLeftRight className="w-3.5 h-3.5" />
+              <button onClick={() => { hapticLight(); switchRole(); onClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors min-h-[44px]">
+                <ArrowLeftRight className="w-4 h-4" />
                 {effectiveRole === "teacher" ? "العودة لوضع المشرف" : "التبديل لوضع الأستاذ"}
               </button>
             )}
 
+            {!previewRole && (user?.actualRole === "teacher" || (user?.role === "teacher" && !user?.actualRole)) && user?.teacherId && (
+              <button onClick={() => { hapticLight(); switchRole(); onClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs bg-sky-500/15 text-sky-400 hover:bg-sky-500/25 transition-colors min-h-[44px]"
+                data-testid="button-mobile-switch-teacher-student">
+                <ArrowLeftRight className="w-4 h-4" />
+                {effectiveRole === "student" ? "العودة لوضع الأستاذ" : "التبديل لوضع الطالب"}
+              </button>
+            )}
+
             {previewRole && (
-              <button onClick={() => { stopPreview(); onClose(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors">
-                <EyeOff className="w-3.5 h-3.5" />
+              <button onClick={() => { hapticLight(); stopPreview(); onClose(); }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors min-h-[44px]">
+                <EyeOff className="w-4 h-4" />
                 إيقاف المعاينة
               </button>
             )}
 
-            <button onClick={() => { logout(); onClose(); }}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors">
-              <LogOut className="w-3.5 h-3.5" />
+            <button onClick={() => { hapticLight(); logout(); onClose(); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs text-red-400 hover:bg-red-500/10 active:bg-red-500/20 transition-colors min-h-[44px]">
+              <LogOut className="w-4 h-4" />
               تسجيل الخروج
             </button>
           </div>
