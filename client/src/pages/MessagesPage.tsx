@@ -893,10 +893,10 @@ export default function MessagesPage() {
       <Card className="overflow-hidden" style={{ height: "calc(100vh - 200px)", minHeight: "500px" }}>
         <div className="flex h-full">
           <div className={`w-full md:w-[340px] md:border-l h-full ${showMobileChat ? "hidden md:flex md:flex-col" : "flex flex-col"}`}>
-            <ConversationsList />
+            {ConversationsList()}
           </div>
           <div className={`flex-1 h-full ${showMobileChat ? "flex flex-col" : "hidden md:flex md:flex-col"}`}>
-            <ChatView />
+            {ChatView()}
           </div>
         </div>
       </Card>
