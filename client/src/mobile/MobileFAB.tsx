@@ -32,7 +32,7 @@ const fabActions: Record<string, { icon: any; label: string; href: string; color
 
 export default function MobileFAB() {
   const [open, setOpen] = useState(false);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { effectiveRole, user } = useAuth();
   const role = effectiveRole || user?.role || "student";
   const actions = fabActions[role] || fabActions.student;
@@ -42,12 +42,14 @@ export default function MobileFAB() {
     setOpen(!open);
   };
 
+  if (location === "/messages" || location.startsWith("/messages")) return null;
+
   return (
     <>
       {open && (
         <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setOpen(false)} />
       )}
-      <div className="fixed bottom-20 left-4 z-50 flex flex-col-reverse items-center gap-2" dir="rtl">
+      <div className="fixed z-50 flex flex-col-reverse items-start gap-2" style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px) + 12px)", left: "16px" }} dir="rtl">
         {open && actions.map((action, i) => {
           const Icon = action.icon;
           return (
