@@ -489,13 +489,13 @@ export function registerAdminRoutes(app: Express) {
             return res.status(400).json({ message: `دور غير صالح في بيانات المستخدمين: ${u.role}` });
           }
         }
-        const currentAdmin = data.users.find((u: any) => u.id === req.user!.id && u.role === "admin");
-        if (!currentAdmin) {
-          return res.status(400).json({ message: "النسخة الاحتياطية يجب أن تحتوي على حساب المدير الحالي" });
+        const hasAnyAdmin = data.users.some((u: any) => u.role === "admin");
+        if (!hasAnyAdmin) {
+          return res.status(400).json({ message: "النسخة الاحتياطية يجب أن تحتوي على حساب مدير واحد على الأقل" });
         }
       }
 
-      const { pool } = await import("./db");
+      const { pool } = await import("../db");
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
