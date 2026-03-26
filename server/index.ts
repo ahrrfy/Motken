@@ -22,7 +22,7 @@ const helmetMiddleware = helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
-      connectSrc: ["'self'", "https://api.alquran.cloud", "https://wa.me", "ws:", "wss:"],
+      connectSrc: ["'self'", "https://api.alquran.cloud", "https://wa.me", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "ws:", "wss:"],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
