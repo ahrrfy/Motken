@@ -30,12 +30,16 @@ import { registerQuranRoutes } from "./routes/quran";
 import { registerStatsRoutes } from "./routes/stats";
 import { registerPublicRoutes } from "./routes/public";
 import { registerSearchRoutes } from "./routes/search";
+import { setupSwagger } from "./lib/swagger";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  // API Documentation (available at /api-docs)
+  setupSwagger(app);
 
   // Role preview middleware — temporarily change role for admin preview
   app.use((req: any, _res: any, next: any) => {

@@ -3,59 +3,72 @@ import { useEffect, useState, lazy, Suspense, ComponentType } from "react";
 import { Route, Switch } from "wouter";
 import { registerServiceWorker, startNotificationPolling, stopNotificationPolling, isNotificationsEnabled } from "@/lib/notifications";
 import { startUpdateChecker, stopUpdateChecker, onUpdateAvailable, applyUpdate } from "@/lib/update-checker";
-import LoginPage from "@/pages/LoginPage";
-import DashboardPage from "@/pages/DashboardPage";
-import StudentsPage from "@/pages/StudentsPage";
-import QuranTracker from "@/pages/QuranTracker";
-import LibraryPage from "@/pages/LibraryPage";
-import ReportsPage from "@/pages/ReportsPage";
-import IDCardsQRPage from "@/pages/IDCardsQRPage";
-import TeachersPage from "@/pages/TeachersPage";
-import SupervisorsPage from "@/pages/SupervisorsPage";
-import SettingsPage from "@/pages/SettingsPage";
-import QRScannerPage from "@/pages/QRScannerPage";
-import AssignmentsExamsPage from "@/pages/AssignmentsExamsPage";
-import ActivityLogsPage from "@/pages/ActivityLogsPage";
-import NotificationsPage from "@/pages/NotificationsPage";
-import MosquesPage from "@/pages/MosquesPage";
-import MosqueDashboardPage from "@/pages/MosqueDashboardPage";
-import AllUsersPage from "@/pages/AllUsersPage";
-import RatingsPage from "@/pages/RatingsPage";
-import TeacherActivitiesPage from "@/pages/TeacherActivitiesPage";
-import CoursesGraduationPage from "@/pages/CoursesGraduationPage";
-import TeacherDailyPage from "@/pages/TeacherDailyPage";
-import OnlineUsersPage from "@/pages/OnlineUsersPage";
-import MonitoringPage from "@/pages/MonitoringPage";
-import AttendancePage from "@/pages/AttendancePage";
-import CompetitionsPage from "@/pages/CompetitionsPage";
-import ParentPortalPage from "@/pages/ParentPortalPage";
-import FeatureControlPage from "@/pages/FeatureControlPage";
-import TestimonialsManagePage from "@/pages/TestimonialsManagePage";
-import MessagesPage from "@/pages/MessagesPage";
-import PointsRewardsPage from "@/pages/PointsRewardsPage";
-import SchedulesPage from "@/pages/SchedulesPage";
-import SmartAlertsPage from "@/pages/SmartAlertsPage";
-import CrisisManagementPage from "@/pages/CrisisManagementPage";
-import InstitutionalPage from "@/pages/InstitutionalPage";
-import FamilySystemPage from "@/pages/FamilySystemPage";
-import KnowledgeBasePage from "@/pages/KnowledgeBasePage";
-import MaintenancePage from "@/pages/MaintenancePage";
-import EducationalContentPage from "@/pages/EducationalContentPage";
-import FloorPlanPage from "@/pages/FloorPlanPage";
-import WhiteboardPage from "@/pages/WhiteboardPage";
 import SidebarLayout from "@/components/layout/SidebarLayout";
-import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
-import ChangelogPage from "@/pages/ChangelogPage";
 import WelcomeWizard from "@/components/WelcomeWizard";
-import PublicParentReportPage from "@/pages/PublicParentReportPage";
-import RegisterMosquePage from "@/pages/RegisterMosquePage";
-import LandingPage from "@/pages/LandingPage";
-import SpreadPage from "@/pages/SpreadPage";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWebSocket } from "@/hooks/use-websocket";
+
+// Lazy-loaded pages
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const StudentsPage = lazy(() => import("@/pages/StudentsPage"));
+const QuranTracker = lazy(() => import("@/pages/QuranTracker"));
+const LibraryPage = lazy(() => import("@/pages/LibraryPage"));
+const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
+const IDCardsQRPage = lazy(() => import("@/pages/IDCardsQRPage"));
+const TeachersPage = lazy(() => import("@/pages/TeachersPage"));
+const SupervisorsPage = lazy(() => import("@/pages/SupervisorsPage"));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const QRScannerPage = lazy(() => import("@/pages/QRScannerPage"));
+const AssignmentsExamsPage = lazy(() => import("@/pages/AssignmentsExamsPage"));
+const ActivityLogsPage = lazy(() => import("@/pages/ActivityLogsPage"));
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
+const MosquesPage = lazy(() => import("@/pages/MosquesPage"));
+const MosqueDashboardPage = lazy(() => import("@/pages/MosqueDashboardPage"));
+const AllUsersPage = lazy(() => import("@/pages/AllUsersPage"));
+const RatingsPage = lazy(() => import("@/pages/RatingsPage"));
+const TeacherActivitiesPage = lazy(() => import("@/pages/TeacherActivitiesPage"));
+const CoursesGraduationPage = lazy(() => import("@/pages/CoursesGraduationPage"));
+const TeacherDailyPage = lazy(() => import("@/pages/TeacherDailyPage"));
+const OnlineUsersPage = lazy(() => import("@/pages/OnlineUsersPage"));
+const MonitoringPage = lazy(() => import("@/pages/MonitoringPage"));
+const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
+const CompetitionsPage = lazy(() => import("@/pages/CompetitionsPage"));
+const ParentPortalPage = lazy(() => import("@/pages/ParentPortalPage"));
+const FeatureControlPage = lazy(() => import("@/pages/FeatureControlPage"));
+const TestimonialsManagePage = lazy(() => import("@/pages/TestimonialsManagePage"));
+const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
+const PointsRewardsPage = lazy(() => import("@/pages/PointsRewardsPage"));
+const SchedulesPage = lazy(() => import("@/pages/SchedulesPage"));
+const SmartAlertsPage = lazy(() => import("@/pages/SmartAlertsPage"));
+const CrisisManagementPage = lazy(() => import("@/pages/CrisisManagementPage"));
+const InstitutionalPage = lazy(() => import("@/pages/InstitutionalPage"));
+const FamilySystemPage = lazy(() => import("@/pages/FamilySystemPage"));
+const KnowledgeBasePage = lazy(() => import("@/pages/KnowledgeBasePage"));
+const MaintenancePage = lazy(() => import("@/pages/MaintenancePage"));
+const EducationalContentPage = lazy(() => import("@/pages/EducationalContentPage"));
+const FloorPlanPage = lazy(() => import("@/pages/FloorPlanPage"));
+const WhiteboardPage = lazy(() => import("@/pages/WhiteboardPage"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
+const ChangelogPage = lazy(() => import("@/pages/ChangelogPage"));
+const PublicParentReportPage = lazy(() => import("@/pages/PublicParentReportPage"));
+const RegisterMosquePage = lazy(() => import("@/pages/RegisterMosquePage"));
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const SpreadPage = lazy(() => import("@/pages/SpreadPage"));
 const MobileApp = lazy(() => import("@/mobile/MobileApp"));
+
+function PageSkeleton() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" dir="rtl">
+      <div className="text-center space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+        <p className="text-sm text-muted-foreground">جاري التحميل...</p>
+      </div>
+    </div>
+  );
+}
 
 function RoleGuard({ roles, Component }: { roles: UserRole[]; Component: ComponentType }) {
   const { user } = useAuth();
@@ -140,9 +153,11 @@ function App() {
     return (
       <>
         <UpdateBanner />
-        <Switch>
-          <Route path="/parent-report/:token" component={PublicParentReportPage} />
-        </Switch>
+        <Suspense fallback={<PageSkeleton />}>
+          <Switch>
+            <Route path="/parent-report/:token" component={PublicParentReportPage} />
+          </Switch>
+        </Suspense>
         <Toaster />
       </>
     );
@@ -152,9 +167,11 @@ function App() {
     return (
       <>
         <UpdateBanner />
-        <Switch>
-          <Route path="/register-mosque" component={RegisterMosquePage} />
-        </Switch>
+        <Suspense fallback={<PageSkeleton />}>
+          <Switch>
+            <Route path="/register-mosque" component={RegisterMosquePage} />
+          </Switch>
+        </Suspense>
         <Toaster />
       </>
     );
@@ -166,10 +183,12 @@ function App() {
     if (!user) {
       return (
         <>
-          <Switch>
-            <Route path="/welcome" component={LandingPage} />
-            <Route path="/" component={LandingPage} />
-          </Switch>
+          <Suspense fallback={<PageSkeleton />}>
+            <Switch>
+              <Route path="/welcome" component={LandingPage} />
+              <Route path="/" component={LandingPage} />
+            </Switch>
+          </Suspense>
           <Toaster />
         </>
       );
@@ -194,7 +213,9 @@ function App() {
     return (
       <>
         <UpdateBanner />
-        <LoginPage />
+        <Suspense fallback={<PageSkeleton />}>
+          <LoginPage />
+        </Suspense>
         <Toaster />
       </>
     );
@@ -203,7 +224,9 @@ function App() {
   if (!user.acceptedPrivacyPolicy && user.role !== "admin") {
     return (
       <>
-        <PrivacyPolicyPage />
+        <Suspense fallback={<PageSkeleton />}>
+          <PrivacyPolicyPage />
+        </Suspense>
         <Toaster />
       </>
     );
@@ -231,6 +254,7 @@ function App() {
           onComplete={() => setShowWelcome(false)}
         />
       )}
+      <Suspense fallback={<PageSkeleton />}>
       <Switch>
         <Route path="/daily" component={TeacherDailyPage} />
         <Route path="/dashboard" component={DashboardPage} />
@@ -283,6 +307,7 @@ function App() {
           </div>
         </Route>
       </Switch>
+      </Suspense>
       <Toaster />
     </SidebarLayout>
   );

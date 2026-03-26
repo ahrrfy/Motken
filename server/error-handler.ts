@@ -190,6 +190,16 @@ function formatDatabaseError(err: any): ApiError {
  * يكشف نوع الخطأ تلقائياً ويُرجع رسالة مناسبة
  */
 export function handleApiError(err: any, context?: string): { status: number; body: ApiError } {
+  // Handle null/undefined errors
+  if (err === null || err === undefined) {
+    const contextMsg = context ? ` [${context}]` : "";
+    console.error(`[خطأ سيرفر]${contextMsg}: خطأ غير معروف (null/undefined)`);
+    return {
+      status: 500,
+      body: { message: "حدث خطأ داخلي في السيرفر. يرجى المحاولة مرة أخرى.", source: "server" },
+    };
+  }
+
   // Zod validation errors
   if (err instanceof ZodError) {
     return { status: 400, body: formatZodError(err) };
