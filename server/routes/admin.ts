@@ -29,6 +29,7 @@ import {
 import { sessionTracker } from "../session-tracker";
 import { logActivity } from "./shared";
 import { allFeatureDefaults } from "./feature-defaults";
+import { sendError } from "../error-handler";
 
 export function registerAdminRoutes(app: Express) {
   // ==================== SEED DATA ====================
@@ -184,7 +185,7 @@ export function registerAdminRoutes(app: Express) {
 
       res.json({ message: "تم إنشاء البيانات الأولية بنجاح", mosques: 3, users: 12 });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إنشاء البيانات الأولية");
     }
   });
 
@@ -216,7 +217,7 @@ export function registerAdminRoutes(app: Express) {
       const { password, ...safe } = user;
       res.json({ ...safe, mosqueName });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "التحقق من المستخدم");
     }
   });
 
@@ -239,7 +240,7 @@ export function registerAdminRoutes(app: Express) {
       await logActivity(req.user!, "تصفير النظام بالكامل", "system", "تم مسح جميع بيانات المساجد والمستخدمين");
       res.json({ message: "تم تصفير النظام بنجاح" });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ أثناء تصفير النظام" });
+      sendError(res, err, "تصفير النظام");
     }
   });
 
@@ -287,8 +288,7 @@ export function registerAdminRoutes(app: Express) {
         lastBackupDate: lastBackupLog[0]?.createdAt || null,
       });
     } catch (err: any) {
-      console.error(err);
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب إحصائيات النسخ الاحتياطي");
     }
   });
 
@@ -374,7 +374,7 @@ export function registerAdminRoutes(app: Express) {
       await logActivity(req.user!, "إنشاء نسخة احتياطية", "system", `تم تصدير ${backup.metadata.totalRecords} سجل`);
       res.json(backup);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ أثناء إنشاء النسخة الاحتياطية" });
+      sendError(res, err, "إنشاء النسخة الاحتياطية");
     }
   });
 
@@ -445,7 +445,7 @@ export function registerAdminRoutes(app: Express) {
         errors,
       });
     } catch (err: any) {
-      res.status(500).json({ valid: false, summary: null, errors: [err.message || "حدث خطأ أثناء التحقق"] });
+      sendError(res, err, "التحقق من النسخة الاحتياطية");
     }
   });
 
@@ -664,7 +664,7 @@ export function registerAdminRoutes(app: Express) {
         client.release();
       }
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ أثناء استعادة النسخة الاحتياطية" });
+      sendError(res, err, "استعادة النسخة الاحتياطية");
     }
   });
 
@@ -762,7 +762,7 @@ export function registerAdminRoutes(app: Express) {
       const devices = await storage.getBannedDevices();
       res.json(devices);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الأجهزة المحظورة");
     }
   });
 
@@ -785,7 +785,7 @@ export function registerAdminRoutes(app: Express) {
       await logActivity(req.user!, `حظر عنوان IP: ${ipAddress}`, "security", reason);
       res.status(201).json(banned);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "حظر عنوان IP");
     }
   });
 
@@ -795,7 +795,7 @@ export function registerAdminRoutes(app: Express) {
       await logActivity(req.user!, `إزالة حظر جهاز`, "security");
       res.json({ message: "تم إزالة الحظر" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "إزالة حظر جهاز");
     }
   });
 
@@ -806,7 +806,7 @@ export function registerAdminRoutes(app: Express) {
       const flags = await storage.getFeatureFlags();
       res.json(flags);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب إعدادات الميزات");
     }
   });
 
@@ -821,7 +821,7 @@ export function registerAdminRoutes(app: Express) {
       await logActivity(req.user!, `${isEnabled ? "تفعيل" : "تعطيل"} ميزة: ${updated.featureName}`, "feature_flags");
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تحديث البيانات" });
+      sendError(res, err, "تحديث إعداد الميزة");
     }
   });
 
@@ -830,7 +830,7 @@ export function registerAdminRoutes(app: Express) {
       const enabled = await storage.isFeatureEnabled(req.params.key);
       res.json({ enabled });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "التحقق من حالة الميزة");
     }
   });
 
@@ -840,7 +840,7 @@ export function registerAdminRoutes(app: Express) {
       const enabled = flags.filter(f => f.isEnabled).map(f => f.featureKey);
       res.json({ enabled });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب الميزات المفعّلة");
     }
   });
 
@@ -860,7 +860,7 @@ export function registerAdminRoutes(app: Express) {
       await logActivity(req.user!, `إضافة ${newFlags.length} ميزة جديدة`, "feature_flags");
       res.status(201).json(created);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إنشاء الميزات" });
+      sendError(res, err, "إنشاء الميزات الافتراضية");
     }
   });
 

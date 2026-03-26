@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { quranSurahs } from "@shared/quran-surahs";
 import { canTeacherAccessStudent } from "./shared";
+import { sendError } from "../error-handler";
 
 // SECURITY FIX: Authorization check for accessing student/user data
 async function checkDataAccess(currentUser: any, targetUserId: string, res: any): Promise<boolean> {
@@ -60,7 +61,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json({ currentStreak, maxStreak, totalPresent, totalRecords: allAttendance.length });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب سلسلة الحضور");
     }
   });
 
@@ -103,7 +104,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json(heatmapData);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب خريطة النشاط");
     }
   });
 
@@ -155,7 +156,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json({ star: top3[0] || null, topStudents: top3 });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب نجم الأسبوع");
     }
   });
 
@@ -218,7 +219,7 @@ export function registerAnalyticsRoutes(app: Express) {
         }
       });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب التنبؤات");
     }
   });
 
@@ -268,7 +269,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json({ todayReview, weakSpots, allSurahs: needsReview });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب اقتراحات المراجعة");
     }
   });
 
@@ -315,7 +316,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json(ranked);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب ترتيب المساجد");
     }
   });
 
@@ -458,7 +459,7 @@ export function registerAnalyticsRoutes(app: Express) {
         overdueCount: overdueAssignments.length,
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب الملخص" });
+      sendError(res, err, "جلب الملخص اليومي");
     }
   });
 
@@ -511,7 +512,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json({ score, attendance: attendanceRate, completion: completionRate, activeRatio });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب صحة المسجد");
     }
   });
 
@@ -597,7 +598,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json({ surahName: null, reason: "لا توجد اقتراحات حالياً", type: null });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "اقتراح واجب ذكي");
     }
   });
 
@@ -653,7 +654,7 @@ export function registerAnalyticsRoutes(app: Express) {
         absentDays,
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب أنماط الحضور");
     }
   });
 
@@ -696,7 +697,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json(weakSurahs);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب نقاط الضعف الجماعية");
     }
   });
 
@@ -752,7 +753,7 @@ export function registerAnalyticsRoutes(app: Express) {
         weeklyAssignmentRate,
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب أداء المعلم");
     }
   });
 
@@ -791,7 +792,7 @@ export function registerAnalyticsRoutes(app: Express) {
       comparison.sort((a, b) => b.avgGrade - a.avgGrade);
       res.json(comparison);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "مقارنة المعلمين");
     }
   });
 
@@ -864,7 +865,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json(recommendations);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب توصيات التدريس");
     }
   });
 
@@ -935,7 +936,7 @@ export function registerAnalyticsRoutes(app: Express) {
       timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       res.json(timeline.slice(0, 50));
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب الجدول الزمني للطالب");
     }
   });
 
@@ -975,7 +976,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json(titles);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب ألقاب الطالب");
     }
   });
 
@@ -999,7 +1000,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json(challenges);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب تحديات الطالب");
     }
   });
 

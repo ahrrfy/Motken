@@ -11,6 +11,7 @@ import {
 import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateEnum, validateDate } from "@shared/security-utils";
 import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray } from "./shared";
+import { sendError } from "../error-handler";
 import multer from "multer";
 
 export function registerAssignmentsRoutes(app: Express) {
@@ -70,7 +71,7 @@ export function registerAssignmentsRoutes(app: Express) {
 
       res.json(result);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الواجبات");
     }
   });
 
@@ -110,6 +111,15 @@ export function registerAssignmentsRoutes(app: Express) {
         return res.status(400).json({ message: "الطالب غير موجود" });
       }
 
+      // Gender separation check
+      if (currentUser.role === "teacher" && currentUser.gender && student.gender && currentUser.gender !== student.gender) {
+        return res.status(403).json({
+          message: "غير مصرح بإنشاء واجبات لطالب من جنس مختلف",
+          field: "studentId",
+          source: "permission"
+        });
+      }
+
       if (currentUser.role === "teacher" && !canTeacherAccessStudent(currentUser, student)) {
         return res.status(403).json({ message: "غير مصرح بإنشاء واجبات لهذا الطالب - مستوى الطالب لا يتطابق مع مستوياتك" });
       }
@@ -142,7 +152,7 @@ export function registerAssignmentsRoutes(app: Express) {
       await logActivity(currentUser, `إنشاء واجب: ${req.body.surahName}`, "assignments", `للطالب ${studentForLog?.name || req.body.studentId}`);
       res.status(201).json(assignment);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "إنشاء واجب");
     }
   });
 
@@ -169,7 +179,7 @@ export function registerAssignmentsRoutes(app: Express) {
       });
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تحديث حالة المشاهدة");
     }
   });
 
@@ -281,7 +291,7 @@ export function registerAssignmentsRoutes(app: Express) {
     }
     res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تحديث الواجب" });
+      sendError(res, err, "تحديث الواجب");
     }
   });
 
@@ -340,7 +350,7 @@ export function registerAssignmentsRoutes(app: Express) {
       await logActivity(currentUser, "رفع تسميع صوتي", "assignments", `واجب ${assignment.surahName} للطالب ${audioStudent?.name || assignment.studentId}`);
       res.json({ message: "تم رفع التسجيل بنجاح", assignment: updated });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في رفع التسجيل" });
+      sendError(res, err, "رفع التسجيل الصوتي");
     }
   });
 
@@ -465,7 +475,7 @@ export function registerAssignmentsRoutes(app: Express) {
       await storage.deleteAssignment(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف الواجب" });
+      sendError(res, err, "حذف الواجب");
     }
   });
 
@@ -490,7 +500,7 @@ export function registerAssignmentsRoutes(app: Express) {
       const updated = await storage.updateAssignment(req.params.id, { isArchived });
       res.json(updated);
     } catch {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تحديث حالة المشاهدة");
     }
   });
 

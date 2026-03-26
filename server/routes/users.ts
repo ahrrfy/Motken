@@ -9,6 +9,7 @@ import { sessionTracker } from "../session-tracker";
 import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateAge, validateBoolean, validateEnum, validateDate, sanitizeImageUrl, validateTeacherLevels } from "@shared/security-utils";
 import { logActivity, canTeacherAccessStudent } from "./shared";
+import { sendError } from "../error-handler";
 import crypto from "crypto";
 
 export function registerUsersRoutes(app: Express) {
@@ -51,6 +52,11 @@ export function registerUsersRoutes(app: Express) {
         }
       }
 
+      // Gender separation: teachers only see students matching their gender
+      if (currentUser.role === "teacher" && currentUser.gender) {
+        result = result.filter(u => !u.gender || u.gender === currentUser.gender);
+      }
+
       let safe;
       if (currentUser.role === "admin" || currentUser.role === "supervisor") {
         safe = result.map(({ password, ...u }) => u);
@@ -72,7 +78,7 @@ export function registerUsersRoutes(app: Express) {
       }
       res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب المستخدمين");
     }
   });
 
@@ -94,10 +100,15 @@ export function registerUsersRoutes(app: Express) {
       } else if (currentUser.mosqueId) {
         students = (await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student")).filter(s => !s.pendingApproval);
       }
+      // Gender separation: teachers only see students matching their gender
+      if (currentUser.role === "teacher" && currentUser.gender) {
+        students = students.filter(s => !s.gender || s.gender === currentUser.gender);
+      }
+
       const safe = students.map(({ password, ...u }) => u);
       res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب بيانات الطلاب" });
+      sendError(res, err, "جلب بيانات الطلاب");
     }
   });
 
@@ -117,7 +128,7 @@ export function registerUsersRoutes(app: Express) {
       const safe = pending.map(({ password, ...u }) => u);
       res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب طلبات الموافقة");
     }
   });
 
@@ -144,7 +155,7 @@ export function registerUsersRoutes(app: Express) {
       }
       res.json({ message: `تم تحديث ${updated} طالب`, updated });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تحديث نوع الدراسة" });
+      sendError(res, err, "تحديث نوع الدراسة");
     }
   });
 
@@ -170,7 +181,7 @@ export function registerUsersRoutes(app: Express) {
       }
       res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب بيانات المستخدم");
     }
   });
 
@@ -325,7 +336,7 @@ export function registerUsersRoutes(app: Express) {
 
       res.status(201).json(safe);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "إنشاء مستخدم");
     }
   });
 
@@ -518,7 +529,7 @@ export function registerUsersRoutes(app: Express) {
     const { password, ...safe } = updated;
     return res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تحديث البيانات" });
+      sendError(res, err, "تحديث بيانات المستخدم");
     }
   });
 
@@ -533,7 +544,7 @@ export function registerUsersRoutes(app: Express) {
       await storage.deleteUser(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف المستخدم" });
+      sendError(res, err, "حذف المستخدم");
     }
   });
 
@@ -575,7 +586,7 @@ export function registerUsersRoutes(app: Express) {
       await logActivity(currentUser, `الموافقة على الطالب: ${user.name}`, "users");
       res.json({ message: "تمت الموافقة بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "الموافقة على المستخدم");
     }
   });
 
@@ -608,7 +619,7 @@ export function registerUsersRoutes(app: Express) {
       await logActivity(currentUser, `رفض الطالب: ${user.name}`, "users", reason || undefined);
       res.json({ message: "تم الرفض بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "رفض المستخدم");
     }
   });
 
@@ -627,7 +638,7 @@ export function registerUsersRoutes(app: Express) {
       const { password, ...safe } = updated;
       res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تحديث الصلاحية" });
+      sendError(res, err, "تحديث صلاحية الطباعة");
     }
   });
 
@@ -664,7 +675,7 @@ export function registerUsersRoutes(app: Express) {
       const { password, ...safe } = updated;
       res.json(safe);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "رفع صورة المستخدم");
     }
   });
 
@@ -730,8 +741,8 @@ export function registerUsersRoutes(app: Express) {
         mosqueName: l.mosqueId ? mosqueNames[l.mosqueId] || "غير معروف" : "بدون مسجد",
       }));
       res.json(result);
-    } catch (error) {
-      res.status(500).json({ message: "خطأ في جلب الحسابات المرتبطة" });
+    } catch (err: any) {
+      sendError(res, err, "جلب الحسابات المرتبطة");
     }
   });
 

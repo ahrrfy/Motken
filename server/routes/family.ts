@@ -8,6 +8,7 @@ import {
   feedback,
 } from "@shared/schema";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerFamilyRoutes(app: Express) {
   // ==================== FAMILY LINKS ====================
@@ -34,7 +35,7 @@ export function registerFamilyRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب روابط الأسر");
     }
   });
 
@@ -60,7 +61,7 @@ export function registerFamilyRoutes(app: Express) {
       });
       res.status(201).json(link);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إنشاء رابط أسري");
     }
   });
 
@@ -78,7 +79,7 @@ export function registerFamilyRoutes(app: Express) {
       await storage.deleteFamilyLink(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في الحذف" });
+      sendError(res, err, "حذف رابط أسري");
     }
   });
 
@@ -129,10 +130,155 @@ export function registerFamilyRoutes(app: Express) {
       }));
       res.json({ children });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب لوحة الأسر");
     }
   });
 
+
+  // ==================== PARENT ACCOUNT ====================
+
+  // Parent self-registration
+  app.post("/api/auth/register-parent", async (req, res) => {
+    try {
+      const { phone, name, password, username } = req.body;
+
+      if (!phone || !name || !password || !username) {
+        return res.status(400).json({
+          message: "جميع الحقول مطلوبة: الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف",
+          source: "validation"
+        });
+      }
+
+      // Check if phone is linked to any student
+      const familyLinks = await storage.getFamilyLinksByParentPhone(phone);
+      if (familyLinks.length === 0) {
+        return res.status(400).json({
+          message: "رقم الهاتف غير مرتبط بأي طالب. يجب أن يقوم المعلم بربط رقمك أولاً.",
+          field: "phone",
+          source: "validation"
+        });
+      }
+
+      // Check username uniqueness
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({
+          message: "اسم المستخدم مُستخدم مسبقاً",
+          field: "username",
+          source: "database"
+        });
+      }
+
+      const { hashPassword } = await import("../auth");
+      const hashedPassword = await hashPassword(password);
+
+      // Get the mosque from the first linked student
+      const firstStudent = await storage.getUser(familyLinks[0].studentId);
+
+      const parent = await storage.createUser({
+        username,
+        password: hashedPassword,
+        name,
+        phone,
+        role: "parent",
+        mosqueId: firstStudent?.mosqueId || null,
+        gender: null,
+        isActive: true,
+        acceptedPrivacyPolicy: true,
+      });
+
+      res.status(201).json({
+        message: "تم إنشاء حساب ولي الأمر بنجاح",
+        linkedStudents: familyLinks.length,
+      });
+    } catch (err: any) {
+      sendError(res, err, "تسجيل ولي أمر");
+    }
+  });
+
+  // Get parent's linked children with stats
+  app.get("/api/parent/children", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "parent") {
+        return res.status(403).json({ message: "هذا الطلب متاح لأولياء الأمور فقط" });
+      }
+
+      const familyLinks = await storage.getFamilyLinksByParentPhone(currentUser.phone || "");
+      const children = [];
+
+      for (const link of familyLinks) {
+        const student = await storage.getUser(link.studentId);
+        if (!student) continue;
+
+        const studentAssignments = await storage.getAssignmentsByStudent(link.studentId);
+        const totalAssignments = studentAssignments.length;
+        const doneAssignments = studentAssignments.filter(a => a.status === "done").length;
+
+        children.push({
+          id: student.id,
+          name: student.name,
+          avatar: student.avatar,
+          gender: student.gender,
+          relationship: link.relationship,
+          mosqueId: student.mosqueId,
+          stats: {
+            totalAssignments,
+            doneAssignments,
+            completionRate: totalAssignments > 0 ? Math.round((doneAssignments / totalAssignments) * 100) : 0,
+          }
+        });
+      }
+
+      res.json(children);
+    } catch (err: any) {
+      sendError(res, err, "جلب بيانات الأبناء");
+    }
+  });
+
+  // Get specific child's assignments (parent view)
+  app.get("/api/parent/child/:childId/assignments", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "parent") {
+        return res.status(403).json({ message: "هذا الطلب متاح لأولياء الأمور فقط" });
+      }
+
+      // Verify parent is linked to this child
+      const links = await storage.getFamilyLinksByParentPhone(currentUser.phone || "");
+      const isLinked = links.some(l => l.studentId === req.params.childId);
+      if (!isLinked) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا الطالب" });
+      }
+
+      const studentAssignments = await storage.getAssignmentsByStudent(req.params.childId);
+      // Return last 20 assignments
+      res.json(studentAssignments.slice(0, 20));
+    } catch (err: any) {
+      sendError(res, err, "جلب واجبات الابن");
+    }
+  });
+
+  // Get specific child's attendance (parent view)
+  app.get("/api/parent/child/:childId/attendance", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "parent") {
+        return res.status(403).json({ message: "هذا الطلب متاح لأولياء الأمور فقط" });
+      }
+
+      const links = await storage.getFamilyLinksByParentPhone(currentUser.phone || "");
+      const isLinked = links.some(l => l.studentId === req.params.childId);
+      if (!isLinked) {
+        return res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا الطالب" });
+      }
+
+      const studentAttendance = await storage.getAttendanceByStudent(req.params.childId);
+      res.json(studentAttendance.slice(0, 30)); // Last 30 records
+    } catch (err: any) {
+      sendError(res, err, "جلب حضور الابن");
+    }
+  });
 
   // ==================== FEEDBACK & SUGGESTIONS ====================
   app.get("/api/feedback", requireAuth, async (req, res) => {
@@ -149,7 +295,7 @@ export function registerFamilyRoutes(app: Express) {
       const fb = await storage.getFeedbackByUser(currentUser.id);
       res.json(fb);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الملاحظات");
     }
   });
 
@@ -170,7 +316,7 @@ export function registerFamilyRoutes(app: Express) {
       await logActivity(currentUser, `إرسال ملاحظة: ${title}`, "feedback");
       res.status(201).json(fb);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إرسال ملاحظة");
     }
   });
 
@@ -199,7 +345,7 @@ export function registerFamilyRoutes(app: Express) {
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في التحديث" });
+      sendError(res, err, "تحديث ملاحظة");
     }
   });
 
@@ -212,7 +358,7 @@ export function registerFamilyRoutes(app: Express) {
       await storage.deleteFeedback(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في الحذف" });
+      sendError(res, err, "حذف ملاحظة");
     }
   });
 

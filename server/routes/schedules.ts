@@ -6,6 +6,7 @@ import {
 } from "@shared/schema";
 import { filterTextFields } from "@shared/content-filter";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerSchedulesRoutes(app: Express) {
   // ==================== SCHEDULES ====================
@@ -39,7 +40,7 @@ export function registerSchedulesRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب الجداول" });
+      sendError(res, err, "جلب الجداول");
     }
   });
 
@@ -69,7 +70,7 @@ export function registerSchedulesRoutes(app: Express) {
       await logActivity(currentUser, `إنشاء جدول: ${title}`, "schedules");
       res.status(201).json(schedule);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إنشاء الجدول" });
+      sendError(res, err, "إنشاء جدول");
     }
   });
 
@@ -96,7 +97,7 @@ export function registerSchedulesRoutes(app: Express) {
       await logActivity(currentUser, "تعديل جدول", "schedules");
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تعديل الجدول" });
+      sendError(res, err, "تعديل الجدول");
     }
   });
 
@@ -115,7 +116,7 @@ export function registerSchedulesRoutes(app: Express) {
       await logActivity(currentUser, "حذف جدول", "schedules");
       res.json({ message: "تم حذف الجدول" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف الجدول" });
+      sendError(res, err, "حذف الجدول");
     }
   });
 

@@ -7,6 +7,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { createIndexes, pool } from "./db";
 import { startSelfHealing, stopSelfHealing, getDetailedHealthReport, startAbsenceAlerts } from "./self-healing";
+import { setupWebSocket } from "./websocket";
 
 const app = express();
 
@@ -20,7 +21,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
-      connectSrc: ["'self'", "https://api.alquran.cloud", "https://wa.me"],
+      connectSrc: ["'self'", "https://api.alquran.cloud", "https://wa.me", "ws:", "wss:"],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
@@ -89,7 +90,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 function csrfProtection(req: Request, res: Response, next: NextFunction) {
   if (SAFE_METHODS.has(req.method)) return next();
 
-  const publicPaths = ["/api/register-mosque", "/api/auth/login"];
+  const publicPaths = ["/api/register-mosque", "/api/auth/login", "/api/auth/register-parent"];
   if (publicPaths.some(p => req.path === p)) return next();
 
   const origin = req.get("origin") || req.get("referer");
@@ -146,6 +147,7 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth/login", authLimiter);
 app.use("/api/register-mosque", authLimiter);
+app.use("/api/auth/register-parent", authLimiter);
 
 const sensitiveActionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -311,12 +313,13 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
     await setupVite(httpServer, app);
   }
 
+  setupWebSocket(httpServer, app);
+
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`serving on port ${port}`);

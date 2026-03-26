@@ -3,7 +3,7 @@ import { pgTable, text, varchar, integer, timestamp, boolean, pgEnum, index } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const roleEnum = pgEnum("user_role", ["admin", "teacher", "student", "supervisor"]);
+export const roleEnum = pgEnum("user_role", ["admin", "teacher", "student", "supervisor", "parent"]);
 export const assignmentStatusEnum = pgEnum("assignment_status", ["pending", "done", "cancelled"]);
 export const verseStatusEnum = pgEnum("verse_status", ["memorized", "review", "new"]);
 
@@ -65,6 +65,9 @@ export const users = pgTable("users", {
   adminNotes: text("admin_notes"),
   suspendedUntil: timestamp("suspended_until"),
   studyMode: text("study_mode").notNull().default("in-person"),
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+  twoFactorBackupCodes: text("two_factor_backup_codes"), // JSON array of hashed codes
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_users_mosque_id").on(table.mosqueId),
@@ -458,6 +461,7 @@ export const schedules = pgTable("schedules", {
   startTime: text("start_time").notNull(),
   endTime: text("end_time").notNull(),
   location: text("location"),
+  gender: text("gender"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
@@ -481,6 +485,9 @@ export const competitions = pgTable("competitions", {
   toVerse: integer("to_verse"),
   competitionDate: timestamp("competition_date").notNull(),
   status: text("status").notNull().default("upcoming"),
+  gender: text("gender"),
+  scope: text("scope").notNull().default("mosque"),  // "mosque" | "inter-mosque"
+  participatingMosques: text("participating_mosques"),  // JSON array of mosque IDs
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_competitions_mosque_id").on(table.mosqueId),
@@ -777,6 +784,9 @@ export const quranProgress = pgTable("quran_progress", {
   reviewedToday: boolean("reviewed_today").notNull().default(false),
   reviewStreak: integer("review_streak").notNull().default(0),
   lastReviewDate: text("last_review_date"),
+  easeFactor: text("ease_factor").default("2.5"),
+  reviewInterval: integer("review_interval").default(0),
+  nextReviewDate: text("next_review_date"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_quran_progress_user_surah").on(table.userId, table.surahNumber),

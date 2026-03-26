@@ -9,6 +9,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, sql, and } from "drizzle-orm";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerPointsRoutes(app: Express) {
   // ==================== POINTS & BADGES ====================
@@ -31,7 +32,7 @@ export function registerPointsRoutes(app: Express) {
       const pts = await storage.getPointsByUser(currentUser.id);
       res.json(pts);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب النقاط" });
+      sendError(res, err, "جلب النقاط");
     }
   });
 
@@ -40,7 +41,7 @@ export function registerPointsRoutes(app: Express) {
       const total = await storage.getTotalPoints(req.params.userId);
       res.json({ total });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب مجموع النقاط");
     }
   });
 
@@ -54,7 +55,7 @@ export function registerPointsRoutes(app: Express) {
       const leaderboard = await storage.getLeaderboard(mosqueId);
       res.json(leaderboard);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب لوحة المتصدرين" });
+      sendError(res, err, "جلب لوحة المتصدرين");
     }
   });
 
@@ -90,7 +91,7 @@ export function registerPointsRoutes(app: Express) {
       await logActivity(currentUser, `منح ${amount} نقطة`, "points");
       res.status(201).json(point);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في منح النقاط" });
+      sendError(res, err, "منح النقاط");
     }
   });
 
@@ -113,7 +114,7 @@ export function registerPointsRoutes(app: Express) {
       const userBadges = await storage.getBadgesByUser(currentUser.id);
       res.json(userBadges);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب الأوسمة" });
+      sendError(res, err, "جلب الأوسمة");
     }
   });
 
@@ -142,7 +143,7 @@ export function registerPointsRoutes(app: Express) {
       await logActivity(currentUser, `منح وسام: ${badgeName}`, "badges");
       res.status(201).json(badge);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في منح الوسام" });
+      sendError(res, err, "منح الوسام");
     }
   });
 
@@ -152,7 +153,7 @@ export function registerPointsRoutes(app: Express) {
       await logActivity(req.user!, "حذف وسام", "badges");
       res.json({ message: "تم حذف الوسام" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف الوسام" });
+      sendError(res, err, "حذف الوسام");
     }
   });
 
@@ -179,7 +180,7 @@ export function registerPointsRoutes(app: Express) {
       }));
       res.json(enriched);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب سجل التصريف" });
+      sendError(res, err, "جلب سجل التصريف");
     }
   });
 
@@ -223,7 +224,7 @@ export function registerPointsRoutes(app: Express) {
       await logActivity(currentUser, `تصريف ${numAmount} نقطة للطالب ${student.name}: ${rewardName}`, "points");
       res.status(201).json(redemption);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تصريف النقاط" });
+      sendError(res, err, "تصريف النقاط");
     }
   });
 
@@ -253,7 +254,7 @@ export function registerPointsRoutes(app: Express) {
       await logActivity(currentUser, `تصفير نقاط الطالب ${student.name} (${totalPoints} نقطة)`, "points");
       res.json({ message: `تم تصفير ${totalPoints} نقطة`, previousTotal: totalPoints });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تصفير النقاط" });
+      sendError(res, err, "تصفير النقاط");
     }
   });
 
@@ -281,7 +282,7 @@ export function registerPointsRoutes(app: Express) {
       await logActivity(currentUser, `تصفير جماعي لنقاط ${totalReset} طالب`, "points");
       res.json({ message: `تم تصفير نقاط ${totalReset} طالب` });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تصفير جماعي للنقاط");
     }
   });
 

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { storage } from "../storage";
 import { logActivity, getTeacherLevelsArray } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerAlertsRoutes(app: Express) {
   // ==================== SMART ALERTS ====================
@@ -110,8 +111,7 @@ export function registerAlertsRoutes(app: Express) {
         lowGrades,
       });
     } catch (err: any) {
-      console.error("Smart alerts error:", err);
-      res.status(500).json({ message: "حدث خطأ في تحليل التنبيهات" });
+      sendError(res, err, "تحليل التنبيهات الذكية");
     }
   });
 
@@ -138,7 +138,7 @@ export function registerAlertsRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الإنابات الطارئة");
     }
   });
 
@@ -167,7 +167,7 @@ export function registerAlertsRoutes(app: Express) {
       await logActivity(currentUser, "إنشاء إنابة طارئة", "emergency_substitutions");
       res.status(201).json(sub);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إنشاء إنابة طارئة");
     }
   });
 
@@ -191,7 +191,7 @@ export function registerAlertsRoutes(app: Express) {
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في التحديث" });
+      sendError(res, err, "تحديث الإنابة الطارئة");
     }
   });
 
@@ -209,7 +209,7 @@ export function registerAlertsRoutes(app: Express) {
       await storage.deleteEmergencySubstitution(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في الحذف" });
+      sendError(res, err, "حذف الإنابة الطارئة");
     }
   });
 
@@ -265,7 +265,7 @@ export function registerAlertsRoutes(app: Express) {
       await logActivity(currentUser, `توزيع تلقائي لطلاب ${absentTeacher.name}`, "emergency_substitutions");
       res.status(201).json({ created, totalStudents: activeStudents.length, totalTeachers: availableTeachers.length });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "التوزيع التلقائي للإنابة");
     }
   });
 
@@ -292,7 +292,7 @@ export function registerAlertsRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الحوادث");
     }
   });
 
@@ -314,7 +314,7 @@ export function registerAlertsRoutes(app: Express) {
       await logActivity(currentUser, `تسجيل حادثة: ${title}`, "incidents");
       res.status(201).json(record);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "تسجيل حادثة");
     }
   });
 
@@ -338,7 +338,7 @@ export function registerAlertsRoutes(app: Express) {
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في التحديث" });
+      sendError(res, err, "تحديث حادثة");
     }
   });
 
@@ -356,7 +356,7 @@ export function registerAlertsRoutes(app: Express) {
       await storage.deleteIncidentRecord(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في الحذف" });
+      sendError(res, err, "حذف حادثة");
     }
   });
 

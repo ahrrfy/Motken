@@ -13,3 +13,11 @@ export function getDeviceType(): DeviceType {
 export function isMobileOrTablet(): boolean {
   return getDeviceType() !== "desktop";
 }
+
+/**
+ * Returns true only for actual mobile phones (not tablets).
+ * Tablets get the desktop/sidebar layout for better space usage.
+ */
+export function isMobileOnly(): boolean {
+  return getDeviceType() === "mobile";
+}

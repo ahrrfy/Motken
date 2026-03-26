@@ -6,6 +6,7 @@ import {
 } from "@shared/schema";
 import { filterTextFields } from "@shared/content-filter";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerCompetitionsRoutes(app: Express) {
   // ==================== COMPETITIONS ====================
@@ -30,7 +31,7 @@ export function registerCompetitionsRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب المسابقات" });
+      sendError(res, err, "جلب المسابقات");
     }
   });
 
@@ -45,7 +46,7 @@ export function registerCompetitionsRoutes(app: Express) {
       const participants = await storage.getCompetitionParticipants(req.params.id);
       res.json({ ...comp, participants });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب المسابقة" });
+      sendError(res, err, "جلب المسابقة");
     }
   });
 
@@ -59,7 +60,7 @@ export function registerCompetitionsRoutes(app: Express) {
       if (compTextCheck.blocked) {
         return res.status(400).json({ message: compTextCheck.reason });
       }
-      const { title, description, surahName, fromVerse, toVerse, competitionDate } = req.body;
+      const { title, description, surahName, fromVerse, toVerse, competitionDate, gender } = req.body;
       if (!title || !competitionDate) {
         return res.status(400).json({ message: "العنوان وتاريخ المسابقة مطلوبان" });
       }
@@ -72,11 +73,12 @@ export function registerCompetitionsRoutes(app: Express) {
         fromVerse: fromVerse ? Number(fromVerse) : undefined,
         toVerse: toVerse ? Number(toVerse) : undefined,
         competitionDate: new Date(competitionDate),
+        gender: gender || null,
       });
       await logActivity(currentUser, `إنشاء مسابقة: ${title}`, "competitions");
       res.status(201).json(comp);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إنشاء المسابقة" });
+      sendError(res, err, "إنشاء المسابقة");
     }
   });
 
@@ -99,12 +101,13 @@ export function registerCompetitionsRoutes(app: Express) {
       if (req.body.toVerse !== undefined) updateData.toVerse = Number(req.body.toVerse);
       if (req.body.competitionDate !== undefined) updateData.competitionDate = new Date(req.body.competitionDate);
       if (req.body.status !== undefined) updateData.status = req.body.status;
+      if (req.body.gender !== undefined) updateData.gender = req.body.gender || null;
       const updated = await storage.updateCompetition(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "المسابقة غير موجودة" });
       await logActivity(currentUser, "تعديل مسابقة", "competitions");
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تعديل المسابقة" });
+      sendError(res, err, "تعديل المسابقة");
     }
   });
 
@@ -123,7 +126,7 @@ export function registerCompetitionsRoutes(app: Express) {
       await logActivity(currentUser, "حذف مسابقة", "competitions");
       res.json({ message: "تم حذف المسابقة" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف المسابقة" });
+      sendError(res, err, "حذف المسابقة");
     }
   });
 
@@ -137,6 +140,20 @@ export function registerCompetitionsRoutes(app: Express) {
       if (!studentId) {
         return res.status(400).json({ message: "معرف الطالب مطلوب" });
       }
+
+      // Gender separation: validate student gender matches competition gender
+      const comp = await storage.getCompetition(req.params.id);
+      if (comp && comp.gender) {
+        const student = await storage.getUser(studentId);
+        if (student && student.gender && student.gender !== comp.gender) {
+          return res.status(403).json({
+            message: "جنس الطالب لا يتوافق مع جنس المسابقة",
+            field: "studentId",
+            source: "permission"
+          });
+        }
+      }
+
       const participant = await storage.createCompetitionParticipant({
         competitionId: req.params.id,
         studentId,
@@ -144,7 +161,7 @@ export function registerCompetitionsRoutes(app: Express) {
       await logActivity(currentUser, "إضافة مشارك في مسابقة", "competitions");
       res.status(201).json(participant);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إضافة المشارك" });
+      sendError(res, err, "إضافة مشارك في المسابقة");
     }
   });
 
@@ -168,7 +185,7 @@ export function registerCompetitionsRoutes(app: Express) {
       await logActivity(currentUser, "تعديل نتيجة مشارك", "competitions");
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تعديل المشارك" });
+      sendError(res, err, "تعديل نتيجة المشارك");
     }
   });
 
@@ -187,7 +204,7 @@ export function registerCompetitionsRoutes(app: Express) {
       await logActivity(currentUser, "إزالة مشارك من مسابقة", "competitions");
       res.json({ message: "تم إزالة المشارك" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إزالة المشارك" });
+      sendError(res, err, "إزالة المشارك");
     }
   });
 

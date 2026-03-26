@@ -9,6 +9,8 @@ import { User as SelectUser } from "@shared/schema";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import { sessionTracker } from "./session-tracker";
+import * as OTPAuth from "otpauth";
+import { sendError } from "./error-handler";
 
 declare global {
   namespace Express {
@@ -166,6 +168,16 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: info?.message || "فشل تسجيل الدخول" });
       }
       recordLoginAttempt(rateLimitKey, true);
+
+      // Check if 2FA is enabled — don't create session yet
+      if (user.twoFactorEnabled) {
+        return res.json({
+          requiresTwoFactor: true,
+          userId: user.id,
+          message: "يرجى إدخال رمز المصادقة الثنائية",
+        });
+      }
+
       req.session.regenerate((regenerateErr) => {
         if (regenerateErr) return next(regenerateErr);
         req.login(user, async (err) => {
@@ -207,6 +219,185 @@ export function setupAuth(app: Express) {
       mosqueName = mosque?.name || null;
     }
     res.json({ ...safeUser, mosqueName });
+  });
+
+  // ==================== 2FA ENDPOINTS ====================
+
+  // Setup 2FA — generates secret and returns QR code data
+  app.post("/api/auth/2fa/setup", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+
+      // Generate a new TOTP secret
+      const totp = new OTPAuth.TOTP({
+        issuer: "Mutqin",
+        label: currentUser.username,
+        algorithm: "SHA1",
+        digits: 6,
+        period: 30,
+        secret: new OTPAuth.Secret({ size: 20 }),
+      });
+
+      const secret = totp.secret.base32;
+      const uri = totp.toString();
+
+      // Generate QR code
+      const QRCode = await import("qrcode");
+      const qrDataUrl = await QRCode.toDataURL(uri);
+
+      // Generate 10 backup codes
+      const crypto = await import("crypto");
+      const backupCodes = Array.from({ length: 10 }, () =>
+        crypto.randomBytes(4).toString("hex").toUpperCase()
+      );
+
+      // Hash backup codes before storing
+      const hashedBackups = [];
+      for (const code of backupCodes) {
+        const hashed = await hashPassword(code);
+        hashedBackups.push(hashed);
+      }
+
+      // Store secret temporarily (not enabled yet until verified)
+      await storage.updateUser(currentUser.id, {
+        twoFactorSecret: secret,
+        twoFactorBackupCodes: JSON.stringify(hashedBackups),
+      });
+
+      res.json({
+        secret,
+        qrCode: qrDataUrl,
+        backupCodes, // Show plain codes ONCE to user
+        uri,
+      });
+    } catch (err: any) {
+      sendError(res, err, "إعداد المصادقة الثنائية");
+    }
+  });
+
+  // Verify and enable 2FA
+  app.post("/api/auth/2fa/verify-setup", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { code } = req.body;
+
+      if (!code) {
+        return res.status(400).json({ message: "رمز التحقق مطلوب", field: "code", source: "validation" });
+      }
+
+      if (!currentUser.twoFactorSecret) {
+        return res.status(400).json({ message: "يجب إعداد المصادقة الثنائية أولاً" });
+      }
+
+      const totp = new OTPAuth.TOTP({
+        issuer: "Mutqin",
+        label: currentUser.username,
+        algorithm: "SHA1",
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(currentUser.twoFactorSecret),
+      });
+
+      const delta = totp.validate({ token: code, window: 1 });
+      if (delta === null) {
+        return res.status(400).json({ message: "رمز التحقق غير صحيح", field: "code", source: "validation" });
+      }
+
+      await storage.updateUser(currentUser.id, { twoFactorEnabled: true });
+      res.json({ message: "تم تفعيل المصادقة الثنائية بنجاح" });
+    } catch (err: any) {
+      sendError(res, err, "تفعيل المصادقة الثنائية");
+    }
+  });
+
+  // Disable 2FA
+  app.post("/api/auth/2fa/disable", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({ message: "كلمة المرور مطلوبة للتعطيل", field: "password", source: "validation" });
+      }
+
+      const isValid = await comparePasswords(password, currentUser.password);
+      if (!isValid) {
+        return res.status(400).json({ message: "كلمة المرور غير صحيحة", field: "password", source: "validation" });
+      }
+
+      await storage.updateUser(currentUser.id, {
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        twoFactorBackupCodes: null,
+      });
+
+      res.json({ message: "تم تعطيل المصادقة الثنائية" });
+    } catch (err: any) {
+      sendError(res, err, "تعطيل المصادقة الثنائية");
+    }
+  });
+
+  // Verify 2FA during login (no auth required — this is a login step)
+  app.post("/api/auth/2fa/verify-login", async (req, res) => {
+    try {
+      const { userId, code } = req.body;
+      if (!userId || !code) {
+        return res.status(400).json({ message: "معرف المستخدم ورمز التحقق مطلوبان" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+        return res.status(400).json({ message: "المصادقة الثنائية غير مفعّلة" });
+      }
+
+      // Try TOTP first
+      const totp = new OTPAuth.TOTP({
+        issuer: "Mutqin",
+        label: user.username,
+        algorithm: "SHA1",
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(user.twoFactorSecret),
+      });
+
+      const delta = totp.validate({ token: code, window: 1 });
+
+      if (delta !== null) {
+        // TOTP valid — create session
+        req.login(user, (err) => {
+          if (err) return res.status(500).json({ message: "خطأ في تسجيل الدخول" });
+          sessionTracker.updateSession(req.sessionID, user, req);
+          res.json(user);
+        });
+        return;
+      }
+
+      // Try backup codes
+      if (user.twoFactorBackupCodes) {
+        const backupCodes = JSON.parse(user.twoFactorBackupCodes);
+        for (let i = 0; i < backupCodes.length; i++) {
+          const isMatch = await comparePasswords(code.toUpperCase(), backupCodes[i]);
+          if (isMatch) {
+            // Remove used backup code
+            backupCodes.splice(i, 1);
+            await storage.updateUser(user.id, {
+              twoFactorBackupCodes: JSON.stringify(backupCodes),
+            });
+            // Create session
+            req.login(user, (err) => {
+              if (err) return res.status(500).json({ message: "خطأ في تسجيل الدخول" });
+              sessionTracker.updateSession(req.sessionID, user, req);
+              res.json({ ...user, backupCodesRemaining: backupCodes.length });
+            });
+            return;
+          }
+        }
+      }
+
+      res.status(400).json({ message: "رمز التحقق غير صحيح", field: "code", source: "validation" });
+    } catch (err: any) {
+      sendError(res, err, "التحقق من المصادقة الثنائية");
+    }
   });
 }
 

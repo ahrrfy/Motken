@@ -29,6 +29,7 @@ import { registerCommunicationRoutes } from "./routes/communication";
 import { registerQuranRoutes } from "./routes/quran";
 import { registerStatsRoutes } from "./routes/stats";
 import { registerPublicRoutes } from "./routes/public";
+import { registerSearchRoutes } from "./routes/search";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -110,6 +111,7 @@ export async function registerRoutes(
   registerQuranRoutes(app);
   registerStatsRoutes(app);
   registerPublicRoutes(app);
+  registerSearchRoutes(app);
 
   return httpServer;
 }

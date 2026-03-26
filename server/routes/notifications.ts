@@ -6,6 +6,8 @@ import {
 } from "@shared/schema";
 import { filterTextFields } from "@shared/content-filter";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
+import { broadcastToUser } from "../websocket";
 
 export function registerNotificationsRoutes(app: Express) {
   // ==================== NOTIFICATIONS ====================
@@ -58,7 +60,7 @@ export function registerNotificationsRoutes(app: Express) {
       let count = 0;
       for (const u of targetUsers) {
         if (u.id === currentUser.id) continue;
-        await storage.createNotification({
+        const notification = await storage.createNotification({
           userId: u.id,
           mosqueId: u.mosqueId || currentUser.mosqueId,
           title,
@@ -66,13 +68,14 @@ export function registerNotificationsRoutes(app: Express) {
           type: notifType,
           isRead: false,
         });
+        broadcastToUser(u.id, { type: "notification", data: notification });
         count++;
       }
       
       await logActivity(currentUser, `إرسال إشعار: ${title}`, "notifications", `${count} مستخدم`);
       res.json({ message: `تم إرسال الإشعار إلى ${count} مستخدم` });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إرسال الإشعار" });
+      sendError(res, err, "إرسال الإشعار");
     }
   });
 
@@ -81,7 +84,7 @@ export function registerNotificationsRoutes(app: Express) {
       const notifs = await storage.getNotifications(req.user!.id);
       res.json(notifs);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب الإشعارات" });
+      sendError(res, err, "جلب الإشعارات");
     }
   });
 
@@ -99,7 +102,7 @@ export function registerNotificationsRoutes(app: Express) {
       }
       res.json({ message: "تم" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تحديد إشعارات كمقروءة");
     }
   });
 
@@ -111,7 +114,7 @@ export function registerNotificationsRoutes(app: Express) {
       }
       res.json({ message: "تم حذف جميع الإشعارات" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "حذف جميع الإشعارات");
     }
   });
 
@@ -125,7 +128,7 @@ export function registerNotificationsRoutes(app: Express) {
       await storage.markNotificationRead(req.params.id);
       res.json({ message: "تم التحديث" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تحديث حالة الإشعار");
     }
   });
 
@@ -134,7 +137,7 @@ export function registerNotificationsRoutes(app: Express) {
       await storage.markAllNotificationsRead(req.user!.id);
       res.json({ message: "تم تحديد الكل كمقروء" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تحديد الكل كمقروء");
     }
   });
 
@@ -148,7 +151,7 @@ export function registerNotificationsRoutes(app: Express) {
       await storage.deleteNotification(req.params.id);
       res.json({ message: "تم حذف الإشعار" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "حذف إشعار");
     }
   });
 
@@ -163,7 +166,7 @@ export function registerNotificationsRoutes(app: Express) {
       await storage.deleteNotifications(ids, req.user!.id);
       res.json({ message: "تم حذف الإشعارات المحددة" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "حذف إشعارات محددة");
     }
   });
 
