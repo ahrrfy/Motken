@@ -17,3 +17,11 @@ vite.config.ts.*
 # Local config
 .local/
 .config/
+
+# Agent-generated files (must never be committed)
+.claude/fix-log*
+.claude/.fix-tracker
+.claude/scripts/
+MAINTENANCE_LOG*
+update_report*
+README_ARCH*
