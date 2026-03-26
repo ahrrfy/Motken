@@ -419,8 +419,8 @@ export function registerAdminRoutes(app: Express) {
 
       if (data.users && Array.isArray(data.users)) {
         for (const user of data.users) {
-          if (!user.username || !user.name || !user.password) {
-            errors.push("بعض سجلات المستخدمين تفتقد حقول مطلوبة (username, name, password)");
+          if (!user.username || !user.name) {
+            errors.push("بعض سجلات المستخدمين تفتقد حقول مطلوبة (username, name)");
             break;
           }
         }
