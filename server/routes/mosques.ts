@@ -583,7 +583,7 @@ export function registerMosquesRoutes(app: Express) {
         return res.status(400).json({ message: "يوجد طلب معلّق بنفس اسم المستخدم" });
       }
 
-      const { hashPassword } = await import("./auth");
+      const { hashPassword } = await import("../auth");
       const hashedPassword = await hashPassword(requestedPassword);
 
       const contentCheck = filterTextFields(req.body, ["mosqueName", "city", "area", "applicantName"]);
@@ -653,7 +653,7 @@ export function registerMosquesRoutes(app: Express) {
         return res.status(400).json({ message: "اسم المستخدم مستخدم بالفعل" });
       }
 
-      const { hashPassword } = await import("./auth");
+      const { hashPassword } = await import("../auth");
       const hashedPassword = await hashPassword(requestedPassword);
 
       const contentCheck = filterTextFields(req.body, ["mosqueName", "city", "area", "applicantName", "vouchReason"]);

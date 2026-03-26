@@ -94,15 +94,15 @@ export async function getRedisClient(): Promise<RedisLikeClient> {
         if (keys.length > 0) await redisClient.del(keys);
       },
       keys: (pattern) => redisClient.keys(pattern),
-      quit: () => redisClient.quit(),
+      quit: async () => { await redisClient.quit(); },
       isReady: true,
     };
 
-    return client;
+    return client!;
   } catch (err: any) {
     logger.warn({ err: err.message }, "Redis failed to connect — using in-memory fallback");
     client = new MemoryFallback();
-    return client;
+    return client!;
   }
 }
 

@@ -306,11 +306,12 @@ export function registerAssignmentsRoutes(app: Express) {
 
   app.post("/api/assignments/:id/audio", requireAuth, audioUpload.single("audio"), async (req, res) => {
     try {
+      const assignmentId = req.params.id as string;
       const currentUser = req.user!;
       if (currentUser.role !== "student") {
         return res.status(403).json({ message: "فقط الطالب يمكنه رفع التسميع الصوتي" });
       }
-      const assignment = await storage.getAssignment(req.params.id);
+      const assignment = await storage.getAssignment(assignmentId);
       if (!assignment) {
         return res.status(404).json({ message: "الواجب غير موجود" });
       }
@@ -326,14 +327,14 @@ export function registerAssignmentsRoutes(app: Express) {
       const audioBase64 = req.file.buffer.toString("base64");
       const mimeType = req.file.mimetype || "audio/webm";
       if (assignment.hasAudio) {
-        await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, req.params.id));
+        await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, assignmentId));
       }
       await db.insert(assignmentAudio).values({
-        assignmentId: req.params.id,
+        assignmentId: assignmentId,
         audioData: audioBase64,
         mimeType: mimeType,
       });
-      const updated = await storage.updateAssignment(req.params.id, {
+      const updated = await storage.updateAssignment(assignmentId, {
         hasAudio: true,
         audioFileName: `db_audio_${Date.now()}`,
         audioUploadedAt: new Date(),
@@ -499,7 +500,7 @@ export function registerAssignmentsRoutes(app: Express) {
       const isArchived = req.body.isArchived !== undefined ? req.body.isArchived : true;
       const updated = await storage.updateAssignment(req.params.id, { isArchived });
       res.json(updated);
-    } catch {
+    } catch (err) {
       sendError(res, err, "تحديث حالة المشاهدة");
     }
   });

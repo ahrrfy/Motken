@@ -15,7 +15,7 @@ export function registerCoursesRoutes(app: Express) {
       const cert = await storage.getCertificateByNumber(req.params.certNumber);
       if (!cert) return res.status(404).json({ valid: false, message: "الشهادة غير موجودة" });
 
-      const course = await storage.getCourse(cert.courseId);
+      const course = cert.courseId ? await storage.getCourse(cert.courseId) : null;
       const student = await storage.getUser(cert.studentId);
       const issuer = await storage.getUser(cert.issuedBy);
 

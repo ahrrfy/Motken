@@ -726,7 +726,7 @@ export default function AudioRecorder({
             <Button
               size="sm"
               className="flex-1 h-8 text-xs gap-1 bg-violet-600 hover:bg-violet-700"
-              onClick={uploadRecording}
+              onClick={() => uploadRecording()}
               disabled={uploading}
               data-testid={`button-upload-recording-${assignmentId}`}
             >

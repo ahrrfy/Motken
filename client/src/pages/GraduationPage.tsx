@@ -965,56 +965,6 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
         </DialogContent>
       </Dialog>
 
-      {selectedGraduate && (
-        <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-primary" />
-                طباعة شهادة التخرج
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                <strong>{selectedGraduate.studentName || getStudentName(selectedGraduate.studentId)}</strong>
-                <span className="text-muted-foreground"> — حفظ {selectedGraduate.totalJuz} جزءاً</span>
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold">اختر قالب الشهادة</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {CERTIFICATE_TEMPLATES.map(tmpl => (
-                    <div
-                      key={tmpl.id}
-                      className={`p-2.5 border rounded-lg cursor-pointer transition-all text-sm ${printTemplateId === tmpl.id ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-gray-200 hover:border-primary/50"}`}
-                      onClick={() => setPrintTemplateId(tmpl.id)}
-                      data-testid={`list-print-template-${tmpl.id}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{tmpl.preview}</span>
-                        <div>
-                          <div className="font-medium">{tmpl.name}</div>
-                          <div className="text-xs text-muted-foreground">{tmpl.description}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  handlePrintGraduateCert(selectedGraduate, printTemplateId);
-                  setPrintDialogOpen(false);
-                }}
-                data-testid="button-list-confirm-print-cert"
-              >
-                <Printer className="w-4 h-4 ml-2" />
-                طباعة
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }

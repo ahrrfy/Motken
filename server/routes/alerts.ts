@@ -18,9 +18,9 @@ export function registerAlertsRoutes(app: Express) {
       const threeDaysFromNow = new Date();
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
 
-      let students: User[] = [];
-      let teachersList: User[] = [];
-      let assignmentsList: Assignment[] = [];
+      let students: any[] = [];
+      let teachersList: any[] = [];
+      let assignmentsList: any[] = [];
 
       if (currentUser.role === "admin") {
         students = (await storage.getUsersByRole("student")).filter(s => !s.pendingApproval);

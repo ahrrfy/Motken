@@ -1102,7 +1102,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
       courseName,
       mosqueName: mosqueData.name || "مركز التحفيظ",
       certificateNumber: cert.certificateNumber,
-      graduationGrade: cert.graduationGrade,
+      graduationGrade: cert.graduationGrade ?? undefined,
       issuedAt: cert.issuedAt,
     });
   };

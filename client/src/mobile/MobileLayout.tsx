@@ -117,6 +117,13 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
       navGlow: "shadow-sky-500/10",
       activeBar: "bg-sky-400",
     },
+    parent: {
+      color: "text-amber-400",
+      activeBg: "bg-amber-500/15",
+      headerGradient: "from-amber-600/90 via-amber-700/80 to-amber-900/90",
+      navGlow: "shadow-amber-500/10",
+      activeBar: "bg-amber-400",
+    },
   }[role || "student"] || {
     color: "text-emerald-400",
     activeBg: "bg-emerald-500/15",

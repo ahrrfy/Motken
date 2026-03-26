@@ -41,10 +41,10 @@ export function registerQuranRoutes(app: Express) {
         return res.status(400).json({ message: "رقم السورة غير صحيح" });
       const statusesObj = typeof verseStatuses === "object" ? verseStatuses : JSON.parse(verseStatuses || "{}");
       const row = await storage.upsertQuranProgress({
-        userId: currentUser.id, mosqueId: currentUser.mosqueId,
+        userId: currentUser.id, mosqueId: currentUser.mosqueId || undefined,
         surahNumber: Number(surahNumber), verseStatuses: JSON.stringify(statusesObj),
-        notes: notes || null, reviewedToday: reviewedToday ?? false,
-        reviewStreak: reviewStreak ?? 0, lastReviewDate: lastReviewDate || null,
+        notes: notes || undefined, reviewedToday: reviewedToday ?? false,
+        reviewStreak: reviewStreak ?? 0, lastReviewDate: lastReviewDate || undefined,
       });
       if (totalVerses > 0) {
         const memorized = Object.values(statusesObj).filter((s: any) => s === "memorized").length;
@@ -113,7 +113,7 @@ export function registerQuranRoutes(app: Express) {
           surahNumber: progress.surahNumber,
           surahName: surahInfo?.name || `سورة ${progress.surahNumber}`,
           memorizedVerses: memorizedCount,
-          totalVerses: surahInfo?.verses || 0,
+          totalVerses: surahInfo?.versesCount || 0,
           reviewStreak: progress.reviewStreak,
           interval,
           easeFactor,
@@ -185,10 +185,10 @@ export function registerQuranRoutes(app: Express) {
 
       const updated = await storage.upsertQuranProgress({
         userId: currentUser.id,
-        mosqueId: currentUser.mosqueId,
+        mosqueId: currentUser.mosqueId || undefined,
         surahNumber: Number(surahNumber),
         verseStatuses: progress.verseStatuses,
-        notes: progress.notes,
+        notes: progress.notes || undefined,
         reviewedToday: true,
         reviewStreak: result.reviewStreak,
         lastReviewDate: today,
