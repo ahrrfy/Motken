@@ -483,7 +483,7 @@ export function registerAdminRoutes(app: Express) {
       }
 
       if (data.users?.length) {
-        const validRoles = ["admin", "supervisor", "teacher", "student"];
+        const validRoles = ["admin", "supervisor", "teacher", "student", "parent"];
         for (const u of data.users) {
           if (u.role && !validRoles.includes(u.role)) {
             return res.status(400).json({ message: `دور غير صالح في بيانات المستخدمين: ${u.role}` });

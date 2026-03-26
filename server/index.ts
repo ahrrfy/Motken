@@ -54,6 +54,8 @@ app.use((_req, res, next) => {
 
 app.use(compression());
 
+// حد أعلى لمسارات النسخ الاحتياطي (ملفات كبيرة)
+app.use("/api/system/backup", express.json({ limit: "50mb" }));
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
