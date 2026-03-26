@@ -119,7 +119,7 @@ app.use("/api/", csrfProtection);
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 120,
+  max: isProduction ? 120 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "عدد الطلبات كبير جداً. يرجى المحاولة لاحقاً" },
