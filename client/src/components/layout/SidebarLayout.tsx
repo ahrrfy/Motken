@@ -539,15 +539,15 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       </div>
 
       <aside className={cn(
-        "w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col border-sidebar-border/50 shadow-xl z-10 overflow-y-auto sticky top-0 h-screen",
-        isEn ? "border-r" : "border-l"
+        "w-64 bg-sidebar text-sidebar-foreground hidden md:flex flex-col border-sidebar-border/50 shadow-xl z-10 overflow-y-auto fixed top-0 h-screen shrink-0",
+        isEn ? "border-r left-0" : "border-l right-0"
       )}>
         <SidebarHeader />
         <NavContent user={user} location={location} enabledFeatures={enabledFeatures} effectiveRole={effectiveRole || user.role} />
         <SidebarFooter />
       </aside>
 
-      <main className="flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0 flex flex-col min-h-screen">
+      <main className={cn("flex-1 overflow-auto bg-background bg-islamic-pattern pt-14 md:pt-0 min-w-0 flex flex-col min-h-screen", isEn ? "md:ml-64" : "md:mr-64")}>
         {previewRole && (
           <div className={cn(
             "flex items-center justify-between gap-3 px-4 py-2.5 text-white text-sm font-medium shadow-md z-20",

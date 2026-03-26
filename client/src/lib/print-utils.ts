@@ -180,9 +180,15 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
     </head>
     <body>
       <div class="actions-bar">
-        <button class="btn-print" onclick="window.print()">🖨️ طباعة مباشرة</button>
-        <button class="btn-save" onclick="window.print()">📥 حفظ كـ PDF</button>
-        <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+        <button class="btn-print" id="btnPrint">🖨️ طباعة مباشرة</button>
+        <button class="btn-save" id="btnSave">📥 حفظ كـ PDF</button>
+        <select id="selectSize" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-family:inherit;font-size:13px;">
+          <option value="A4 portrait">A4 عمودي</option>
+          <option value="A4 landscape">A4 أفقي</option>
+          <option value="A5 portrait">A5 عمودي</option>
+          <option value="A5 landscape">A5 أفقي</option>
+        </select>
+        <button class="btn-close" id="btnClose">✕ إغلاق</button>
       </div>
       <div class="content-area">
         <div class="header">
@@ -201,6 +207,22 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
           <div>برمجة وتطوير أحمد خالد الزبيدي</div>
         </div>
       </div>
+      <script>
+        document.getElementById('btnPrint').addEventListener('click', function() { window.print(); });
+        document.getElementById('btnSave').addEventListener('click', function() { window.print(); });
+        document.getElementById('btnClose').addEventListener('click', function() { window.close(); });
+        document.getElementById('selectSize').addEventListener('change', function() {
+          var style = document.getElementById('pageStyle');
+          if (!style) { style = document.createElement('style'); style.id = 'pageStyle'; document.head.appendChild(style); }
+          style.textContent = '@media print { @page { size: ' + this.value + '; margin: 15mm; } }';
+        });
+        // Set initial page size
+        var initStyle = document.createElement('style');
+        initStyle.id = 'pageStyle';
+        initStyle.textContent = '@media print { @page { size: ${pageSize === 'landscape' ? 'A4 landscape' : 'A4 portrait'}; margin: 15mm; } }';
+        document.head.appendChild(initStyle);
+        document.getElementById('selectSize').value = '${pageSize === 'landscape' ? 'A4 landscape' : 'A4 portrait'}';
+      </script>
     </body>
     </html>
   `);

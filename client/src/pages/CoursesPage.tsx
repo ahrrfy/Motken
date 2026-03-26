@@ -1036,11 +1036,17 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     const esc = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة إتمام - ${esc(studentName)}</title><style>${styles}</style></head><body>
     <div class="actions-bar">
-      <button class="btn-print" onclick="window.print()">🖨️ طباعة مباشرة</button>
-      <button class="btn-save" onclick="window.print()">📥 حفظ كـ PDF</button>
-      <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+      <button class="btn-print" id="btnPrint">🖨️ طباعة مباشرة</button>
+      <button class="btn-save" id="btnSave">📥 حفظ كـ PDF</button>
+      <button class="btn-close" id="btnClose">✕ إغلاق</button>
     </div>
-    <div class="cert-area">${certHtml}</div></body></html>`);
+    <div class="cert-area">${certHtml}</div>
+    <script>
+      document.getElementById('btnPrint').addEventListener('click', function() { window.print(); });
+      document.getElementById('btnSave').addEventListener('click', function() { window.print(); });
+      document.getElementById('btnClose').addEventListener('click', function() { window.close(); });
+    </script>
+    </body></html>`);
     win.document.close();
   };
 
@@ -1073,11 +1079,17 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     const esc2 = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادات دورة - ${esc2(course.title)}</title><style>${styles}</style></head><body>
     <div class="actions-bar">
-      <button class="btn-print" onclick="window.print()">🖨️ طباعة الكل</button>
-      <button class="btn-save" onclick="window.print()">📥 حفظ كـ PDF</button>
-      <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+      <button class="btn-print" id="btnPrint">🖨️ طباعة الكل</button>
+      <button class="btn-save" id="btnSave">📥 حفظ كـ PDF</button>
+      <button class="btn-close" id="btnClose">✕ إغلاق</button>
     </div>
-    <div class="cert-area">${allCertHtmlParts.join("")}</div></body></html>`);
+    <div class="cert-area">${allCertHtmlParts.join("")}</div>
+    <script>
+      document.getElementById('btnPrint').addEventListener('click', function() { window.print(); });
+      document.getElementById('btnSave').addEventListener('click', function() { window.print(); });
+      document.getElementById('btnClose').addEventListener('click', function() { window.close(); });
+    </script>
+    </body></html>`);
     win.document.close();
   };
 

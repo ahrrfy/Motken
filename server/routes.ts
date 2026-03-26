@@ -37,6 +37,15 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
+  // Role preview middleware — temporarily change role for admin preview
+  app.use((req: any, _res: any, next: any) => {
+    if (req.user && (req.session as any).previewRole) {
+      (req.user as any).role = (req.session as any).previewRole;
+      (req.user as any).actualRole = (req.session as any).originalRole || "admin";
+    }
+    next();
+  });
+
   app.use(async (req, res, next) => {
     for (const [featureKey, prefixes] of Object.entries(featureRouteMap)) {
       if (prefixes.some(prefix => req.path.startsWith(prefix))) {
