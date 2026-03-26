@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Book, Search, Filter, BookOpen, ArrowRight, Heart, ChevronLeft, ChevronRight, Plus, Trash2, Minus, Sun, Moon, Bookmark, BookmarkCheck, Type } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { BookUploadDialog } from "@/components/BookUploadDialog";
 
 interface BookItem {
   id: number;
@@ -23,6 +24,7 @@ interface BookItem {
   featured: boolean;
   isCustom?: boolean;
   customContent?: string;
+  customChapters?: { title: string; content: string }[];
   addedByRole?: string;
 }
 
@@ -208,6 +210,15 @@ function generateCategoryChapters(bookId: number, category: string, title: strin
 }
 
 function getBookChapters(book: BookItem): Chapter[] {
+  // Use custom chapters if available (from BookUploadDialog)
+  if (book.isCustom && book.customChapters && book.customChapters.length > 0) {
+    return book.customChapters.map((ch, i) => ({
+      id: i + 1,
+      title: ch.title,
+      content: ch.content,
+    }));
+  }
+  // Fallback for legacy custom books (text-only)
   if (book.isCustom && book.customContent) {
     const PAGE_SIZE = 2000;
     const content = book.customContent;
@@ -266,10 +277,7 @@ export default function LibraryPage() {
   });
 
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadTitle, setUploadTitle] = useState("");
-  const [uploadAuthor, setUploadAuthor] = useState("");
-  const [uploadCategory, setUploadCategory] = useState("");
-  const [uploadContent, setUploadContent] = useState("");
+  const [bookSearchQuery, setBookSearchQuery] = useState("");
 
   const [fontSize, setFontSize] = useState(() => {
     try {
@@ -345,33 +353,33 @@ export default function LibraryPage() {
     return userLevel >= bookLevel;
   }, [user]);
 
-  const handleUpload = useCallback(() => {
-    if (!uploadTitle.trim() || !uploadAuthor.trim() || !uploadCategory || !uploadContent.trim()) {
-      toast({ title: "خطأ", description: "يرجى ملء جميع الحقول المطلوبة", variant: "destructive" });
-      return;
-    }
+  const handleUpload = useCallback((bookData: {
+    title: string;
+    author: string;
+    category: string;
+    description: string;
+    content: string;
+    chapters: { title: string; content: string }[];
+  }) => {
     const newId = Date.now();
     const newBook: BookItem = {
       id: newId,
-      title: uploadTitle.trim(),
-      author: uploadAuthor.trim(),
-      category: uploadCategory,
-      description: uploadContent.trim().slice(0, 120) + "...",
-      pages: Math.ceil(uploadContent.trim().length / 250),
+      title: bookData.title,
+      author: bookData.author,
+      category: bookData.category,
+      description: bookData.description.slice(0, 120),
+      pages: Math.ceil(bookData.content.length / 250),
       url: "",
       featured: false,
       isCustom: true,
-      customContent: uploadContent.trim(),
+      customContent: bookData.content,
+      customChapters: bookData.chapters,
       addedByRole: user?.role || "teacher",
     };
     setCustomBooks(prev => [...prev, newBook]);
-    setUploadTitle("");
-    setUploadAuthor("");
-    setUploadCategory("");
-    setUploadContent("");
     setUploadOpen(false);
-    toast({ title: "تم الإضافة", description: `تم إضافة كتاب "${newBook.title}" بنجاح` });
-  }, [uploadTitle, uploadAuthor, uploadCategory, uploadContent, user, toast]);
+    toast({ title: "تم الإضافة", description: `تم إضافة كتاب "${newBook.title}" بنجاح (${bookData.chapters.length} فصل)` });
+  }, [user, toast]);
 
   const handleDeleteCustomBook = useCallback((bookId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -553,12 +561,30 @@ export default function LibraryPage() {
 
               <div className="p-3">
                 <h3 className="font-bold text-sm mb-2" style={{ color: isDark ? "#c8a45e" : "#1a5e3a" }}>📑 فهرس الكتاب</h3>
-                <div className="space-y-1 max-h-[calc(100vh-380px)] overflow-y-auto">
-                  {currentChapters.map((ch, idx) => (
+                {/* Search within book */}
+                <div className="mb-2">
+                  <Input
+                    placeholder="بحث في الكتاب..."
+                    value={bookSearchQuery}
+                    onChange={e => setBookSearchQuery(e.target.value)}
+                    className="h-7 text-xs"
+                    style={isDark ? { background: "#1a1a3e", borderColor: "#333", color: "#ccc" } : {}}
+                  />
+                  {bookSearchQuery && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {currentChapters.filter(ch => ch.content.includes(bookSearchQuery) || ch.title.includes(bookSearchQuery)).length} نتيجة
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1 max-h-[calc(100vh-420px)] overflow-y-auto">
+                  {currentChapters
+                    .map((ch, idx) => ({ ch, idx }))
+                    .filter(({ ch }) => !bookSearchQuery || ch.content.includes(bookSearchQuery) || ch.title.includes(bookSearchQuery))
+                    .map(({ ch, idx }) => (
                     <button
                       key={ch.id}
                       data-testid={`button-chapter-${ch.id}`}
-                      onClick={() => setActiveChapter(idx)}
+                      onClick={() => { setActiveChapter(idx); setBookSearchQuery(""); }}
                       className={`w-full text-right px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                         idx === activeChapter
                           ? "font-bold shadow-sm"
@@ -567,6 +593,11 @@ export default function LibraryPage() {
                       style={idx === activeChapter ? { background: "linear-gradient(90deg, #1a5e3a, #2d7a4f)", color: "white" } : { color: isDark ? "#ccc" : undefined }}
                     >
                       {ch.title}
+                      {bookSearchQuery && ch.content.includes(bookSearchQuery) && (
+                        <span className="block text-xs opacity-60 mt-0.5">
+                          يحتوي على "{bookSearchQuery.slice(0, 20)}"
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -770,79 +801,12 @@ export default function LibraryPage() {
         </div>
       )}
 
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" data-testid="upload-book-dialog">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl">إضافة كتاب جديد</DialogTitle>
-            <DialogDescription>أضف كتاباً جديداً إلى المكتبة الإسلامية</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="book-title">عنوان الكتاب *</Label>
-              <Input
-                id="book-title"
-                data-testid="input-upload-title"
-                placeholder="أدخل عنوان الكتاب"
-                value={uploadTitle}
-                onChange={e => setUploadTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="book-author">اسم المؤلف *</Label>
-              <Input
-                id="book-author"
-                data-testid="input-upload-author"
-                placeholder="أدخل اسم المؤلف"
-                value={uploadAuthor}
-                onChange={e => setUploadAuthor(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>التصنيف *</Label>
-              <Select value={uploadCategory} onValueChange={setUploadCategory}>
-                <SelectTrigger data-testid="select-upload-category">
-                  <SelectValue placeholder="اختر التصنيف" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.filter(c => c !== "الكل").map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="book-content">محتوى الكتاب *</Label>
-              <Textarea
-                id="book-content"
-                data-testid="input-upload-content"
-                placeholder="الصق نص الكتاب هنا..."
-                value={uploadContent}
-                onChange={e => setUploadContent(e.target.value)}
-                className="min-h-[200px] font-serif leading-relaxed"
-                dir="rtl"
-              />
-              {uploadContent.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {uploadContent.length} حرف • ~{Math.ceil(uploadContent.length / 2000)} صفحة
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setUploadOpen(false)} data-testid="button-cancel-upload">
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleUpload}
-              data-testid="button-confirm-upload"
-              style={{ background: "linear-gradient(90deg, #1a5e3a, #2d7a4f)", color: "white" }}
-            >
-              <Plus className="w-4 h-4 ml-2" />
-              إضافة الكتاب
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BookUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        categories={categories.filter(c => c !== "الكل")}
+        onSubmit={handleUpload}
+      />
     </div>
   );
 }

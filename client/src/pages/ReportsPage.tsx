@@ -34,6 +34,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { exportMultiSheetExcel } from "@/lib/excel-utils";
 import { openPrintWindow, generateStatsHtml, generateUsersTableHtml, generateSemesterReportHtml, generateAnnualSummaryHtml } from "@/lib/print-utils";
+import { generateReportPdf } from "@/lib/pdf-generator";
 import { quranSurahs } from "@shared/quran-surahs";
 import { formatDateAr } from "@/lib/utils";
 import {
@@ -586,9 +587,41 @@ export default function ReportsPage() {
 
   const printOpts = { mosqueName: userMosqueData.name, mosqueImage: userMosqueData.image || undefined };
 
-  const exportPDF = () => {
-    const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
-    openPrintWindow("التقارير والإحصائيات", content, printOpts);
+  const exportPDF = async () => {
+    const roleLabels: Record<string, string> = { admin: "مدير", supervisor: "مشرف", teacher: "أستاذ", student: "طالب" };
+    const statsItems = [
+      { label: "إجمالي الطلاب", value: stats.totalStudents || 0 },
+      { label: "إجمالي الأساتذة", value: stats.totalTeachers || 0 },
+      ...(isAdmin ? [{ label: "إجمالي المشرفين", value: stats.totalSupervisors || 0 }] : []),
+      ...(isAdmin ? [{ label: "إجمالي المساجد", value: stats.totalMosques || 0 }] : []),
+      { label: "إجمالي الواجبات", value: stats.totalAssignments || 0 },
+      { label: "المكتملة", value: stats.completedAssignments || 0 },
+      { label: "المعلقة", value: stats.pendingAssignments || 0 },
+      { label: "طلاب نشطين", value: stats.activeStudents || 0 },
+      { label: "طلاب غير نشطين", value: stats.inactiveStudents || 0 },
+      { label: "ذوي الاحتياجات الخاصة", value: stats.specialNeedsStudents || 0 },
+      { label: "الأيتام", value: stats.orphanStudents || 0 },
+    ];
+
+    const users = stats.users || [];
+    const sections = users.length > 0 ? [{
+      title: "قائمة المستخدمين",
+      headers: ["#", "الاسم", "الدور", "المستوى", "الحالة"],
+      rows: users.map((u: any, i: number) => [
+        i + 1,
+        u.name || "",
+        roleLabels[u.role] || u.role || "",
+        u.level || "—",
+        u.isActive ? "نشط" : "غير نشط",
+      ]),
+    }] : [];
+
+    await generateReportPdf({
+      title: "التقارير والإحصائيات",
+      mosqueName: userMosqueData.name,
+      stats: statsItems,
+      sections,
+    });
   };
 
   const exportWord = () => {
@@ -620,7 +653,7 @@ export default function ReportsPage() {
         fetch(`/api/users/${selectedStudentId}`).then(r => r.json()),
         fetch(`/api/assignments?studentId=${selectedStudentId}`).then(r => r.json())
       ]);
-      
+
       const gradedAssignments = assignmentsData.filter((a: any) => a.grade != null).map((a: any) => {
         const surahByName = quranSurahs.find(s => s.name === a.surahName || a.surahName?.includes(s.name));
         const surahByNum = a.surahNumber ? quranSurahs.find(s => s.number === a.surahNumber) : null;
@@ -630,8 +663,31 @@ export default function ReportsPage() {
         };
       });
 
-      const html = generateSemesterReportHtml(studentData, gradedAssignments, userMosqueData.name || "المركز");
-      openPrintWindow(`تقرير الطالب ${studentData.name}`, html, printOpts);
+      const avgGrade = gradedAssignments.length > 0
+        ? Math.round(gradedAssignments.reduce((sum: number, g: any) => sum + (g.grade || 0), 0) / gradedAssignments.length)
+        : 0;
+
+      await generateReportPdf({
+        title: `تقرير الطالب ${studentData.name}`,
+        mosqueName: userMosqueData.name || "المركز",
+        stats: [
+          { label: "اسم الطالب", value: studentData.name },
+          { label: "المستوى", value: studentData.level || "—" },
+          { label: "المعدل العام", value: `${avgGrade}%` },
+          { label: "عدد التسميعات", value: gradedAssignments.length },
+        ],
+        sections: [{
+          title: "تفاصيل الدرجات",
+          headers: ["التاريخ", "السورة", "من آية", "إلى آية", "الدرجة"],
+          rows: gradedAssignments.map((g: any) => [
+            formatDateAr(g.createdAt),
+            g.surahName,
+            g.fromVerse,
+            g.toVerse,
+            `${g.grade}%`,
+          ]),
+        }],
+      });
     } catch (err) {
       console.error(err);
     }
@@ -640,8 +696,28 @@ export default function ReportsPage() {
   const handlePrintAnnualSummary = async () => {
     try {
       const leaderboard = await fetch("/api/points/leaderboard").then(r => r.json());
-      const html = generateAnnualSummaryHtml(stats, leaderboard.slice(0, 10), userMosqueData.name || "المركز");
-      openPrintWindow("التقرير السنوي", html, printOpts);
+      const top10 = leaderboard.slice(0, 10);
+
+      await generateReportPdf({
+        title: "التقرير السنوي",
+        mosqueName: userMosqueData.name || "المركز",
+        stats: [
+          { label: "إجمالي الطلاب", value: stats.totalStudents || 0 },
+          { label: "تسميعات مكتملة", value: stats.completedAssignments || 0 },
+          { label: "عدد المعلمين", value: stats.totalTeachers || 0 },
+          { label: "طلاب نشطين", value: stats.activeStudents || 0 },
+        ],
+        sections: [{
+          title: "أوائل الطلبة",
+          headers: ["الترتيب", "اسم الطالب", "إجمالي النقاط"],
+          rows: top10.map((s: any, i: number) => [
+            i + 1,
+            s.userName || s.name || "",
+            s.totalPoints || s.points || 0,
+          ]),
+        }],
+        text: `الحمد لله الذي بنعمته تتم الصالحات، يسرنا في ${userMosqueData.name || ""} أن نضع بين أيديكم هذا التقرير الذي يبرز جهود أبنائنا وبناتنا في حفظ كتاب الله تعالى خلال العام المنصرم.`,
+      });
     } catch (err) {
       console.error(err);
     }

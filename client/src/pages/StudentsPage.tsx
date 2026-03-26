@@ -18,6 +18,9 @@ import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
 import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
 import { formatDateAr } from "@/lib/utils";
+import { HijriDatePicker } from "@/components/HijriDatePicker";
+import { ImportWizard } from "@/components/ImportWizard";
+import { ExportDialog } from "@/components/ExportDialog";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
@@ -193,6 +196,9 @@ export default function StudentsPage() {
     };
     reader.readAsDataURL(file);
   };
+
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   const isSupervisor = user?.role === "supervisor";
   const isTeacher = user?.role === "teacher";
@@ -677,14 +683,6 @@ export default function StudentsPage() {
           <p className="text-muted-foreground">إدارة بيانات الطلاب ومتابعة تقدمهم</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={handleImport}
-            data-testid="input-file-import"
-          />
           {user?.role !== "student" && (
             <>
               <Button variant="outline" onClick={() => {
@@ -713,11 +711,11 @@ export default function StudentsPage() {
                 <Printer className="w-4 h-4" />
                 طباعة
               </Button>
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" data-testid="button-import">
+              <Button variant="outline" onClick={() => setImportWizardOpen(true)} className="gap-2" data-testid="button-import">
                 <Upload className="w-4 h-4" />
                 استيراد
               </Button>
-              <Button variant="outline" onClick={handleExport} className="gap-2" data-testid="button-export">
+              <Button variant="outline" onClick={() => setExportDialogOpen(true)} className="gap-2" data-testid="button-export">
                 <Download className="w-4 h-4" />
                 تصدير
               </Button>
@@ -1215,21 +1213,21 @@ export default function StudentsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="w-full sm:w-40">
+            <div className="w-full sm:w-48">
               <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
-              <Input
-                type="date"
+              <HijriDatePicker
                 value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
+                onChange={setFilterDateFrom}
+                placeholder="من تاريخ"
                 data-testid="input-filter-date-from"
               />
             </div>
-            <div className="w-full sm:w-40">
+            <div className="w-full sm:w-48">
               <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
-              <Input
-                type="date"
+              <HijriDatePicker
                 value={filterDateTo}
-                onChange={(e) => setFilterDateTo(e.target.value)}
+                onChange={setFilterDateTo}
+                placeholder="إلى تاريخ"
                 data-testid="input-filter-date-to"
               />
             </div>
@@ -1799,6 +1797,133 @@ export default function StudentsPage() {
           mosqueName={user?.mosqueName || undefined}
         />
       )}
+
+      {/* Import Wizard */}
+      <ImportWizard
+        open={importWizardOpen}
+        onOpenChange={setImportWizardOpen}
+        title="استيراد طلاب"
+        fields={[
+          { key: "name", label: "الاسم", required: true },
+          { key: "username", label: "اسم المستخدم", required: true },
+          { key: "password", label: "كلمة المرور", required: true },
+          { key: "phone", label: "الهاتف" },
+          { key: "address", label: "العنوان" },
+          { key: "age", label: "العمر" },
+          { key: "parentPhone", label: "هاتف ولي الأمر" },
+          { key: "telegramId", label: "التلغرام" },
+          { key: "educationLevel", label: "المستوى الدراسي" },
+        ]}
+        checkDuplicate={async (row, mappings) => {
+          const getVal = (key: string) => {
+            const m = mappings.find(m => m.systemField === key);
+            return m?.fileColumn ? (row[m.fileColumn] || "") : "";
+          };
+          const username = getVal("username");
+          const phone = getVal("phone");
+          for (const s of students) {
+            if (username && s.username === username) return { matchedBy: `اسم المستخدم: ${username}`, existingId: s.id };
+            if (phone && s.phone === phone) return { matchedBy: `الهاتف: ${phone}`, existingId: s.id };
+          }
+          return null;
+        }}
+        onCreateRecord={async (row, mappings) => {
+          const getVal = (key: string) => {
+            const m = mappings.find(m => m.systemField === key);
+            return m?.fileColumn ? (row[m.fileColumn] || "") : "";
+          };
+          const res = await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              name: getVal("name"),
+              username: getVal("username"),
+              password: getVal("password"),
+              phone: getVal("phone"),
+              address: getVal("address"),
+              age: getVal("age") ? parseInt(getVal("age")) : null,
+              parentPhone: getVal("parentPhone"),
+              telegramId: getVal("telegramId"),
+              educationLevel: getVal("educationLevel"),
+              role: "student",
+            }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "فشل في إنشاء الطالب");
+          }
+        }}
+        onUpdateRecord={async (existingId, row, mappings) => {
+          const getVal = (key: string) => {
+            const m = mappings.find(m => m.systemField === key);
+            return m?.fileColumn ? (row[m.fileColumn] || "") : "";
+          };
+          const res = await fetch(`/api/users/${existingId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              name: getVal("name"),
+              phone: getVal("phone"),
+              address: getVal("address"),
+              age: getVal("age") ? parseInt(getVal("age")) : null,
+              parentPhone: getVal("parentPhone"),
+              telegramId: getVal("telegramId"),
+              educationLevel: getVal("educationLevel"),
+            }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "فشل في تحديث الطالب");
+          }
+        }}
+        onComplete={() => fetchData()}
+      />
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        title="تصدير الطلاب"
+        filename="students_list.xlsx"
+        sheetName="Students"
+        fields={[
+          { key: "name", label: "الاسم" },
+          { key: "phone", label: "الهاتف" },
+          { key: "age", label: "العمر" },
+          { key: "parentPhone", label: "هاتف ولي الأمر" },
+          { key: "telegramId", label: "التلغرام" },
+          { key: "educationLevel", label: "المستوى الدراسي" },
+          { key: "level", label: "مستوى الطالب" },
+          { key: "studyMode", label: "نوع الدراسة" },
+          { key: "teacher", label: "الأستاذ" },
+          { key: "isSpecialNeeds", label: "ذوي الاحتياجات" },
+          { key: "isOrphan", label: "يتيم" },
+          { key: "status", label: "الحالة" },
+          { key: "createdAt", label: "تاريخ التسجيل" },
+          { key: "adminNotes", label: "ملاحظات" },
+        ]}
+        data={(selectedStudents.size > 0 ? filteredStudents.filter(s => selectedStudents.has(s.id)) : filteredStudents).map(s => {
+          const level = getStudentLevel(s);
+          return {
+            name: s.name,
+            phone: s.phone || "",
+            age: s.age || "",
+            parentPhone: s.parentPhone || "",
+            telegramId: s.telegramId || "",
+            educationLevel: s.educationLevel || "",
+            level: level.label,
+            studyMode: (s.studyMode || "in-person") === "online" ? "إلكتروني" : "حضوري",
+            teacher: getTeacherName(s.teacherId),
+            isSpecialNeeds: s.isSpecialNeeds ? "نعم" : "لا",
+            isOrphan: s.isOrphan ? "نعم" : "لا",
+            status: s.isActive ? "نشط" : "متوقف",
+            createdAt: formatDateAr(s.createdAt),
+            adminNotes: s.adminNotes || "",
+          };
+        })}
+      />
     </div>
   );
 }
