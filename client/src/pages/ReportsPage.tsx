@@ -593,7 +593,19 @@ export default function ReportsPage() {
 
   const exportWord = () => {
     const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
-    openPrintWindow("التقارير والإحصائيات - تصدير", content, printOpts);
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>التقارير والإحصائيات</title>
+<style>body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl;padding:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px;text-align:right}th{background:#f0f0f0}</style>
+</head><body>${content}</body></html>`;
+    const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'report_' + new Date().toISOString().split('T')[0] + '.doc';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handlePrint = () => {
