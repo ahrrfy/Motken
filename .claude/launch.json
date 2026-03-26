@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "mutqin-dev",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "--env-file=.env", "server/index.ts"],
-      "port": 5001
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env", "dist/index.cjs"],
+      "port": 5002
     }
   ]
 }

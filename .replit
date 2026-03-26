@@ -47,6 +47,5 @@ mockupState = "FULLSTACK"
 [userenv]
 
 [userenv.shared]
-ADMIN_USERNAME = "ahrrfy"
-SEED_SECRET = "d8ca098ca2608f94702af5f0b43ad14d7aee27a683e490b65b5b72c9bd0674e4"
-ADMIN_PASSWORD = "Ahmed6399137"
+# Security: credentials moved to environment variables - never commit secrets
+# Set ADMIN_USERNAME, ADMIN_PASSWORD, SEED_SECRET in your environment

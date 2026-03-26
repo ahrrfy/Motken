@@ -8,6 +8,7 @@ import { createServer } from "http";
 import { createIndexes, pool } from "./db";
 import { startSelfHealing, stopSelfHealing, getDetailedHealthReport, startAbsenceAlerts } from "./self-healing";
 import { setupWebSocket } from "./websocket";
+import { logger, requestLogger } from "./lib/logger";
 
 const app = express();
 
@@ -15,7 +16,9 @@ const isProduction = process.env.NODE_ENV === "production";
 
 // Helmet with safe fallback for Express 5 CJS compatibility
 const helmetMiddleware = helmet({
-  contentSecurityPolicy: {
+  contentSecurityPolicy: isProduction ? false : {
+    // In production, CSP is set per-request with nonce in static.ts
+    // In development, use permissive CSP for Vite HMR
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
@@ -116,7 +119,7 @@ function csrfProtection(req: Request, res: Response, next: NextFunction) {
     const host = req.get("host") || "";
 
     if (originUrl.host !== host) {
-      console.warn(`CSRF blocked: origin=${originUrl.host} host=${host} path=${req.path} ip=${req.ip}`);
+      logger.warn({ origin: originUrl.host, host, path: req.path, ip: req.ip }, "CSRF blocked");
       return res.status(403).json({ message: "طلب غير مصرح" });
     }
   } catch {
@@ -217,18 +220,25 @@ app.get("/api/version", (_req, res) => {
 app.get("/_health", async (_req, res) => {
   try {
     const report = await getDetailedHealthReport();
+    const memUsage = process.memoryUsage();
     if (report.status === "healthy") {
       res.status(200).json({
         status: "ok",
         timestamp: new Date().toISOString(),
         uptime: Math.round(report.uptime),
         autoRecoveries: report.autoRecoveries,
+        memory: {
+          heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+          heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
+          rssMB: Math.round(memUsage.rss / 1024 / 1024),
+        },
+        version: BUILD_VERSION,
       });
     } else {
       res.status(503).json({ status: "degraded", message: "خدمة متدهورة" });
     }
   } catch (err: any) {
-    console.error("Health check failed:", err);
+    logger.error({ err: err.message }, "Health check failed");
     res.status(503).json({ status: "error", message: "خدمة غير متاحة" });
   }
 });
@@ -243,38 +253,18 @@ declare module "http" {
 
 
 export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
+  logger.info({ source }, message);
 }
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      const logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      log(logLine);
-    }
-  });
-
-  next();
-});
+// Structured request logging via Pino
+app.use(requestLogger);
 
 process.on("unhandledRejection", (reason: any) => {
-  console.error("[Process] Unhandled Promise Rejection:", reason?.message || reason);
+  logger.error({ err: reason?.message || reason }, "Unhandled Promise Rejection");
 });
 
 process.on("uncaughtException", (err: Error) => {
-  console.error("[Process] Uncaught Exception:", err.message);
-  console.error(err.stack);
+  logger.fatal({ err: err.message, stack: err.stack }, "Uncaught Exception");
 });
 
 let isShuttingDown = false;
@@ -294,7 +284,7 @@ async function gracefulShutdown(signal: string) {
     await pool.end();
     log("Database pool closed");
   } catch (err: any) {
-    console.error("Error closing database pool:", err.message);
+    logger.error({ err: err.message }, "Error closing database pool");
   }
 
   setTimeout(() => {
@@ -312,7 +302,7 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    console.error("Internal Server Error:", err);
+    logger.error({ err: err.message, stack: err.stack, status }, "Internal Server Error");
 
     if (res.headersSent) {
       return next(err);

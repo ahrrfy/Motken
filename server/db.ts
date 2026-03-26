@@ -6,6 +6,8 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20,
@@ -15,6 +17,9 @@ export const pool = new pg.Pool({
   allowExitOnIdle: false,
   statement_timeout: 30000,
   query_timeout: 30000,
+  ...(isProduction && process.env.DATABASE_SSL !== "false" ? {
+    ssl: { rejectUnauthorized: false },
+  } : {}),
 });
 
 pool.on("error", (err) => {

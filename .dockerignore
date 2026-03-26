@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.env
+.env.*
+.replit
+.claude
+.config
+.local
+*.tar.gz
+*.md
+e2e
+server/__tests__
+client/__tests__
