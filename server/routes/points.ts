@@ -264,7 +264,9 @@ export function registerPointsRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(currentUser.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const students = await storage.getUsers(currentUser.mosqueId || undefined, "student");
+      const students = currentUser.mosqueId
+        ? await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student")
+        : (await storage.getUsers()).filter(u => u.role === "student");
       let totalReset = 0;
       for (const student of students) {
         const total = await storage.getTotalPoints(student.id);

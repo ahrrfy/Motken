@@ -22,18 +22,18 @@ export default function MosqueDashboardPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: mosque, isLoading } = useQuery({
+  const { data: mosque, isLoading } = useQuery<any>({
     queryKey: [`/api/mosques/${id}`],
     staleTime: 30_000,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<any>({
     queryKey: [`/api/mosques/${id}/stats`],
     staleTime: 60_000,
     enabled: !!mosque,
   });
 
-  const { data: history } = useQuery({
+  const { data: history } = useQuery<any>({
     queryKey: [`/api/mosques/${id}/history`],
     staleTime: 30_000,
     enabled: !!mosque,

@@ -13,7 +13,7 @@ import type { IStorage } from "./types";
 
 export type { IStorage } from "./types";
 
-class DatabaseStorage implements IStorage {
+class DatabaseStorage {
   // Methods are assigned via Object.assign below
 }
 

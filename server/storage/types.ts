@@ -249,5 +249,5 @@ export interface IStorage {
   resetSystemData(): Promise<void>;
   getQuranProgress(userId: string, surahNumber?: number): Promise<QuranProgress | undefined>;
   getQuranProgressByUser(userId: string): Promise<QuranProgress[]>;
-  upsertQuranProgress(data: { userId: string; mosqueId?: string; surahNumber: number; verseStatuses: string; notes?: string }): Promise<QuranProgress>;
+  upsertQuranProgress(data: { userId: string; mosqueId?: string; surahNumber: number; verseStatuses: string; notes?: string; reviewedToday?: boolean; reviewStreak?: number; lastReviewDate?: string; easeFactor?: string; reviewInterval?: number; nextReviewDate?: string }): Promise<QuranProgress>;
 }

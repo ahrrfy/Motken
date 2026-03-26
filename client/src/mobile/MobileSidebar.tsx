@@ -152,11 +152,12 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     supervisor: { pill: "text-purple-400 bg-purple-500/20", active: "text-purple-400 bg-purple-500/15 font-semibold", headerGradient: "from-purple-600/90 via-purple-700/80 to-purple-900/90", avatarRing: "ring-purple-500/40" },
     teacher: { pill: "text-teal-400 bg-teal-500/20", active: "text-teal-400 bg-teal-500/15 font-semibold", headerGradient: "from-teal-600/90 via-teal-700/80 to-teal-900/90", avatarRing: "ring-teal-500/40" },
     student: { pill: "text-sky-400 bg-sky-500/20", active: "text-sky-400 bg-sky-500/15 font-semibold", headerGradient: "from-sky-600/90 via-sky-700/80 to-sky-900/90", avatarRing: "ring-sky-500/40" },
+    parent: { pill: "text-amber-400 bg-amber-500/20", active: "text-amber-400 bg-amber-500/15 font-semibold", headerGradient: "from-amber-600/90 via-amber-700/80 to-amber-900/90", avatarRing: "ring-amber-500/40" },
   }[role] || { pill: "text-emerald-400 bg-emerald-500/20", active: "text-emerald-400 bg-emerald-500/15 font-semibold", headerGradient: "from-emerald-600/90 via-emerald-700/80 to-emerald-900/90", avatarRing: "ring-emerald-500/40" };
 
   const roleLabel = previewRole
-    ? { admin:"معاينة: مدير", supervisor:"معاينة: مشرف", teacher:"معاينة: أستاذ", student:"معاينة: طالب" }[previewRole] || ""
-    : { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب" }[role] || "";
+    ? { admin:"معاينة: مدير", supervisor:"معاينة: مشرف", teacher:"معاينة: أستاذ", student:"معاينة: طالب", parent:"معاينة: ولي أمر" }[previewRole] || ""
+    : { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب", parent:"ولي أمر" }[role] || "";
 
   const visibleItems = allNavItems.filter(i => {
     if (!i.roles.includes(role)) {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
 
-export type UserRole = "admin" | "teacher" | "student" | "supervisor";
+export type UserRole = "admin" | "teacher" | "student" | "supervisor" | "parent";
 
 export interface User {
   id: string;
@@ -19,6 +19,7 @@ export interface User {
   canPrintIds?: boolean;
   acceptedPrivacyPolicy?: boolean;
   privacyPolicyAcceptedAt?: string | null;
+  teacherId?: string | null;
 }
 
 export type PreviewRole = UserRole | null;
