@@ -230,7 +230,7 @@ export function registerAdminRoutes(app: Express) {
       const admin = await storage.getUser(req.user!.id);
       if (!admin) return res.status(404).json({ message: "المستخدم غير موجود" });
 
-      const { comparePasswords } = await import("./auth");
+      const { comparePasswords } = await import("../auth");
       const valid = await comparePasswords(password, admin.password);
       if (!valid) {
         return res.status(403).json({ message: "كلمة المرور غير صحيحة" });
@@ -458,7 +458,7 @@ export function registerAdminRoutes(app: Express) {
       const admin = await storage.getUser(req.user!.id);
       if (!admin) return res.status(404).json({ message: "المستخدم غير موجود" });
 
-      const { comparePasswords } = await import("./auth");
+      const { comparePasswords } = await import("../auth");
       const valid = await comparePasswords(password, admin.password);
       if (!valid) {
         return res.status(403).json({ message: "كلمة المرور غير صحيحة" });
