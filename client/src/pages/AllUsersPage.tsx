@@ -17,6 +17,7 @@ import { openPrintWindow } from "@/lib/print-utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
+import { HijriDatePicker } from "@/components/HijriDatePicker";
 
 interface Mosque {
   id: string;
@@ -536,20 +537,20 @@ export default function AllUsersPage() {
               </Select>
               <div className="flex-1 space-y-1">
                 <Label className="text-xs text-muted-foreground">من تاريخ</Label>
-                <Input
-                  type="date"
-                  data-testid="input-date-from"
+                <HijriDatePicker
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  onChange={setDateFrom}
+                  placeholder="من تاريخ"
+                  data-testid="input-date-from"
                 />
               </div>
               <div className="flex-1 space-y-1">
                 <Label className="text-xs text-muted-foreground">إلى تاريخ</Label>
-                <Input
-                  type="date"
-                  data-testid="input-date-to"
+                <HijriDatePicker
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
+                  onChange={setDateTo}
+                  placeholder="إلى تاريخ"
+                  data-testid="input-date-to"
                 />
               </div>
               {(search || filterRole !== "all" || filterMosque !== "all" || filterStatus !== "all" || filterGender !== "all" || dateFrom || dateTo) && (
@@ -786,12 +787,11 @@ export default function AllUsersPage() {
           <div className="space-y-4 mt-4">
             <div>
               <Label>إيقاف حتى تاريخ</Label>
-              <Input
-                type="date"
-                data-testid="input-suspend-date"
+              <HijriDatePicker
                 value={suspendDate}
-                onChange={(e) => setSuspendDate(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
+                onChange={setSuspendDate}
+                placeholder="اختر تاريخ الإيقاف"
+                data-testid="input-suspend-date"
               />
             </div>
             <div className="flex justify-end gap-2">

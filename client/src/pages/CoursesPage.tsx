@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
 import { openPrintWindow, generateCertificateHtml } from "@/lib/print-utils";
+import { generateCertificatePdf } from "@/lib/pdf-generator";
 import {
   BookOpen, Plus, Trash2, Award, Loader2, Users, CalendarDays, Printer,
   GraduationCap, CheckCircle, Search, Filter, Copy, Edit, BarChart3, Shield,
@@ -1093,14 +1094,16 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     win.document.close();
   };
 
-  const handlePrint = (cert: CertificateData) => {
+  const handlePrint = async (cert: CertificateData) => {
     const studentName = getStudentName(cert.studentId);
     const courseName = getCourseName(cert.courseId);
-    const html = generateCertificateHtml(cert, studentName, courseName, mosqueData.name || "مركز التحفيظ");
-    openPrintWindow(`شهادة ${studentName}`, html, { 
-      landscape: true, 
-      mosqueName: mosqueData.name, 
-      mosqueImage: mosqueData.image || undefined 
+    await generateCertificatePdf({
+      studentName,
+      courseName,
+      mosqueName: mosqueData.name || "مركز التحفيظ",
+      certificateNumber: cert.certificateNumber,
+      graduationGrade: cert.graduationGrade,
+      issuedAt: cert.issuedAt,
     });
   };
 
