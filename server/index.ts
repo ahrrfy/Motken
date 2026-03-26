@@ -13,7 +13,8 @@ const app = express();
 
 const isProduction = process.env.NODE_ENV === "production";
 
-app.use(helmet({
+// Helmet with safe fallback for Express 5 CJS compatibility
+const helmetMiddleware = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -40,15 +41,21 @@ app.use(helmet({
   dnsPrefetchControl: { allow: false },
   frameguard: { action: "deny" },
   permittedCrossDomainPolicies: { permittedPolicies: "none" },
-}));
+});
+app.use((req, res, next) => {
+  try { helmetMiddleware(req, res, next); }
+  catch { next(); }
+});
 
 app.disable("x-powered-by");
 
 app.use((_req, res, next) => {
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Download-Options", "noopen");
-  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  try {
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Download-Options", "noopen");
+    res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  } catch {}
   next();
 });
 
@@ -85,7 +92,11 @@ function deepPayloadGuard(req: Request, res: Response, next: NextFunction) {
   if (err) return res.status(400).json({ message: err });
   next();
 }
-app.use("/api/", deepPayloadGuard);
+// إعفاء مسارات النسخ الاحتياطي من فحص الحجم (ملفات كبيرة)
+app.use("/api/", (req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith("/system/backup")) return next();
+  deepPayloadGuard(req, res, next);
+});
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
