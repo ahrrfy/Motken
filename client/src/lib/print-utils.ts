@@ -207,9 +207,59 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
           <div>برمجة وتطوير أحمد خالد الزبيدي</div>
         </div>
       </div>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
       <script>
         document.getElementById('btnPrint').addEventListener('click', function() { window.print(); });
-        document.getElementById('btnSave').addEventListener('click', function() { window.print(); });
+        document.getElementById('btnSave').addEventListener('click', function() {
+          var btn = this;
+          btn.textContent = '⏳ جاري التصدير...';
+          btn.disabled = true;
+          var content = document.querySelector('.content-area');
+          var actionsBar = document.querySelector('.actions-bar');
+          actionsBar.style.display = 'none';
+          html2canvas(content, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(function(canvas) {
+            var sizeVal = document.getElementById('selectSize').value;
+            var parts = sizeVal.split(' ');
+            var paperSize = parts[0].toLowerCase();
+            var orient = parts[1] || 'portrait';
+            var pdf = new jspdf.jsPDF({ orientation: orient, unit: 'mm', format: paperSize });
+            var pageW = pdf.internal.pageSize.getWidth();
+            var pageH = pdf.internal.pageSize.getHeight();
+            var margin = 10;
+            var imgW = pageW - margin * 2;
+            var imgH = (canvas.height * imgW) / canvas.width;
+            var imgData = canvas.toDataURL('image/jpeg', 0.95);
+            var y = margin;
+            if (imgH <= pageH - margin * 2) {
+              pdf.addImage(imgData, 'JPEG', margin, y, imgW, imgH);
+            } else {
+              var pageCanvas = document.createElement('canvas');
+              var ctx = pageCanvas.getContext('2d');
+              var srcPageH = (canvas.width * (pageH - margin * 2)) / imgW;
+              var pages = Math.ceil(canvas.height / srcPageH);
+              for (var p = 0; p < pages; p++) {
+                if (p > 0) pdf.addPage();
+                var sliceH = Math.min(srcPageH, canvas.height - p * srcPageH);
+                pageCanvas.width = canvas.width;
+                pageCanvas.height = sliceH;
+                ctx.drawImage(canvas, 0, p * srcPageH, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+                var sliceData = pageCanvas.toDataURL('image/jpeg', 0.95);
+                var drawH = (sliceH * imgW) / canvas.width;
+                pdf.addImage(sliceData, 'JPEG', margin, margin, imgW, drawH);
+              }
+            }
+            pdf.save('report_' + new Date().toISOString().split('T')[0] + '.pdf');
+            actionsBar.style.display = '';
+            btn.textContent = '📥 حفظ كـ PDF';
+            btn.disabled = false;
+          }).catch(function() {
+            actionsBar.style.display = '';
+            btn.textContent = '📥 حفظ كـ PDF';
+            btn.disabled = false;
+            alert('فشل تصدير PDF — جرّب الطباعة واختر حفظ كـ PDF');
+          });
+        });
         document.getElementById('btnClose').addEventListener('click', function() { window.close(); });
         document.getElementById('selectSize').addEventListener('change', function() {
           var style = document.getElementById('pageStyle');
