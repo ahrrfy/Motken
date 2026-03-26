@@ -10,6 +10,7 @@ import {
   type Assignment,
 } from "@shared/schema";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
 import crypto from "crypto";
 
 export function registerReportsRoutes(app: Express) {
@@ -27,7 +28,7 @@ export function registerReportsRoutes(app: Express) {
       const reports = await storage.getParentReportsByStudent(studentId);
       res.json(reports);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب التقارير" });
+      sendError(res, err, "جلب التقارير");
     }
   });
 
@@ -58,7 +59,7 @@ export function registerReportsRoutes(app: Express) {
       await logActivity(currentUser, "إنشاء تقرير ولي أمر", "parent_reports");
       res.status(201).json(report);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إنشاء التقرير" });
+      sendError(res, err, "إنشاء تقرير ولي أمر");
     }
   });
 
@@ -77,7 +78,7 @@ export function registerReportsRoutes(app: Express) {
       await logActivity(currentUser, "حذف تقرير ولي أمر", "parent_reports");
       res.json({ message: "تم حذف التقرير" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف التقرير" });
+      sendError(res, err, "حذف التقرير");
     }
   });
 
@@ -96,7 +97,7 @@ export function registerReportsRoutes(app: Express) {
         mosqueName: mosque?.name || "",
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب التقرير" });
+      sendError(res, err, "جلب التقرير بالرمز");
     }
   });
 
@@ -137,7 +138,7 @@ export function registerReportsRoutes(app: Express) {
           : null,
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب التقرير الأسبوعي");
     }
   });
 
@@ -163,7 +164,7 @@ export function registerReportsRoutes(app: Express) {
       const exported = students.map(({ password, ...s }) => s);
       res.json(exported);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تصدير البيانات" });
+      sendError(res, err, "تصدير بيانات الطلاب");
     }
   });
 
@@ -192,7 +193,7 @@ export function registerReportsRoutes(app: Express) {
       }
       res.json(records);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تصدير البيانات" });
+      sendError(res, err, "تصدير بيانات الحضور");
     }
   });
 
@@ -217,7 +218,7 @@ export function registerReportsRoutes(app: Express) {
       }
       res.json(result);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تصدير البيانات" });
+      sendError(res, err, "تصدير بيانات الواجبات");
     }
   });
 

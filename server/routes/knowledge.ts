@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { count } from "drizzle-orm";
 import { tajweedRules, similarVerses } from "@shared/schema";
+import { sendError } from "../error-handler";
 
 export function registerKnowledgeRoutes(app: Express) {
   app.post("/api/knowledge-base/seed", requireRole("admin"), async (_req, res) => {
@@ -71,8 +72,7 @@ export function registerKnowledgeRoutes(app: Express) {
         versesAdded,
       });
     } catch (err: any) {
-      console.error(err);
-      res.status(500).json({ message: "حدث خطأ في إضافة البيانات الأولية" });
+      sendError(res, err, "إضافة البيانات الأولية للمعرفة");
     }
   });
 
@@ -87,7 +87,7 @@ export function registerKnowledgeRoutes(app: Express) {
       const rules = await storage.getAllTajweedRules();
       res.json(rules);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب قواعد التجويد");
     }
   });
 
@@ -106,7 +106,7 @@ export function registerKnowledgeRoutes(app: Express) {
       });
       res.status(201).json(rule);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إنشاء قاعدة تجويد");
     }
   });
 
@@ -125,7 +125,7 @@ export function registerKnowledgeRoutes(app: Express) {
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في التحديث" });
+      sendError(res, err, "تحديث قاعدة التجويد");
     }
   });
 
@@ -138,7 +138,7 @@ export function registerKnowledgeRoutes(app: Express) {
       await storage.deleteTajweedRule(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في الحذف" });
+      sendError(res, err, "حذف قاعدة التجويد");
     }
   });
 
@@ -149,7 +149,7 @@ export function registerKnowledgeRoutes(app: Express) {
       const verses = await storage.getAllSimilarVerses();
       res.json(verses);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الآيات المتشابهة");
     }
   });
 
@@ -169,7 +169,7 @@ export function registerKnowledgeRoutes(app: Express) {
       });
       res.status(201).json(verse);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إنشاء آية متشابهة");
     }
   });
 
@@ -182,7 +182,7 @@ export function registerKnowledgeRoutes(app: Express) {
       await storage.deleteSimilarVerse(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في الحذف" });
+      sendError(res, err, "حذف آية متشابهة");
     }
   });
 

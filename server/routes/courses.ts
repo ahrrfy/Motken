@@ -6,6 +6,7 @@ import {
   certificates,
 } from "@shared/schema";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerCoursesRoutes(app: Express) {
   // ==================== COURSES & CERTIFICATES ====================
@@ -29,7 +30,7 @@ export function registerCoursesRoutes(app: Express) {
         notes: cert.notes,
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "التحقق من الشهادة");
     }
   });
 
@@ -69,7 +70,7 @@ export function registerCoursesRoutes(app: Express) {
         graduationRate: totalStudents > 0 ? Math.round((totalGraduated / totalStudents) * 100) : 0,
       });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب إحصائيات الدورات");
     }
   });
 
@@ -102,7 +103,7 @@ export function registerCoursesRoutes(app: Express) {
 
       res.json(enriched);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب الدورات");
     }
   });
 
@@ -141,7 +142,7 @@ export function registerCoursesRoutes(app: Express) {
       await logActivity(currentUser, `إنشاء دورة: ${title}`, "courses");
       res.status(201).json(course);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "إنشاء دورة");
     }
   });
 
@@ -173,7 +174,7 @@ export function registerCoursesRoutes(app: Express) {
       if (!updated) return res.status(404).json({ message: "الدورة غير موجودة" });
       res.json(updated);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "تعديل دورة");
     }
   });
 
@@ -198,7 +199,7 @@ export function registerCoursesRoutes(app: Express) {
       await logActivity(currentUser, `حذف دورة: ${course.title}`, "courses");
       res.json({ message: "تم حذف الدورة بنجاح" });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "حذف دورة");
     }
   });
 
@@ -240,7 +241,7 @@ export function registerCoursesRoutes(app: Express) {
 
       res.status(201).json(created);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "إضافة طلاب للدورة");
     }
   });
 
@@ -312,7 +313,7 @@ export function registerCoursesRoutes(app: Express) {
       await logActivity(currentUser, `تخريج ${studentIds.length} طالب من دورة: ${course.title}`, "courses");
       res.json({ message: "تم تخريج الطلاب ومنح الشهادات بنجاح", certificates: createdCertificates });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "تخريج طلاب الدورة");
     }
   });
 
@@ -341,7 +342,7 @@ export function registerCoursesRoutes(app: Express) {
 
       res.json(certs);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب الشهادات");
     }
   });
 
@@ -419,7 +420,7 @@ export function registerCoursesRoutes(app: Express) {
 
       res.json(enriched);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "جلب جميع الشهادات");
     }
   });
 
@@ -442,7 +443,7 @@ export function registerCoursesRoutes(app: Express) {
       await storage.deleteCourseStudent(entry.id);
       res.json({ message: "تم إزالة الطالب من الدورة" });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إزالة طالب من الدورة");
     }
   });
 
@@ -476,7 +477,7 @@ export function registerCoursesRoutes(app: Express) {
       await logActivity(currentUser, `نسخ دورة: ${original.title}`, "courses");
       res.status(201).json(newCourse);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "نسخ دورة");
     }
   });
 
@@ -509,7 +510,7 @@ export function registerCoursesRoutes(app: Express) {
       await logActivity(currentUser, `إلغاء تخريج طالب من دورة: ${course.title}`, "courses");
       res.json({ message: "تم إلغاء التخريج بنجاح" });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إلغاء تخريج طالب");
     }
   });
 

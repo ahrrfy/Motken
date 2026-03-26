@@ -6,6 +6,7 @@ import {
   assignments,
   type User,
 } from "@shared/schema";
+import { sendError } from "../error-handler";
 
 export function registerStatsRoutes(app: Express) {
   // ==================== STATS ====================

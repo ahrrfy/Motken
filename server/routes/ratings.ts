@@ -5,6 +5,7 @@ import {
   ratings,
 } from "@shared/schema";
 import { logActivity, canTeacherAccessStudent } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerRatingsRoutes(app: Express) {
   // ==================== RATINGS ====================
@@ -43,7 +44,7 @@ export function registerRatingsRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب التقييمات");
     }
   });
 
@@ -109,7 +110,7 @@ export function registerRatingsRoutes(app: Express) {
       await logActivity(currentUser, `تقييم ${targetUser.name}: ${stars} نجوم${honorBadge ? ' + وسام شرف' : ''}`, "ratings");
       res.status(201).json(rating);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "إنشاء تقييم");
     }
   });
 

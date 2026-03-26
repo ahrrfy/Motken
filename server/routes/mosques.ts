@@ -19,6 +19,7 @@ import {
 import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateBoolean, sanitizeImageUrl } from "@shared/security-utils";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerMosquesRoutes(app: Express) {
   // ==================== PRIVACY POLICY ====================
@@ -32,7 +33,7 @@ export function registerMosquesRoutes(app: Express) {
       await logActivity(user, "الموافقة على سياسة الخصوصية", "privacy");
       res.json({ message: "تم قبول سياسة الخصوصية بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "قبول سياسة الخصوصية");
     }
   });
 
@@ -50,7 +51,7 @@ export function registerMosquesRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب المساجد");
     }
   });
 
@@ -113,7 +114,7 @@ export function registerMosquesRoutes(app: Express) {
         ).slice(0, 10),
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب الإحصائيات المقارنة" });
+      sendError(res, err, "جلب الإحصائيات المقارنة");
     }
   });
 
@@ -148,7 +149,7 @@ export function registerMosquesRoutes(app: Express) {
       inactiveMosques.sort((a, b) => (a.daysSinceActivity ?? 999) - (b.daysSinceActivity ?? 999));
       res.json({ inactiveMosques, count: inactiveMosques.length });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "فحص نشاط المساجد");
     }
   });
 
@@ -161,7 +162,7 @@ export function registerMosquesRoutes(app: Express) {
       }
       res.json(mosque);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب بيانات المسجد");
     }
   });
 
@@ -185,7 +186,7 @@ export function registerMosquesRoutes(app: Express) {
       await logActivity(req.user!, `إنشاء جامع: ${mosque.name}`, "mosques");
       res.status(201).json(mosque);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "إنشاء مسجد");
     }
   });
 
@@ -249,7 +250,7 @@ export function registerMosquesRoutes(app: Express) {
       if (!updated) return res.status(404).json({ message: "الجامع غير موجود" });
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تحديث البيانات" });
+      sendError(res, err, "تحديث بيانات المسجد");
     }
   });
 
@@ -258,7 +259,7 @@ export function registerMosquesRoutes(app: Express) {
       await storage.deleteMosque(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف الجامع" });
+      sendError(res, err, "حذف المسجد");
     }
   });
 
@@ -312,7 +313,7 @@ export function registerMosquesRoutes(app: Express) {
         lastSupervisorLogin: supervisor?.createdAt || null,
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب الإحصائيات" });
+      sendError(res, err, "جلب إحصائيات المسجد");
     }
   });
 
@@ -329,7 +330,7 @@ export function registerMosquesRoutes(app: Express) {
       }));
       res.json(safe);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب قائمة مستخدمي المسجد");
     }
   });
 
@@ -341,7 +342,7 @@ export function registerMosquesRoutes(app: Express) {
         .limit(50);
       res.json(history);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب سجل المسجد");
     }
   });
 
@@ -380,7 +381,7 @@ export function registerMosquesRoutes(app: Express) {
       await logActivity(req.user!, `تغيير حالة المسجد "${mosque.name}" إلى ${statusLabels[status] || status}`, "mosques");
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تغيير حالة المسجد");
     }
   });
 
@@ -407,7 +408,7 @@ export function registerMosquesRoutes(app: Express) {
 
       res.json(msgs);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب رسائل المسجد");
     }
   });
 
@@ -436,7 +437,7 @@ export function registerMosquesRoutes(app: Express) {
 
       res.json(msg);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "إرسال رسالة للمسجد");
     }
   });
 
@@ -450,7 +451,7 @@ export function registerMosquesRoutes(app: Express) {
         ));
       res.json({ count: result[0]?.value ?? 0 });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب عدد الرسائل غير المقروءة");
     }
   });
 
@@ -482,7 +483,7 @@ export function registerMosquesRoutes(app: Express) {
       await logActivity(req.user!, `إشعار جماعي لـ ${sent} مشرف`, "notifications");
       res.json({ message: `تم إرسال الإشعار إلى ${sent} مشرف`, count: sent });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إرسال الإشعار الجماعي" });
+      sendError(res, err, "إرسال إشعار جماعي");
     }
   });
 
@@ -620,8 +621,7 @@ export function registerMosquesRoutes(app: Express) {
 
       res.status(201).json({ message: "تم تقديم طلبك بنجاح. سيتم مراجعته من قبل الإدارة", id: registration.id });
     } catch (err: any) {
-      console.error("[register-mosque] Error:", err?.message || err);
-      res.status(500).json({ message: "حدث خطأ في تقديم الطلب" });
+      sendError(res, err, "تسجيل مسجد جديد");
     }
   });
 
@@ -697,7 +697,7 @@ export function registerMosquesRoutes(app: Express) {
 
       res.status(201).json({ message: "تم تقديم التزكية بنجاح", id: registration.id });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تزكية مسجد");
     }
   });
 
@@ -726,7 +726,7 @@ export function registerMosquesRoutes(app: Express) {
 
       res.json(enriched);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب طلبات تسجيل المساجد");
     }
   });
 
@@ -790,7 +790,7 @@ export function registerMosquesRoutes(app: Express) {
 
       res.json({ message: "تمت الموافقة وإنشاء المسجد والمشرف بنجاح", mosqueId: mosque.id, userId: user.id });
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "الموافقة على تسجيل مسجد");
     }
   });
 
@@ -830,7 +830,7 @@ export function registerMosquesRoutes(app: Express) {
 
       res.json({ message: "تم رفض الطلب" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "رفض تسجيل مسجد");
     }
   });
 
@@ -846,7 +846,7 @@ export function registerMosquesRoutes(app: Express) {
       myVouchings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       res.json(myVouchings.map(v => ({ ...v, requestedPassword: undefined })));
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب التزكيات");
     }
   });
 
@@ -868,8 +868,8 @@ export function registerMosquesRoutes(app: Express) {
           joinedFromInvite: 0,
         },
       });
-    } catch {
-      res.status(500).json({ message: "حدث خطأ" });
+    } catch (err: any) {
+      sendError(res, err, "جلب رمز الدعوة");
     }
   });
 
@@ -889,7 +889,7 @@ export function registerMosquesRoutes(app: Express) {
         direct: allRegs.filter(r => r.registrationType === "direct").length,
       });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب إحصائيات التسجيل");
     }
   });
 

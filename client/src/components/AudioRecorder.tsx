@@ -157,7 +157,27 @@ export default function AudioRecorder({
     checkMicPermission();
   }, []);
 
+  const isSecureContext = () => {
+    return window.isSecureContext ||
+           location.protocol === "https:" ||
+           location.hostname === "localhost" ||
+           location.hostname === "127.0.0.1";
+  };
+
   const checkMicPermission = async () => {
+    // فحص HTTPS — المايكروفون لا يعمل بدون اتصال آمن
+    if (!isSecureContext()) {
+      setMicStatus("error");
+      return;
+    }
+
+    // فحص دعم getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setMicStatus("error");
+      return;
+    }
+
+    // بعض متصفحات Android لا تدعم permissions API
     if (!navigator.permissions) {
       setMicStatus("idle");
       return;
@@ -177,6 +197,7 @@ export default function AudioRecorder({
         else setMicStatus("idle");
       };
     } catch {
+      // permissions.query قد يفشل على بعض متصفحات Android — نبقى idle ونطلب الإذن عند الحاجة
       setMicStatus("idle");
     }
   };
@@ -188,16 +209,105 @@ export default function AudioRecorder({
   };
 
   const requestAndGetStream = async (): Promise<MediaStream> => {
+    // فحص HTTPS أولاً
+    if (!isSecureContext()) {
+      setMicStatus("error");
+      throw Object.assign(new Error("يجب فتح الموقع عبر HTTPS لاستخدام المايكروفون"), { name: "InsecureContextError" });
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setMicStatus("error");
+      throw Object.assign(new Error("المتصفح لا يدعم تسجيل الصوت"), { name: "NotSupportedError" });
+    }
+
     setMicStatus("checking");
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        sampleRate: 44100,
+    try {
+      // محاولة أولى — إعدادات كاملة
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100,
+        }
+      });
+      setMicStatus("ready");
+      return stream;
+    } catch (firstErr: any) {
+      // على بعض أجهزة Android، الإعدادات المتقدمة تسبب مشاكل — نحاول بإعدادات بسيطة
+      if (firstErr.name === "OverconstrainedError" || firstErr.name === "ConstraintNotSatisfiedError") {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          setMicStatus("ready");
+          return stream;
+        } catch (secondErr: any) {
+          throw secondErr;
+        }
       }
-    });
-    setMicStatus("ready");
-    return stream;
+      throw firstErr;
+    }
+  };
+
+  const handleMicError = (err: any) => {
+    const errorName = err.name || "";
+    const isAndroid = /Android/i.test(navigator.userAgent);
+
+    if (errorName === "InsecureContextError") {
+      setMicStatus("error");
+      toast({
+        title: "اتصال غير آمن",
+        description: "المايكروفون يعمل فقط عبر HTTPS. يرجى فتح الموقع عبر رابط آمن (https://).",
+        variant: "destructive",
+        duration: 10000,
+      });
+    } else if (errorName === "NotSupportedError") {
+      setMicStatus("error");
+      toast({
+        title: "المتصفح غير مدعوم",
+        description: "المتصفح لا يدعم تسجيل الصوت. جرّب استخدام Chrome أو Firefox.",
+        variant: "destructive",
+      });
+    } else if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
+      setMicStatus("denied");
+      setShowHelp(true);
+      toast({
+        title: "إذن المايكروفون مرفوض",
+        description: isAndroid
+          ? "يجب السماح بإذن المايكروفون من إعدادات المتصفح. اتبع التعليمات أدناه."
+          : "يجب السماح بإذن المايكروفون للتسجيل. اتبع التعليمات أدناه.",
+        variant: "destructive",
+        duration: 8000,
+      });
+    } else if (errorName === "NotFoundError" || errorName === "DevicesNotFoundError") {
+      setMicStatus("error");
+      toast({
+        title: "لا يوجد مايكروفون",
+        description: isAndroid
+          ? "لم يتم العثور على مايكروفون. تأكد من عدم استخدام تطبيق آخر للمايكروفون وأعد المحاولة."
+          : "لم يتم العثور على مايكروفون. تأكد من توصيل سماعة أو مايكروفون.",
+        variant: "destructive",
+      });
+    } else if (errorName === "NotReadableError" || errorName === "TrackStartError") {
+      setMicStatus("error");
+      toast({
+        title: "المايكروفون مشغول",
+        description: "المايكروفون مُستخدم من تطبيق آخر. أغلق التطبيقات الأخرى التي تستخدم المايكروفون وأعد المحاولة.",
+        variant: "destructive",
+      });
+    } else if (errorName === "AbortError") {
+      setMicStatus("error");
+      toast({
+        title: "تم إلغاء العملية",
+        description: "تم إلغاء طلب المايكروفون. أعد المحاولة.",
+        variant: "destructive",
+      });
+    } else {
+      setMicStatus("error");
+      toast({
+        title: "خطأ في المايكروفون",
+        description: `${err.message || "خطأ غير متوقع"}. جرّب إعادة تحميل الصفحة أو استخدام متصفح مختلف.`,
+        variant: "destructive",
+      });
+    }
   };
 
   const testMicrophone = async () => {
@@ -238,17 +348,7 @@ export default function AudioRecorder({
 
     } catch (err: any) {
       setTestingMic(false);
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setMicStatus("denied");
-        setShowHelp(true);
-      } else {
-        setMicStatus("error");
-        toast({
-          title: "خطأ",
-          description: "لم يتم العثور على ميكروفون. تأكد من توصيل سماعة أو ميكروفون.",
-          variant: "destructive"
-        });
-      }
+      handleMicError(err);
     }
   };
 
@@ -257,13 +357,20 @@ export default function AudioRecorder({
       const stream = await requestAndGetStream();
       streamRef.current = stream;
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-          ? "audio/webm"
-          : "audio/mp4";
+      // ترتيب MIME types حسب التوافق — خاصة على Android
+      const mimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+        "audio/mpeg",
+        "",  // fallback: المتصفح يختار تلقائياً
+      ];
+      const mimeType = mimeTypes.find(m => m === "" || MediaRecorder.isTypeSupported(m)) || "";
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -272,7 +379,8 @@ export default function AudioRecorder({
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType });
+        const actualMimeType = mediaRecorder.mimeType || mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: actualMimeType });
         setAudioBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -299,17 +407,7 @@ export default function AudioRecorder({
       }, 1000);
 
     } catch (err: any) {
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setMicStatus("denied");
-        setShowHelp(true);
-      } else {
-        setMicStatus("error");
-        toast({
-          title: "خطأ",
-          description: "فشل في بدء التسجيل. تأكد من وجود ميكروفون متصل.",
-          variant: "destructive"
-        });
-      }
+      handleMicError(err);
     }
   }, [audioUrl, toast]);
 
@@ -333,12 +431,16 @@ export default function AudioRecorder({
     setRecordingTime(0);
   };
 
-  const uploadRecording = async () => {
+  const uploadRecording = async (retryCount = 0) => {
     if (!audioBlob) return;
     setUploading(true);
+    const maxRetries = 2;
     try {
       const formData = new FormData();
-      const extension = audioBlob.type.includes("webm") ? "webm" : "mp4";
+      const extension = audioBlob.type.includes("webm") ? "webm"
+        : audioBlob.type.includes("mp4") ? "mp4"
+        : audioBlob.type.includes("ogg") ? "ogg"
+        : "webm";
       formData.append("audio", audioBlob, `recitation_${assignmentId}.${extension}`);
 
       const res = await fetch(`/api/assignments/${assignmentId}/audio`, {
@@ -364,18 +466,29 @@ export default function AudioRecorder({
         const data = await res.json().catch(() => ({}));
         toast({
           title: "خطأ في الرفع",
-          description: data.message || "فشل في رفع التسجيل",
+          description: data.message || data.field ? `${data.message} (${data.source || "server"})` : "فشل في رفع التسجيل. أعد المحاولة.",
           variant: "destructive"
         });
       }
     } catch {
+      if (retryCount < maxRetries) {
+        toast({
+          title: "جاري إعادة المحاولة...",
+          description: `فشل الاتصال — المحاولة ${retryCount + 2} من ${maxRetries + 1}`,
+        });
+        setTimeout(() => uploadRecording(retryCount + 1), 2000);
+        return;
+      }
       toast({
-        title: "خطأ",
-        description: "خطأ في الاتصال بالخادم",
-        variant: "destructive"
+        title: "فشل رفع التسجيل",
+        description: "تعذر الاتصال بالخادم بعد عدة محاولات. تأكد من اتصالك بالإنترنت وأعد المحاولة.",
+        variant: "destructive",
+        duration: 8000,
       });
     } finally {
-      setUploading(false);
+      if (retryCount >= maxRetries || retryCount === 0) {
+        setUploading(false);
+      }
     }
   };
 

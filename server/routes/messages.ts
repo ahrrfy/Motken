@@ -5,6 +5,8 @@ import {
   messages,
 } from "@shared/schema";
 import { logActivity } from "./shared";
+import { sendError } from "../error-handler";
+import { broadcastToUser } from "../websocket";
 
 const messageSendTimes = new Map<string, number[]>();
 
@@ -15,7 +17,7 @@ export function registerMessagesRoutes(app: Express) {
       const msgs = await storage.getMessagesByUser(req.user!.id);
       res.json(msgs);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب الرسائل" });
+      sendError(res, err, "جلب الرسائل");
     }
   });
 
@@ -41,7 +43,7 @@ export function registerMessagesRoutes(app: Express) {
       conversations.sort((a, b) => new Date(b.lastMessage?.createdAt || 0).getTime() - new Date(a.lastMessage?.createdAt || 0).getTime());
       res.json(conversations);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب المحادثات" });
+      sendError(res, err, "جلب المحادثات");
     }
   });
 
@@ -57,7 +59,7 @@ export function registerMessagesRoutes(app: Express) {
       const msgs = await storage.getConversation(req.user!.id, req.params.userId);
       res.json(msgs);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب المحادثة" });
+      sendError(res, err, "جلب المحادثة");
     }
   });
 
@@ -66,7 +68,7 @@ export function registerMessagesRoutes(app: Express) {
       const count = await storage.getUnreadMessageCount(req.user!.id);
       res.json({ count });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب عدد الرسائل غير المقروءة");
     }
   });
 
@@ -104,10 +106,11 @@ export function registerMessagesRoutes(app: Express) {
         content,
         isRead: false,
       });
+      broadcastToUser(receiverId, { type: "message", data: msg });
       await logActivity(req.user!, "إرسال رسالة", "messages");
       res.status(201).json(msg);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إرسال الرسالة" });
+      sendError(res, err, "إرسال رسالة");
     }
   });
 
@@ -121,7 +124,7 @@ export function registerMessagesRoutes(app: Express) {
       await storage.markMessageRead(req.params.id);
       res.json({ message: "تم التحديث" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تحديث حالة الرسالة");
     }
   });
 
@@ -130,7 +133,7 @@ export function registerMessagesRoutes(app: Express) {
       await storage.markAllMessagesRead(req.params.senderId, req.user!.id);
       res.json({ message: "تم تحديد الكل كمقروء" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "تحديد الكل كمقروء");
     }
   });
 
@@ -145,7 +148,7 @@ export function registerMessagesRoutes(app: Express) {
       await logActivity(req.user!, "حذف رسالة", "messages");
       res.json({ message: "تم حذف الرسالة" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف الرسالة" });
+      sendError(res, err, "حذف رسالة");
     }
   });
 
@@ -166,19 +169,20 @@ export function registerMessagesRoutes(app: Express) {
       const targets = targetRole ? allUsers.filter(u => u.role === targetRole && u.id !== req.user!.id) : allUsers.filter(u => u.id !== req.user!.id);
       let sent = 0;
       for (const target of targets) {
-        await storage.createMessage({
+        const broadcastMsg = await storage.createMessage({
           senderId: req.user!.id,
           receiverId: target.id,
           mosqueId: req.user!.mosqueId,
           content: sanitized,
           isRead: false,
         });
+        broadcastToUser(target.id, { type: "message", data: broadcastMsg });
         sent++;
       }
       await logActivity(req.user!, `إرسال رسالة جماعية إلى ${sent} مستخدم`, "messages");
       res.status(201).json({ message: `تم إرسال الرسالة إلى ${sent} مستخدم`, count: sent });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في إرسال الرسالة الجماعية" });
+      sendError(res, err, "إرسال رسالة جماعية");
     }
   });
 
@@ -196,7 +200,7 @@ export function registerMessagesRoutes(app: Express) {
       await logActivity(currentUser, "حذف محادثة", "messages");
       res.json({ message: "تم حذف المحادثة" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف المحادثة" });
+      sendError(res, err, "حذف المحادثة");
     }
   });
 
@@ -208,7 +212,7 @@ export function registerMessagesRoutes(app: Express) {
       const results = msgs.filter(m => m.content.toLowerCase().includes(query)).slice(0, 50);
       res.json(results);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في البحث" });
+      sendError(res, err, "البحث في الرسائل");
     }
   });
 

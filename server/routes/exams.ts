@@ -6,6 +6,7 @@ import {
 } from "@shared/schema";
 import { validateFields, validateDate } from "@shared/security-utils";
 import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray, calculateStudentLevel, LEVEL_NAMES } from "./shared";
+import { sendError } from "../error-handler";
 
 export function registerExamsRoutes(app: Express) {
   // ==================== EXAMS ====================
@@ -37,7 +38,7 @@ export function registerExamsRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الامتحانات");
     }
   });
 
@@ -66,7 +67,7 @@ export function registerExamsRoutes(app: Express) {
       const students = await storage.getExamStudents(req.params.id);
       res.json({ ...exam, students });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب الامتحانات");
     }
   });
 
@@ -114,6 +115,11 @@ export function registerExamsRoutes(app: Express) {
       } else {
         myStudents = (await storage.getUsersByTeacher(currentUser.id)).filter(s => !s.pendingApproval);
       }
+
+      // Gender separation: filter students by teacher's gender
+      if (currentUser.gender) {
+        myStudents = myStudents.filter(s => !s.gender || s.gender === currentUser.gender);
+      }
       const myStudentIds = new Set(myStudents.map(s => s.id));
 
       let targetStudents: string[] = [];
@@ -142,7 +148,7 @@ export function registerExamsRoutes(app: Express) {
       await logActivity(currentUser, `إنشاء امتحان: ${title}`, "exams", `${surahName} (${fromVerse}-${toVerse}) - ${targetStudents.length} طالب`);
       res.status(201).json(exam);
     } catch (err: any) {
-      console.error(err); res.status(400).json({ message: "بيانات غير صالحة" });
+      sendError(res, err, "إنشاء امتحان");
     }
   });
 
@@ -237,7 +243,7 @@ export function registerExamsRoutes(app: Express) {
       }
       res.json({ studentId, oldLevel, newLevel, levelName: LEVEL_NAMES[newLevel] });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "عملية الامتحان");
     }
   });
 
@@ -263,7 +269,7 @@ export function registerExamsRoutes(app: Express) {
       await logActivity(currentUser, `تعيين مستويات الأستاذ ${teacher.name}`, "levels", `المستويات: ${validLevels.map((l: number) => LEVEL_NAMES[l]?.ar).join(', ')}`);
       res.json({ teacherId: req.params.teacherId, teacherLevels, levelNames: validLevels.map((l: number) => LEVEL_NAMES[l]) });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "عملية الامتحان");
     }
   });
 
@@ -298,7 +304,7 @@ export function registerExamsRoutes(app: Express) {
       }
       res.json({ studentId: req.params.studentId, oldLevel, newLevel: level, levelName: LEVEL_NAMES[level] });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "عملية الامتحان");
     }
   });
 
@@ -328,7 +334,7 @@ export function registerExamsRoutes(app: Express) {
       }
       res.json({ levels: levelStats, levelNames: LEVEL_NAMES });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "عملية الامتحان");
     }
   });
 

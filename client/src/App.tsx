@@ -53,7 +53,8 @@ import LandingPage from "@/pages/LandingPage";
 import SpreadPage from "@/pages/SpreadPage";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
-import { isMobileOrTablet } from "@/lib/device-detect";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useWebSocket } from "@/hooks/use-websocket";
 const MobileApp = lazy(() => import("@/mobile/MobileApp"));
 
 function RoleGuard({ roles, Component }: { roles: UserRole[]; Component: ComponentType }) {
@@ -108,8 +109,11 @@ function UpdateBanner() {
 
 function App() {
   const { user, loading } = useAuth();
-  const [isMobile] = useState(() => isMobileOrTablet());
+  const isMobile = useIsMobile();
   const [showWelcome, setShowWelcome] = useState(false);
+
+  // WebSocket for real-time notifications
+  useWebSocket();
 
   useEffect(() => {
     registerServiceWorker();

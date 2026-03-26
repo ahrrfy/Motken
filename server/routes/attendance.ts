@@ -5,6 +5,7 @@ import {
   attendance,
 } from "@shared/schema";
 import { logActivity, canTeacherAccessStudent } from "./shared";
+import { sendError } from "../error-handler";
 
   const enrichWithStudentNames = async (records: any[]) => {
     const studentIds = [...new Set(records.map(r => r.studentId))];
@@ -86,7 +87,7 @@ export function registerAttendanceRoutes(app: Express) {
       }
       res.json([]);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
+      sendError(res, err, "جلب سجلات الحضور");
     }
   });
 
@@ -111,7 +112,7 @@ export function registerAttendanceRoutes(app: Express) {
       await logActivity(currentUser, "تسجيل حضور", "attendance");
       res.status(201).json(record);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تسجيل الحضور" });
+      sendError(res, err, "تسجيل الحضور");
     }
   });
 
@@ -130,7 +131,7 @@ export function registerAttendanceRoutes(app: Express) {
       await logActivity(currentUser, "تعديل حضور", "attendance");
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تعديل الحضور" });
+      sendError(res, err, "تعديل الحضور");
     }
   });
 
@@ -149,7 +150,7 @@ export function registerAttendanceRoutes(app: Express) {
       await logActivity(currentUser, "حذف سجل حضور", "attendance");
       res.json({ message: "تم حذف سجل الحضور" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في حذف الحضور" });
+      sendError(res, err, "حذف الحضور");
     }
   });
 
@@ -214,7 +215,7 @@ export function registerAttendanceRoutes(app: Express) {
       await logActivity(currentUser, `تسجيل حضور جماعي: ${created.length} طالب`, "attendance");
       res.status(201).json(created);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ في تسجيل الحضور الجماعي" });
+      sendError(res, err, "تسجيل الحضور الجماعي");
     }
   });
 

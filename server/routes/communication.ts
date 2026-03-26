@@ -7,6 +7,7 @@ import {
   messageTemplates,
   communicationLogs,
 } from "@shared/schema";
+import { sendError } from "../error-handler";
 
 export function registerCommunicationRoutes(app: Express) {
   // ==================== MESSAGE TEMPLATES ====================
@@ -19,7 +20,7 @@ export function registerCommunicationRoutes(app: Express) {
       );
       res.json(filtered);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب قوالب الرسائل");
     }
   });
 
@@ -42,7 +43,7 @@ export function registerCommunicationRoutes(app: Express) {
       }).returning();
       res.status(201).json(template);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "إنشاء قالب رسالة");
     }
   });
 
@@ -61,7 +62,7 @@ export function registerCommunicationRoutes(app: Express) {
       await db.delete(messageTemplates).where(eq(messageTemplates.id, req.params.id));
       res.json({ message: "تم الحذف" });
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "حذف قالب الرسالة");
     }
   });
 
@@ -84,7 +85,7 @@ export function registerCommunicationRoutes(app: Express) {
       logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       res.json(logs);
     } catch (err: any) {
-      res.status(500).json({ message: "حدث خطأ" });
+      sendError(res, err, "جلب سجل التواصل");
     }
   });
 
@@ -115,7 +116,7 @@ export function registerCommunicationRoutes(app: Express) {
       }).returning();
       res.status(201).json(log);
     } catch (err: any) {
-      console.error(err); res.status(500).json({ message: "حدث خطأ داخلي" });
+      sendError(res, err, "تسجيل تواصل");
     }
   });
 

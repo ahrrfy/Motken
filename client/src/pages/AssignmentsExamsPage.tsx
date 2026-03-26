@@ -436,9 +436,10 @@ export default function AssignmentsExamsPage() {
     else setAssignSubmitting(true);
 
     try {
-      const requests: Promise<any>[] = [];
+      const requests: Promise<{ surah: string; studentId: string; response: Response }>[] = [];
       for (const entry of allEntries) {
         const surah = surahs.find(s => String(s.number) === entry.surah);
+        const surahName = surah?.name || "";
         for (const studentId of targetStudents) {
           requests.push(
             fetch("/api/assignments", {
@@ -449,22 +450,44 @@ export default function AssignmentsExamsPage() {
                 studentId,
                 teacherId: user?.id,
                 mosqueId: user?.mosqueId || null,
-                surahName: surah?.name || "",
+                surahName,
                 fromVerse: parseInt(entry.fromVerse) || 1,
                 toVerse: parseInt(entry.toVerse) || 10,
                 type: assignType,
                 scheduledDate: scheduledDate.toISOString(),
                 status: "pending",
               }),
-            }).then(res => res.ok ? res.json() : null)
+            }).then(response => ({ surah: surahName, studentId, response }))
           );
         }
       }
 
-      const results = await Promise.all(requests);
-      const newAssignments = results.filter(Boolean);
+      const settledResults = await Promise.allSettled(requests);
+      const newAssignments: any[] = [];
+      const failures: string[] = [];
+
+      for (const result of settledResults) {
+        if (result.status === "fulfilled") {
+          const { surah, studentId, response } = result.value;
+          if (response.ok) {
+            const data = await response.json();
+            newAssignments.push(data);
+          } else {
+            const errorData = await response.json().catch(() => ({ message: "خطأ غير معروف" }));
+            const studentName = students.find(s => s.id === studentId)?.name || studentId;
+            failures.push(`${surah} (${studentName}): ${errorData.message || "فشل"}`);
+          }
+        } else {
+          failures.push(`خطأ في الاتصال: ${result.reason?.message || "خطأ شبكة"}`);
+        }
+      }
+
       if (newAssignments.length > 0) {
         setAssignments(prev => [...newAssignments, ...prev]);
+      }
+
+      const totalRequests = requests.length;
+      if (failures.length === 0) {
         const surahCount = allEntries.length;
         const studentCount = targetStudents.length;
         toast({
@@ -476,6 +499,23 @@ export default function AssignmentsExamsPage() {
               : `تم إرسال إشعار للطالب ${students.find(s => s.id === assignSelectedStudent)?.name} بموعد التسميع`,
           className: "bg-green-50 border-green-200 text-green-800"
         });
+      } else if (newAssignments.length > 0) {
+        toast({
+          title: `تم إنشاء ${newAssignments.length} من ${totalRequests} واجب`,
+          description: `فشل: ${failures.slice(0, 3).join(" | ")}${failures.length > 3 ? ` و${failures.length - 3} أخرى` : ""}`,
+          variant: "destructive",
+          duration: 8000,
+        });
+      } else {
+        toast({
+          title: "فشل إنشاء الواجبات",
+          description: failures.slice(0, 3).join(" | "),
+          variant: "destructive",
+          duration: 8000,
+        });
+      }
+
+      if (newAssignments.length > 0) {
         setAssignSelectedStudent("");
         setAssignSelectedSurah("");
         setAssignFromVerse("");
@@ -1411,20 +1451,32 @@ export default function AssignmentsExamsPage() {
                         <div className="flex items-center gap-2">
                           {!isStudent && (() => {
                             const student = students.find(s => s.id === task.studentId);
-                            return student ? (
+                            return (
                               <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                {student.phone && (
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => window.open(getWhatsAppUrl(student.phone!), "_blank")} title="واتساب الطالب" data-testid={`button-whatsapp-student-${task.id}`}>
-                                    <MessageCircle className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
-                                {student.parentPhone && (
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => window.open(getWhatsAppUrl(student.parentPhone!), "_blank")} title="واتساب ولي الأمر" data-testid={`button-whatsapp-parent-${task.id}`}>
-                                    <PhoneCall className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn("h-7 w-7", student?.phone ? "text-green-600 hover:text-green-700 hover:bg-green-50" : "text-gray-300 cursor-not-allowed")}
+                                  onClick={() => student?.phone && window.open(getWhatsAppUrl(student.phone), "_blank")}
+                                  disabled={!student?.phone}
+                                  title={student?.phone ? "واتساب الطالب" : "لا يوجد رقم هاتف"}
+                                  data-testid={`button-whatsapp-student-${task.id}`}
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn("h-7 w-7", student?.parentPhone ? "text-blue-600 hover:text-blue-700 hover:bg-blue-50" : "text-gray-300 cursor-not-allowed")}
+                                  onClick={() => student?.parentPhone && window.open(getWhatsAppUrl(student.parentPhone), "_blank")}
+                                  disabled={!student?.parentPhone}
+                                  title={student?.parentPhone ? "واتساب ولي الأمر" : "لا يوجد رقم ولي أمر"}
+                                  data-testid={`button-whatsapp-parent-${task.id}`}
+                                >
+                                  <PhoneCall className="w-3.5 h-3.5" />
+                                </Button>
                               </div>
-                            ) : null;
+                            );
                           })()}
                         <div className="text-left space-y-1">
                           <div className="flex items-center gap-1 text-sm font-bold text-primary">
@@ -2005,6 +2057,23 @@ export default function AssignmentsExamsPage() {
                                     <span className="text-sm truncate" data-testid={`text-student-name-${es.studentId}`}>
                                       {getExamStudentName(es.studentId)}
                                     </span>
+                                    {(isTeacher || isSupervisor) && (() => {
+                                      const student = students.find(s => s.id === es.studentId);
+                                      return student ? (
+                                        <div className="flex items-center gap-0.5">
+                                          {student.phone && (
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={(e) => { e.stopPropagation(); window.open(getWhatsAppUrl(student.phone!), "_blank"); }} title="واتساب الطالب" data-testid={`button-exam-whatsapp-${es.studentId}`}>
+                                              <MessageCircle className="w-3 h-3" />
+                                            </Button>
+                                          )}
+                                          {student.parentPhone && (
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={(e) => { e.stopPropagation(); window.open(getWhatsAppUrl(student.parentPhone!), "_blank"); }} title="واتساب ولي الأمر" data-testid={`button-exam-whatsapp-parent-${es.studentId}`}>
+                                              <PhoneCall className="w-3 h-3" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      ) : null;
+                                    })()}
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     {es.status === "done" ? (
