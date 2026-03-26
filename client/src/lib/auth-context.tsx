@@ -31,8 +31,8 @@ interface AuthContextType {
   switchRole: () => void;
   refreshUser: () => Promise<void>;
   previewRole: PreviewRole;
-  startPreview: (role: PreviewRole) => void;
-  stopPreview: () => void;
+  startPreview: (role: PreviewRole) => Promise<void>;
+  stopPreview: () => Promise<void>;
   effectiveRole: UserRole | undefined;
 }
 
@@ -109,14 +109,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const startPreview = (role: PreviewRole) => {
-    setPreviewRole(role);
-    setLocation("/dashboard");
+  const startPreview = async (role: PreviewRole) => {
+    if (!role) return;
+    try {
+      const res = await fetch("/api/auth/preview-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role }),
+      });
+      if (res.ok) {
+        setPreviewRole(role);
+        // Reload all data with new role
+        window.location.reload();
+      }
+    } catch {}
   };
 
-  const stopPreview = () => {
-    setPreviewRole(null);
-    setLocation("/dashboard");
+  const stopPreview = async () => {
+    try {
+      await fetch("/api/auth/stop-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      setPreviewRole(null);
+      window.location.reload();
+    } catch {}
   };
 
   const effectiveRole = previewRole || user?.role;

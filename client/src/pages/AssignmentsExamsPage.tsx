@@ -328,14 +328,22 @@ export default function AssignmentsExamsPage() {
 
   useEffect(() => {
     if (user?.role === "student" && assignments.length > 0) {
-      assignments.filter(a => !a.seenByStudent).forEach(async (a) => {
-        await fetch(`/api/assignments/${a.id}/seen`, {
-          method: "PATCH",
-          credentials: "include",
+      const unseen = assignments.filter(a => !a.seenByStudent);
+      if (unseen.length > 0) {
+        Promise.all(unseen.map(a =>
+          fetch(`/api/assignments/${a.id}/seen`, { method: "PATCH", credentials: "include" })
+            .then(r => r.ok ? a.id : null)
+        )).then(seenIds => {
+          const ids = seenIds.filter(Boolean) as string[];
+          if (ids.length > 0) {
+            setAssignments(prev => prev.map(a =>
+              ids.includes(a.id) ? { ...a, seenByStudent: true, seenAt: new Date().toISOString() } : a
+            ));
+          }
         });
-      });
+      }
     }
-  }, [assignments, user]);
+  }, [assignments.length, user]);
 
   const [isSuggesting, setIsSuggesting] = useState(false);
 

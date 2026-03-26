@@ -195,6 +195,47 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
+  // Preview role - admin only
+  app.post("/api/auth/preview-role", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      // Only real admins can preview (check originalRole if already in preview)
+      const realRole = (req.session as any).originalRole || currentUser.role;
+      if (realRole !== "admin") {
+        return res.status(403).json({ message: "غير مصرح — المعاينة متاحة للمدير فقط" });
+      }
+      const { role } = req.body;
+      if (!role || !["student", "teacher", "supervisor"].includes(role)) {
+        return res.status(400).json({ message: "دور غير صالح للمعاينة" });
+      }
+      (req.session as any).previewRole = role;
+      (req.session as any).originalRole = realRole;
+      req.session.save((err) => {
+        if (err) return res.status(500).json({ message: "خطأ في حفظ الجلسة" });
+        res.json({ previewRole: role, message: `تم تفعيل معاينة دور ${role === "student" ? "الطالب" : role === "teacher" ? "المعلم" : "المشرف"}` });
+      });
+    } catch (err: any) {
+      sendError(res, err, "تفعيل معاينة الدور");
+    }
+  });
+
+  app.post("/api/auth/stop-preview", requireAuth, async (req, res) => {
+    try {
+      const originalRole = (req.session as any).originalRole;
+      if (!originalRole) {
+        return res.json({ previewRole: null, message: "لا توجد معاينة نشطة" });
+      }
+      delete (req.session as any).previewRole;
+      delete (req.session as any).originalRole;
+      req.session.save((err) => {
+        if (err) return res.status(500).json({ message: "خطأ في حفظ الجلسة" });
+        res.json({ previewRole: null, message: "تم إيقاف المعاينة" });
+      });
+    } catch (err: any) {
+      sendError(res, err, "إيقاف معاينة الدور");
+    }
+  });
+
   app.post("/api/auth/logout", (req, res, next) => {
     const sid = req.sessionID;
     req.logout((err) => {
