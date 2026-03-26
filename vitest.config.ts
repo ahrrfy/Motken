@@ -12,9 +12,8 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: [
-      "server/__tests__/**/*.test.ts",
-      "client/__tests__/**/*.test.ts",
-      "client/__tests__/**/*.test.tsx",
+      "**/*.test.ts",
+      "**/*.test.tsx",
     ],
     exclude: ["node_modules", "dist"],
     coverage: {

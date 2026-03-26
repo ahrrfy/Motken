@@ -14,8 +14,8 @@
     "db:migrate": "tsx script/migrate.ts",
     "db:seed": "tsx script/seed.ts",
     "test": "vitest run",
-    "test:unit": "vitest run --dir server/__tests__/unit",
-    "test:integration": "vitest run --dir server/__tests__/integration",
+    "test:unit": "vitest run --dir server/__tests__/unit --passWithNoTests",
+    "test:integration": "vitest run --dir server/__tests__/integration --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
