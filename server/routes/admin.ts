@@ -496,162 +496,79 @@ export function registerAdminRoutes(app: Express) {
       }
 
       const { pool } = await import("../db");
+      const { hashPassword } = await import("../auth");
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
 
-        await db.delete(competitionParticipants);
-        await db.delete(competitions);
-        await db.delete(parentReports);
-        await db.delete(schedules);
-        await db.delete(badges);
-        await db.delete(points);
-        await db.delete(messages);
-        await db.delete(attendance);
-        await db.delete(bannedDevices);
-        await db.delete(certificates);
-        await db.delete(courseStudents);
-        await db.delete(courseTeachers);
-        await db.delete(courses);
-        await db.delete(examStudents);
-        await db.delete(exams);
-        await db.delete(ratings);
-        await db.delete(assignments);
-        await db.delete(notifications);
-        await db.delete(activityLogs);
-        await db.delete(featureFlags);
-        await db.delete(users);
-        await db.delete(mosques);
+        // حذف البيانات بالترتيب الصحيح (عكس العلاقات) — عبر client وليس db
+        const deleteOrder = [
+          "competition_participants", "competitions", "parent_reports", "schedules",
+          "badges", "point_redemptions", "points", "messages", "attendance", "banned_devices",
+          "certificates", "course_students", "course_teachers", "courses",
+          "exam_students", "exams", "ratings", "assignment_audio", "assignments",
+          "notifications", "activity_logs", "feature_flags",
+          "quran_progress", "family_links", "graduates", "graduate_followups",
+          "student_transfers", "emergency_substitutions", "incident_records",
+          "feedback", "communication_logs", "message_templates",
+          "mosque_messages", "mosque_history", "mosque_registrations",
+          "users", "mosques"
+        ];
+        for (const table of deleteOrder) {
+          await client.query(`DELETE FROM "${table}" WHERE TRUE`).catch(() => {});
+        }
 
+        // كلمة مرور افتراضية للمستخدمين بدون كلمة مرور
+        const defaultPasswordHash = await hashPassword("123456");
+
+        // إدخال المساجد
         if (data.mosques?.length) {
           for (const row of data.mosques) {
-            await db.insert(mosques).values(row);
+            const cols = Object.keys(row).filter(k => row[k] !== undefined);
+            const vals = cols.map(k => row[k]);
+            const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
+            const colNames = cols.map(k => `"${k.replace(/([A-Z])/g, '_$1').toLowerCase()}"`).join(", ");
+            await client.query(`INSERT INTO mosques (${colNames}) VALUES (${placeholders}) ON CONFLICT (id) DO NOTHING`, vals);
           }
         }
 
+        // إدخال المستخدمين مع معالجة password
         if (data.users?.length) {
           for (const row of data.users) {
-            await db.insert(users).values(row);
+            if (!row.password) row.password = defaultPasswordHash;
+            const cols = Object.keys(row).filter(k => row[k] !== undefined);
+            const vals = cols.map(k => row[k]);
+            const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
+            const colNames = cols.map(k => `"${k.replace(/([A-Z])/g, '_$1').toLowerCase()}"`).join(", ");
+            await client.query(`INSERT INTO users (${colNames}) VALUES (${placeholders}) ON CONFLICT (id) DO NOTHING`, vals);
           }
         }
 
-        if (data.assignments?.length) {
-          for (const row of data.assignments) {
-            await db.insert(assignments).values(row);
-          }
-        }
+        // إدخال بقية الجداول
+        const tableMap: Record<string, string> = {
+          assignments: "assignments", attendance: "attendance",
+          courses: "courses", courseStudents: "course_students", courseTeachers: "course_teachers",
+          certificates: "certificates", notifications: "notifications", messages: "messages",
+          activityLogs: "activity_logs", ratings: "ratings", points: "points", badges: "badges",
+          competitions: "competitions", competitionParticipants: "competition_participants",
+          schedules: "schedules", parentReports: "parent_reports",
+          exams: "exams", examStudents: "exam_students",
+          featureFlags: "feature_flags", bannedDevices: "banned_devices",
+        };
 
-        if (data.attendance?.length) {
-          for (const row of data.attendance) {
-            await db.insert(attendance).values(row);
-          }
-        }
-
-        if (data.courses?.length) {
-          for (const row of data.courses) {
-            await db.insert(courses).values(row);
-          }
-        }
-
-        if (data.courseStudents?.length) {
-          for (const row of data.courseStudents) {
-            await db.insert(courseStudents).values(row);
-          }
-        }
-
-        if (data.courseTeachers?.length) {
-          for (const row of data.courseTeachers) {
-            await db.insert(courseTeachers).values(row);
-          }
-        }
-
-        if (data.certificates?.length) {
-          for (const row of data.certificates) {
-            await db.insert(certificates).values(row);
-          }
-        }
-
-        if (data.notifications?.length) {
-          for (const row of data.notifications) {
-            await db.insert(notifications).values(row);
-          }
-        }
-
-        if (data.messages?.length) {
-          for (const row of data.messages) {
-            await db.insert(messages).values(row);
-          }
-        }
-
-        if (data.activityLogs?.length) {
-          for (const row of data.activityLogs) {
-            await db.insert(activityLogs).values(row);
-          }
-        }
-
-        if (data.ratings?.length) {
-          for (const row of data.ratings) {
-            await db.insert(ratings).values(row);
-          }
-        }
-
-        if (data.points?.length) {
-          for (const row of data.points) {
-            await db.insert(points).values(row);
-          }
-        }
-
-        if (data.badges?.length) {
-          for (const row of data.badges) {
-            await db.insert(badges).values(row);
-          }
-        }
-
-        if (data.competitions?.length) {
-          for (const row of data.competitions) {
-            await db.insert(competitions).values(row);
-          }
-        }
-
-        if (data.competitionParticipants?.length) {
-          for (const row of data.competitionParticipants) {
-            await db.insert(competitionParticipants).values(row);
-          }
-        }
-
-        if (data.schedules?.length) {
-          for (const row of data.schedules) {
-            await db.insert(schedules).values(row);
-          }
-        }
-
-        if (data.parentReports?.length) {
-          for (const row of data.parentReports) {
-            await db.insert(parentReports).values(row);
-          }
-        }
-
-        if (data.exams?.length) {
-          for (const row of data.exams) {
-            await db.insert(exams).values(row);
-          }
-        }
-
-        if (data.examStudents?.length) {
-          for (const row of data.examStudents) {
-            await db.insert(examStudents).values(row);
-          }
-        }
-
-        if (data.featureFlags?.length) {
-          for (const row of data.featureFlags) {
-            await db.insert(featureFlags).values(row);
-          }
-        }
-
-        if (data.bannedDevices?.length) {
-          for (const row of data.bannedDevices) {
-            await db.insert(bannedDevices).values(row);
+        for (const [dataKey, tableName] of Object.entries(tableMap)) {
+          if (data[dataKey]?.length) {
+            for (const row of data[dataKey]) {
+              try {
+                const cols = Object.keys(row).filter(k => row[k] !== undefined);
+                const vals = cols.map(k => row[k]);
+                const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
+                const colNames = cols.map(k => `"${k.replace(/([A-Z])/g, '_$1').toLowerCase()}"`).join(", ");
+                await client.query(`INSERT INTO "${tableName}" (${colNames}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`, vals);
+              } catch (insertErr: any) {
+                console.warn(`[Restore] تخطي سجل في ${tableName}: ${insertErr.message}`);
+              }
+            }
           }
         }
 
