@@ -1,0 +1,86 @@
+cat > client/src/mobile/MobileSidebar.tsx << 'EOF'
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard, BookOpen, ClipboardList, Bell, Users, CalendarCheck,
+  MessageSquare, Star, BarChart3, GraduationCap, Trophy, Settings, LogOut,
+  Award, Library, Brain, Sparkles, BookOpenCheck, Gift, Clock, Shield,
+  AlertTriangle, HeartHandshake, Pen, Share2, QrCode, Eye, UserCircle,
+  MapPin, Lightbulb, X, Building2, UserCog, ArrowUpDown
+} from "lucide-react";
+
+interface MobileSidebarProps { open: boolean; onClose: () => void; }
+
+const allNavItems = [
+  { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin","teacher","student","supervisor"] },
+  { href: "/daily", label: "واجبات اليوم", icon: CalendarCheck, roles: ["admin","teacher","supervisor"] },
+  { href: "/students", label: "الطلاب", icon: Users, roles: ["admin","teacher","supervisor"], group: "people" },
+  { href: "/teachers", label: "الأساتذة", icon: GraduationCap, roles: ["admin","supervisor"], group: "people" },
+  { href: "/supervisors", label: "المشرفون", icon: UserCircle, roles: ["admin"], group: "people" },
+  { href: "/users", label: "جميع المستخدمين", icon: Users, roles: ["admin"], group: "people" },
+  { href: "/assignments", label: "الواجبات والامتحانات", icon: ClipboardList, roles: ["admin","teacher","supervisor","student"], group: "edu" },
+  { href: "/quran", label: "المصحف والحفظ", icon: BookOpen, roles: ["admin","teacher","student","supervisor"], group: "edu" },
+  { href: "/courses", label: "الدورات والشهادات", icon: Award, roles: ["admin","teacher","supervisor","student"], group: "edu" },
+  { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin","teacher","student","supervisor"], group: "edu" },
+  { href: "/knowledge-base", label: "موسوعة التجويد", icon: Brain, roles: ["admin","teacher","student","supervisor"], group: "edu" },
+  { href: "/educational-content", label: "المحتوى التعليمي", icon: Sparkles, roles: ["admin","teacher","student","supervisor"], group: "edu" },
+  { href: "/graduation", label: "التخرج والمتابعة", icon: BookOpenCheck, roles: ["admin","supervisor","teacher"], group: "edu" },
+  { href: "/attendance", label: "الحضور والغياب", icon: CalendarCheck, roles: ["admin","teacher","supervisor"], group: "track" },
+  { href: "/points-rewards", label: "النقاط والمكافآت", icon: Gift, roles: ["admin","teacher","student","supervisor"], group: "track" },
+  { href: "/ratings", label: "التقييمات والأوسمة", icon: Star, roles: ["admin","teacher","supervisor","student"], group: "track" },
+  { href: "/schedules", label: "جدول الحلقات", icon: Clock, roles: ["admin","teacher","supervisor"], group: "track" },
+  { href: "/competitions", label: "المسابقات القرآنية", icon: Trophy, roles: ["admin","teacher","supervisor","student"], group: "track" },
+  { href: "/messages", label: "المحادثات", icon: MessageSquare, roles: ["admin","teacher","student","supervisor"], group: "comm" },
+  { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin","teacher","student","supervisor"], group: "comm" },
+  { href: "/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, roles: ["admin","supervisor","teacher"], group: "comm" },
+  { href: "/parent-portal", label: "بوابة ولي الأمر", icon: UserCog, roles: ["admin","teacher","supervisor"], group: "comm" },
+  { href: "/family-system", label: "نظام الأسرة", icon: HeartHandshake, roles: ["admin","supervisor","teacher"], group: "comm" },
+  { href: "/whiteboard", label: "السبورة التفاعلية", icon: Pen, roles: ["admin","supervisor","teacher"], group: "comm" },
+  { href: "/spread", label: "انشر النظام", icon: Share2, roles: ["admin","supervisor","teacher"], group: "comm" },
+  { href: "/mosques", label: "الجوامع والمراكز", icon: Building2, roles: ["admin","supervisor"], group: "admin" },
+  { href: "/floor-plan", label: "المخطط البصري", icon: MapPin, roles: ["admin","supervisor","teacher"], group: "admin" },
+  { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3, roles: ["admin","supervisor"], group: "admin" },
+  { href: "/id-cards", label: "الهويات ومسح QR", icon: QrCode, roles: ["admin"], group: "admin" },
+  { href: "/monitoring", label: "المراقبة والأمان", icon: Eye, roles: ["admin"], group: "admin" },
+  { href: "/teacher-activities", label: "أنشطة الأساتذة", icon: ClipboardList, roles: ["supervisor"], group: "admin" },
+  { href: "/feature-control", label: "التحكم بالمميزات", icon: Shield, roles: ["admin"], group: "admin" },
+  { href: "/crisis-management", label: "إدارة الأزمات", icon: AlertTriangle, roles: ["admin","supervisor"], group: "admin" },
+  { href: "/institutional", label: "التكامل المؤسسي", icon: ArrowUpDown, roles: ["admin","supervisor"], group: "admin" },
+  { href: "/maintenance", label: "الملاحظات والتحسين", icon: Lightbulb, roles: ["admin","supervisor","teacher","student"], group: "admin" },
+  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin","teacher","student","supervisor"], group: "admin" },
+];
+
+const groupLabels: Record<string,string> = {
+  people:"الأفراد", edu:"التعليم والحفظ", track:"المتابعة", comm:"التواصل", admin:"الإدارة"
+};
+
+export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
+  const { user, effectiveRole, logout } = useAuth();
+  const [location] = useLocation();
+  const role = effectiveRole || user?.role || "student";
+
+  const roleColor = {
+    admin: "text-emerald-400 bg-emerald-500/20", supervisor: "text-purple-400 bg-purple-500/20",
+    teacher: "text-teal-400 bg-teal-500/20", student: "text-blue-400 bg-blue-500/20",
+  }[role] || "text-emerald-400 bg-emerald-500/20";
+
+  const roleLabel = { admin:"مدير النظام", supervisor:"مشرف", teacher:"أستاذ", student:"طالب" }[role] || "";
+  const visibleItems = allNavItems.filter(i => i.roles.includes(role));
+  const topItems = visibleItems.filter(i => !i.group);
+  const grouped = ["people","edu","track","comm","admin"].map(g => ({
+    group: g, label: groupLabels[g], items: visibleItems.filter(i => i.group === g),
+  })).filter(g => g.items.length > 0);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex" dir="rtl">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col">
+        <div className="sticky top-0 bg-card/95 backdrop-blur z-10 flex items-center justify-between p-4 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="متقن" className="w-9 h-9 rounded-xl" />
+            <div>
+              <p className="font-bold text-sm">نظام متقن</p>
+              <p className="text-xs text-

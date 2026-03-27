@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mutqin-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env", "dist/index.cjs"],
+      "port": 5002
+    }
+  ]
+}

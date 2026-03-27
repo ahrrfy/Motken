@@ -1,0 +1,94 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /d/motken/mshrwaa-mtqn/server/routes/*.ts)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(PORT=5001 NODE_ENV=development npx tsx server/index.ts)",
+      "Bash(npm install:*)",
+      "Bash(where pg_isready)",
+      "Bash(pg_isready)",
+      "Read(//c/Program Files/PostgreSQL/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(\"C:/Program Files/PostgreSQL/18/bin/pg_isready\" -h localhost -p 5432)",
+      "Bash(\"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -c \"SELECT 1\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -c \"CREATE DATABASE mutqin;\")",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/mutqin\" SESSION_SECRET=\"mutqin-dev-secret\" PORT=5001 NODE_ENV=development npx tsx server/index.ts)",
+      "Bash(node -e \":*)",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \":*)",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SET client_encoding TO ''UTF8''; INSERT INTO mosques \\(name, province, city, status, is_active\\) VALUES \\(E''\\\\u0645\\\\u0633\\\\u062c\\\\u062f \\\\u0627\\\\u0644\\\\u062a\\\\u0642\\\\u0648\\\\u0649'', E''\\\\u0627\\\\u0644\\\\u0631\\\\u064a\\\\u0627\\\\u0636'', E''\\\\u0627\\\\u0644\\\\u0631\\\\u064a\\\\u0627\\\\u0636'', ''active'', true\\) RETURNING id;\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SET client_encoding TO ''UTF8''; INSERT INTO users \\(username, password, name, role, mosque_id, is_active, gender, accepted_privacy_policy\\) VALUES \\(''admin'', ''75d0e3cefef5fa974a8994e9e0f0dd51407192f38992ec0693aaa0cf445bf4deef51c23980e691bc076b48bbfd082a30e282e9caa29897b337b421a7c3d81451.aad8ca499c9d47204bf491a95ff926e9'', ''Admin'', ''admin'', ''3f561987-8411-42dc-a4f4-36d99975ca43'', true, ''male'', true\\) RETURNING id;\")",
+      "Bash(node --help)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(find D:/motken/mshrwaa-mtqn -name *.local.md -o -name .hookify*)",
+      "Bash(find D:/motken/mshrwaa-mtqn/.claude -name hookify* -o -name *.local.md)",
+      "Bash(npm run:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/mutqin\" npx drizzle-kit push)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/mutqin\" npx drizzle-kit push --force)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 1720 //F)",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT tablename FROM pg_tables WHERE tablename = ''session'';\")",
+      "Bash(taskkill //PID 14192 //F)",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"UPDATE users SET password = ''3fe31e5ad8e6a0995b760c130fadeb3dfdae6689ef627beba95c044399effa7c1bb556104350a6f7b0f994b3815190411d0363e2ca94d8e6f522bb135fde8e64.c8790ef4906158d2b06c8807dff507e5'' WHERE username = ''ahrrfy'';\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT count\\(*\\) FROM users;\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT count\\(*\\) as mosques FROM mosques; SELECT count\\(*\\) as users FROM users;\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT username, role, substring\\(password from 1 for 10\\) as pw FROM users;\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT count\\(*\\) as users FROM users; SELECT count\\(*\\) as mosques FROM mosques; SELECT count\\(*\\) as assignments FROM assignments;\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT count\\(*\\) FROM users; SELECT id, username, role FROM users LIMIT 3;\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT column_name FROM information_schema.columns WHERE table_name = ''users'' ORDER BY ordinal_position;\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT id, mosque_id, is_active, role FROM users WHERE username = ''ahrrfy'';\")",
+      "Bash(PGPASSWORD=postgres \"C:/Program Files/PostgreSQL/18/bin/psql\" -h localhost -p 5432 -U postgres -d mutqin -c \"SELECT id, mosque_id, teacher_id, is_active, parent_phone FROM users LIMIT 3;\")",
+      "Bash(find /d/motken/mshrwaa-mtqn -name *excel* -o -name *pdf* -o -name *export*)",
+      "Bash(find /d/motken/mshrwaa-mtqn/client -name *pdf* -o -name *date*picker*)",
+      "Bash(npx vite:*)",
+      "Bash(curl -sL \"https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHpUrtLMA7w.ttf\" -o /tmp/amiri-regular.ttf)",
+      "Read(//tmp/**)",
+      "Bash(curl -sL \"https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf\" -o /tmp/amiri-regular.ttf)",
+      "Bash(curl -sL \"https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Bold.ttf\" -o /tmp/amiri-bold.ttf)",
+      "Bash(python3 -c \":*)",
+      "Bash(cp /tmp/amiri-regular.ttf \"D:/motken/mshrwaa-mtqn/amiri-regular.ttf\")",
+      "Bash(cp /tmp/amiri-bold.ttf \"D:/motken/mshrwaa-mtqn/amiri-bold.ttf\")",
+      "Bash(npm ls:*)",
+      "Bash(curl -sL \"https://github.com/google/fonts/raw/main/ofl/notonaskharabic/NotoNaskhArabic%5Bwght%5D.ttf\" -o \"D:/motken/mshrwaa-mtqn/noto-naskh.ttf\")",
+      "Bash(rm noto-naskh.ttf)",
+      "Bash(\"D:/motken/mshrwaa-mtqn/client/src/lib/arabic-font.ts\")",
+      "Bash(curl -sL \"https://github.com/google/fonts/raw/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf\" -o \"D:/motken/mshrwaa-mtqn/cairo-font.ttf\")",
+      "Bash(rm cairo-font.ttf)",
+      "Bash(wc -l /d/motken/mshrwaa-mtqn/client/src/lib/*.ts /d/motken/mshrwaa-mtqn/client/src/lib/*.tsx)",
+      "Bash(xargs grep:*)",
+      "Bash(find D:motkenmshrwaa-mtqnserver -type f -name *.ts)",
+      "Bash(grep -n \"onSubmit.*ImportWizard\\\\|onSubmit.*ExportDialog\\\\|onSubmit.*BookUploadDialog\" D:motkenmshrwaa-mtqnclientsrcpages/*.tsx)",
+      "Bash(bash .claude/scripts/verify-fix.sh verify \"client/src/lib/pdf-generator.ts\" \"toPng\" \"PDF generator uses html-to-image\")",
+      "Bash(bash .claude/scripts/verify-fix.sh verify \"client/src/components/ImportWizard.tsx\" \"ImportWizard\")",
+      "Bash(bash .claude/scripts/verify-fix.sh verify \"client/src/components/ExportDialog.tsx\" \"ExportDialog\")",
+      "Bash(bash .claude/scripts/verify-fix.sh verify \"client/src/components/BookUploadDialog.tsx\" \"BookUploadDialog\")",
+      "Bash(bash .claude/scripts/verify-fix.sh verify \"client/src/components/HijriDatePicker.tsx\" \"HijriDatePicker\")",
+      "Bash(bash .claude/scripts/verify-fix.sh build)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/verify-fix.sh build 2>&1 | tail -5"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Verification Required] Code was edited while a preview server is running. Follow <verification_workflow> to verify the changes.'"
+          }
+        ]
+      }
+    ]
+  }
+}

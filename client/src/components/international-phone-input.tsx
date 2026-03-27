@@ -1,0 +1,177 @@
+import { useState, useEffect } from "react";
+import { parsePhoneNumber, isValidPhoneNumber } from "libphonenumber-js";
+import { Check, ChevronDown, Search } from "lucide-react";
+import {
+  Popover, PopoverContent, PopoverTrigger
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+const COUNTRIES = [
+  { code: "IQ", dial: "+964", name: "العراق", flag: "🇮🇶" },
+  { code: "SA", dial: "+966", name: "السعودية", flag: "🇸🇦" },
+  { code: "SY", dial: "+963", name: "سوريا", flag: "🇸🇾" },
+  { code: "JO", dial: "+962", name: "الأردن", flag: "🇯🇴" },
+  { code: "KW", dial: "+965", name: "الكويت", flag: "🇰🇼" },
+  { code: "AE", dial: "+971", name: "الإمارات", flag: "🇦🇪" },
+  { code: "BH", dial: "+973", name: "البحرين", flag: "🇧🇭" },
+  { code: "QA", dial: "+974", name: "قطر", flag: "🇶🇦" },
+  { code: "OM", dial: "+968", name: "عُمان", flag: "🇴🇲" },
+  { code: "YE", dial: "+967", name: "اليمن", flag: "🇾🇪" },
+  { code: "EG", dial: "+20",  name: "مصر", flag: "🇪🇬" },
+  { code: "LB", dial: "+961", name: "لبنان", flag: "🇱🇧" },
+  { code: "LY", dial: "+218", name: "ليبيا", flag: "🇱🇾" },
+  { code: "TN", dial: "+216", name: "تونس", flag: "🇹🇳" },
+  { code: "DZ", dial: "+213", name: "الجزائر", flag: "🇩🇿" },
+  { code: "MA", dial: "+212", name: "المغرب", flag: "🇲🇦" },
+  { code: "SD", dial: "+249", name: "السودان", flag: "🇸🇩" },
+  { code: "PS", dial: "+970", name: "فلسطين", flag: "🇵🇸" },
+  { code: "TR", dial: "+90",  name: "تركيا", flag: "🇹🇷" },
+  { code: "IR", dial: "+98",  name: "إيران", flag: "🇮🇷" },
+  { code: "PK", dial: "+92",  name: "باكستان", flag: "🇵🇰" },
+  { code: "IN", dial: "+91",  name: "الهند", flag: "🇮🇳" },
+  { code: "ID", dial: "+62",  name: "إندونيسيا", flag: "🇮🇩" },
+  { code: "MY", dial: "+60",  name: "ماليزيا", flag: "🇲🇾" },
+  { code: "DE", dial: "+49",  name: "ألمانيا", flag: "🇩🇪" },
+  { code: "GB", dial: "+44",  name: "المملكة المتحدة", flag: "🇬🇧" },
+  { code: "US", dial: "+1",   name: "الولايات المتحدة", flag: "🇺🇸" },
+  { code: "CA", dial: "+1",   name: "كندا", flag: "🇨🇦" },
+  { code: "AU", dial: "+61",  name: "أستراليا", flag: "🇦🇺" },
+  { code: "SE", dial: "+46",  name: "السويد", flag: "🇸🇪" },
+  { code: "NL", dial: "+31",  name: "هولندا", flag: "🇳🇱" },
+  { code: "FR", dial: "+33",  name: "فرنسا", flag: "🇫🇷" },
+];
+
+interface Props {
+  value?: string;
+  dialCode?: string;
+  onChange?: (full: string, dialCode: string, national: string, countryCode: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+}
+
+export function InternationalPhoneInput({
+  value, dialCode: initialDial, onChange, placeholder = "رقم الهاتف", disabled, error
+}: Props) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(
+    COUNTRIES.find(c => c.dial === (initialDial ?? "+964")) ?? COUNTRIES[0]
+  );
+  const [number, setNumber] = useState(() => {
+    if (value && initialDial) return value.replace(initialDial, "").trim();
+    return "";
+  });
+
+  const [valid, setValid] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!number) { setValid(null); return; }
+    try {
+      const full = `${selected.dial}${number}`;
+      const ok = isValidPhoneNumber(full, selected.code as any);
+      setValid(ok);
+      if (onChange) {
+        onChange(full, selected.dial, number, selected.code);
+      }
+    } catch { setValid(false); }
+  }, [number, selected]);
+
+  const filtered = COUNTRIES.filter(c =>
+    c.name.includes(search) ||
+    c.dial.includes(search) ||
+    c.code.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-1" dir="rtl">
+      <div className={cn(
+        "flex rounded-lg border overflow-hidden transition-colors",
+        error ? "border-red-400" : valid === true ? "border-green-400" : "border-gray-200",
+        "focus-within:ring-2 focus-within:ring-green-400/30"
+      )}>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={disabled}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-none border-l h-10 bg-gray-50 hover:bg-gray-100 min-w-[100px]"
+              data-testid="button-country-selector"
+            >
+              <span className="text-lg leading-none">{selected.flag}</span>
+              <span className="text-sm font-mono font-semibold text-gray-700" dir="ltr">{selected.dial}</span>
+              <ChevronDown className="h-3 w-3 text-gray-400" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-2" align="start" dir="rtl">
+            <div className="flex items-center border rounded-md px-2 mb-2">
+              <Search className="h-4 w-4 text-gray-400 ml-1" />
+              <input
+                className="flex-1 py-1.5 text-sm outline-none bg-transparent"
+                placeholder="ابحث عن دولة..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+                data-testid="input-country-search"
+              />
+            </div>
+            <div className="max-h-52 overflow-y-auto space-y-0.5">
+              {filtered.map(c => (
+                <button
+                  key={`${c.code}-${c.dial}`}
+                  type="button"
+                  onClick={() => { setSelected(c); setOpen(false); setSearch(""); }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-gray-50 transition-colors text-right",
+                    selected.code === c.code && selected.dial === c.dial && "bg-green-50"
+                  )}
+                  data-testid={`button-country-${c.code}`}
+                >
+                  <span className="text-base">{c.flag}</span>
+                  <span className="flex-1">{c.name}</span>
+                  <span className="font-mono text-gray-400 text-xs" dir="ltr">{c.dial}</span>
+                  {selected.code === c.code && selected.dial === c.dial && <Check className="h-3.5 w-3.5 text-green-600" />}
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <div className="text-center text-gray-400 py-4 text-sm">لا توجد نتائج</div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Input
+          type="tel"
+          value={number}
+          onChange={e => setNumber(e.target.value.replace(/[^\d\s\-]/g, ""))}
+          placeholder={placeholder}
+          disabled={disabled}
+          dir="ltr"
+          className="border-0 rounded-none flex-1 focus-visible:ring-0 h-10 text-left font-mono"
+          data-testid="input-phone-number"
+        />
+
+        {number && (
+          <div className="flex items-center px-3">
+            {valid === true && <Check className="h-4 w-4 text-green-500" />}
+            {valid === false && <span className="text-red-400 text-xs">✗</span>}
+          </div>
+        )}
+      </div>
+
+      {number && (
+        <div className="text-xs text-gray-400 flex items-center gap-1" dir="ltr">
+          <span>الرقم الكامل:</span>
+          <span className="font-mono font-medium text-gray-600">{selected.dial} {number}</span>
+          {valid === false && <span className="text-red-400 mr-2">— رقم غير صالح</span>}
+          {valid === true && <span className="text-green-500 mr-2">✓ صالح</span>}
+        </div>
+      )}
+
+      {error && <div className="text-xs text-red-500">{error}</div>}
+    </div>
+  );
+}

@@ -1,0 +1,73 @@
+// ── لوحة تحكم المسجد ──────────────────────────────────
+app.get("/api/mosques/:id", requireAuth, async (req, res) => {
+  const mosque = await db.query.mosques.findFirst({
+    where: eq(schema.mosques.id, parseInt(req.params.id)),
+  });
+  if (!mosque) return res.status(404).json({ message: "غير موجود" });
+  res.json(mosque);
+});
+
+app.get("/api/mosques/:id/stats", requireAuth, async (req, res) => {
+  const mosqueId = parseInt(req.params.id);
+  const [studentsCount, teachersCount, supervisorsCount] = await Promise.all([
+    db.select({ count: count() }).from(schema.students).where(eq(schema.students.mosqueId, mosqueId)),
+    db.select({ count: count() }).from(schema.teachers).where(eq(schema.teachers.mosqueId, mosqueId)),
+    db.select({ count: count() }).from(schema.supervisors).where(eq(schema.supervisors.mosqueId, mosqueId)),
+  ]);
+  res.json({
+    studentsCount: studentsCount[0]?.count ?? 0,
+    teachersCount: teachersCount[0]?.count ?? 0,
+    supervisorsCount: supervisorsCount[0]?.count ?? 0,
+    activeCirclesCount: studentsCount[0]?.count ?? 0, // adjust per schema
+  });
+});
+
+app.get("/api/mosques/:id/students", requireAuth, async (req, res) => {
+  const students = await db.query.students.findMany({
+    where: eq(schema.students.mosqueId, parseInt(req.params.id)),
+    orderBy: desc(schema.students.createdAt),
+  });
+  res.json(students);
+});
+
+app.get("/api/mosques/:id/teachers", requireAuth, async (req, res) => {
+  const teachers = await db.query.teachers.findMany({
+    where: eq(schema.teachers.mosqueId, parseInt(req.params.id)),
+  });
+  res.json(teachers);
+});
+
+app.patch("/api/mosques/:id/status", requireAuth, async (req, res) => {
+  const { status } = req.body;
+  const validStatuses = ["active", "paused", "rejected", "pending"];
+  if (!validStatuses.includes(status)) return res.status(400).json({ message: "حالة غير صالحة" });
+  
+  const mosque = await db.query.mosques.findFirst({
+    where: eq(schema.mosques.id, parseInt(req.params.id)),
+  });
+  if (!mosque) return res.status(404).json({ message: "غير موجود" });
+
+  await db.update(schema.mosques)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(schema.mosques.id, parseInt(req.params.id)));
+
+  // سجّل الحدث
+  await db.insert(schema.mosqueHistory).values({
+    mosqueId: parseInt(req.params.id),
+    type: "status_change",
+    description: `تم تغيير الحالة إلى: ${status}`,
+    byUser: (req.user as any)?.username ?? "النظام",
+    createdAt: new Date(),
+  });
+
+  res.json({ success: true });
+});
+
+app.get("/api/mosques/:id/history", requireAuth, async (req, res) => {
+  const history = await db.query.mosqueHistory.findMany({
+    where: eq(schema.mosqueHistory.mosqueId, parseInt(req.params.id)),
+    orderBy: desc(schema.mosqueHistory.createdAt),
+    limit: 50,
+  });
+  res.json(history);
+});
