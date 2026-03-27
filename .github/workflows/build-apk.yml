@@ -1,0 +1,69 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'capacitor.config.ts'
+
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build frontend
+        run: npx vite build --mode production
+        working-directory: .
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Decode Keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/motken-release.keystore
+
+      - name: Build Release APK
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Get version
+        id: version
+        run: echo "date=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: motken-${{ steps.version.outputs.date }}
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.date }}
+          name: "مُتْقِن - ${{ steps.version.outputs.date }}"
+          files: android/app/build/outputs/apk/release/app-release.apk
+          generate_release_notes: true

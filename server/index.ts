@@ -54,7 +54,7 @@ app.disable("x-powered-by");
 
 app.use((_req, res, next) => {
   try {
-    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()");
+    res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Download-Options", "noopen");
     res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
