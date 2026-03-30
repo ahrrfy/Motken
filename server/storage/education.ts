@@ -1,7 +1,6 @@
 import { db } from "../db";
 import { eq, desc, and } from "drizzle-orm";
 import {
-  type Rating, type InsertRating,
   type Exam, type InsertExam,
   type ExamStudent, type InsertExamStudent,
   type Course, type InsertCourse,
@@ -9,24 +8,41 @@ import {
   type CourseTeacher, type InsertCourseTeacher,
   type Certificate, type InsertCertificate,
   type ActivityLog, type InsertActivityLog,
-  ratings, exams, examStudents,
+  type QuranProgress,
+  exams, examStudents,
   courses, courseStudents, courseTeachers, certificates,
-  activityLogs,
+  activityLogs, quranProgress,
 } from "@shared/schema";
 
 export const educationMethods = {
-  // ==================== RATINGS ====================
-  async getRatingsByUser(toUserId: string): Promise<Rating[]> {
-    return db.select().from(ratings).where(eq(ratings.toUserId, toUserId)).orderBy(desc(ratings.createdAt));
+  // ==================== QURAN PROGRESS ====================
+  async getQuranProgress(userId: string, surahNumber: number): Promise<QuranProgress | undefined> {
+    const [row] = await db.select().from(quranProgress)
+      .where(and(eq(quranProgress.userId, userId), eq(quranProgress.surahNumber, surahNumber)));
+    return row;
   },
 
-  async getRatingsByMosque(mosqueId: string): Promise<Rating[]> {
-    return db.select().from(ratings).where(eq(ratings.mosqueId, mosqueId)).orderBy(desc(ratings.createdAt));
+  async getQuranProgressByUser(userId: string): Promise<QuranProgress[]> {
+    return db.select().from(quranProgress).where(eq(quranProgress.userId, userId));
   },
 
-  async createRating(r: InsertRating): Promise<Rating> {
-    const [rating] = await db.insert(ratings).values(r).returning();
-    return rating;
+  async upsertQuranProgress(this: any, data: {
+    userId: string; mosqueId?: string | null; surahNumber: number;
+    verseStatuses?: string; notes?: string | null;
+    reviewedToday?: boolean; reviewStreak?: number; lastReviewDate?: string | null;
+  }): Promise<QuranProgress> {
+    const existing = await this.getQuranProgress(data.userId, data.surahNumber);
+    if (existing) {
+      const [updated] = await db.update(quranProgress)
+        .set({ ...data, updatedAt: new Date() })
+        .where(and(eq(quranProgress.userId, data.userId), eq(quranProgress.surahNumber, data.surahNumber)))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(quranProgress)
+      .values({ ...data, verseStatuses: data.verseStatuses || "{}" })
+      .returning();
+    return created;
   },
 
   // ==================== EXAMS ====================
