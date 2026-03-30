@@ -28,7 +28,7 @@ const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
 const MosquesPage = lazy(() => import("@/pages/MosquesPage"));
 const MosqueDashboardPage = lazy(() => import("@/pages/MosqueDashboardPage"));
 const AllUsersPage = lazy(() => import("@/pages/AllUsersPage"));
-const RatingsPage = lazy(() => import("@/pages/RatingsPage"));
+
 const TeacherActivitiesPage = lazy(() => import("@/pages/TeacherActivitiesPage"));
 const CoursesGraduationPage = lazy(() => import("@/pages/CoursesGraduationPage"));
 const TeacherDailyPage = lazy(() => import("@/pages/TeacherDailyPage"));
@@ -41,14 +41,14 @@ const FeatureControlPage = lazy(() => import("@/pages/FeatureControlPage"));
 const TestimonialsManagePage = lazy(() => import("@/pages/TestimonialsManagePage"));
 const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
 const PointsRewardsPage = lazy(() => import("@/pages/PointsRewardsPage"));
-const SchedulesPage = lazy(() => import("@/pages/SchedulesPage"));
+
 const SmartAlertsPage = lazy(() => import("@/pages/SmartAlertsPage"));
 const CrisisManagementPage = lazy(() => import("@/pages/CrisisManagementPage"));
 const InstitutionalPage = lazy(() => import("@/pages/InstitutionalPage"));
 const FamilySystemPage = lazy(() => import("@/pages/FamilySystemPage"));
-const KnowledgeBasePage = lazy(() => import("@/pages/KnowledgeBasePage"));
+
 const MaintenancePage = lazy(() => import("@/pages/MaintenancePage"));
-const EducationalContentPage = lazy(() => import("@/pages/EducationalContentPage"));
+
 const FloorPlanPage = lazy(() => import("@/pages/FloorPlanPage"));
 const WhiteboardPage = lazy(() => import("@/pages/WhiteboardPage"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
@@ -265,7 +265,7 @@ function App() {
         <Route path="/teachers" component={TeachersPage} />
         <Route path="/supervisors">{() => <RoleGuard roles={["admin"]} Component={SupervisorsPage} />}</Route>
         <Route path="/assignments" component={AssignmentsExamsPage} />
-        <Route path="/ratings" component={RatingsPage} />
+
         <Route path="/courses" component={CoursesGraduationPage} />
         <Route path="/quran" component={QuranTracker} />
         <Route path="/library" component={LibraryPage} />
@@ -286,16 +286,16 @@ function App() {
         <Route path="/testimonials-manage">{() => <RoleGuard roles={["admin"]} Component={TestimonialsManagePage} />}</Route>
         <Route path="/messages" component={MessagesPage} />
         <Route path="/points-rewards" component={PointsRewardsPage} />
-        <Route path="/schedules" component={SchedulesPage} />
+
         <Route path="/smart-alerts" component={SmartAlertsPage} />
         <Route path="/crisis-management" component={CrisisManagementPage} />
         <Route path="/graduation">{() => <CoursesGraduationPage />}</Route>
         <Route path="/certificates">{() => <CoursesGraduationPage />}</Route>
         <Route path="/institutional" component={InstitutionalPage} />
         <Route path="/family-system" component={FamilySystemPage} />
-        <Route path="/knowledge-base" component={KnowledgeBasePage} />
+
         <Route path="/maintenance" component={MaintenancePage} />
-        <Route path="/educational-content" component={EducationalContentPage} />
+
         <Route path="/floor-plan" component={FloorPlanPage} />
         <Route path="/whiteboard" component={WhiteboardPage} />
         <Route path="/spread" component={SpreadPage} />
