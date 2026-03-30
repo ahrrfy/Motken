@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus } from "lucide-react";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -103,7 +103,15 @@ export default function StudentsPage() {
     age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isChild: false, isSpecialNeeds: false, isOrphan: false, studyMode: "in-person"
   });
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
+  const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string; parentCredentials?: { name: string; username: string; password: string } } | null>(null);
+
+  // Parent account creation states (supervisor/admin only)
+  const [createParentAccount, setCreateParentAccount] = useState(false);
+  const [parentAccountName, setParentAccountName] = useState("");
+  const [parentAccountUsername, setParentAccountUsername] = useState("");
+  const [parentAccountPassword, setParentAccountPassword] = useState("");
+  const [showParentPassword, setShowParentPassword] = useState(false);
+  const [parentAccountCreating, setParentAccountCreating] = useState(false);
   const phoneValidation = usePhoneValidation(formData.phone, selectedStudent?.id);
   const parentPhoneValidation = usePhoneValidation(formData.parentPhone, selectedStudent?.id, "parent");
 
@@ -357,6 +365,10 @@ export default function StudentsPage() {
       toast({ title: "خطأ", description: phoneRequired ? "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، رقم الهاتف، هاتف ولي الأمر)" : "يرجى تعبئة الحقول المطلوبة (الاسم، اسم المستخدم، كلمة المرور، هاتف ولي الأمر)", variant: "destructive" });
       return;
     }
+    if (createParentAccount && (!parentAccountName || !parentAccountUsername || !parentAccountPassword)) {
+      toast({ title: "خطأ", description: "يرجى تعبئة جميع حقول حساب ولي الأمر (الاسم، اسم المستخدم، كلمة المرور)", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/users", {
@@ -375,15 +387,54 @@ export default function StudentsPage() {
         }),
       });
       if (res.ok) {
+        const newStudent = await res.json();
         const savedName = formData.name;
         const savedUsername = formData.username;
         const savedPassword = formData.password;
         const savedPhone = formData.phone;
+
+        let parentCreds: { name: string; username: string; password: string } | undefined;
+
+        // Create parent account if option enabled (supervisor/admin only)
+        if (createParentAccount && parentAccountName && parentAccountUsername && parentAccountPassword && formData.parentPhone) {
+          try {
+            setParentAccountCreating(true);
+            const parentRes = await fetch("/api/family/create-parent-account", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                phone: formData.parentPhone,
+                name: parentAccountName,
+                username: parentAccountUsername,
+                password: parentAccountPassword,
+                gender: "male",
+                studentIds: [newStudent.id],
+              }),
+            });
+            if (parentRes.ok) {
+              parentCreds = { name: parentAccountName, username: parentAccountUsername, password: parentAccountPassword };
+              toast({ title: "تم بنجاح", description: "تم إنشاء حساب ولي الأمر وربطه بالطالب", className: "bg-green-50 border-green-200 text-green-800" });
+            } else {
+              const parentErr = await parentRes.json();
+              toast({ title: "تنبيه", description: `تمت إضافة الطالب لكن فشل إنشاء حساب ولي الأمر: ${parentErr.message || "خطأ غير معروف"}`, variant: "destructive" });
+            }
+          } catch {
+            toast({ title: "تنبيه", description: "تمت إضافة الطالب لكن فشل إنشاء حساب ولي الأمر", variant: "destructive" });
+          } finally {
+            setParentAccountCreating(false);
+          }
+        }
+
         toast({ title: "تم بنجاح", description: "تمت إضافة الطالب بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
         setFormData({ name: "", username: "", password: "", phone: "", address: "", avatar: "", gender: "male", age: "", telegramId: "", parentPhone: "", educationLevel: "", level: "1", isChild: false, isSpecialNeeds: false, isOrphan: false, studyMode: "in-person" });
+        setCreateParentAccount(false);
+        setParentAccountName("");
+        setParentAccountUsername("");
+        setParentAccountPassword("");
         fetchData();
-        setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "student" });
+        setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "student", parentCredentials: parentCreds });
       } else {
         const err = await res.json();
         toast({ title: "خطأ", description: err.message || "فشل في إضافة الطالب", variant: "destructive" });
@@ -806,6 +857,80 @@ export default function StudentsPage() {
                       error={parentPhoneValidation.message && !parentPhoneValidation.valid ? parentPhoneValidation.message : undefined}
                     />
                   </div>
+
+                  {/* Parent Account Creation - Supervisor/Admin only */}
+                  {(user?.role === "admin" || user?.actualRole === "supervisor" || user?.role === "supervisor") && (
+                    <div className="border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl p-4 space-y-3 bg-amber-50/50 dark:bg-amber-950/20">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="create-parent-account"
+                          checked={createParentAccount}
+                          onCheckedChange={(v) => setCreateParentAccount(!!v)}
+                          data-testid="checkbox-create-parent"
+                        />
+                        <Label htmlFor="create-parent-account" className="flex items-center gap-2 cursor-pointer font-bold text-amber-800 dark:text-amber-300">
+                          <UserPlus className="w-4 h-4" />
+                          إنشاء حساب ولي أمر لهذا الطالب
+                        </Label>
+                      </div>
+
+                      {createParentAccount && (
+                        <div className="space-y-3 pt-2 border-t border-amber-200 dark:border-amber-800">
+                          <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                            <PhoneCall className="w-3 h-3" />
+                            رقم الهاتف سيتم أخذه تلقائياً من حقل "هاتف ولي الأمر" أعلاه
+                          </p>
+                          {formData.parentPhone && (
+                            <div className="text-xs bg-amber-100 dark:bg-amber-900/40 rounded-lg px-3 py-2 font-mono text-amber-800 dark:text-amber-300" dir="ltr">
+                              {formData.parentPhone}
+                            </div>
+                          )}
+                          <div className="space-y-2">
+                            <Label>اسم ولي الأمر <span className="text-red-500">*</span></Label>
+                            <Input
+                              value={parentAccountName}
+                              onChange={(e) => setParentAccountName(e.target.value)}
+                              placeholder="الاسم الكامل لولي الأمر"
+                              data-testid="input-parent-name"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>اسم المستخدم <span className="text-red-500">*</span></Label>
+                            <Input
+                              value={parentAccountUsername}
+                              onChange={(e) => setParentAccountUsername(e.target.value)}
+                              placeholder="اسم مستخدم لولي الأمر"
+                              dir="ltr"
+                              data-testid="input-parent-username"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>كلمة المرور <span className="text-red-500">*</span></Label>
+                            <div className="relative">
+                              <Input
+                                type={showParentPassword ? "text" : "password"}
+                                value={parentAccountPassword}
+                                onChange={(e) => setParentAccountPassword(e.target.value)}
+                                placeholder="كلمة مرور لولي الأمر"
+                                dir="ltr"
+                                className="pl-10"
+                                data-testid="input-parent-password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowParentPassword(!showParentPassword)}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                tabIndex={-1}
+                              >
+                                {showParentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>معرف التلغرام</Label>
                     <Input data-testid="input-telegram-id" value={formData.telegramId} onChange={e => setFormData({...formData, telegramId: e.target.value})} dir="ltr" />
@@ -1786,16 +1911,67 @@ export default function StudentsPage() {
       </Dialog>
 
       {credentialsDialog && (
-        <CredentialsShareDialog
-          open={credentialsDialog.open}
-          onClose={() => setCredentialsDialog(null)}
-          name={credentialsDialog.name}
-          username={credentialsDialog.username}
-          password={credentialsDialog.password}
-          phone={credentialsDialog.phone}
-          role={credentialsDialog.role}
-          mosqueName={user?.mosqueName || undefined}
-        />
+        <>
+          <CredentialsShareDialog
+            open={credentialsDialog.open && !credentialsDialog.parentCredentials}
+            onClose={() => setCredentialsDialog(null)}
+            name={credentialsDialog.name}
+            username={credentialsDialog.username}
+            password={credentialsDialog.password}
+            phone={credentialsDialog.phone}
+            role={credentialsDialog.role}
+            mosqueName={user?.mosqueName || undefined}
+          />
+          {credentialsDialog.parentCredentials && (
+            <Dialog open={credentialsDialog.open} onOpenChange={(v) => !v && setCredentialsDialog(null)}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle className="text-center font-serif text-lg">تم إنشاء الحسابات بنجاح</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {/* Student credentials */}
+                  <div className="bg-blue-50/50 dark:bg-blue-950/20 rounded-lg p-4 space-y-2 text-sm border border-blue-200 dark:border-blue-800">
+                    <div className="text-center font-bold text-blue-700 dark:text-blue-300 mb-2 flex items-center justify-center gap-2">
+                      <GraduationCap className="w-4 h-4" />
+                      بيانات الطالب
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between"><span className="text-muted-foreground">الاسم:</span><span className="font-medium">{credentialsDialog.name}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">اسم المستخدم:</span><span className="font-bold text-primary" dir="ltr">{credentialsDialog.username}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">كلمة المرور:</span><span className="font-bold text-primary" dir="ltr">{credentialsDialog.password}</span></div>
+                    </div>
+                  </div>
+                  {/* Parent credentials */}
+                  <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg p-4 space-y-2 text-sm border border-amber-200 dark:border-amber-800">
+                    <div className="text-center font-bold text-amber-700 dark:text-amber-300 mb-2 flex items-center justify-center gap-2">
+                      <UserPlus className="w-4 h-4" />
+                      بيانات ولي الأمر
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between"><span className="text-muted-foreground">الاسم:</span><span className="font-medium">{credentialsDialog.parentCredentials.name}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">اسم المستخدم:</span><span className="font-bold text-primary" dir="ltr">{credentialsDialog.parentCredentials.username}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">كلمة المرور:</span><span className="font-bold text-primary" dir="ltr">{credentialsDialog.parentCredentials.password}</span></div>
+                    </div>
+                  </div>
+                  <Button onClick={() => {
+                    const appUrl = window.location.origin;
+                    const msg = `بسم الله الرحمن الرحيم\n\nنظام مُتْقِن لإدارة حلقات القرآن الكريم\n━━━━━━━━━━━━━━━━━━━━\n\n📘 بيانات الطالب:\nالاسم: ${credentialsDialog.name}\nاسم المستخدم: ${credentialsDialog.username}\nكلمة المرور: ${credentialsDialog.password}\n\n👤 بيانات ولي الأمر:\nالاسم: ${credentialsDialog.parentCredentials!.name}\nاسم المستخدم: ${credentialsDialog.parentCredentials!.username}\nكلمة المرور: ${credentialsDialog.parentCredentials!.password}\n\nرابط الدخول: ${appUrl}\n━━━━━━━━━━━━━━━━━━━━\nيرجى الاحتفاظ ببيانات الدخول`;
+                    navigator.clipboard.writeText(msg).then(() => {
+                      toast({ title: "تم النسخ", description: "تم نسخ جميع بيانات الدخول", className: "bg-green-50 border-green-200 text-green-800" });
+                    });
+                  }} variant="outline" className="w-full gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    نسخ جميع البيانات
+                  </Button>
+                  <Button onClick={() => setCredentialsDialog(null)} variant="ghost" className="w-full gap-2 text-muted-foreground">
+                    <X className="w-4 h-4" />
+                    إغلاق
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </>
       )}
 
       {/* Import Wizard */}
