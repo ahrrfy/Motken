@@ -65,7 +65,7 @@ export const exams = pgTable("exams", {
   fromVerse: integer("from_verse").notNull(),
   toVerse: integer("to_verse").notNull(),
   examDate: timestamp("exam_date").notNull(),
-  examTime: text("exam_time").notNull(),
+  examTime: text("exam_time"),
   description: text("description"),
   isForAll: boolean("is_for_all").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
