@@ -101,12 +101,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchRole = () => {
     if (!user) return;
     const actualRole = user.actualRole || user.role;
-    if (actualRole !== "supervisor") return;
 
-    if (user.role === "supervisor") {
-      setUser({ ...user, role: "teacher", actualRole: "supervisor" });
-    } else {
-      setUser({ ...user, role: "supervisor", actualRole: "supervisor" });
+    if (actualRole === "supervisor") {
+      if (user.role === "supervisor") {
+        setUser({ ...user, role: "teacher", actualRole: "supervisor" });
+      } else {
+        setUser({ ...user, role: "supervisor", actualRole: "supervisor" });
+      }
+    } else if (actualRole === "teacher") {
+      if (user.role === "teacher") {
+        setUser({ ...user, role: "student", actualRole: "teacher" });
+      } else {
+        setUser({ ...user, role: "teacher", actualRole: "teacher" });
+      }
     }
   };
 
