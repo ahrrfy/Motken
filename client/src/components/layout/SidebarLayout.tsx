@@ -475,6 +475,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             : (isEn ? "Supervisor Mode" : "وضع المشرف")}
         </Button>
       )}
+      {!previewRole && (user?.actualRole === "teacher" || (user?.role === "teacher" && !user?.actualRole)) && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={switchRole}
+          className="w-full h-8 text-xs bg-emerald-900/20 border-emerald-700/30 text-emerald-400 hover:bg-emerald-800/30 hover:text-emerald-300"
+          data-testid="button-switch-teacher-student"
+        >
+          <ArrowLeftRight className="w-3.5 h-3.5 ml-1.5" />
+          {user?.role === "teacher"
+            ? (isEn ? "Student Mode" : "وضع طالب العلم")
+            : (isEn ? "Teacher Mode" : "وضع الأستاذ")}
+        </Button>
+      )}
       {previewRole && (
         <Button
           variant="outline"
