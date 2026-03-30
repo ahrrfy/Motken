@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     const result = await login(username, password);
     if (result.ok) {
-      setLocation("/dashboard");
+      setLocation(result.role === "parent" ? "/parent-dashboard" : "/dashboard");
     } else {
       setError(result.message || (isEn ? "Login failed" : "فشل تسجيل الدخول"));
     }
