@@ -57,6 +57,7 @@ const PublicParentReportPage = lazy(() => import("@/pages/PublicParentReportPage
 const RegisterMosquePage = lazy(() => import("@/pages/RegisterMosquePage"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const SpreadPage = lazy(() => import("@/pages/SpreadPage"));
+const ParentDashboardPage = lazy(() => import("@/pages/ParentDashboardPage"));
 const MobileApp = lazy(() => import("@/mobile/MobileApp"));
 
 function PageSkeleton() {
@@ -299,7 +300,8 @@ function App() {
         <Route path="/whiteboard" component={WhiteboardPage} />
         <Route path="/spread" component={SpreadPage} />
         <Route path="/changelog" component={ChangelogPage} />
-        <Route path="/" component={DashboardPage} />
+        <Route path="/parent-dashboard">{() => <RoleGuard roles={["parent"]} Component={ParentDashboardPage} />}</Route>
+        <Route path="/">{() => user?.role === "parent" ? <ParentDashboardPage /> : <DashboardPage />}</Route>
         <Route>
           <div className="p-10 text-center">
             <h2 className="text-2xl font-bold text-muted-foreground">الصفحة غير موجودة</h2>

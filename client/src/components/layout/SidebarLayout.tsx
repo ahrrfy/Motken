@@ -91,6 +91,16 @@ interface NavCategory {
 
 const navCategories: NavCategory[] = [
   {
+    id: "parent",
+    label: "ولي الأمر",
+    labelEn: "Parent",
+    icon: HeartHandshake,
+    defaultOpen: true,
+    items: [
+      { href: "/parent-dashboard", label: "متابعة أبنائي", labelEn: "My Children", icon: Users, roles: ["parent"] },
+    ],
+  },
+  {
     id: "main",
     label: "الرئيسية",
     labelEn: "Main",
@@ -396,6 +406,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                 : previewRole === "teacher" ? "bg-emerald-500/20 text-emerald-400"
                 : previewRole === "supervisor" ? "bg-purple-500/20 text-purple-400"
                 : "bg-accent/20 text-accent"
+                : user.role === "parent" ? "bg-amber-500/20 text-amber-400"
                 : "bg-accent/20 text-accent"
             )}>
               {user.name?.charAt(0)}
@@ -417,7 +428,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               <p className="text-[10px] text-sidebar-foreground/50 truncate">{
                 user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
                 user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
-                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
+                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) :
+                user.role === "parent" ? (isEn ? "Parent" : "ولي أمر") : (isEn ? "Student" : "طالب")
               }</p>
             )}
           </div>

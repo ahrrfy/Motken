@@ -12,7 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
 import {
-  Loader2, Plus, Users, Trash2, Search, Phone, UserCheck, Baby, MessageCircle, BarChart3
+  Loader2, Plus, Users, Trash2, Search, Phone, UserCheck, Baby, MessageCircle, BarChart3,
+  UserPlus, Eye, EyeOff, X, CheckCircle2
 } from "lucide-react";
 
 interface FamilyLink {
@@ -65,7 +66,123 @@ export default function FamilySystemPage() {
   const [dashboard, setDashboard] = useState<FamilyDashboard | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Create parent account state
+  const [parentDialogOpen, setParentDialogOpen] = useState(false);
+  const [parentAccountPhone, setParentFormPhone] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentUsername, setParentUsername] = useState("");
+  const [parentPassword, setParentPassword] = useState("");
+  const [parentGender, setParentGender] = useState("male");
+  const [showParentPassword, setShowParentPassword] = useState(false);
+  const [parentSubmitting, setParentSubmitting] = useState(false);
+  const [detectedStudents, setDetectedStudents] = useState<{ id: string; name: string; gender: string | null; level: number | null; parentPhone: string | null }[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [detectingStudents, setDetectingStudents] = useState(false);
+  const [manualStudentId, setManualStudentId] = useState("");
+
   const canManage = user?.role === "admin" || user?.role === "supervisor";
+
+  // Smart phone detection for parent account creation
+  const detectStudentsByPhone = async (phone: string) => {
+    if (phone.length < 7) {
+      setDetectedStudents([]);
+      return;
+    }
+    setDetectingStudents(true);
+    try {
+      const res = await fetch(`/api/family/students-by-parent-phone/${encodeURIComponent(phone)}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setDetectedStudents(data);
+        // Auto-select all detected students
+        setSelectedStudentIds(data.map((s: any) => s.id));
+      }
+    } catch {}
+    finally {
+      setDetectingStudents(false);
+    }
+  };
+
+  const handleParentPhoneChange = (val: string) => {
+    setParentFormPhone(val);
+    // Debounced search
+    const timeout = setTimeout(() => detectStudentsByPhone(val), 400);
+    return () => clearTimeout(timeout);
+  };
+
+  const toggleStudentSelection = (id: string) => {
+    setSelectedStudentIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const addManualStudent = () => {
+    if (manualStudentId && !selectedStudentIds.includes(manualStudentId)) {
+      setSelectedStudentIds(prev => [...prev, manualStudentId]);
+      // Check if student is already in detected list
+      if (!detectedStudents.find(s => s.id === manualStudentId)) {
+        const student = students.find(s => s.id === manualStudentId);
+        if (student) {
+          setDetectedStudents(prev => [...prev, { id: student.id, name: student.name, gender: null, level: null, parentPhone: null }]);
+        }
+      }
+      setManualStudentId("");
+    }
+  };
+
+  const handleCreateParentAccount = async () => {
+    if (!parentName || !parentUsername || !parentPassword || !parentAccountPhone) {
+      toast({ title: "خطأ", description: "جميع الحقول مطلوبة", variant: "destructive" });
+      return;
+    }
+    if (selectedStudentIds.length === 0) {
+      toast({ title: "خطأ", description: "يجب اختيار طالب واحد على الأقل", variant: "destructive" });
+      return;
+    }
+    if (parentPassword.length < 4) {
+      toast({ title: "خطأ", description: "كلمة المرور يجب أن تكون 4 أحرف على الأقل", variant: "destructive" });
+      return;
+    }
+    setParentSubmitting(true);
+    try {
+      const res = await fetch("/api/family/create-parent-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          phone: parentAccountPhone,
+          name: parentName,
+          username: parentUsername,
+          password: parentPassword,
+          gender: parentGender,
+          studentIds: selectedStudentIds,
+        }),
+      });
+      if (res.ok) {
+        toast({
+          title: "تم بنجاح",
+          description: `تم إنشاء حساب ولي الأمر "${parentName}" وربطه بـ ${selectedStudentIds.length} طالب`,
+          className: "bg-green-50 border-green-200 text-green-800",
+        });
+        setParentDialogOpen(false);
+        setParentFormPhone("");
+        setParentName("");
+        setParentUsername("");
+        setParentPassword("");
+        setParentGender("male");
+        setDetectedStudents([]);
+        setSelectedStudentIds([]);
+        fetchLinks();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في إنشاء الحساب", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setParentSubmitting(false);
+    }
+  };
 
   const fetchLinks = async () => {
     try {
@@ -175,9 +292,178 @@ export default function FamilySystemPage() {
           <p className="text-muted-foreground">إدارة حسابات أولياء الأمور وربطهم بالطلاب</p>
         </div>
         {canManage && (
+          <div className="flex gap-2 flex-wrap">
+          <Dialog open={parentDialogOpen} onOpenChange={setParentDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="default" data-testid="button-create-parent-account">
+                <UserPlus className="w-4 h-4 ml-1" />
+                إنشاء حساب ولي أمر
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-primary" />
+                  إنشاء حساب ولي أمر جديد
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>رقم هاتف ولي الأمر *</Label>
+                  <Input
+                    value={parentAccountPhone}
+                    onChange={e => handleParentPhoneChange(e.target.value)}
+                    placeholder="07xxxxxxxxx"
+                    data-testid="input-parent-account-phone"
+                  />
+                  {detectingStudents && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      جاري البحث عن الطلاب...
+                    </p>
+                  )}
+                </div>
+
+                {/* Detected Students */}
+                {detectedStudents.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      طلاب يحملون نفس الرقم ({detectedStudents.length})
+                    </Label>
+                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto border rounded-lg p-2">
+                      {detectedStudents.map(s => (
+                        <label
+                          key={s.id}
+                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                            selectedStudentIds.includes(s.id)
+                              ? "bg-emerald-50 border border-emerald-200"
+                              : "bg-muted/50 hover:bg-muted"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.includes(s.id)}
+                            onChange={() => toggleStudentSelection(s.id)}
+                            className="rounded"
+                          />
+                          <span className="text-sm font-medium">{s.name}</span>
+                          {s.gender && (
+                            <Badge variant="outline" className="text-[9px]">
+                              {s.gender === "male" || s.gender === "ذكر" ? "ذكر" : "أنثى"}
+                            </Badge>
+                          )}
+                          {s.level && (
+                            <Badge variant="secondary" className="text-[9px]">
+                              م{s.level}
+                            </Badge>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Manual student selection */}
+                <div className="space-y-2">
+                  <Label>إضافة طالب يدوياً</Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <SearchableSelect
+                        options={students.filter(s => !selectedStudentIds.includes(s.id)).map(s => ({ value: s.id, label: s.name }))}
+                        value={manualStudentId}
+                        onValueChange={setManualStudentId}
+                        placeholder="ابحث واختر طالب..."
+                        searchPlaceholder="ابحث عن طالب..."
+                        emptyText="لا يوجد طالب"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={addManualStudent}
+                      disabled={!manualStudentId}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {selectedStudentIds.length > 0 && (
+                    <p className="text-xs text-emerald-600 font-medium">
+                      {selectedStudentIds.length} طالب مختار للربط
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t pt-4 space-y-3">
+                  <div className="space-y-2">
+                    <Label>الاسم الكامل *</Label>
+                    <Input
+                      value={parentName}
+                      onChange={e => setParentName(e.target.value)}
+                      placeholder="اسم ولي الأمر"
+                      data-testid="input-parent-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>اسم المستخدم *</Label>
+                    <Input
+                      value={parentUsername}
+                      onChange={e => setParentUsername(e.target.value)}
+                      placeholder="اسم المستخدم للدخول"
+                      data-testid="input-parent-username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>كلمة المرور *</Label>
+                    <div className="relative">
+                      <Input
+                        type={showParentPassword ? "text" : "password"}
+                        value={parentPassword}
+                        onChange={e => setParentPassword(e.target.value)}
+                        placeholder="كلمة المرور"
+                        className="pl-10"
+                        data-testid="input-parent-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowParentPassword(!showParentPassword)}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showParentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>الجنس</Label>
+                    <Select value={parentGender} onValueChange={setParentGender}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">ذكر</SelectItem>
+                        <SelectItem value="female">أنثى</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleCreateParentAccount}
+                  disabled={!parentName || !parentUsername || !parentPassword || !parentAccountPhone || selectedStudentIds.length === 0 || parentSubmitting}
+                  className="w-full"
+                  data-testid="button-confirm-create-parent"
+                >
+                  {parentSubmitting && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
+                  إنشاء حساب ولي الأمر ({selectedStudentIds.length} طالب)
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-create-family-link">
+              <Button variant="outline" data-testid="button-create-family-link">
                 <Plus className="w-4 h-4 ml-1" />
                 إنشاء رابط عائلي
               </Button>
@@ -233,6 +519,7 @@ export default function FamilySystemPage() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
