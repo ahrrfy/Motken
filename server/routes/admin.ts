@@ -17,8 +17,6 @@ import {
   ratings,
   points,
   badges,
-  competitions,
-  competitionParticipants,
   schedules,
   parentReports,
   exams,
@@ -146,7 +144,7 @@ export function registerAdminRoutes(app: Express) {
         mosquesData, usersData, assignmentsData, attendanceData,
         coursesData, courseStudentsData, courseTeachersData, certificatesData,
         notificationsData, messagesData, activityLogsData, ratingsData,
-        pointsData, badgesData, competitionsData, competitionParticipantsData,
+        pointsData, badgesData,
         schedulesData, parentReportsData, examsData, examStudentsData,
         featureFlagsData, bannedDevicesData,
       ] = await Promise.all([
@@ -164,8 +162,6 @@ export function registerAdminRoutes(app: Express) {
         db.select().from(ratings),
         db.select().from(points),
         db.select().from(badges),
-        db.select().from(competitions),
-        db.select().from(competitionParticipants),
         db.select().from(schedules),
         db.select().from(parentReports),
         db.select().from(exams),
@@ -179,14 +175,13 @@ export function registerAdminRoutes(app: Express) {
         metadata: {
           version: "1.0",
           timestamp: new Date().toISOString(),
-          tableCount: 22,
+          tableCount: 20,
           totalRecords:
             mosquesData.length + usersData.length + assignmentsData.length +
             attendanceData.length + coursesData.length + courseStudentsData.length +
             courseTeachersData.length + certificatesData.length + notificationsData.length +
             messagesData.length + activityLogsData.length + ratingsData.length +
-            pointsData.length + badgesData.length + competitionsData.length +
-            competitionParticipantsData.length + schedulesData.length +
+            pointsData.length + badgesData.length + schedulesData.length +
             parentReportsData.length + examsData.length + examStudentsData.length +
             featureFlagsData.length + bannedDevicesData.length,
         },
@@ -205,8 +200,6 @@ export function registerAdminRoutes(app: Express) {
           ratings: ratingsData,
           points: pointsData,
           badges: badgesData,
-          competitions: competitionsData,
-          competitionParticipants: competitionParticipantsData,
           schedules: schedulesData,
           parentReports: parentReportsData,
           exams: examsData,
