@@ -17,7 +17,8 @@ import { generateCertificatePdf } from "@/lib/pdf-generator";
 import {
   BookOpen, Plus, Trash2, Award, Loader2, Users, CalendarDays, Printer,
   GraduationCap, CheckCircle, Search, Filter, Copy, Edit, BarChart3, Shield,
-  TrendingUp, Play, XCircle, UserPlus, UserMinus, RotateCcw, AlertCircle
+  TrendingUp, Play, XCircle, UserPlus, UserMinus, RotateCcw, AlertCircle,
+  Globe, Phone, Hash
 } from "lucide-react";
 
 interface StudentUser {
@@ -189,6 +190,19 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
   const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [mosqueData, setMosqueData] = useState<{ name?: string; image?: string | null }>({});
 
+  // External participants
+  const [extParticipants, setExtParticipants] = useState<Record<string, any[]>>({});
+  const [addExtDialogOpen, setAddExtDialogOpen] = useState(false);
+  const [addExtCourseId, setAddExtCourseId] = useState<string | null>(null);
+  const [extName, setExtName] = useState("");
+  const [extPhone, setExtPhone] = useState("");
+  const [extAge, setExtAge] = useState("");
+  const [extNotes, setExtNotes] = useState("");
+  const [addingExt, setAddingExt] = useState(false);
+  const [phoneLookupResults, setPhoneLookupResults] = useState<any[]>([]);
+  const [graduatingExtId, setGraduatingExtId] = useState<string | null>(null);
+  const [extGradeMap, setExtGradeMap] = useState<Record<string, string>>({});
+
   const isTeacher = user?.role === "teacher";
   const isStudent = user?.role === "student";
   const isSupervisor = user?.role === "supervisor";
@@ -261,6 +275,12 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     };
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (expandedCourseId && canCreate) {
+      fetchExtParticipants(expandedCourseId);
+    }
+  }, [expandedCourseId]);
 
   const resetForm = () => {
     setTitle("");
@@ -544,6 +564,85 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     } finally {
       setVerifyLoading(false);
     }
+  };
+
+  const fetchExtParticipants = async (courseId: string) => {
+    try {
+      const res = await fetch(`/api/courses/${courseId}/external-participants`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setExtParticipants(prev => ({ ...prev, [courseId]: data }));
+      }
+    } catch {}
+  };
+
+  const handleAddExtParticipant = async () => {
+    if (!addExtCourseId || !extName.trim()) return;
+    setAddingExt(true);
+    try {
+      const res = await fetch(`/api/courses/${addExtCourseId}/external-participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: extName.trim(), phone: extPhone || null, age: extAge ? parseInt(extAge) : null, notes: extNotes || null }),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: "تمت إضافة المشارك الخارجي", className: "bg-green-50 border-green-200 text-green-800" });
+        setAddExtDialogOpen(false);
+        setExtName(""); setExtPhone(""); setExtAge(""); setExtNotes(""); setPhoneLookupResults([]);
+        fetchExtParticipants(addExtCourseId);
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setAddingExt(false);
+    }
+  };
+
+  const handleDeleteExtParticipant = async (courseId: string, participantId: string) => {
+    try {
+      const res = await fetch(`/api/courses/${courseId}/external-participants/${participantId}`, { method: "DELETE", credentials: "include" });
+      if (res.ok) {
+        toast({ title: "تم", description: "تمت إزالة المشارك", className: "bg-green-50 border-green-200 text-green-800" });
+        fetchExtParticipants(courseId);
+      }
+    } catch {}
+  };
+
+  const handleGraduateExtParticipant = async (courseId: string, participantId: string, grade?: string) => {
+    setGraduatingExtId(participantId);
+    try {
+      const res = await fetch(`/api/courses/${courseId}/external-participants/${participantId}/graduate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ graduationGrade: grade || null }),
+      });
+      if (res.ok) {
+        toast({ title: "🎓 تم التخريج", description: "تم تخريج المشارك الخارجي", className: "bg-green-50 border-green-200 text-green-800" });
+        fetchExtParticipants(courseId);
+      }
+    } catch {} finally {
+      setGraduatingExtId(null);
+    }
+  };
+
+  const handleUngraduateExtParticipant = async (courseId: string, participantId: string) => {
+    try {
+      const res = await fetch(`/api/courses/${courseId}/external-participants/${participantId}/ungraduate`, { method: "POST", credentials: "include" });
+      if (res.ok) fetchExtParticipants(courseId);
+    } catch {}
+  };
+
+  const lookupByPhone = async (phone: string) => {
+    if (!phone || phone.length < 3) { setPhoneLookupResults([]); return; }
+    try {
+      const res = await fetch(`/api/external-participants/lookup?phone=${encodeURIComponent(phone)}`, { credentials: "include" });
+      if (res.ok) setPhoneLookupResults(await res.json());
+    } catch {}
   };
 
   const toggleStudentSelection = (studentId: string) => {
@@ -1714,6 +1813,115 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
                           ) : (
                             <p className="text-sm text-muted-foreground py-2">لا يوجد طلاب مسجلين</p>
                           )}
+
+                          {/* External Participants Section */}
+                          {(canCreate || isAdmin) && (
+                          <div className="border-t pt-3 mt-1 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-semibold text-sm flex items-center gap-1 text-blue-700">
+                                <Globe className="w-4 h-4" />
+                                المشاركون الخارجيون ({(extParticipants[course.id] || []).length})
+                              </h4>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                onClick={() => { setAddExtCourseId(course.id); setAddExtDialogOpen(true); }}
+                              >
+                                <UserPlus className="w-3 h-3" />
+                                إضافة خارجي
+                              </Button>
+                            </div>
+                            {(extParticipants[course.id] || []).length > 0 ? (
+                              <div className="space-y-2">
+                                {(extParticipants[course.id] || []).map((ep: any) => (
+                                  <div key={ep.id} className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg border border-blue-100 gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
+                                          {ep.name.charAt(0)}
+                                        </div>
+                                        <span className="text-sm font-medium truncate">{ep.name}</span>
+                                        {ep.graduated && (
+                                          <Badge className="bg-green-100 text-green-700 border-none text-xs gap-1">
+                                            <CheckCircle className="w-3 h-3" />
+                                            متخرج
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {(ep.phone || ep.age) && (
+                                        <div className="flex items-center gap-3 mt-0.5 pr-8 text-xs text-muted-foreground">
+                                          {ep.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{ep.phone}</span>}
+                                          {ep.age && <span>{ep.age} سنة</span>}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {ep.graduated ? (
+                                        <>
+                                          {ep.graduation_grade && GRADE_LABELS[ep.graduation_grade] && (
+                                            <Badge className="bg-amber-100 text-amber-700 border-none text-xs">{GRADE_LABELS[ep.graduation_grade]}</Badge>
+                                          )}
+                                          {ep.certificate_number && (
+                                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1"
+                                              onClick={() => {
+                                                const certHtml = generateCertificateHtml({
+                                                  studentName: ep.name,
+                                                  courseName: course.title,
+                                                  mosqueName: mosqueData.name || "مركز التحفيظ",
+                                                  certificateNumber: ep.certificate_number,
+                                                  graduationGrade: ep.graduation_grade,
+                                                  issuedAt: ep.graduated_at,
+                                                  mosqueImage: mosqueData.image || undefined,
+                                                  theme: getCertificateTheme("children"),
+                                                  decorations: getTemplateDecorations("children"),
+                                                });
+                                                openPrintWindow(certHtml);
+                                              }}>
+                                              <Printer className="w-3 h-3" />شهادة
+                                            </Button>
+                                          )}
+                                          <Button variant="ghost" size="sm" className="h-7 text-xs text-amber-600 hover:text-amber-700"
+                                            onClick={() => handleUngraduateExtParticipant(course.id, ep.id)}>
+                                            <RotateCcw className="w-3 h-3" />
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Select
+                                            value={extGradeMap[ep.id] || ""}
+                                            onValueChange={v => setExtGradeMap(prev => ({ ...prev, [ep.id]: v }))}
+                                          >
+                                            <SelectTrigger className="h-7 text-xs w-24">
+                                              <SelectValue placeholder="التقدير" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {Object.entries(GRADE_LABELS).map(([k, v]) => (
+                                                <SelectItem key={k} value={k}>{v}</SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700"
+                                            disabled={graduatingExtId === ep.id}
+                                            onClick={() => handleGraduateExtParticipant(course.id, ep.id, extGradeMap[ep.id])}>
+                                            {graduatingExtId === ep.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <GraduationCap className="w-3 h-3" />}
+                                            تخريج
+                                          </Button>
+                                        </>
+                                      )}
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                                        onClick={() => handleDeleteExtParticipant(course.id, ep.id)}>
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground py-1 text-blue-600/60">لا يوجد مشاركون خارجيون — يمكن إضافة أشخاص من خارج المنظومة</p>
+                            )}
+                          </div>
+                        )}
                         </div>
                       )}
                     </CardContent>
@@ -2033,6 +2241,66 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
             >
               {addingStudents && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
               إضافة الطلاب المحددين
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add External Participant Dialog */}
+      <Dialog open={addExtDialogOpen} onOpenChange={(open) => { setAddExtDialogOpen(open); if (!open) { setExtName(""); setExtPhone(""); setExtAge(""); setExtNotes(""); setPhoneLookupResults([]); } }}>
+        <DialogContent className="sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-700">
+              <Globe className="w-5 h-5" />
+              إضافة مشارك خارجي
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">رقم الجوال <span className="text-muted-foreground text-xs">(للبحث التلقائي)</span></label>
+              <div className="relative">
+                <Input
+                  placeholder="05XXXXXXXX"
+                  value={extPhone}
+                  onChange={e => { setExtPhone(e.target.value); lookupByPhone(e.target.value); }}
+                  className="text-left"
+                  dir="ltr"
+                />
+                {phoneLookupResults.length > 0 && (
+                  <div className="absolute top-full z-50 w-full mt-1 bg-white border rounded-lg shadow-lg divide-y text-sm">
+                    {phoneLookupResults.map((r: any, i: number) => (
+                      <button
+                        key={i}
+                        className="w-full text-right px-3 py-2 hover:bg-blue-50 flex items-center justify-between"
+                        onClick={() => { setExtName(r.name); setExtPhone(r.phone); if (r.age) setExtAge(String(r.age)); setPhoneLookupResults([]); }}
+                      >
+                        <span className="font-medium">{r.name}</span>
+                        <span className="text-muted-foreground text-xs">{r.phone}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">الاسم *</label>
+              <Input placeholder="اسم المشارك" value={extName} onChange={e => setExtName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">العمر</label>
+              <Input type="number" placeholder="مثال: 25" value={extAge} onChange={e => setExtAge(e.target.value)} min={1} max={120} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">ملاحظات</label>
+              <Input placeholder="اختياري" value={extNotes} onChange={e => setExtNotes(e.target.value)} />
+            </div>
+            <Button
+              onClick={handleAddExtParticipant}
+              disabled={addingExt || !extName.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              {addingExt && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              إضافة المشارك
             </Button>
           </div>
         </DialogContent>

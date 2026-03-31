@@ -1,11 +1,159 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
-import { BookOpen, GraduationCap, Award, Shield } from "lucide-react";
+import { BookOpen, GraduationCap, Award, Shield, Globe, CheckCircle, Phone, Loader2, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatDateAr } from "@/lib/utils";
 import CoursesPage from "./CoursesPage";
 import GraduationPage from "./GraduationPage";
 import CertificatesPage from "./CertificatesPage";
+
+const GRADE_LABELS: Record<string, string> = {
+  excellent: "ممتاز",
+  very_good: "جيد جداً",
+  good: "جيد",
+  acceptable: "مقبول",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  memorization: "حفظ القرآن",
+  tajweed: "التجويد",
+  tafseer: "التفسير",
+  seerah: "السيرة النبوية",
+  other: "أخرى",
+};
+
+function ExternalParticipantsArchive() {
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch("/api/external-participants", { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setParticipants(d))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return participants;
+    const q = search.trim().toLowerCase();
+    return participants.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.phone?.includes(q) ||
+      p.course_title?.toLowerCase().includes(q)
+    );
+  }, [participants, search]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
+        <span>جاري التحميل...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="ابحث بالاسم أو الجوال أو الدورة..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pr-9"
+          />
+        </div>
+        <Badge variant="outline" className="text-muted-foreground whitespace-nowrap">
+          {filtered.length} مشارك
+        </Badge>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-12">
+          <Globe className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground">لا يوجد مشاركون خارجيون</p>
+          <p className="text-sm text-muted-foreground/60 mt-1">يمكنك إضافتهم من داخل صفحة الدورات</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map((p: any) => (
+            <Card key={p.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="pt-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold shrink-0">
+                      {p.name?.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{p.name}</p>
+                      {p.phone && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Phone className="w-3 h-3" />{p.phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {p.graduated ? (
+                    <Badge className="bg-green-100 text-green-700 border-none text-xs gap-1 shrink-0">
+                      <CheckCircle className="w-3 h-3" />
+                      متخرج
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs shrink-0">في الدورة</Badge>
+                  )}
+                </div>
+
+                <div className="border-t pt-2 space-y-1 text-xs text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>الدورة:</span>
+                    <span className="font-medium text-foreground truncate max-w-[60%] text-left">{p.course_title}</span>
+                  </div>
+                  {p.course_category && (
+                    <div className="flex justify-between">
+                      <span>التصنيف:</span>
+                      <span>{CATEGORY_LABELS[p.course_category] || p.course_category}</span>
+                    </div>
+                  )}
+                  {p.age && (
+                    <div className="flex justify-between">
+                      <span>العمر:</span>
+                      <span>{p.age} سنة</span>
+                    </div>
+                  )}
+                  {p.graduated && p.graduation_grade && (
+                    <div className="flex justify-between">
+                      <span>التقدير:</span>
+                      <span className="text-amber-600 font-medium">{GRADE_LABELS[p.graduation_grade] || p.graduation_grade}</span>
+                    </div>
+                  )}
+                  {p.graduated && p.graduated_at && (
+                    <div className="flex justify-between">
+                      <span>تاريخ التخرج:</span>
+                      <span>{formatDateAr(p.graduated_at)}</span>
+                    </div>
+                  )}
+                  {p.certificate_number && (
+                    <div className="flex justify-between">
+                      <span>رقم الشهادة:</span>
+                      <span className="font-mono text-[10px] truncate">{p.certificate_number}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CoursesGraduationPage() {
   const { user } = useAuth();
@@ -56,6 +204,12 @@ export default function CoursesGraduationPage() {
             <Shield className="w-4 h-4" />
             التحقق
           </TabsTrigger>
+          {canManageGraduation && (
+          <TabsTrigger value="external-archive" data-testid="tab-external-archive" className="gap-1">
+            <Globe className="w-4 h-4" />
+            أرشيف الخارجيين
+          </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="courses" className="mt-4">
@@ -75,6 +229,12 @@ export default function CoursesGraduationPage() {
         <TabsContent value="verify" className="mt-4">
           <CertificatesPage embedded defaultTab="verify" />
         </TabsContent>
+
+        {canManageGraduation && (
+        <TabsContent value="external-archive" className="mt-4">
+          <ExternalParticipantsArchive />
+        </TabsContent>
+        )}
       </Tabs>
     </div>
   );

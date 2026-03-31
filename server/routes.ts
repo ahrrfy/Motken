@@ -29,6 +29,7 @@ import { registerQuranRoutes } from "./routes/quran";
 import { registerStatsRoutes } from "./routes/stats";
 import { registerPublicRoutes } from "./routes/public";
 import { registerSearchRoutes } from "./routes/search";
+import { registerExternalAssignmentsRoutes } from "./routes/external-assignments";
 import { setupSwagger } from "./lib/swagger";
 
 export async function registerRoutes(
@@ -123,6 +124,7 @@ export async function registerRoutes(
   registerStatsRoutes(app);
   registerPublicRoutes(app);
   registerSearchRoutes(app);
+  registerExternalAssignmentsRoutes(app);
 
   return httpServer;
 }

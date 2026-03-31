@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus, ArrowUpCircle, Pencil } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus, ArrowUpCircle, Pencil, BookMarked } from "lucide-react";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
-import { openPrintWindow } from "@/lib/print-utils";
+import { openPrintWindow, openQuranPassport, type QuranPassportData } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
 import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
 import { formatDateAr } from "@/lib/utils";
@@ -127,6 +127,7 @@ export default function StudentsPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [generatingPassport, setGeneratingPassport] = useState(false);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
@@ -609,6 +610,23 @@ export default function StudentsPage() {
       setProfileStats(null);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const handleGeneratePassport = async (student: Student) => {
+    setGeneratingPassport(true);
+    try {
+      const res = await fetch(`/api/quran-passport/${student.id}`, { credentials: "include" });
+      if (!res.ok) {
+        toast({ title: "خطأ", description: "فشل في جلب بيانات جواز السفر", variant: "destructive" });
+        return;
+      }
+      const data = await res.json();
+      openQuranPassport(data as QuranPassportData);
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setGeneratingPassport(false);
     }
   };
 
@@ -1965,17 +1983,29 @@ export default function StudentsPage() {
                   </Button>
                 </div>
               )}
-              {isSupervisor && profileStudent && (
-                <div className="border-t pt-4 flex justify-end">
+              {!isStudent && profileStudent && (
+                <div className="border-t pt-4 flex items-center justify-between flex-wrap gap-2">
                   <Button
                     variant="outline"
-                    className="gap-2 text-amber-700 border-amber-300 hover:bg-amber-50"
-                    onClick={() => { setProfileDialogOpen(false); openEditDialog(profileStudent); }}
-                    data-testid="button-profile-edit"
+                    className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                    disabled={generatingPassport}
+                    onClick={() => handleGeneratePassport(profileStudent)}
+                    data-testid="button-quran-passport"
                   >
-                    <Pencil className="w-4 h-4" />
-                    تعديل البيانات
+                    {generatingPassport ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookMarked className="w-4 h-4" />}
+                    جواز سفر القرآن
                   </Button>
+                  {isSupervisor && (
+                    <Button
+                      variant="outline"
+                      className="gap-2 text-amber-700 border-amber-300 hover:bg-amber-50"
+                      onClick={() => { setProfileDialogOpen(false); openEditDialog(profileStudent); }}
+                      data-testid="button-profile-edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      تعديل البيانات
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

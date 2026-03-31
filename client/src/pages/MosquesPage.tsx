@@ -385,14 +385,25 @@ export default function MosquesPage() {
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, w, h);
-        let quality = 0.8;
-        let base64 = canvas.toDataURL("image/jpeg", quality);
-        while (base64.length > 500 * 1024 * 1.37 && quality > 0.1) {
-          quality -= 0.1;
-          base64 = canvas.toDataURL("image/jpeg", quality);
+        const isPng = file.type === "image/png";
+        if (!isPng) {
+          // Fill white background only for non-transparent formats
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
         }
-        if (base64.length > 500 * 1024 * 1.37) {
+        ctx.drawImage(img, 0, 0, w, h);
+        let base64: string;
+        if (isPng) {
+          base64 = canvas.toDataURL("image/png");
+        } else {
+          let quality = 0.8;
+          base64 = canvas.toDataURL("image/jpeg", quality);
+          while (base64.length > 500 * 1024 * 1.37 && quality > 0.1) {
+            quality -= 0.1;
+            base64 = canvas.toDataURL("image/jpeg", quality);
+          }
+        }
+        if (base64.length > 800 * 1024 * 1.37) {
           toast({ title: "خطأ", description: "حجم الصورة كبير جداً، يرجى اختيار صورة أصغر", variant: "destructive" });
           return;
         }

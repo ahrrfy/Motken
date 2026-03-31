@@ -514,4 +514,165 @@ export function registerCoursesRoutes(app: Express) {
     }
   });
 
+  // ==================== EXTERNAL PARTICIPANTS ====================
+
+  // GET external participants for a course
+  app.get("/api/courses/:id/external-participants", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { pool } = await import("../db");
+      const result = await pool.query(
+        `SELECT * FROM external_participants WHERE course_id = $1 ORDER BY created_at DESC`,
+        [req.params.id]
+      );
+      res.json(result.rows);
+    } catch (err: any) {
+      sendError(res, err, "جلب المشاركين الخارجيين");
+    }
+  });
+
+  // POST add external participant
+  app.post("/api/courses/:id/external-participants", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const course = await storage.getCourse(req.params.id);
+      if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
+
+      const { name, phone, age, notes } = req.body;
+      if (!name?.trim()) return res.status(400).json({ message: "الاسم مطلوب" });
+
+      const { pool } = await import("../db");
+      const result = await pool.query(
+        `INSERT INTO external_participants (course_id, mosque_id, name, phone, age, notes)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [req.params.id, user.mosqueId || null, name.trim(), phone || null, age || null, notes || null]
+      );
+      res.status(201).json(result.rows[0]);
+    } catch (err: any) {
+      sendError(res, err, "إضافة مشارك خارجي");
+    }
+  });
+
+  // DELETE external participant
+  app.delete("/api/courses/:id/external-participants/:participantId", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { pool } = await import("../db");
+      const result = await pool.query(
+        `DELETE FROM external_participants WHERE id = $1 AND course_id = $2 RETURNING id`,
+        [req.params.participantId, req.params.id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ message: "غير موجود" });
+      res.json({ success: true });
+    } catch (err: any) {
+      sendError(res, err, "حذف مشارك خارجي");
+    }
+  });
+
+  // POST graduate external participant
+  app.post("/api/courses/:id/external-participants/:participantId/graduate", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const course = await storage.getCourse(req.params.id);
+      if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
+
+      const { graduationGrade } = req.body;
+      const certNumber = `MTQ-EXT-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+      const { pool } = await import("../db");
+      const result = await pool.query(
+        `UPDATE external_participants
+         SET graduated = true, graduated_at = NOW(), graduation_grade = $1, certificate_number = $2
+         WHERE id = $3 AND course_id = $4 RETURNING *`,
+        [graduationGrade || null, certNumber, req.params.participantId, req.params.id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ message: "غير موجود" });
+
+      await logActivity(user, `تخريج مشارك خارجي من دورة: ${course.title}`, "courses");
+      res.json(result.rows[0]);
+    } catch (err: any) {
+      sendError(res, err, "تخريج مشارك خارجي");
+    }
+  });
+
+  // POST ungraduate external participant
+  app.post("/api/courses/:id/external-participants/:participantId/ungraduate", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { pool } = await import("../db");
+      const result = await pool.query(
+        `UPDATE external_participants
+         SET graduated = false, graduated_at = NULL, graduation_grade = NULL, certificate_number = NULL
+         WHERE id = $1 AND course_id = $2 RETURNING *`,
+        [req.params.participantId, req.params.id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ message: "غير موجود" });
+      res.json(result.rows[0]);
+    } catch (err: any) {
+      sendError(res, err, "إلغاء تخريج مشارك خارجي");
+    }
+  });
+
+  // GET archive of all external participants for mosque
+  app.get("/api/external-participants", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { pool } = await import("../db");
+      const result = await pool.query(
+        `SELECT ep.*, c.title AS course_title, c.category AS course_category, c.status AS course_status
+         FROM external_participants ep
+         JOIN courses c ON c.id = ep.course_id
+         WHERE ep.mosque_id = $1
+         ORDER BY ep.created_at DESC`,
+        [user.mosqueId]
+      );
+      res.json(result.rows);
+    } catch (err: any) {
+      sendError(res, err, "جلب أرشيف المشاركين الخارجيين");
+    }
+  });
+
+  // GET lookup external participants by phone (for auto-fill)
+  app.get("/api/external-participants/lookup", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { phone } = req.query;
+      if (!phone) return res.json([]);
+
+      const { pool } = await import("../db");
+      const result = await pool.query(
+        `SELECT DISTINCT ON (phone) name, phone, age
+         FROM external_participants
+         WHERE mosque_id = $1 AND phone ILIKE $2
+         ORDER BY phone, created_at DESC
+         LIMIT 5`,
+        [user.mosqueId, `%${phone}%`]
+      );
+      res.json(result.rows);
+    } catch (err: any) {
+      sendError(res, err, "البحث عن مشارك");
+    }
+  });
+
 }

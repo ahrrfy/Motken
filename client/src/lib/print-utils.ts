@@ -180,9 +180,9 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
     </head>
     <body>
       <div class="actions-bar">
-        <button class="btn-print" id="btnPrint">🖨️ طباعة مباشرة</button>
+        <button class="btn-print" id="btnPrint">🖨️ طباعة</button>
         <button class="btn-save" id="btnSave">📥 حفظ كـ PDF</button>
-        <select id="selectSize" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-family:inherit;font-size:13px;">
+        <select id="selectSize" style="padding:6px 12px;border-radius:6px;border:1px solid #444;background:#2a2a4a;color:white;font-family:inherit;font-size:13px;">
           <option value="A4 portrait">A4 عمودي</option>
           <option value="A4 landscape">A4 أفقي</option>
           <option value="A5 portrait">A5 عمودي</option>
@@ -207,71 +207,43 @@ export function openPrintWindow(title: string, contentHtml: string, options?: { 
           <div>برمجة وتطوير أحمد خالد الزبيدي</div>
         </div>
       </div>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
       <script>
-        document.getElementById('btnPrint').addEventListener('click', function() { window.print(); });
-        document.getElementById('btnSave').addEventListener('click', function() {
-          var btn = this;
-          btn.textContent = '⏳ جاري التصدير...';
-          btn.disabled = true;
-          var content = document.querySelector('.content-area');
-          var actionsBar = document.querySelector('.actions-bar');
-          actionsBar.style.display = 'none';
-          html2canvas(content, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(function(canvas) {
-            var sizeVal = document.getElementById('selectSize').value;
-            var parts = sizeVal.split(' ');
-            var paperSize = parts[0].toLowerCase();
-            var orient = parts[1] || 'portrait';
-            var pdf = new jspdf.jsPDF({ orientation: orient, unit: 'mm', format: paperSize });
-            var pageW = pdf.internal.pageSize.getWidth();
-            var pageH = pdf.internal.pageSize.getHeight();
-            var margin = 10;
-            var imgW = pageW - margin * 2;
-            var imgH = (canvas.height * imgW) / canvas.width;
-            var imgData = canvas.toDataURL('image/jpeg', 0.95);
-            var y = margin;
-            if (imgH <= pageH - margin * 2) {
-              pdf.addImage(imgData, 'JPEG', margin, y, imgW, imgH);
-            } else {
-              var pageCanvas = document.createElement('canvas');
-              var ctx = pageCanvas.getContext('2d');
-              var srcPageH = (canvas.width * (pageH - margin * 2)) / imgW;
-              var pages = Math.ceil(canvas.height / srcPageH);
-              for (var p = 0; p < pages; p++) {
-                if (p > 0) pdf.addPage();
-                var sliceH = Math.min(srcPageH, canvas.height - p * srcPageH);
-                pageCanvas.width = canvas.width;
-                pageCanvas.height = sliceH;
-                ctx.drawImage(canvas, 0, p * srcPageH, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-                var sliceData = pageCanvas.toDataURL('image/jpeg', 0.95);
-                var drawH = (sliceH * imgW) / canvas.width;
-                pdf.addImage(sliceData, 'JPEG', margin, margin, imgW, drawH);
-              }
-            }
-            pdf.save('report_' + new Date().toISOString().split('T')[0] + '.pdf');
-            actionsBar.style.display = '';
-            btn.textContent = '📥 حفظ كـ PDF';
-            btn.disabled = false;
-          }).catch(function() {
-            actionsBar.style.display = '';
-            btn.textContent = '📥 حفظ كـ PDF';
-            btn.disabled = false;
-            alert('فشل تصدير PDF — جرّب الطباعة واختر حفظ كـ PDF');
+        (function() {
+          function applyPageSize(val) {
+            var el = document.getElementById('pageStyle');
+            if (!el) { el = document.createElement('style'); el.id = 'pageStyle'; document.head.appendChild(el); }
+            el.textContent = '@media print { @page { size: ' + val + '; margin: 15mm; } }';
+          }
+
+          var initSize = '${pageSize === 'landscape' ? 'A4 landscape' : 'A4 portrait'}';
+          applyPageSize(initSize);
+          document.getElementById('selectSize').value = initSize;
+
+          document.getElementById('btnPrint').addEventListener('click', function() {
+            window.print();
           });
-        });
-        document.getElementById('btnClose').addEventListener('click', function() { window.close(); });
-        document.getElementById('selectSize').addEventListener('change', function() {
-          var style = document.getElementById('pageStyle');
-          if (!style) { style = document.createElement('style'); style.id = 'pageStyle'; document.head.appendChild(style); }
-          style.textContent = '@media print { @page { size: ' + this.value + '; margin: 15mm; } }';
-        });
-        // Set initial page size
-        var initStyle = document.createElement('style');
-        initStyle.id = 'pageStyle';
-        initStyle.textContent = '@media print { @page { size: ${pageSize === 'landscape' ? 'A4 landscape' : 'A4 portrait'}; margin: 15mm; } }';
-        document.head.appendChild(initStyle);
-        document.getElementById('selectSize').value = '${pageSize === 'landscape' ? 'A4 landscape' : 'A4 portrait'}';
+
+          document.getElementById('btnSave').addEventListener('click', function() {
+            var bar = document.querySelector('.actions-bar');
+            bar.style.display = 'none';
+            setTimeout(function() {
+              window.print();
+              bar.style.display = '';
+            }, 100);
+          });
+
+          document.getElementById('btnClose').addEventListener('click', function() {
+            try { window.close(); } catch(e) {}
+            setTimeout(function() {
+              try { window.close(); } catch(e) {}
+              document.body.innerHTML = '<div style="text-align:center;padding:40px;font-family:Tajawal,sans-serif;direction:rtl"><p style="font-size:18px">يمكنك إغلاق هذه النافذة يدوياً</p></div>';
+            }, 200);
+          });
+
+          document.getElementById('selectSize').addEventListener('change', function() {
+            applyPageSize(this.value);
+          });
+        })();
       </script>
     </body>
     </html>
@@ -462,4 +434,162 @@ export function generateCertificateHtml(cert: any, studentName: string, courseNa
       </div>
     </div>
   `;
+}
+
+// ==================== جواز سفر القرآن الكريم ====================
+
+const JUZ_NAMES_AR = [
+  "الأول","الثاني","الثالث","الرابع","الخامس",
+  "السادس","السابع","الثامن","التاسع","العاشر",
+  "الحادي عشر","الثاني عشر","الثالث عشر","الرابع عشر","الخامس عشر",
+  "السادس عشر","السابع عشر","الثامن عشر","التاسع عشر","العشرون",
+  "الحادي والعشرون","الثاني والعشرون","الثالث والعشرون","الرابع والعشرون","الخامس والعشرون",
+  "السادس والعشرون","السابع والعشرون","الثامن والعشرون","التاسع والعشرون","الثلاثون",
+];
+
+export interface QuranPassportData {
+  studentName: string;
+  studentAge?: number | null;
+  joinedAt?: string;
+  mosqueName: string;
+  mosqueImage?: string | null;
+  juzProgress: Array<{
+    juz: number;
+    totalVerses: number;
+    memorizedVerses: number;
+    completionPercent: number;
+    complete: boolean;
+    surahs: Array<{ number: number; name: string; totalVerses: number; memorizedVerses: number; complete: boolean; }>;
+  }>;
+  totalMemorizedVerses: number;
+  totalVerses: number;
+  totalCompletionPercent: number;
+  generatedAt: string;
+}
+
+export function openQuranPassport(data: QuranPassportData): void {
+  const win = window.open("", "_blank");
+  if (!win) return;
+
+  const hijriDate = toHijri(new Date(data.generatedAt));
+  const gregorianDate = formatDateAr(data.generatedAt);
+  const completedJuz = data.juzProgress.filter(j => j.complete).length;
+  const inProgressJuz = data.juzProgress.filter(j => !j.complete && j.memorizedVerses > 0).length;
+
+  const juzCells = data.juzProgress.map(j => {
+    const pct = j.completionPercent;
+    const isComplete = j.complete;
+    const hasStarted = j.memorizedVerses > 0;
+    const mainSurahs = j.surahs.slice(0, 3).map(s => s.name).join("، ");
+    const moreCount = j.surahs.length > 3 ? `+${j.surahs.length - 3}` : "";
+    const r = 22;
+    const circ = 2 * Math.PI * r;
+    const dash = circ * (pct / 100);
+    const gap = circ - dash;
+    const bgColor = isComplete ? "#e8f5e9" : hasStarted ? "#fffde7" : "#f5f5f5";
+    const borderColor = isComplete ? "#2e7d32" : hasStarted ? "#f59e0b" : "#e0e0e0";
+    const numberColor = isComplete ? "#1b5e20" : hasStarted ? "#92400e" : "#9e9e9e";
+    const trackColor = isComplete ? "#c8e6c9" : hasStarted ? "#fde68a" : "#e0e0e0";
+    const progressColor = isComplete ? "#2e7d32" : "#f59e0b";
+    const stampHtml = isComplete ? `<div style="position:absolute;top:4px;left:4px;width:24px;height:24px;border:2px solid #2e7d32;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e8f5e9;"><span style="color:#2e7d32;font-size:12px;font-weight:700;">✓</span></div>` : "";
+    return `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:10px;padding:7px 5px 5px;display:flex;flex-direction:column;align-items:center;position:relative;min-height:90px;gap:1px;">
+      ${stampHtml}
+      <p style="font-size:8.5px;font-weight:700;color:${numberColor};margin-bottom:1px;text-align:center;line-height:1.2;">الجزء ${JUZ_NAMES_AR[j.juz - 1]}</p>
+      <svg width="52" height="52" viewBox="0 0 54 54">
+        <circle cx="27" cy="27" r="${r}" fill="none" stroke="${trackColor}" stroke-width="4"/>
+        ${hasStarted || isComplete ? `<circle cx="27" cy="27" r="${r}" fill="none" stroke="${progressColor}" stroke-width="4" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(circ * 0.25).toFixed(1)}" stroke-linecap="round"/>` : ""}
+        <text x="27" y="31" text-anchor="middle" fill="${numberColor}" font-size="${isComplete ? '11' : '10'}" font-weight="700" font-family="Tajawal,sans-serif">${isComplete ? "حافظ" : hasStarted ? pct + "%" : "—"}</text>
+      </svg>
+      <p style="font-size:7px;color:#666;text-align:center;line-height:1.3;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(mainSurahs)}${moreCount ? " " + moreCount : ""}</p>
+    </div>`;
+  }).join("\n");
+
+  const mosqueLogoHtml = data.mosqueImage
+    ? `<img src="${escapeHtml(data.mosqueImage)}" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:3px solid #d4af37;"/>`
+    : `<div style="width:58px;height:58px;border-radius:50%;border:3px solid #d4af37;display:flex;align-items:center;justify-content:center;background:#1b5e20;"><span style="font-size:26px;color:#d4af37;">☽</span></div>`;
+
+  const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<title>جواز سفر القرآن — ${escapeHtml(data.studentName)}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Amiri:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+@page{size:A4 landscape;margin:0;}
+body{font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;direction:rtl;background:#f5f0e8;width:297mm;height:210mm;overflow:hidden;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+.passport{width:297mm;height:210mm;background:linear-gradient(135deg,#fefefe 0%,#f8f3e8 100%);display:flex;flex-direction:column;border:8px solid #1b5e20;position:relative;overflow:hidden;}
+.passport::before{content:'';position:absolute;top:12px;left:12px;right:12px;bottom:12px;border:2px solid #d4af37;pointer-events:none;z-index:0;}
+.passport::after{content:'';position:absolute;top:18px;left:18px;right:18px;bottom:18px;border:1px solid rgba(212,175,55,0.4);pointer-events:none;z-index:0;}
+.banner{background:linear-gradient(135deg,#1b5e20 0%,#2e7d32 50%,#1b5e20 100%);padding:9px 24px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;border-bottom:3px solid #d4af37;flex-shrink:0;}
+.banner-center{text-align:center;flex:1;}
+.banner-title{font-family:'Amiri',serif;font-size:21px;font-weight:700;color:#d4af37;letter-spacing:1px;text-shadow:1px 1px 3px rgba(0,0,0,0.3);}
+.banner-subtitle{font-size:9px;color:rgba(212,175,55,0.75);letter-spacing:3px;margin-top:1px;}
+.banner-name{font-size:15px;font-weight:700;color:white;margin-top:3px;}
+.banner-mosque{font-size:10px;color:rgba(255,255,255,0.7);margin-top:1px;}
+.body{display:flex;flex:1;overflow:hidden;position:relative;z-index:1;}
+.left-panel{width:135px;flex-shrink:0;background:linear-gradient(180deg,rgba(27,94,32,0.05) 0%,rgba(27,94,32,0.02) 100%);border-left:2px solid rgba(212,175,55,0.3);padding:10px 9px;display:flex;flex-direction:column;gap:6px;}
+.info-label{font-size:8px;color:#888;font-weight:500;}
+.info-value{font-size:10px;color:#1b5e20;font-weight:700;}
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,0.5),transparent);margin:2px 0;}
+.stat-box{background:linear-gradient(135deg,#1b5e20,#2e7d32);border-radius:8px;padding:6px;text-align:center;}
+.stat-num{font-size:20px;font-weight:800;color:#d4af37;line-height:1;}
+.stat-label{font-size:7.5px;color:rgba(255,255,255,0.8);margin-top:1px;}
+.right-panel{flex:1;padding:8px 10px 6px;overflow:hidden;}
+.juz-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;height:100%;}
+.footer{background:linear-gradient(135deg,#1b5e20 0%,#2e7d32 50%,#1b5e20 100%);padding:5px 24px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid #d4af37;flex-shrink:0;position:relative;z-index:1;}
+.watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Amiri',serif;font-size:150px;color:rgba(27,94,32,0.04);pointer-events:none;z-index:0;white-space:nowrap;}
+.action-bar{position:fixed;bottom:0;left:0;right:0;background:#1b5e20;padding:7px 20px;display:flex;gap:10px;justify-content:center;z-index:100;border-top:2px solid #d4af37;}
+@media print{.action-bar{display:none!important;}body{background:white;}}
+</style></head>
+<body>
+<div class="passport">
+  <div class="watermark">﷽</div>
+  <div class="banner">
+    ${mosqueLogoHtml}
+    <div class="banner-center">
+      <div class="banner-title">جواز سفر القرآن الكريم</div>
+      <div class="banner-subtitle">HOLY QURAN MEMORIZATION PASSPORT</div>
+      <div class="banner-name">${escapeHtml(data.studentName)}</div>
+      <div class="banner-mosque">${escapeHtml(data.mosqueName)}</div>
+    </div>
+    <div style="width:58px;text-align:center;">
+      <div style="font-family:'Amiri',serif;font-size:30px;color:#d4af37;line-height:1;">☾</div>
+      <div style="font-size:8px;color:rgba(255,255,255,0.6);margin-top:2px;">مُتْقِن</div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="left-panel">
+      <div><div class="info-label">الاسم الكامل</div><div class="info-value" style="font-size:10.5px;">${escapeHtml(data.studentName)}</div></div>
+      ${data.studentAge ? `<div><div class="info-label">العمر</div><div class="info-value">${data.studentAge} سنة</div></div>` : ""}
+      ${data.joinedAt ? `<div><div class="info-label">تاريخ الانضمام</div><div class="info-value" style="font-size:9px;">${formatDateAr(data.joinedAt)}</div></div>` : ""}
+      <div class="divider"></div>
+      <div class="stat-box"><div class="stat-num">${completedJuz}</div><div class="stat-label">جزء محفوظ كاملاً</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
+        <div style="background:#e8f5e9;border-radius:5px;padding:4px;text-align:center;"><div style="font-size:12px;font-weight:800;color:#1b5e20;">${completedJuz}</div><div style="font-size:7px;color:#388e3c;">مكتمل</div></div>
+        <div style="background:#fffde7;border-radius:5px;padding:4px;text-align:center;"><div style="font-size:12px;font-weight:800;color:#f59e0b;">${inProgressJuz}</div><div style="font-size:7px;color:#f59e0b;">جارٍ</div></div>
+      </div>
+      <div><div class="info-label">الآيات المحفوظة</div><div class="info-value" style="font-size:9px;">${data.totalMemorizedVerses.toLocaleString("ar")} / ${data.totalVerses.toLocaleString("ar")}</div></div>
+      <div style="background:linear-gradient(135deg,#fff9c4,#fffde7);border:1px solid #f59e0b;border-radius:6px;padding:5px;text-align:center;">
+        <div style="font-size:19px;font-weight:800;color:#f59e0b;">${data.totalCompletionPercent}%</div>
+        <div style="font-size:7px;color:#92400e;">نسبة الإتمام الكلية</div>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="juz-grid">${juzCells}</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div style="text-align:center;min-width:70px;"><div style="width:60px;border-bottom:1.5px solid rgba(212,175,55,0.6);margin:0 auto 3px;"></div><div style="font-size:8px;color:rgba(255,255,255,0.6);">توقيع المسؤول</div></div>
+    <div style="flex:1;margin:0 16px;"><div style="font-size:7.5px;color:rgba(255,255,255,0.65);margin-bottom:2px;">التقدم الكلي — ${data.totalCompletionPercent}%</div><div style="height:5px;background:rgba(255,255,255,0.2);border-radius:3px;overflow:hidden;"><div style="height:100%;background:linear-gradient(90deg,#d4af37,#f9d856);border-radius:3px;width:${data.totalCompletionPercent}%;"></div></div></div>
+    <div style="width:44px;height:44px;border:2px solid #d4af37;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;"><div style="font-size:6.5px;color:#d4af37;font-weight:700;text-align:center;line-height:1.2;">ختم<br/>مُتْقِن</div></div>
+    <div style="text-align:center;margin-right:8px;"><div style="font-size:8.5px;color:#d4af37;font-weight:700;">${hijriDate}</div><div style="font-size:7.5px;color:rgba(255,255,255,0.6);margin-top:1px;">${gregorianDate}</div></div>
+  </div>
+</div>
+<div class="action-bar">
+  <button onclick="window.print()" style="background:#d4af37;color:#1b5e20;border:none;padding:7px 22px;border-radius:20px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">🖨️ طباعة / حفظ PDF</button>
+  <button onclick="(function(){try{window.close();}catch(e){alert('أغلق النافذة يدوياً')}})()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:7px 18px;border-radius:20px;font-family:Tajawal,sans-serif;font-size:13px;cursor:pointer;">✕ إغلاق</button>
+</div>
+</body></html>`;
+
+  win.document.write(html);
+  win.document.close();
 }

@@ -75,8 +75,10 @@ export function BookUploadDialog({
   // Extract text from PDF using pdfjs-dist
   const extractFromPdf = async (file: File): Promise<string> => {
     const pdfjsLib = await import("pdfjs-dist");
-    // Use a CDN worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).href;
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

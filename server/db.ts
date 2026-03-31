@@ -169,6 +169,42 @@ export async function createIndexes() {
     `CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at DESC)`,
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS announcement_id VARCHAR REFERENCES announcements(id) ON DELETE SET NULL`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS supervisor_permissions JSONB DEFAULT '{}'`,
+    `CREATE TABLE IF NOT EXISTS external_assignments (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      mosque_id VARCHAR REFERENCES mosques(id) ON DELETE CASCADE,
+      created_by VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      student_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+      student_name TEXT,
+      book_name TEXT NOT NULL,
+      pages_from INTEGER,
+      pages_to INTEGER,
+      assigned_date DATE NOT NULL,
+      due_date DATE,
+      completion_date DATE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      notes TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_ext_assignments_mosque ON external_assignments(mosque_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ext_assignments_created_by ON external_assignments(created_by)`,
+    `CREATE INDEX IF NOT EXISTS idx_ext_assignments_student ON external_assignments(student_id)`,
+    `CREATE TABLE IF NOT EXISTS external_participants (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      course_id VARCHAR NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      mosque_id VARCHAR REFERENCES mosques(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      phone TEXT,
+      age INTEGER,
+      notes TEXT,
+      graduated BOOLEAN NOT NULL DEFAULT false,
+      graduated_at TIMESTAMP,
+      graduation_grade TEXT,
+      certificate_number VARCHAR,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_ext_participants_course ON external_participants(course_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ext_participants_mosque ON external_participants(mosque_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ext_participants_phone ON external_participants(phone) WHERE phone IS NOT NULL`,
   ];
 
   let created = 0;

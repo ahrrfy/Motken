@@ -225,4 +225,93 @@ export function registerQuranRoutes(app: Express) {
     } catch (err: any) { sendError(res, err, "تسجيل نتيجة المراجعة"); }
   });
 
+  // ==================== QURAN PASSPORT ====================
+  app.get("/api/quran-passport/:userId", requireAuth, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      const targetUserId = req.params.userId;
+
+      if (targetUserId !== currentUser.id && !["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+
+      const student = await storage.getUser(targetUserId);
+      if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
+
+      let mosque = null;
+      if (student.mosqueId) mosque = await storage.getMosque(student.mosqueId);
+
+      const progress = await storage.getQuranProgressByUser(targetUserId);
+      const { quranSurahs } = await import("@shared/quran-surahs");
+
+      // Page-based surah → juz mapping
+      const surahStartPages: Record<number, number> = {
+        1:1,2:2,3:50,4:77,5:106,6:128,7:151,8:177,9:187,10:208,
+        11:221,12:235,13:249,14:255,15:262,16:267,17:282,18:293,
+        19:305,20:312,21:322,22:332,23:342,24:350,25:359,26:367,
+        27:377,28:385,29:396,30:404,31:411,32:415,33:418,34:428,
+        35:434,36:440,37:446,38:453,39:458,40:467,41:477,42:483,
+        43:489,44:496,45:499,46:502,47:507,48:511,49:515,50:518,
+        51:520,52:523,53:526,54:528,55:531,56:534,57:537,58:542,
+        59:545,60:549,61:551,62:553,63:554,64:556,65:558,66:560,
+        67:562,68:564,69:566,70:568,71:570,72:572,73:574,74:575,
+        75:577,76:578,77:580,78:582,79:583,80:585,81:586,82:587,
+        83:587,84:589,85:590,86:591,87:591,88:592,89:593,90:594,
+        91:595,92:595,93:596,94:596,95:597,96:597,97:598,98:598,
+        99:599,100:599,101:600,102:600,103:601,104:601,105:601,
+        106:602,107:602,108:602,109:603,110:603,111:603,112:604,
+        113:604,114:604,
+      };
+      const juzStartPages = [1,22,42,62,82,102,121,142,162,182,201,221,241,261,281,301,321,341,361,381,401,421,441,461,481,501,521,542,562,582];
+
+      const getSurahJuz = (surahNum: number) => {
+        const page = surahStartPages[surahNum] || 1;
+        for (let i = juzStartPages.length - 1; i >= 0; i--) {
+          if (page >= juzStartPages[i]) return i + 1;
+        }
+        return 1;
+      };
+
+      const juzMap = new Map<number, { surahs: any[] }>();
+      for (let j = 1; j <= 30; j++) juzMap.set(j, { surahs: [] });
+
+      for (const surah of quranSurahs) {
+        const juz = getSurahJuz(surah.number);
+        const prog = progress.find((p: any) => p.surahNumber === surah.number);
+        let memorizedVerses = 0;
+        if (prog) {
+          const statuses = JSON.parse(prog.verseStatuses || "{}");
+          memorizedVerses = Object.values(statuses).filter((s: any) => s === "memorized").length;
+        }
+        juzMap.get(juz)!.surahs.push({
+          number: surah.number,
+          name: surah.name,
+          totalVerses: surah.versesCount,
+          memorizedVerses,
+          complete: memorizedVerses >= surah.versesCount,
+        });
+      }
+
+      const juzProgress = Array.from(juzMap.entries()).map(([juz, data]) => {
+        const totalVerses = data.surahs.reduce((sum: number, s: any) => sum + s.totalVerses, 0);
+        const memorizedVerses = data.surahs.reduce((sum: number, s: any) => sum + s.memorizedVerses, 0);
+        const completionPercent = totalVerses > 0 ? Math.round((memorizedVerses / totalVerses) * 100) : 0;
+        return { juz, surahs: data.surahs, totalVerses, memorizedVerses, completionPercent, complete: completionPercent >= 95 };
+      });
+
+      const totalMemorizedVerses = juzProgress.reduce((s, j) => s + j.memorizedVerses, 0);
+      const TOTAL_QURAN_VERSES = 6236;
+
+      res.json({
+        student: { id: student.id, name: student.name, age: student.age, joinedAt: student.createdAt },
+        mosque: { name: mosque?.name || "", image: (mosque as any)?.image || null },
+        juzProgress,
+        totalMemorizedVerses,
+        totalVerses: TOTAL_QURAN_VERSES,
+        totalCompletionPercent: Math.round((totalMemorizedVerses / TOTAL_QURAN_VERSES) * 100),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (err: any) { sendError(res, err, "جواز سفر القرآن"); }
+  });
+
 }

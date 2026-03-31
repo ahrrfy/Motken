@@ -1042,8 +1042,8 @@ export default function AssignmentsExamsPage() {
           <TabsTrigger value="exams" className="gap-2" data-testid="tab-exams">
             📋 الامتحانات
           </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-2" data-testid="tab-calendar">
-            📅 التقويم
+          <TabsTrigger value="external" className="gap-2" data-testid="tab-external">
+            📚 الواجبات الخارجية
           </TabsTrigger>
         </TabsList>
 
@@ -2143,110 +2143,9 @@ export default function AssignmentsExamsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="calendar" className="mt-6">
-          <Card data-testid="calendar-view">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <Button variant="ghost" size="icon" onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))} data-testid="button-prev-month">
-                  <ChevronRight className="w-5 h-5" />
-                </Button>
-                <CardTitle className="text-lg" data-testid="text-calendar-month">
-                  {format(calendarMonth, "MMMM yyyy", { locale: ar })}
-                </CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))} data-testid="button-next-month">
-                  <ChevronLeft className="w-5 h-5" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {dayNames.map(d => (
-                  <div key={d} className="text-center text-xs font-bold text-muted-foreground py-2">{d}</div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {Array.from({ length: calendarDays.paddingDays }).map((_, i) => (
-                  <div key={`pad-${i}`} className="h-16" />
-                ))}
-                {calendarDays.days.map(day => {
-                  const key = format(day, "yyyy-MM-dd");
-                  const dayAssignments = assignmentsByDate[key] || [];
-                  const isSelected = selectedCalendarDate && isSameDay(day, selectedCalendarDate);
-                  const isToday = isSameDay(day, new Date());
-                  const hasPending = dayAssignments.some(a => a.status === "pending");
-                  const hasDone = dayAssignments.some(a => a.status === "done");
 
-                  return (
-                    <div
-                      key={key}
-                      className={cn(
-                        "h-16 rounded-lg border cursor-pointer transition-colors p-1 flex flex-col items-center",
-                        isSelected ? "border-primary bg-primary/5 ring-2 ring-primary" : "border-transparent hover:bg-muted/50",
-                        isToday && "bg-blue-50 border-blue-200"
-                      )}
-                      onClick={() => setSelectedCalendarDate(day)}
-                      data-testid={`calendar-day-${key}`}
-                    >
-                      <span className={cn("text-sm font-medium", isToday && "text-blue-600 font-bold")}>
-                        {format(day, "d")}
-                      </span>
-                      {dayAssignments.length > 0 && (
-                        <div className="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
-                          {hasPending && <div className="w-2 h-2 rounded-full bg-yellow-500" />}
-                          {hasDone && <div className="w-2 h-2 rounded-full bg-green-500" />}
-                          {dayAssignments.length > 2 && (
-                            <span className="text-[8px] text-muted-foreground">+{dayAssignments.length}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {selectedCalendarDate && (
-                <div className="mt-6 border-t pt-4" data-testid="calendar-day-details">
-                  <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
-                    <CalendarLucide className="w-4 h-4 text-primary" />
-                    واجبات يوم {format(selectedCalendarDate, "EEEE d MMMM yyyy", { locale: ar })}
-                    <Badge variant="outline">{selectedDateAssignments.length}</Badge>
-                  </h3>
-                  {selectedDateAssignments.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-day-assignments">لا توجد واجبات في هذا اليوم</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedDateAssignments.map(task => {
-                        const typeBadge = getTypeBadge(task.type);
-                        return (
-                          <div key={task.id} className="p-3 bg-white rounded-lg border flex items-center justify-between" data-testid={`calendar-assignment-${task.id}`}>
-                            <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-primary" />
-                              <span className="text-sm font-medium">{getAssignStudentName(task.studentId)}</span>
-                              <span className="text-xs text-muted-foreground">- {task.surahName} ({task.fromVerse}-{task.toVerse})</span>
-                              <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", typeBadge.className)}>
-                                {typeBadge.label}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                {task.scheduledDate ? format(new Date(task.scheduledDate), "hh:mm a", { locale: ar }) : "—"}
-                              </span>
-                              <span className={cn(
-                                "text-[10px] px-2 py-0.5 rounded-full",
-                                task.status === "done" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                              )}>
-                                {task.status === "done" ? "مكتمل" : "معلق"}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="external" className="mt-6">
+          <ExternalAssignmentsTab />
         </TabsContent>
       </Tabs>
 
@@ -2292,6 +2191,243 @@ export default function AssignmentsExamsPage() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ==================== EXTERNAL ASSIGNMENTS TAB ====================
+interface ExtAssignment {
+  id: string;
+  student_id?: string;
+  student_name?: string;
+  book_name: string;
+  pages_from?: number;
+  pages_to?: number;
+  assigned_date: string;
+  due_date?: string;
+  completion_date?: string;
+  status: string;
+  notes?: string;
+  creator_name?: string;
+}
+
+function ExternalAssignmentsTab() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [items, setItems] = useState<ExtAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [editItem, setEditItem] = useState<ExtAssignment | null>(null);
+  const [form, setForm] = useState({
+    studentName: "", bookName: "", pagesFrom: "", pagesTo: "",
+    assignedDate: "", dueDate: "", notes: "",
+  });
+
+  const canEdit = user?.role === "admin" || user?.role === "supervisor" || user?.role === "teacher";
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/external-assignments", { credentials: "include" });
+      if (res.ok) setItems(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchItems(); }, []);
+
+  const openNew = () => {
+    setEditItem(null);
+    setForm({ studentName: "", bookName: "", pagesFrom: "", pagesTo: "", assignedDate: "", dueDate: "", notes: "" });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (item: ExtAssignment) => {
+    setEditItem(item);
+    setForm({
+      studentName: item.student_name || "",
+      bookName: item.book_name,
+      pagesFrom: item.pages_from?.toString() || "",
+      pagesTo: item.pages_to?.toString() || "",
+      assignedDate: item.assigned_date?.split("T")[0] || "",
+      dueDate: item.due_date?.split("T")[0] || "",
+      notes: item.notes || "",
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.bookName || !form.assignedDate) {
+      toast({ title: "خطأ", description: "اسم الكتاب وتاريخ الواجب مطلوبان", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const body = {
+        studentName: form.studentName || null,
+        bookName: form.bookName,
+        pagesFrom: form.pagesFrom ? parseInt(form.pagesFrom) : null,
+        pagesTo: form.pagesTo ? parseInt(form.pagesTo) : null,
+        assignedDate: form.assignedDate,
+        dueDate: form.dueDate || null,
+        notes: form.notes || null,
+      };
+      const url = editItem ? `/api/external-assignments/${editItem.id}` : "/api/external-assignments";
+      const method = editItem ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method, credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: editItem ? "تم تحديث الواجب" : "تمت إضافة الواجب", className: "bg-green-50 border-green-200 text-green-800" });
+        setDialogOpen(false);
+        fetchItems();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const markComplete = async (item: ExtAssignment) => {
+    const today = new Date().toISOString().split("T")[0];
+    const res = await fetch(`/api/external-assignments/${item.id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "done", completionDate: today }),
+    });
+    if (res.ok) { toast({ title: "تم", description: "تم تحديد الواجب كمكتمل", className: "bg-green-50 border-green-200 text-green-800" }); fetchItems(); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("هل أنت متأكد من الحذف؟")) return;
+    const res = await fetch(`/api/external-assignments/${id}`, { method: "DELETE", credentials: "include" });
+    if (res.ok) { toast({ title: "تم الحذف", className: "bg-red-50 border-red-200 text-red-800" }); fetchItems(); }
+  };
+
+  return (
+    <div className="space-y-4" data-testid="external-assignments-tab">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold">الواجبات الخارجية</h3>
+          <p className="text-sm text-muted-foreground">واجبات من الكتب والمراجع خارج القرآن الكريم</p>
+        </div>
+        {canEdit && (
+          <Button onClick={openNew} className="gap-2" data-testid="button-add-external">
+            <Plus className="w-4 h-4" />
+            إضافة واجب
+          </Button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+      ) : items.length === 0 ? (
+        <Card><CardContent className="py-12 text-center text-muted-foreground">لا توجد واجبات خارجية بعد</CardContent></Card>
+      ) : (
+        <div className="space-y-3">
+          {items.map(item => (
+            <Card key={item.id} className={`border-r-4 ${item.status === "done" ? "border-r-green-500" : "border-r-amber-400"}`} data-testid={`ext-assignment-${item.id}`}>
+              <CardContent className="py-3 px-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm">{item.book_name}</span>
+                      {(item.pages_from || item.pages_to) && (
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                          ص {item.pages_from || "—"} → {item.pages_to || "—"}
+                        </span>
+                      )}
+                      <Badge variant={item.status === "done" ? "default" : "outline"} className={item.status === "done" ? "bg-green-100 text-green-700 border-none text-xs" : "text-amber-700 border-amber-300 text-xs"}>
+                        {item.status === "done" ? "مكتمل" : "معلق"}
+                      </Badge>
+                    </div>
+                    {item.student_name && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <User className="w-3 h-3" /> {item.student_name}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
+                      <span>📅 تاريخ الواجب: {item.assigned_date?.split("T")[0]}</span>
+                      {item.due_date && <span>⏰ الموعد النهائي: {item.due_date?.split("T")[0]}</span>}
+                      {item.completion_date && <span>✅ تم بتاريخ: {item.completion_date?.split("T")[0]}</span>}
+                    </div>
+                    {item.notes && <p className="text-xs text-muted-foreground border-t pt-1 mt-1">{item.notes}</p>}
+                  </div>
+                  {canEdit && (
+                    <div className="flex gap-1 shrink-0">
+                      {item.status !== "done" && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:bg-green-50" onClick={() => markComplete(item)} title="تحديد كمكتمل">
+                          <CheckCircle2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:bg-blue-50" onClick={() => openEdit(item)} title="تعديل">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-50" onClick={() => handleDelete(item.id)} title="حذف">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>{editItem ? "تعديل واجب خارجي" : "إضافة واجب خارجي"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label>اسم الطالب (اختياري)</Label>
+              <Input value={form.studentName} onChange={e => setForm(p => ({ ...p, studentName: e.target.value }))} placeholder="اسم الطالب" data-testid="input-ext-student-name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>اسم الكتاب *</Label>
+              <Input value={form.bookName} onChange={e => setForm(p => ({ ...p, bookName: e.target.value }))} placeholder="مثال: متن الآجرومية" data-testid="input-ext-book-name" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>الصفحة من</Label>
+                <Input type="number" value={form.pagesFrom} onChange={e => setForm(p => ({ ...p, pagesFrom: e.target.value }))} placeholder="من" data-testid="input-ext-pages-from" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>الصفحة إلى</Label>
+                <Input type="number" value={form.pagesTo} onChange={e => setForm(p => ({ ...p, pagesTo: e.target.value }))} placeholder="إلى" data-testid="input-ext-pages-to" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>تاريخ الواجب *</Label>
+                <Input type="date" value={form.assignedDate} onChange={e => setForm(p => ({ ...p, assignedDate: e.target.value }))} data-testid="input-ext-assigned-date" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>الموعد النهائي</Label>
+                <Input type="date" value={form.dueDate} onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} data-testid="input-ext-due-date" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>ملاحظات</Label>
+              <Textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="أي ملاحظات إضافية..." rows={2} data-testid="input-ext-notes" />
+            </div>
+            <Button onClick={handleSubmit} disabled={submitting} className="w-full" data-testid="button-submit-external">
+              {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              {editItem ? "حفظ التعديلات" : "إضافة الواجب"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
