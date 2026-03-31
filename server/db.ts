@@ -152,6 +152,23 @@ export async function createIndexes() {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_mosque_messages_mosque_id ON mosque_messages(mosque_id)`,
     `CREATE INDEX IF NOT EXISTS idx_mosque_messages_unread ON mosque_messages(from_admin, is_read) WHERE is_read = false`,
+    `CREATE TABLE IF NOT EXISTS announcements (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      sender_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'info',
+      target_type TEXT NOT NULL,
+      target_value TEXT,
+      mosque_id VARCHAR REFERENCES mosques(id) ON DELETE SET NULL,
+      total_recipients INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_announcements_sender_id ON announcements(sender_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_announcements_mosque_id ON announcements(mosque_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at DESC)`,
+    `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS announcement_id VARCHAR REFERENCES announcements(id) ON DELETE SET NULL`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS supervisor_permissions JSONB DEFAULT '{}'`,
   ];
 
   let created = 0;
