@@ -100,7 +100,7 @@ export function registerExamsRoutes(app: Express) {
         fromVerse: fromVerseNum,
         toVerse: toVerseNum,
         examDate: new Date(examDate),
-        examTime,
+        examTime: examTime || null,
         description,
         isForAll: isForAll !== false,
       });

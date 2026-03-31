@@ -1883,14 +1883,25 @@ export default function AssignmentsExamsPage() {
                         </div>
                       )}
 
-                      <div className="space-y-2">
-                        <Label>تاريخ الامتحان (يوم) *</Label>
-                        <Input
-                          data-testid="input-exam-date"
-                          type="date"
-                          value={examDate}
-                          onChange={e => setExamDate(e.target.value)}
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>تاريخ الامتحان (يوم) *</Label>
+                          <Input
+                            data-testid="input-exam-date"
+                            type="date"
+                            value={examDate}
+                            onChange={e => setExamDate(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>وقت الامتحان</Label>
+                          <Input
+                            data-testid="input-exam-time"
+                            type="time"
+                            value={examTime}
+                            onChange={e => setExamTime(e.target.value)}
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-2">

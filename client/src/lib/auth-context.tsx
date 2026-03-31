@@ -27,7 +27,7 @@ export type PreviewRole = UserRole | null;
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  login: (username: string, password: string) => Promise<{ ok: boolean; message?: string; role?: UserRole }>;
   logout: () => Promise<void>;
   switchRole: () => void;
   refreshUser: () => Promise<void>;
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (res.ok) {
         setUser(data);
-        return { ok: true };
+        return { ok: true, role: data.role };
       }
       return { ok: false, message: data.message || "فشل تسجيل الدخول" };
     } catch {
@@ -101,12 +101,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchRole = () => {
     if (!user) return;
     const actualRole = user.actualRole || user.role;
-    if (actualRole !== "supervisor") return;
 
-    if (user.role === "supervisor") {
-      setUser({ ...user, role: "teacher", actualRole: "supervisor" });
-    } else {
-      setUser({ ...user, role: "supervisor", actualRole: "supervisor" });
+    if (actualRole === "supervisor") {
+      if (user.role === "supervisor") {
+        setUser({ ...user, role: "teacher", actualRole: "supervisor" });
+      } else {
+        setUser({ ...user, role: "supervisor", actualRole: "supervisor" });
+      }
+    } else if (actualRole === "teacher") {
+      if (user.role === "teacher") {
+        setUser({ ...user, role: "student", actualRole: "teacher" });
+      } else {
+        setUser({ ...user, role: "teacher", actualRole: "teacher" });
+      }
     }
   };
 

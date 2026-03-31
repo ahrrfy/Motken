@@ -8,7 +8,7 @@ import { allFeatureDefaults, featureRouteMap } from "./routes/feature-defaults";
 import { registerMosquesRoutes } from "./routes/mosques";
 import { registerUsersRoutes } from "./routes/users";
 import { registerAssignmentsRoutes } from "./routes/assignments";
-import { registerRatingsRoutes } from "./routes/ratings";
+
 import { registerExamsRoutes } from "./routes/exams";
 import { registerActivityRoutes } from "./routes/activity";
 import { registerNotificationsRoutes } from "./routes/notifications";
@@ -17,13 +17,13 @@ import { registerAdminRoutes } from "./routes/admin";
 import { registerAttendanceRoutes } from "./routes/attendance";
 import { registerMessagesRoutes } from "./routes/messages";
 import { registerPointsRoutes } from "./routes/points";
-import { registerSchedulesRoutes } from "./routes/schedules";
+
 import { registerCompetitionsRoutes } from "./routes/competitions";
 import { registerReportsRoutes } from "./routes/reports";
 import { registerAlertsRoutes } from "./routes/alerts";
 import { registerGraduatesRoutes } from "./routes/graduates";
 import { registerFamilyRoutes } from "./routes/family";
-import { registerKnowledgeRoutes } from "./routes/knowledge";
+
 import { registerAnalyticsRoutes } from "./routes/analytics";
 import { registerCommunicationRoutes } from "./routes/communication";
 import { registerQuranRoutes } from "./routes/quran";
@@ -103,7 +103,7 @@ export async function registerRoutes(
   registerMosquesRoutes(app);
   registerUsersRoutes(app);
   registerAssignmentsRoutes(app);
-  registerRatingsRoutes(app);
+
   registerExamsRoutes(app);
   registerActivityRoutes(app);
   registerNotificationsRoutes(app);
@@ -112,13 +112,13 @@ export async function registerRoutes(
   registerAttendanceRoutes(app);
   registerMessagesRoutes(app);
   registerPointsRoutes(app);
-  registerSchedulesRoutes(app);
+
   registerCompetitionsRoutes(app);
   registerReportsRoutes(app);
   registerAlertsRoutes(app);
   registerGraduatesRoutes(app);
   registerFamilyRoutes(app);
-  registerKnowledgeRoutes(app);
+
   registerAnalyticsRoutes(app);
   registerCommunicationRoutes(app);
   registerQuranRoutes(app);

@@ -410,7 +410,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ studentIds, graduationGrade: graduationGrade || null }),
+        body: JSON.stringify({ studentIds, graduationGrade: graduationGrade != null && graduationGrade !== "" ? graduationGrade : null }),
       });
 
       if (res.ok) {

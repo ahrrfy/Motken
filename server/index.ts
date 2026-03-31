@@ -106,7 +106,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 function csrfProtection(req: Request, res: Response, next: NextFunction) {
   if (SAFE_METHODS.has(req.method)) return next();
 
-  const publicPaths = ["/api/register-mosque", "/api/auth/login", "/api/auth/register-parent"];
+  const publicPaths = ["/api/register-mosque", "/api/auth/login"];
   if (publicPaths.some(p => req.path === p)) return next();
 
   const origin = req.get("origin") || req.get("referer");
@@ -163,7 +163,7 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth/login", authLimiter);
 app.use("/api/register-mosque", authLimiter);
-app.use("/api/auth/register-parent", authLimiter);
+app.use("/api/family/create-parent-account", authLimiter);
 
 const sensitiveActionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

@@ -30,7 +30,7 @@ const MAX_FIELD_LENGTHS: Record<string, number> = {
   educationLevel: 100,
   gender: 20,
   level: 50,
-  surahName: 100,
+  surahName: 2000,
   type: 50,
   status: 50,
   reason: 500,

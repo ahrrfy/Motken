@@ -22,14 +22,12 @@ import {
   UserCircle,
   Menu,
   Building2,
-  Star,
   ClipboardList,
   Award,
   Wifi,
   ArrowLeftRight,
   MessageSquare,
   Trophy,
-  Clock,
   AlertTriangle,
   Shield,
   UserCog,
@@ -46,7 +44,6 @@ import {
   Lightbulb,
   ArrowUpDown,
   FileText,
-  Brain,
   Sparkles,
   MapPin,
   Pen,
@@ -91,6 +88,16 @@ interface NavCategory {
 
 const navCategories: NavCategory[] = [
   {
+    id: "parent",
+    label: "ولي الأمر",
+    labelEn: "Parent",
+    icon: HeartHandshake,
+    defaultOpen: true,
+    items: [
+      { href: "/parent-dashboard", label: "متابعة أبنائي", labelEn: "My Children", icon: Users, roles: ["parent"] },
+    ],
+  },
+  {
     id: "main",
     label: "الرئيسية",
     labelEn: "Main",
@@ -123,8 +130,6 @@ const navCategories: NavCategory[] = [
       { href: "/quran", label: "المصحف والحفظ", labelEn: "Quran Tracker", icon: BookOpen, roles: ["admin", "teacher", "student", "supervisor"] },
       { href: "/courses", label: "الدورات والتخرج", labelEn: "Courses & Graduation", icon: Award, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "courses" },
       { href: "/library", label: "المكتبة الإسلامية", labelEn: "Islamic Library", icon: Library, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "library" },
-      { href: "/knowledge-base", label: "موسوعة التجويد", labelEn: "Tajweed Encyclopedia", icon: Brain, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "knowledge_base" },
-      { href: "/educational-content", label: "المحتوى التعليمي", labelEn: "Educational Content", icon: Sparkles, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "educational_content" },
     ],
   },
   {
@@ -135,8 +140,6 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/attendance", label: "الحضور والغياب", labelEn: "Attendance", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"], featureKey: "attendance" },
       { href: "/points-rewards", label: "النقاط والمكافآت", labelEn: "Points & Rewards", icon: Gift, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "points_rewards" },
-      { href: "/ratings", label: "التقييمات والأوسمة", labelEn: "Ratings & Badges", icon: Star, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "ratings" },
-      { href: "/schedules", label: "جدول الحلقات", labelEn: "Schedules", icon: Clock, roles: ["admin", "teacher", "supervisor"], featureKey: "schedules" },
       { href: "/competitions", label: "المسابقات القرآنية", labelEn: "Competitions", icon: Trophy, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "competitions" },
     ],
   },
@@ -396,6 +399,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                 : previewRole === "teacher" ? "bg-emerald-500/20 text-emerald-400"
                 : previewRole === "supervisor" ? "bg-purple-500/20 text-purple-400"
                 : "bg-accent/20 text-accent"
+                : user.role === "parent" ? "bg-amber-500/20 text-amber-400"
                 : "bg-accent/20 text-accent"
             )}>
               {user.name?.charAt(0)}
@@ -417,7 +421,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               <p className="text-[10px] text-sidebar-foreground/50 truncate">{
                 user.role === "admin" ? (isEn ? "System Admin" : "مدير النظام") :
                 user.role === "supervisor" ? (isEn ? "Supervisor" : "مشرف") :
-                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) : (isEn ? "Student" : "طالب")
+                user.role === "teacher" ? (isEn ? "Teacher" : (user.actualRole === "supervisor" ? "أستاذ (مشرف)" : "أستاذ")) :
+                user.role === "parent" ? (isEn ? "Parent" : "ولي أمر") : (isEn ? "Student" : "طالب")
               }</p>
             )}
           </div>
@@ -461,6 +466,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           {user?.role === "supervisor"
             ? (isEn ? "Teacher Mode" : "وضع الأستاذ")
             : (isEn ? "Supervisor Mode" : "وضع المشرف")}
+        </Button>
+      )}
+      {!previewRole && (user?.actualRole === "teacher" || (user?.role === "teacher" && !user?.actualRole)) && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={switchRole}
+          className="w-full h-8 text-xs bg-emerald-900/20 border-emerald-700/30 text-emerald-400 hover:bg-emerald-800/30 hover:text-emerald-300"
+          data-testid="button-switch-teacher-student"
+        >
+          <ArrowLeftRight className="w-3.5 h-3.5 ml-1.5" />
+          {user?.role === "teacher"
+            ? (isEn ? "Student Mode" : "وضع طالب العلم")
+            : (isEn ? "Teacher Mode" : "وضع الأستاذ")}
         </Button>
       )}
       {previewRole && (

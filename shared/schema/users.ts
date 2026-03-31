@@ -35,9 +35,6 @@ export const users = pgTable("users", {
   adminNotes: text("admin_notes"),
   suspendedUntil: timestamp("suspended_until"),
   studyMode: text("study_mode").notNull().default("in-person"),
-  twoFactorSecret: text("two_factor_secret"),
-  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
-  twoFactorBackupCodes: text("two_factor_backup_codes"), // JSON array of hashed codes
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_users_mosque_id").on(table.mosqueId),

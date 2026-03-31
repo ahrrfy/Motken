@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,21 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
-  MapPin, Users, Clock, Plus, Loader2, BookOpen, GraduationCap,
-  Layout, Maximize2, Eye, Trash2, Edit, Grid, List
+  MapPin, Users, Plus, Loader2, GraduationCap,
+  Layout, Edit, Grid, List
 } from "lucide-react";
-
-interface Schedule {
-  id: string;
-  teacherId: string;
-  title: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  location: string | null;
-  isActive: boolean;
-  teacherName?: string;
-}
 
 interface Teacher {
   id: string;
@@ -46,8 +34,6 @@ interface Room {
   color: string;
   type: "classroom" | "hall" | "office" | "prayer" | "entrance";
 }
-
-const DAY_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
 const ROOM_COLORS: Record<string, string> = {
   classroom: "#3b82f6",
@@ -78,12 +64,10 @@ const DEFAULT_ROOMS: Room[] = [
 export default function FloorPlanPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [studentCounts, setStudentCounts] = useState<StudentCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [selectedDay, setSelectedDay] = useState(new Date().getDay());
   const [rooms, setRooms] = useState<Room[]>(() => {
     try {
       const stored = localStorage.getItem(`mutqin_floorplan_${user?.mosqueId || "default"}`);
@@ -110,19 +94,16 @@ export default function FloorPlanPage() {
 
   const fetchData = async () => {
     try {
-      const [schedulesRes, teachersRes, studentsRes] = await Promise.all([
-        fetch("/api/schedules", { credentials: "include" }),
+      const [teachersRes, studentsRes] = await Promise.all([
         fetch("/api/users?role=teacher", { credentials: "include" }),
         fetch("/api/users?role=student", { credentials: "include" }),
       ]);
-      
-      const schedulesData = schedulesRes.ok ? await schedulesRes.json() : [];
+
       const teachersData = teachersRes.ok ? await teachersRes.json() : [];
       const studentsData = studentsRes.ok ? await studentsRes.json() : [];
-      
-      setSchedules(schedulesData);
+
       setTeachers(teachersData);
-      
+
       const counts: Record<string, number> = {};
       studentsData.forEach((s: any) => {
         if (s.teacherId) {
@@ -136,22 +117,6 @@ export default function FloorPlanPage() {
       setLoading(false);
     }
   };
-
-  const getTeacherName = (teacherId: string) => teachers.find(t => t.id === teacherId)?.name || teacherId;
-  const getStudentCount = (teacherId: string) => studentCounts.find(sc => sc.teacherId === teacherId)?.count || 0;
-
-  const getActiveSessionsForRoom = (room: Room) => {
-    return schedules.filter(s => 
-      s.dayOfWeek === selectedDay && 
-      s.isActive && 
-      s.location && 
-      (s.location.includes(room.name) || room.name.includes(s.location || ""))
-    );
-  };
-
-  const todaySchedules = useMemo(() => {
-    return schedules.filter(s => s.dayOfWeek === selectedDay && s.isActive);
-  }, [schedules, selectedDay]);
 
   const handleAddRoom = () => {
     if (!newRoomName) return;
@@ -218,40 +183,12 @@ export default function FloorPlanPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-3">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            <span className="text-sm font-medium shrink-0">اختر اليوم:</span>
-            {DAY_NAMES.map((day, idx) => (
-              <Button
-                key={idx}
-                variant={selectedDay === idx ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedDay(idx)}
-                className={`shrink-0 ${idx === new Date().getDay() ? "ring-2 ring-amber-300" : ""}`}
-                data-testid={`btn-day-${idx}`}
-              >
-                {day}
-                {idx === new Date().getDay() && <Badge variant="secondary" className="mr-1 text-[9px] px-1">اليوم</Badge>}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger-children">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 stagger-children">
         <Card className="card-hover" data-testid="stat-total-rooms">
           <CardContent className="p-3 text-center">
             <Layout className="w-6 h-6 mx-auto mb-1 text-blue-500" />
             <p className="text-2xl font-bold">{rooms.filter(r => r.type === "classroom" || r.type === "hall").length}</p>
             <p className="text-xs text-muted-foreground">قاعات ومصليات</p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover" data-testid="stat-today-sessions">
-          <CardContent className="p-3 text-center">
-            <Clock className="w-6 h-6 mx-auto mb-1 text-emerald-500" />
-            <p className="text-2xl font-bold">{todaySchedules.length}</p>
-            <p className="text-xs text-muted-foreground">حلقات اليوم</p>
           </CardContent>
         </Card>
         <Card className="card-hover" data-testid="stat-teachers">
@@ -283,7 +220,7 @@ export default function FloorPlanPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                مخطط المركز - {DAY_NAMES[selectedDay]}
+                مخطط المركز
               </CardTitle>
               {canManage && (
                 <div className="flex items-center gap-2">
@@ -316,90 +253,44 @@ export default function FloorPlanPage() {
                   </pattern>
                 </defs>
                 <rect width="620" height="420" fill="url(#grid)" />
-                
-                {rooms.map((room) => {
-                  const sessions = getActiveSessionsForRoom(room);
-                  const hasActiveSessions = sessions.length > 0;
-                  
-                  return (
-                    <g
-                      key={room.id}
-                      onClick={() => setSelectedRoom(room)}
-                      className="cursor-pointer"
-                      data-testid={`room-${room.id}`}
+
+                {rooms.map((room) => (
+                  <g
+                    key={room.id}
+                    onClick={() => setSelectedRoom(room)}
+                    className="cursor-pointer"
+                    data-testid={`room-${room.id}`}
+                  >
+                    <rect
+                      x={room.x} y={room.y}
+                      width={room.width} height={room.height}
+                      rx={8}
+                      fill={room.color}
+                      opacity={0.7}
+                      stroke="#94a3b8"
+                      strokeWidth={1}
+                      className="transition-all duration-300"
+                    />
+
+                    <text
+                      x={room.x + room.width / 2}
+                      y={room.y + room.height / 2}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fontWeight="bold"
+                      fill="white"
                     >
-                      <rect
-                        x={room.x} y={room.y}
-                        width={room.width} height={room.height}
-                        rx={8}
-                        fill={room.color}
-                        opacity={hasActiveSessions ? 0.9 : 0.4}
-                        stroke={hasActiveSessions ? "#059669" : "#94a3b8"}
-                        strokeWidth={hasActiveSessions ? 2.5 : 1}
-                        className="transition-all duration-300"
-                      />
-                      
-                      {hasActiveSessions && (
-                        <rect
-                          x={room.x} y={room.y}
-                          width={room.width} height={room.height}
-                          rx={8}
-                          fill="none"
-                          stroke="#10b981"
-                          strokeWidth={2}
-                          opacity={0.5}
-                        >
-                          <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite" />
-                        </rect>
-                      )}
-                      
-                      <text
-                        x={room.x + room.width / 2}
-                        y={room.y + room.height / 2 - 8}
-                        textAnchor="middle"
-                        fontSize="11"
-                        fontWeight="bold"
-                        fill="white"
-                      >
-                        {room.name}
-                      </text>
-                      
-                      {hasActiveSessions && (
-                        <>
-                          <text
-                            x={room.x + room.width / 2}
-                            y={room.y + room.height / 2 + 8}
-                            textAnchor="middle"
-                            fontSize="9"
-                            fill="rgba(255,255,255,0.9)"
-                          >
-                            {getTeacherName(sessions[0].teacherId)}
-                          </text>
-                          <text
-                            x={room.x + room.width / 2}
-                            y={room.y + room.height / 2 + 22}
-                            textAnchor="middle"
-                            fontSize="8"
-                            fill="rgba(255,255,255,0.7)"
-                          >
-                            {sessions[0].startTime} - {sessions[0].endTime}
-                          </text>
-                          <circle cx={room.x + room.width - 12} cy={room.y + 12} r={10} fill="#f59e0b" />
-                          <text x={room.x + room.width - 12} y={room.y + 16} textAnchor="middle" fontSize="9" fontWeight="bold" fill="white">
-                            {getStudentCount(sessions[0].teacherId)}
-                          </text>
-                        </>
-                      )}
-                      
-                      {editMode && canManage && (
-                        <g onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.id); }}>
-                          <circle cx={room.x + 12} cy={room.y + 12} r={10} fill="#ef4444" className="cursor-pointer" />
-                          <text x={room.x + 12} y={room.y + 16} textAnchor="middle" fontSize="12" fill="white">×</text>
-                        </g>
-                      )}
-                    </g>
-                  );
-                })}
+                      {room.name}
+                    </text>
+
+                    {editMode && canManage && (
+                      <g onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.id); }}>
+                        <circle cx={room.x + 12} cy={room.y + 12} r={10} fill="#ef4444" className="cursor-pointer" />
+                        <text x={room.x + 12} y={room.y + 16} textAnchor="middle" fontSize="12" fill="white">×</text>
+                      </g>
+                    )}
+                  </g>
+                ))}
               </svg>
             </div>
           </CardContent>
@@ -409,101 +300,28 @@ export default function FloorPlanPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <List className="w-5 h-5" />
-              قائمة القاعات والحلقات - {DAY_NAMES[selectedDay]}
+              قائمة القاعات
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rooms.filter(r => r.type === "classroom" || r.type === "hall").map(room => {
-              const sessions = getActiveSessionsForRoom(room);
-              return (
-                <div key={room.id} className="border rounded-xl p-4 hover:shadow-md transition-shadow" data-testid={`list-room-${room.id}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: room.color }}>
-                        <Layout className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{room.name}</h3>
-                        <p className="text-xs text-muted-foreground">{ROOM_LABELS[room.type]}</p>
-                      </div>
+            {rooms.filter(r => r.type === "classroom" || r.type === "hall").map(room => (
+              <div key={room.id} className="border rounded-xl p-4 hover:shadow-md transition-shadow" data-testid={`list-room-${room.id}`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: room.color }}>
+                      <Layout className="w-5 h-5" />
                     </div>
-                    <Badge variant={sessions.length > 0 ? "default" : "secondary"}>
-                      {sessions.length > 0 ? "نشط" : "فارغ"}
-                    </Badge>
+                    <div>
+                      <h3 className="font-semibold">{room.name}</h3>
+                      <p className="text-xs text-muted-foreground">{ROOM_LABELS[room.type]}</p>
+                    </div>
                   </div>
-                  {sessions.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {sessions.map(session => (
-                        <div key={session.id} className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <GraduationCap className="w-4 h-4 text-primary" />
-                              <span className="text-sm font-medium">{getTeacherName(session.teacherId)}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Clock className="w-3 h-3" />
-                              <span>{session.startTime} - {session.endTime}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4 text-amber-500" />
-                            <span className="text-sm font-bold">{getStudentCount(session.teacherId)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
-
-      <Card data-testid="today-sessions-summary">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            حلقات {DAY_NAMES[selectedDay]} ({todaySchedules.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {todaySchedules.length === 0 ? (
-            <p className="text-center py-6 text-muted-foreground text-sm">لا توجد حلقات مجدولة لهذا اليوم</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {todaySchedules.map(session => (
-                <div key={session.id} className="border rounded-xl p-3 hover:shadow-sm transition-shadow" data-testid={`session-card-${session.id}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    <span className="font-medium text-sm">{session.title}</span>
-                  </div>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <GraduationCap className="w-3 h-3" />
-                      <span>{getTeacherName(session.teacherId)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3 h-3" />
-                      <span>{session.startTime} - {session.endTime}</span>
-                    </div>
-                    {session.location && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3" />
-                        <span>{session.location}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5">
-                      <Users className="w-3 h-3" />
-                      <span>{getStudentCount(session.teacherId)} طالب</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Dialog open={!!selectedRoom} onOpenChange={() => setSelectedRoom(null)}>
         <DialogContent dir="rtl" data-testid="dialog-room-detail">
@@ -512,54 +330,12 @@ export default function FloorPlanPage() {
               <MapPin className="w-5 h-5 text-primary" />
               {selectedRoom?.name}
             </DialogTitle>
-            <DialogDescription>تفاصيل القاعة والحلقات المجدولة</DialogDescription>
+            <DialogDescription>تفاصيل القاعة</DialogDescription>
           </DialogHeader>
           {selectedRoom && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Badge style={{ backgroundColor: selectedRoom.color, color: "white" }}>{ROOM_LABELS[selectedRoom.type]}</Badge>
-              </div>
-              <div>
-                <h4 className="font-semibold text-sm mb-2">الحلقات في هذه القاعة ({DAY_NAMES[selectedDay]})</h4>
-                {getActiveSessionsForRoom(selectedRoom).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">لا توجد حلقات في هذه القاعة لهذا اليوم</p>
-                ) : (
-                  <div className="space-y-2">
-                    {getActiveSessionsForRoom(selectedRoom).map(session => (
-                      <div key={session.id} className="bg-muted/30 rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{session.title}</span>
-                          <Badge variant="outline">{session.startTime} - {session.endTime}</Badge>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {getTeacherName(session.teacherId)}</span>
-                          <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {getStudentCount(session.teacherId)} طالب</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <h4 className="font-semibold text-sm mb-2">جميع أيام الأسبوع</h4>
-                <div className="space-y-1">
-                  {DAY_NAMES.map((day, idx) => {
-                    const daySessions = schedules.filter(s => s.dayOfWeek === idx && s.isActive && s.location && (s.location.includes(selectedRoom!.name) || selectedRoom!.name.includes(s.location || "")));
-                    if (daySessions.length === 0) return null;
-                    return (
-                      <div key={idx} className="flex items-center justify-between text-sm p-2 bg-secondary/20 rounded">
-                        <span className="font-medium">{day}</span>
-                        <div className="flex items-center gap-2">
-                          {daySessions.map(s => (
-                            <Badge key={s.id} variant="outline" className="text-[10px]">
-                              {s.startTime} - {getTeacherName(s.teacherId)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             </div>
           )}
