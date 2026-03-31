@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">مُتْقِن</string>
+    <string name="title_activity_main">مُتْقِن</string>
+    <string name="package_name">com.motken.app</string>
+    <string name="custom_url_scheme">com.motken.app</string>
+</resources>
