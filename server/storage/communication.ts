@@ -3,7 +3,8 @@ import { eq, desc, and, or, asc, count } from "drizzle-orm";
 import {
   type Notification, type InsertNotification,
   type Message, type InsertMessage,
-  notifications, messages,
+  type Announcement, type InsertAnnouncement,
+  notifications, messages, announcements,
 } from "@shared/schema";
 
 export const communicationMethods = {
@@ -90,5 +91,23 @@ export const communicationMethods = {
       and(eq(messages.receiverId, userId), eq(messages.isRead, false))
     );
     return result?.value ?? 0;
+  },
+
+  // ==================== ANNOUNCEMENTS ====================
+  async createAnnouncement(a: InsertAnnouncement): Promise<Announcement> {
+    const [ann] = await db.insert(announcements).values(a).returning();
+    return ann;
+  },
+
+  async getAnnouncements(): Promise<Announcement[]> {
+    return db.select().from(announcements).orderBy(desc(announcements.createdAt)).limit(100);
+  },
+
+  async getAnnouncementsBySender(senderId: string): Promise<Announcement[]> {
+    return db.select().from(announcements).where(eq(announcements.senderId, senderId)).orderBy(desc(announcements.createdAt)).limit(100);
+  },
+
+  async getAnnouncementsByMosque(mosqueId: string): Promise<Announcement[]> {
+    return db.select().from(announcements).where(eq(announcements.mosqueId, mosqueId)).orderBy(desc(announcements.createdAt)).limit(100);
   },
 };

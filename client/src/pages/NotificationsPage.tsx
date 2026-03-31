@@ -35,6 +35,19 @@ interface MosqueOption {
   name: string;
 }
 
+interface Announcement {
+  id: string;
+  senderId: string;
+  title: string;
+  message: string;
+  type: string;
+  targetType: string;
+  targetValue?: string | null;
+  mosqueId?: string | null;
+  totalRecipients: number;
+  createdAt: string;
+}
+
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -59,6 +72,10 @@ export default function NotificationsPage() {
   const [sending, setSending] = useState(false);
   const [usersList, setUsersList] = useState<UserOption[]>([]);
   const [mosquesList, setMosquesList] = useState<MosqueOption[]>([]);
+  const [targetRole, setTargetRole] = useState("student");
+  const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
+  const [sentAnnouncements, setSentAnnouncements] = useState<Announcement[]>([]);
+  const [loadingSent, setLoadingSent] = useState(false);
 
   useEffect(() => {
     fetch("/api/notifications", { credentials: "include" })
@@ -87,6 +104,16 @@ export default function NotificationsPage() {
     }
   }, [canSend, user?.role]);
 
+  useEffect(() => {
+    if (!canSend || activeTab !== "sent") return;
+    setLoadingSent(true);
+    fetch("/api/announcements", { credentials: "include" })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setSentAnnouncements(data))
+      .catch(() => {})
+      .finally(() => setLoadingSent(false));
+  }, [canSend, activeTab]);
+
   const handleSendNotification = async () => {
     if (!sendTitle.trim() || !sendMessage.trim()) {
       toast({ title: "خطأ", description: "العنوان والرسالة مطلوبان", variant: "destructive" });
@@ -105,6 +132,7 @@ export default function NotificationsPage() {
           targetType,
           targetUserId: targetType === "user" ? targetUserId : undefined,
           targetMosqueId: targetType === "mosque" ? targetMosqueId : undefined,
+          targetRole: targetType === "role" ? targetRole : undefined,
         }),
       });
       const data = await res.json();
@@ -287,6 +315,21 @@ export default function NotificationsPage() {
     }
   };
 
+  const getRoleName = (role: string) => {
+    const names: Record<string, string> = { admin: "مدير", supervisor: "مشرف", teacher: "أستاذ", student: "طالب", parent: "ولي أمر" };
+    return names[role] || role;
+  };
+
+  const formatTargetType = (type: string, value?: string | null) => {
+    switch (type) {
+      case "all": return "جميع المستخدمين";
+      case "role": return value ? `دور: ${getRoleName(value)}` : "حسب الدور";
+      case "mosque": return "جامع محدد";
+      case "user": return "مستخدم محدد";
+      default: return type;
+    }
+  };
+
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -359,6 +402,10 @@ export default function NotificationsPage() {
                       <span className="text-sm">جامع/مركز محدد</span>
                     </label>
                   )}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="targetType" value="role" checked={targetType === "role"} onChange={() => setTargetType("role")} data-testid="radio-target-role" />
+                    <span className="text-sm">حسب الدور</span>
+                  </label>
                 </div>
               </div>
               {targetType === "user" && (
@@ -373,6 +420,22 @@ export default function NotificationsPage() {
                     emptyText="لا يوجد مستخدم بهذا الاسم"
                     data-testid="select-target-user"
                   />
+                </div>
+              )}
+              {targetType === "role" && (
+                <div className="space-y-2">
+                  <Label>اختر الدور</Label>
+                  <Select value={targetRole} onValueChange={setTargetRole}>
+                    <SelectTrigger data-testid="select-target-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {user?.role === "admin" && <SelectItem value="supervisor">مشرف</SelectItem>}
+                      <SelectItem value="teacher">أستاذ</SelectItem>
+                      <SelectItem value="student">طالب</SelectItem>
+                      {user?.role === "admin" && <SelectItem value="parent">ولي أمر</SelectItem>}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               {targetType === "mosque" && user?.role === "admin" && (
@@ -403,6 +466,24 @@ export default function NotificationsPage() {
         </Card>
       )}
 
+      {canSend && (
+        <div className="flex border-b gap-1">
+          <button
+            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "received" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setActiveTab("received")}
+          >
+            الإشعارات المستلمة
+          </button>
+          <button
+            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "sent" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setActiveTab("sent")}
+          >
+            الإعلانات المرسلة
+          </button>
+        </div>
+      )}
+
+      {(!canSend || activeTab === "received") && (<>
       <Card dir="rtl">
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-end gap-3">
@@ -617,6 +698,48 @@ export default function NotificationsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+      </>)}
+
+      {canSend && activeTab === "sent" && (
+        <div className="space-y-3">
+          {loadingSent ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
+              <span>جاري التحميل...</span>
+            </div>
+          ) : sentAnnouncements.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">لا توجد إعلانات مرسلة</div>
+          ) : (
+            sentAnnouncements.map(ann => (
+              <Card key={ann.id}>
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-sm">{ann.title}</h4>
+                        <Badge variant="outline" className={`text-xs ${
+                          ann.type === "urgent" ? "border-red-400 text-red-600" :
+                          ann.type === "warning" ? "border-amber-400 text-amber-600" :
+                          ann.type === "success" ? "border-green-400 text-green-600" :
+                          "border-blue-400 text-blue-600"
+                        }`}>
+                          {ann.type === "info" ? "معلومة" : ann.type === "warning" ? "تحذير" : ann.type === "urgent" ? "عاجل" : "نجاح"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{ann.message}</p>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>الهدف: {formatTargetType(ann.targetType, ann.targetValue)}</span>
+                        <span>المستقبلون: {ann.totalRecipients}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatTime(ann.createdAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       )}
     </div>

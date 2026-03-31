@@ -7,6 +7,8 @@ import {
   type User,
 } from "@shared/schema";
 import { sendError } from "../error-handler";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 
 export function registerStatsRoutes(app: Express) {
   // ==================== STATS ====================
@@ -73,6 +75,31 @@ export function registerStatsRoutes(app: Express) {
       });
     }
 
+    if (currentUser.role === "supervisor") {
+      const perms = (currentUser as any).supervisorPermissions || {};
+      if (perms.canViewAllMosques === true) {
+        const usersList = await storage.getUsers();
+        const assignmentsList = await storage.getAssignments();
+        const mosquesList = await storage.getMosques();
+        const studentsList = usersList.filter(u => u.role === "student");
+        return res.json({
+          totalStudents: studentsList.length,
+          totalTeachers: usersList.filter(u => u.role === "teacher").length,
+          totalSupervisors: usersList.filter(u => u.role === "supervisor").length,
+          totalMosques: mosquesList.length,
+          totalAssignments: assignmentsList.length,
+          completedAssignments: assignmentsList.filter(a => a.status === "done").length,
+          pendingAssignments: assignmentsList.filter(a => a.status === "pending").length,
+          activeStudents: studentsList.filter(s => s.isActive).length,
+          inactiveStudents: studentsList.filter(s => !s.isActive).length,
+          specialNeedsStudents: studentsList.filter(s => s.isSpecialNeeds).length,
+          orphanStudents: studentsList.filter(s => s.isOrphan).length,
+          users: usersList.map(({ password, ...u }) => u),
+          assignments: assignmentsList,
+        });
+      }
+    }
+
     if (currentUser.role === "supervisor" && currentUser.mosqueId) {
       let mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
       let assignmentsList = await storage.getAssignmentsByMosque(currentUser.mosqueId);
@@ -99,6 +126,41 @@ export function registerStatsRoutes(app: Express) {
     }
 
     res.json({});
+  });
+
+  // ==================== GROWTH STATS ====================
+  app.get("/api/stats/growth", requireAuth, async (req, res) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "admin") {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
+    try {
+      const userGrowth = await db.execute(sql`
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month,
+          COUNT(*)::int AS count
+        FROM users
+        WHERE created_at >= NOW() - INTERVAL '12 months'
+        GROUP BY DATE_TRUNC('month', created_at)
+        ORDER BY DATE_TRUNC('month', created_at) ASC
+      `);
+      const assignmentActivity = await db.execute(sql`
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month,
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE status = 'done')::int AS completed
+        FROM assignments
+        WHERE created_at >= NOW() - INTERVAL '12 months'
+        GROUP BY DATE_TRUNC('month', created_at)
+        ORDER BY DATE_TRUNC('month', created_at) ASC
+      `);
+      res.json({
+        userGrowth: userGrowth.rows,
+        assignmentActivity: assignmentActivity.rows,
+      });
+    } catch (err: any) {
+      sendError(res, err, "جلب إحصائيات النمو");
+    }
   });
 
 }

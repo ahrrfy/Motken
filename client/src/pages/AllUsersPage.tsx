@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download, PauseCircle, XCircle, FileText, MessageCircle } from "lucide-react";
+import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Trash2, Edit, Printer, Download, PauseCircle, XCircle, FileText, MessageCircle, Settings2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { openPrintWindow } from "@/lib/print-utils";
@@ -39,6 +40,7 @@ interface UserRecord {
   privacyPolicyAcceptedAt?: string | null;
   adminNotes?: string | null;
   suspendedUntil?: string | null;
+  supervisorPermissions?: Record<string, boolean> | null;
   createdAt?: string;
 }
 
@@ -84,6 +86,7 @@ export default function AllUsersPage() {
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState<UserRecord | null>(null);
   const [suspendDate, setSuspendDate] = useState("");
+  const [supervisorPerms, setSupervisorPerms] = useState<Record<string, boolean>>({});
 
   const [form, setForm] = useState({
     username: "",
@@ -136,6 +139,9 @@ export default function AllUsersPage() {
       const body: any = { ...form };
       if (form.role === "admin") body.mosqueId = null;
       if (editingUser && !form.password) delete body.password;
+      if (editingUser && form.role === "supervisor") {
+        body.supervisorPermissions = supervisorPerms;
+      }
 
       const res = await fetch(url, {
         method,
@@ -286,6 +292,7 @@ export default function AllUsersPage() {
       mosqueId: u.mosqueId || "",
       phone: u.phone || "",
     });
+    setSupervisorPerms((u.supervisorPermissions as Record<string, boolean>) || {});
     setDialogOpen(true);
   };
 
@@ -435,6 +442,31 @@ export default function AllUsersPage() {
                   error={phoneValidation.message && !phoneValidation.valid ? phoneValidation.message : undefined}
                 />
               </div>
+              {editingUser && form.role === "supervisor" && (
+                <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Settings2 className="w-4 h-4 text-purple-500" />
+                    صلاحيات إضافية للمشرف
+                  </div>
+                  {[
+                    { key: "canExportData", label: "تصدير البيانات" },
+                    { key: "canManageTemplates", label: "إدارة القوالب" },
+                    { key: "canViewActivityLogs", label: "عرض سجل الحركات" },
+                    { key: "canSendBroadcast", label: "إرسال الإعلانات لجميع المستخدمين" },
+                    { key: "canManageAttendance", label: "إدارة الحضور والغياب" },
+                    { key: "canManageCourses", label: "إدارة الدورات" },
+                    { key: "canViewAllMosques", label: "عرض إحصائيات جميع الجوامع" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{label}</span>
+                      <Switch
+                        checked={supervisorPerms[key] === true}
+                        onCheckedChange={(checked) => setSupervisorPerms(prev => ({ ...prev, [key]: checked }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
               <Button className="w-full" onClick={handleSubmit} data-testid="button-submit-user">
                 {editingUser ? "تحديث" : "إضافة"}
               </Button>

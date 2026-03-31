@@ -1,9 +1,31 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, timestamp, index, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { mosques } from "./mosques";
 import { users } from "./users";
+
+// ==================== ANNOUNCEMENTS ====================
+export const announcements = pgTable("announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull().default("info"),
+  targetType: text("target_type").notNull(),
+  targetValue: text("target_value"),
+  mosqueId: varchar("mosque_id").references(() => mosques.id, { onDelete: "set null" }),
+  totalRecipients: integer("total_recipients").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_announcements_sender_id").on(table.senderId),
+  index("idx_announcements_mosque_id").on(table.mosqueId),
+  index("idx_announcements_created_at").on(table.createdAt),
+]);
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, createdAt: true });
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type Announcement = typeof announcements.$inferSelect;
 
 // ==================== MESSAGES ====================
 export const messages = pgTable("messages", {
@@ -34,6 +56,7 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   type: text("type").notNull().default("info"),
   isRead: boolean("is_read").notNull().default(false),
+  announcementId: varchar("announcement_id").references(() => announcements.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_notifications_user_id").on(table.userId),

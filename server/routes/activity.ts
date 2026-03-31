@@ -7,12 +7,13 @@ export function registerActivityRoutes(app: Express) {
   app.get("/api/activity-logs", requireRole("admin"), async (req, res) => {
     try {
       const mosqueId = req.query.mosqueId as string | undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       if (mosqueId) {
         const logs = await storage.getActivityLogsByMosque(mosqueId);
-        return res.json(logs);
+        return res.json(limit ? logs.slice(0, limit) : logs);
       }
       const logs = await storage.getActivityLogs();
-      return res.json(logs);
+      return res.json(limit ? logs.slice(0, limit) : logs);
     } catch (err: any) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
     }

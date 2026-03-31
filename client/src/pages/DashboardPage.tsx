@@ -15,6 +15,10 @@ import { useTheme } from "@/lib/theme-context";
 import { Link } from "wouter";
 import { authenticHadiths } from "@shared/hadiths";
 import { formatDateAr } from "@/lib/utils";
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
 
 interface Stats {
   totalStudents?: number;
@@ -28,6 +32,11 @@ interface Stats {
   inactiveStudents?: number;
   specialNeedsStudents?: number;
   orphanStudents?: number;
+}
+
+interface GrowthData {
+  userGrowth: Array<{ month: string; count: number }>;
+  assignmentActivity: Array<{ month: string; total: number; completed: number }>;
 }
 
 interface AttendanceSummary {
@@ -128,6 +137,7 @@ export default function DashboardPage() {
   const [loadingTeacherStats, setLoadingTeacherStats] = useState(false);
   const [challenges, setChallenges] = useState<any[]>([]);
   const [loadingChallenges, setLoadingChallenges] = useState(false);
+  const [growthData, setGrowthData] = useState<GrowthData | null>(null);
 
   const isEn = language === "en";
   const currentRole = effectiveRole || user?.role;
@@ -229,6 +239,14 @@ export default function DashboardPage() {
   }, [isStudent]);
 
   const isRealAdmin = user?.role === 'admin' && !previewRole;
+
+  useEffect(() => {
+    if (!isRealAdmin) return;
+    fetch("/api/stats/growth", { credentials: "include" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setGrowthData(data); })
+      .catch(() => {});
+  }, [isRealAdmin]);
 
   const completionRate = stats?.totalAssignments
     ? Math.round(((stats.completedAssignments ?? 0) / stats.totalAssignments) * 100)
@@ -639,6 +657,64 @@ export default function DashboardPage() {
               />
             )}
           </div>
+
+          {isRealAdmin && growthData && (
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  {isEn ? "System Growth" : "نمو النظام"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {isEn ? "New Users (monthly)" : "مستخدمون جدد شهرياً"}
+                    </p>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <LineChart data={growthData.userGrowth}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis
+                          dataKey="month"
+                          tick={{ fontSize: 10 }}
+                          tickFormatter={(v) => new Date(v + "-01").toLocaleDateString("ar-EG", { month: "short" })}
+                        />
+                        <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={30} />
+                        <Tooltip
+                          formatter={(v) => [v, isEn ? "Users" : "مستخدم"]}
+                          labelFormatter={(v) => new Date(v + "-01").toLocaleDateString("ar-EG", { month: "long", year: "numeric" })}
+                        />
+                        <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {isEn ? "Assignment Activity (monthly)" : "نشاط الواجبات شهرياً"}
+                    </p>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <BarChart data={growthData.assignmentActivity}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis
+                          dataKey="month"
+                          tick={{ fontSize: 10 }}
+                          tickFormatter={(v) => new Date(v + "-01").toLocaleDateString("ar-EG", { month: "short" })}
+                        />
+                        <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={30} />
+                        <Tooltip
+                          formatter={(v, name) => [v, name === "completed" ? (isEn ? "Completed" : "مكتملة") : (isEn ? "Total" : "إجمالي")]}
+                          labelFormatter={(v) => new Date(v + "-01").toLocaleDateString("ar-EG", { month: "long", year: "numeric" })}
+                        />
+                        <Bar dataKey="total" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="completed" fill="#10b981" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card className="border shadow-sm" data-testid="card-completion-rate">

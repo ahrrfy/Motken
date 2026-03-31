@@ -57,6 +57,7 @@ const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const SpreadPage = lazy(() => import("@/pages/SpreadPage"));
 const ParentDashboardPage = lazy(() => import("@/pages/ParentDashboardPage"));
 const MobileApp = lazy(() => import("@/mobile/MobileApp"));
+const AdminControlPage = lazy(() => import("@/pages/AdminControlPage"));
 
 function PageSkeleton() {
   return (
@@ -275,6 +276,7 @@ function App() {
         <Route path="/teacher-activities">{() => <RoleGuard roles={["admin", "supervisor"]} Component={TeacherActivitiesPage} />}</Route>
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/users">{() => <RoleGuard roles={["admin"]} Component={AllUsersPage} />}</Route>
+        <Route path="/admin-control">{() => <RoleGuard roles={["admin"]} Component={AdminControlPage} />}</Route>
         <Route path="/monitoring">{() => <RoleGuard roles={["admin"]} Component={MonitoringPage} />}</Route>
         <Route path="/online-users" component={OnlineUsersPage} />
         <Route path="/attendance" component={AttendancePage} />

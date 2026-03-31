@@ -25,6 +25,7 @@ import {
   type FamilyLink, type InsertFamilyLink,
   type Feedback, type InsertFeedback,
   type QuranProgress,
+  type Announcement, type InsertAnnouncement,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -137,6 +138,11 @@ export interface IStorage {
   markAllMessagesRead(senderId: string, receiverId: string): Promise<void>;
   deleteMessage(id: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
+
+  createAnnouncement(a: InsertAnnouncement): Promise<Announcement>;
+  getAnnouncements(): Promise<Announcement[]>;
+  getAnnouncementsBySender(senderId: string): Promise<Announcement[]>;
+  getAnnouncementsByMosque(mosqueId: string): Promise<Announcement[]>;
 
   getPointsByUser(userId: string): Promise<Point[]>;
   getPointsByMosque(mosqueId: string): Promise<Point[]>;

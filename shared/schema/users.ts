@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { roleEnum } from "./enums";
@@ -35,6 +35,7 @@ export const users = pgTable("users", {
   adminNotes: text("admin_notes"),
   suspendedUntil: timestamp("suspended_until"),
   studyMode: text("study_mode").notNull().default("in-person"),
+  supervisorPermissions: jsonb("supervisor_permissions").default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_users_mosque_id").on(table.mosqueId),

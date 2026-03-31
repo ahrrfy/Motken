@@ -364,7 +364,7 @@ export function registerUsersRoutes(app: Express) {
 
     const safeFields = ["name", "phone", "address", "gender", "avatar", "age", "telegramId", "parentPhone", "educationLevel", "isChild", "isSpecialNeeds", "isOrphan", "password"];
     const supervisorFields = ["teacherId", "level", "teacherLevels", "studyMode"];
-    const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil"];
+    const adminOnlyFields = ["role", "mosqueId", "isActive", "canPrintIds", "username", "adminNotes", "suspendedUntil", "supervisorPermissions"];
     const allAllowedFields = [...safeFields, ...supervisorFields, ...adminOnlyFields];
     const receivedKeys = Object.keys(req.body);
     const forbiddenKeys = receivedKeys.filter(k => !allAllowedFields.includes(k));
@@ -513,6 +513,26 @@ export function registerUsersRoutes(app: Express) {
         } else {
           updateData.suspendedUntil = null;
         }
+      }
+      if (req.body.supervisorPermissions !== undefined) {
+        const targetRole = req.body.role ?? targetUser.role;
+        if (targetRole !== "supervisor") {
+          return res.status(400).json({ message: "الصلاحيات الإضافية للمشرفين فقط" });
+        }
+        const allowedPermKeys = ["canExportData", "canManageTemplates", "canViewActivityLogs", "canSendBroadcast", "canManageAttendance", "canManageCourses", "canViewAllMosques"];
+        const perms = req.body.supervisorPermissions;
+        if (typeof perms !== "object" || perms === null || Array.isArray(perms)) {
+          return res.status(400).json({ message: "صيغة الصلاحيات غير صالحة" });
+        }
+        for (const key of Object.keys(perms)) {
+          if (!allowedPermKeys.includes(key)) {
+            return res.status(400).json({ message: `صلاحية غير معروفة: ${key}` });
+          }
+          if (typeof perms[key] !== "boolean") {
+            return res.status(400).json({ message: "قيم الصلاحيات يجب أن تكون true/false" });
+          }
+        }
+        updateData.supervisorPermissions = perms;
       }
     }
 

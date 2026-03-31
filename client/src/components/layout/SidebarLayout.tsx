@@ -49,6 +49,7 @@ import {
   Download,
   Share2,
   MessageSquareQuote,
+  LayoutGrid,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/lib/theme-context";
@@ -161,6 +162,7 @@ const navCategories: NavCategory[] = [
     labelEn: "Administration",
     icon: Wrench,
     items: [
+      { href: "/admin-control", label: "لوحة التحكم الإدارية", labelEn: "Admin Control", icon: LayoutGrid, roles: ["admin"] },
       { href: "/mosques", label: "الجوامع والمراكز", labelEn: "Mosques & Centers", icon: Building2, roles: ["admin"] },
       { href: "/floor-plan", label: "المخطط البصري", labelEn: "Floor Plan", icon: MapPin, roles: ["admin", "supervisor", "teacher"], featureKey: "floor_plan" },
       { href: "/reports", label: "التقارير والإحصائيات", labelEn: "Reports & Stats", icon: BarChart3, roles: ["admin", "supervisor"] },

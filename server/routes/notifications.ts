@@ -25,9 +25,10 @@ export function registerNotificationsRoutes(app: Express) {
         return res.status(400).json({ message: contentCheck.reason });
       }
       
+      const { targetRole } = req.body;
       const notifType = type || "info";
       let targetUsers: any[] = [];
-      
+
       if (currentUser.role === "admin") {
         if (targetType === "all") {
           targetUsers = await storage.getUsers();
@@ -36,15 +37,31 @@ export function registerNotificationsRoutes(app: Express) {
           if (u) targetUsers = [u];
         } else if (targetType === "mosque" && targetMosqueId) {
           targetUsers = await storage.getUsersByMosque(targetMosqueId);
+        } else if (targetType === "role" && targetRole) {
+          const validRoles = ["admin", "supervisor", "teacher", "student", "parent"];
+          if (!validRoles.includes(targetRole)) {
+            return res.status(400).json({ message: "الدور غير صالح" });
+          }
+          targetUsers = await storage.getUsersByRole(targetRole);
         } else {
           return res.status(400).json({ message: "يرجى تحديد الهدف" });
         }
       } else if (currentUser.role === "supervisor") {
+        const perms = (currentUser as any).supervisorPermissions || {};
+        if (perms.canSendBroadcast === false) {
+          return res.status(403).json({ message: "ليس لديك صلاحية إرسال الإعلانات" });
+        }
         if (!currentUser.mosqueId) {
           return res.status(400).json({ message: "المشرف غير مرتبط بجامع" });
         }
         if (targetType === "all") {
           targetUsers = await storage.getUsersByMosque(currentUser.mosqueId);
+        } else if (targetType === "role" && targetRole) {
+          const validRoles = ["teacher", "student"];
+          if (!validRoles.includes(targetRole)) {
+            return res.status(400).json({ message: "المشرف يمكنه الإرسال للأساتذة والطلاب فقط" });
+          }
+          targetUsers = await storage.getUsersByMosqueAndRole(currentUser.mosqueId, targetRole);
         } else if (targetType === "user" && targetUserId) {
           const u = await storage.getUser(targetUserId);
           if (u && u.mosqueId === currentUser.mosqueId) {
@@ -57,6 +74,23 @@ export function registerNotificationsRoutes(app: Express) {
         }
       }
       
+      const isBroadcast = ["all", "role", "mosque"].includes(targetType) || targetUsers.length > 1;
+      let announcementId: string | undefined;
+      const recipientCount = targetUsers.filter(u => u.id !== currentUser.id).length;
+      if (isBroadcast && recipientCount > 0) {
+        const ann = await storage.createAnnouncement({
+          senderId: currentUser.id,
+          title,
+          message,
+          type: notifType,
+          targetType,
+          targetValue: targetType === "role" ? req.body.targetRole : targetType === "mosque" ? targetMosqueId : null,
+          mosqueId: currentUser.mosqueId || null,
+          totalRecipients: recipientCount,
+        });
+        announcementId = ann.id;
+      }
+
       let count = 0;
       for (const u of targetUsers) {
         if (u.id === currentUser.id) continue;
@@ -67,11 +101,12 @@ export function registerNotificationsRoutes(app: Express) {
           message,
           type: notifType,
           isRead: false,
-        });
+          announcementId: announcementId || null,
+        } as any);
         broadcastToUser(u.id, { type: "notification", data: notification });
         count++;
       }
-      
+
       await logActivity(currentUser, `إرسال إشعار: ${title}`, "notifications", `${count} مستخدم`);
       res.json({ message: `تم إرسال الإشعار إلى ${count} مستخدم` });
     } catch (err: any) {
@@ -167,6 +202,24 @@ export function registerNotificationsRoutes(app: Express) {
       res.json({ message: "تم حذف الإشعارات المحددة" });
     } catch (err: any) {
       sendError(res, err, "حذف إشعارات محددة");
+    }
+  });
+
+  // ==================== ANNOUNCEMENTS HISTORY ====================
+  app.get("/api/announcements", requireAuth, requireRole("admin", "supervisor"), async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      let announcements;
+      if (currentUser.role === "admin") {
+        announcements = await storage.getAnnouncements();
+      } else if (currentUser.mosqueId) {
+        announcements = await storage.getAnnouncementsByMosque(currentUser.mosqueId);
+      } else {
+        announcements = await storage.getAnnouncementsBySender(currentUser.id);
+      }
+      res.json(announcements);
+    } catch (err: any) {
+      sendError(res, err, "جلب الإعلانات");
     }
   });
 
