@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus, ArrowUpCircle } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus, ArrowUpCircle, Pencil } from "lucide-react";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -127,6 +127,17 @@ export default function StudentsPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: "", phone: "", parentPhone: "", address: "", gender: "male",
+    age: "", telegramId: "", educationLevel: "", level: "1",
+    isChild: false, isSpecialNeeds: false, isOrphan: false,
+    studyMode: "in-person", teacherId: "", password: "",
+  });
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   const [commLogOpen, setCommLogOpen] = useState(false);
   const [commLogStudent, setCommLogStudent] = useState<Student | null>(null);
@@ -598,6 +609,74 @@ export default function StudentsPage() {
       setProfileStats(null);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const openEditDialog = (student: Student) => {
+    setEditStudent(student);
+    setEditFormData({
+      name: student.name || "",
+      phone: student.phone || "",
+      parentPhone: student.parentPhone || "",
+      address: student.address || "",
+      gender: student.gender || "male",
+      age: student.age?.toString() || "",
+      telegramId: student.telegramId || "",
+      educationLevel: student.educationLevel || "",
+      level: student.level?.toString() || "1",
+      isChild: student.isChild || false,
+      isSpecialNeeds: student.isSpecialNeeds || false,
+      isOrphan: student.isOrphan || false,
+      studyMode: student.studyMode || "in-person",
+      teacherId: student.teacherId || "",
+      password: "",
+    });
+    setShowEditPassword(false);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditStudent = async () => {
+    if (!editStudent || !editFormData.name) {
+      toast({ title: "خطأ", description: "الاسم مطلوب", variant: "destructive" });
+      return;
+    }
+    setEditSubmitting(true);
+    try {
+      const body: Record<string, any> = {
+        name: editFormData.name,
+        phone: editFormData.phone || null,
+        parentPhone: editFormData.parentPhone || null,
+        address: editFormData.address || null,
+        gender: editFormData.gender,
+        age: editFormData.age ? parseInt(editFormData.age) : null,
+        telegramId: editFormData.telegramId || null,
+        educationLevel: editFormData.educationLevel || null,
+        level: editFormData.level ? parseInt(editFormData.level) : 1,
+        isChild: editFormData.isChild,
+        isSpecialNeeds: editFormData.isSpecialNeeds,
+        isOrphan: editFormData.isOrphan,
+        studyMode: editFormData.studyMode,
+        teacherId: editFormData.teacherId || null,
+      };
+      if (editFormData.password) body.password = editFormData.password;
+      const res = await fetch(`/api/users/${editStudent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        toast({ title: "تم بنجاح", description: `تم تحديث بيانات ${editFormData.name}`, className: "bg-green-50 border-green-200 text-green-800" });
+        setEditDialogOpen(false);
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشل في تحديث البيانات", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -1556,6 +1635,18 @@ export default function StudentsPage() {
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </Button>
+                              {isSupervisor && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={() => openEditDialog(student)}
+                                  title="تعديل البيانات"
+                                  data-testid={`button-edit-${student.id}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                               {(isTeacher || isSupervisor) && (
                                 <Button
                                   variant="ghost"
@@ -1874,6 +1965,219 @@ export default function StudentsPage() {
                   </Button>
                 </div>
               )}
+              {isSupervisor && profileStudent && (
+                <div className="border-t pt-4 flex justify-end">
+                  <Button
+                    variant="outline"
+                    className="gap-2 text-amber-700 border-amber-300 hover:bg-amber-50"
+                    onClick={() => { setProfileDialogOpen(false); openEditDialog(profileStudent); }}
+                    data-testid="button-profile-edit"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    تعديل البيانات
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-amber-600" />
+              تعديل بيانات الطالب
+            </DialogTitle>
+          </DialogHeader>
+          {editStudent && (
+            <div className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="edit-name">الاسم الكامل *</Label>
+                  <Input
+                    id="edit-name"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData(p => ({ ...p, name: e.target.value }))}
+                    placeholder="اسم الطالب"
+                    data-testid="input-edit-name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-gender">الجنس</Label>
+                  <Select value={editFormData.gender} onValueChange={(v) => setEditFormData(p => ({ ...p, gender: v }))}>
+                    <SelectTrigger id="edit-gender" data-testid="select-edit-gender">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">ذكر</SelectItem>
+                      <SelectItem value="female">أنثى</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-age">العمر</Label>
+                  <Input
+                    id="edit-age"
+                    type="number"
+                    value={editFormData.age}
+                    onChange={(e) => setEditFormData(p => ({ ...p, age: e.target.value }))}
+                    placeholder="العمر"
+                    data-testid="input-edit-age"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-phone">رقم الهاتف</Label>
+                  <InternationalPhoneInput
+                    value={editFormData.phone}
+                    onChange={(v) => setEditFormData(p => ({ ...p, phone: v }))}
+                    placeholder="رقم الهاتف"
+                    data-testid="input-edit-phone"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-parent-phone">هاتف ولي الأمر</Label>
+                  <InternationalPhoneInput
+                    value={editFormData.parentPhone}
+                    onChange={(v) => setEditFormData(p => ({ ...p, parentPhone: v }))}
+                    placeholder="هاتف ولي الأمر"
+                    data-testid="input-edit-parent-phone"
+                  />
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="edit-address">العنوان</Label>
+                  <Input
+                    id="edit-address"
+                    value={editFormData.address}
+                    onChange={(e) => setEditFormData(p => ({ ...p, address: e.target.value }))}
+                    placeholder="العنوان"
+                    data-testid="input-edit-address"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-telegram">تيليجرام</Label>
+                  <Input
+                    id="edit-telegram"
+                    value={editFormData.telegramId}
+                    onChange={(e) => setEditFormData(p => ({ ...p, telegramId: e.target.value }))}
+                    placeholder="معرف تيليجرام"
+                    data-testid="input-edit-telegram"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-education">المستوى الدراسي</Label>
+                  <Select value={editFormData.educationLevel || "none"} onValueChange={(v) => setEditFormData(p => ({ ...p, educationLevel: v === "none" ? "" : v }))}>
+                    <SelectTrigger id="edit-education" data-testid="select-edit-education">
+                      <SelectValue placeholder="اختر المستوى" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">غير محدد</SelectItem>
+                      <SelectItem value="school">مدرسة</SelectItem>
+                      <SelectItem value="university">جامعة</SelectItem>
+                      <SelectItem value="postgraduate">دراسات عليا</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-level">مستوى الحفظ</Label>
+                  <Select value={editFormData.level} onValueChange={(v) => setEditFormData(p => ({ ...p, level: v }))}>
+                    <SelectTrigger id="edit-level" data-testid="select-edit-level">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(LEVEL_NAMES).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-study-mode">نوع الدراسة</Label>
+                  <Select value={editFormData.studyMode} onValueChange={(v) => setEditFormData(p => ({ ...p, studyMode: v }))}>
+                    <SelectTrigger id="edit-study-mode" data-testid="select-edit-study-mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in-person">حضوري</SelectItem>
+                      <SelectItem value="online">إلكتروني</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {teachers.length > 0 && (
+                  <div className="col-span-2 space-y-1.5">
+                    <Label>الأستاذ</Label>
+                    <SearchableSelect
+                      options={[
+                        { value: "none", label: "غير محدد" },
+                        ...teachers.map(t => ({ value: t.id, label: t.name })),
+                      ]}
+                      value={editFormData.teacherId || "none"}
+                      onValueChange={(v) => setEditFormData(p => ({ ...p, teacherId: v === "none" ? "" : v }))}
+                      placeholder="اختر الأستاذ"
+                    />
+                  </div>
+                )}
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="edit-password">كلمة المرور الجديدة (اختياري)</Label>
+                  <div className="relative">
+                    <Input
+                      id="edit-password"
+                      type={showEditPassword ? "text" : "password"}
+                      value={editFormData.password}
+                      onChange={(e) => setEditFormData(p => ({ ...p, password: e.target.value }))}
+                      placeholder="اتركه فارغاً لعدم التغيير"
+                      data-testid="input-edit-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword(p => !p)}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="edit-is-child"
+                    checked={editFormData.isChild}
+                    onCheckedChange={(v) => setEditFormData(p => ({ ...p, isChild: !!v }))}
+                    data-testid="checkbox-edit-is-child"
+                  />
+                  <Label htmlFor="edit-is-child">طفل (لا يملك هاتفاً)</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="edit-special-needs"
+                    checked={editFormData.isSpecialNeeds}
+                    onCheckedChange={(v) => setEditFormData(p => ({ ...p, isSpecialNeeds: !!v }))}
+                    data-testid="checkbox-edit-special-needs"
+                  />
+                  <Label htmlFor="edit-special-needs">ذوي احتياجات خاصة</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="edit-orphan"
+                    checked={editFormData.isOrphan}
+                    onCheckedChange={(v) => setEditFormData(p => ({ ...p, isOrphan: !!v }))}
+                    data-testid="checkbox-edit-orphan"
+                  />
+                  <Label htmlFor="edit-orphan">يتيم</Label>
+                </div>
+              </div>
+              <Button
+                onClick={handleEditStudent}
+                disabled={editSubmitting}
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                data-testid="button-submit-edit"
+              >
+                {editSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                حفظ التعديلات
+              </Button>
             </div>
           )}
         </DialogContent>
