@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers } from "lucide-react";
+import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers, ArrowUpCircle } from "lucide-react";
 import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
@@ -61,8 +61,9 @@ export default function TeachersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    username: "", password: "", name: "", phone: "", avatar: "", gender: "male", teacherLevels: [1, 2, 3, 4, 5] as number[]
+    username: "", password: "", name: "", phone: "", avatar: "", gender: "male", teacherLevels: [1, 2, 3, 4, 5] as number[], role: "teacher"
   });
+  const [promotingTeacher, setPromotingTeacher] = useState<Teacher | null>(null);
   const [credentialsDialog, setCredentialsDialog] = useState<{ open: boolean; name: string; username: string; password: string; phone: string; role: string } | null>(null);
   const [levelDialogOpen, setLevelDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
@@ -146,11 +147,13 @@ export default function TeachersPage() {
 
   const fetchTeachers = async () => {
     try {
-      const res = await fetch("/api/users?role=teacher", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setTeachers(data);
-      }
+      const [teacherRes, supRes] = await Promise.all([
+        fetch("/api/users?role=teacher", { credentials: "include" }),
+        fetch("/api/users?role=supervisor", { credentials: "include" }),
+      ]);
+      const teacherData = teacherRes.ok ? await teacherRes.json() : [];
+      const supData = supRes.ok ? await supRes.json() : [];
+      setTeachers([...teacherData, ...supData]);
     } catch {
       toast({ title: "خطأ", description: "فشل في تحميل بيانات الأساتذة", variant: "destructive" });
     } finally {
@@ -171,18 +174,19 @@ export default function TeachersPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...formData, role: "teacher", teacherLevels: formData.teacherLevels.join(",") }),
+        body: JSON.stringify({ ...formData, teacherLevels: formData.teacherLevels.join(",") }),
       });
       if (res.ok) {
         const savedName = formData.name;
         const savedUsername = formData.username;
         const savedPassword = formData.password;
         const savedPhone = formData.phone;
-        toast({ title: "تم بنجاح", description: "تمت إضافة الأستاذ بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
+        const roleLabel = formData.role === "supervisor" ? "المشرف" : "الأستاذ";
+        toast({ title: "تم بنجاح", description: `تمت إضافة ${roleLabel} بنجاح`, className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
-        setFormData({ username: "", password: "", name: "", phone: "", avatar: "", gender: "male", teacherLevels: [1, 2, 3, 4, 5] });
+        setFormData({ username: "", password: "", name: "", phone: "", avatar: "", gender: "male", teacherLevels: [1, 2, 3, 4, 5], role: "teacher" });
         fetchTeachers();
-        setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: "teacher" });
+        setCredentialsDialog({ open: true, name: savedName, username: savedUsername, password: savedPassword, phone: savedPhone, role: formData.role });
       } else {
         const err = await res.json();
         toast({ title: "خطأ", description: err.message || "فشل في إضافة الأستاذ", variant: "destructive" });
@@ -191,6 +195,27 @@ export default function TeachersPage() {
       toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePromoteToSupervisor = async (teacher: Teacher) => {
+    try {
+      const res = await fetch(`/api/users/${teacher.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role: "supervisor" }),
+      });
+      if (res.ok) {
+        toast({ title: "تمت الترقية", description: `تمت ترقية ${teacher.name} إلى مشرف`, className: "bg-green-50 border-green-200 text-green-800" });
+        setPromotingTeacher(null);
+        fetchTeachers();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشلت الترقية", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
     }
   };
 
@@ -319,9 +344,21 @@ export default function TeachersPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md" dir="rtl">
                 <DialogHeader>
-                  <DialogTitle>إضافة أستاذ جديد</DialogTitle>
+                  <DialogTitle>{formData.role === "supervisor" ? "إضافة مشرف جديد" : "إضافة أستاذ جديد"}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 mt-4 max-h-[80vh] overflow-y-auto">
+                  <div className="space-y-2">
+                    <Label>الدور *</Label>
+                    <Select value={formData.role} onValueChange={(v) => setFormData(prev => ({ ...prev, role: v }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="teacher">أستاذ</SelectItem>
+                        <SelectItem value="supervisor">مشرف</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden shrink-0">
                       {formData.avatar ? (
@@ -398,7 +435,7 @@ export default function TeachersPage() {
                   </div>
                   <Button onClick={handleAddTeacher} disabled={submitting || formData.teacherLevels.length === 0} className="w-full" data-testid="button-submit-teacher">
                     {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                    إضافة الأستاذ
+                    {formData.role === "supervisor" ? "إضافة المشرف" : "إضافة الأستاذ"}
                   </Button>
                 </div>
               </DialogContent>
@@ -529,7 +566,7 @@ export default function TeachersPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
-                          {(user?.role === "supervisor" || user?.role === "admin") && (
+                          {(user?.role === "supervisor" || user?.role === "admin") && teacher.role === "teacher" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -540,6 +577,19 @@ export default function TeachersPage() {
                             >
                               <Layers className="w-3 h-3" />
                               المستويات
+                            </Button>
+                          )}
+                          {user?.role === "supervisor" && teacher.role === "teacher" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs h-7 border-purple-300 text-purple-700 hover:bg-purple-50"
+                              onClick={() => setPromotingTeacher(teacher)}
+                              title="ترقية إلى مشرف"
+                              data-testid={`button-promote-${teacher.id}`}
+                            >
+                              <ArrowUpCircle className="w-3 h-3" />
+                              ترقية
                             </Button>
                           )}
                           {teacher.phone && (
@@ -636,6 +686,33 @@ export default function TeachersPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── dialog تأكيد الترقية إلى مشرف ── */}
+      <Dialog open={!!promotingTeacher} onOpenChange={(open) => !open && setPromotingTeacher(null)}>
+        <DialogContent className="sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowUpCircle className="w-5 h-5 text-purple-600" />
+              ترقية إلى مشرف
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mt-2">
+            هل أنت متأكد من ترقية <strong>{promotingTeacher?.name}</strong> من أستاذ إلى مشرف؟
+          </p>
+          <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded mt-1">
+            سيحصل على صلاحيات المشرف الكاملة في نفس الجامع.
+          </p>
+          <div className="flex gap-2 mt-4">
+            <Button
+              className="flex-1 bg-purple-600 hover:bg-purple-700"
+              onClick={() => promotingTeacher && handlePromoteToSupervisor(promotingTeacher)}
+            >
+              تأكيد الترقية
+            </Button>
+            <Button variant="outline" onClick={() => setPromotingTeacher(null)}>إلغاء</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

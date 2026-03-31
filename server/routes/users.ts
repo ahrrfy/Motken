@@ -195,8 +195,8 @@ export function registerUsersRoutes(app: Express) {
           return res.status(400).json({ message: "دور المستخدم غير صحيح" });
         }
       } else if (currentUser.role === "supervisor") {
-        if (targetRole !== "teacher" && targetRole !== "student") {
-          return res.status(403).json({ message: "المشرف يمكنه إنشاء حسابات الأساتذة والطلاب فقط" });
+        if (!["supervisor", "teacher", "student"].includes(targetRole)) {
+          return res.status(403).json({ message: "المشرف يمكنه إنشاء حسابات المشرفين والأساتذة والطلاب فقط" });
         }
         req.body.role = targetRole;
         req.body.mosqueId = currentUser.mosqueId;
@@ -355,7 +355,7 @@ export function registerUsersRoutes(app: Express) {
     const canEdit =
       currentUser.role === "admin" ||
       currentUser.id === req.params.id ||
-      (currentUser.role === "supervisor" && ["teacher", "student"].includes(targetUser.role)) ||
+      (currentUser.role === "supervisor" && ["supervisor", "teacher", "student"].includes(targetUser.role) && targetUser.mosqueId === currentUser.mosqueId) ||
       isTeacherOfStudent;
 
     if (!canEdit) {
@@ -372,7 +372,11 @@ export function registerUsersRoutes(app: Express) {
       return res.status(400).json({ message: `حقول غير مسموحة: ${forbiddenKeys.join(", ")}` });
     }
     if (currentUser.role !== "admin") {
-      const attemptedAdminFields = receivedKeys.filter(k => adminOnlyFields.includes(k));
+      const attemptedAdminFields = receivedKeys.filter(k => {
+        // المشرف يمكنه تغيير الدور فقط بالترقية المسموحة — يُعالَج لاحقاً
+        if (k === "role" && currentUser.role === "supervisor") return false;
+        return adminOnlyFields.includes(k);
+      });
       if (attemptedAdminFields.length > 0) {
         return res.status(403).json({ message: "غير مصرح بتعديل هذه الحقول" });
       }
@@ -466,6 +470,22 @@ export function registerUsersRoutes(app: Express) {
       }
       updateData.password = await hashPassword(req.body.password);
       await logActivity(currentUser, `تغيير كلمة مرور المستخدم ${targetUser.name} (${targetUser.username})`, "security");
+    }
+
+    // ── ترقية الأدوار من قِبَل المشرف ──────────────────────────────────────────
+    if (currentUser.role === "supervisor" && req.body.role !== undefined) {
+      const allowedPromotions: Record<string, string> = {
+        student: "teacher",
+        teacher: "supervisor",
+      };
+      const allowed = allowedPromotions[targetUser.role];
+      if (!allowed || allowed !== req.body.role) {
+        return res.status(403).json({
+          message: `لا يمكن ترقية ${targetUser.role} إلى ${req.body.role}. المسموح: طالب → أستاذ، أستاذ → مشرف`,
+        });
+      }
+      updateData.role = req.body.role;
+      await logActivity(currentUser, `ترقية ${targetUser.name} من ${targetUser.role} إلى ${req.body.role}`, "users");
     }
 
     if (currentUser.role === "admin") {

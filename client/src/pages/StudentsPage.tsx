@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus } from "lucide-react";
+import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus, ArrowUpCircle } from "lucide-react";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
@@ -181,6 +181,7 @@ export default function StudentsPage() {
   };
 
   const [pendingStudents, setPendingStudents] = useState<any[]>([]);
+  const [promotingStudent, setPromotingStudent] = useState<any | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectStudentId, setRejectStudentId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -297,6 +298,27 @@ export default function StudentsPage() {
       toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
     } finally {
       setPendingActionLoading(null);
+    }
+  };
+
+  const handlePromoteToTeacher = async (student: any) => {
+    try {
+      const res = await fetch(`/api/users/${student.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role: "teacher" }),
+      });
+      if (res.ok) {
+        toast({ title: "تمت الترقية", description: `تمت ترقية ${student.name} إلى أستاذ`, className: "bg-green-50 border-green-200 text-green-800" });
+        setPromotingStudent(null);
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast({ title: "خطأ", description: err.message || "فشلت الترقية", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
     }
   };
 
@@ -1189,6 +1211,33 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── dialog تأكيد ترقية طالب إلى أستاذ ── */}
+      <Dialog open={!!promotingStudent} onOpenChange={(open) => !open && setPromotingStudent(null)}>
+        <DialogContent className="sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowUpCircle className="w-5 h-5 text-green-600" />
+              ترقية إلى أستاذ
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mt-2">
+            هل أنت متأكد من ترقية <strong>{promotingStudent?.name}</strong> من طالب إلى أستاذ؟
+          </p>
+          <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded mt-1">
+            سيحصل على صلاحيات الأستاذ ويمكنه إضافة طلاب وتسجيل الحضور.
+          </p>
+          <div className="flex gap-2 mt-4">
+            <Button
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={() => promotingStudent && handlePromoteToTeacher(promotingStudent)}
+            >
+              تأكيد الترقية
+            </Button>
+            <Button variant="outline" onClick={() => setPromotingStudent(null)}>إلغاء</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {selectedStudents.size > 0 && !isStudent && (
         <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg" data-testid="batch-actions-bar">
           <CheckSquare className="w-5 h-5 text-primary" />
@@ -1529,6 +1578,19 @@ export default function StudentsPage() {
                                 >
                                   <ArrowRightLeft className="w-3 h-3" />
                                   نقل
+                                </Button>
+                              )}
+                              {isSupervisor && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 text-xs h-7 border-green-300 text-green-700 hover:bg-green-50"
+                                  onClick={() => setPromotingStudent(student)}
+                                  title="ترقية إلى أستاذ"
+                                  data-testid={`button-promote-teacher-${student.id}`}
+                                >
+                                  <ArrowUpCircle className="w-3 h-3" />
+                                  ترقية
                                 </Button>
                               )}
                               {student.isActive ? (
