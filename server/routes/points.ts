@@ -288,4 +288,49 @@ export function registerPointsRoutes(app: Express) {
     }
   });
 
+  // ==================== BULK IMPORT FROM EXCEL ====================
+  // POST /api/points/bulk-import
+  // Accepts { rows: [{اسم الطالب, النقاط, السبب, التصنيف}] }
+  app.post("/api/points/bulk-import", requireAuth, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { rows } = req.body;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+      }
+      const CATEGORY_MAP: Record<string, string> = {
+        "حفظ": "memorization", "مراجعة": "review", "حضور": "attendance",
+        "إنجاز": "achievement", "أخرى": "other",
+      };
+      const { pool } = await import("../db");
+      let success = 0, failed = 0;
+      for (const row of rows) {
+        try {
+          const nameQuery = (row["اسم الطالب"] || row["الاسم"] || "").trim();
+          const amount = parseInt(row["النقاط"] || "0");
+          const reason = (row["السبب"] || "").trim();
+          if (!nameQuery || !amount || !reason) { failed++; continue; }
+          const sr = await pool.query(
+            `SELECT id FROM users WHERE mosque_id = $1 AND role = 'student' AND (LOWER(name) = LOWER($2) OR LOWER(username) = LOWER($2)) LIMIT 1`,
+            [currentUser.mosqueId, nameQuery]
+          );
+          if (sr.rows.length === 0) { failed++; continue; }
+          const category = CATEGORY_MAP[row["التصنيف"]?.trim()] || "other";
+          await storage.createPoint({
+            userId: sr.rows[0].id,
+            mosqueId: currentUser.mosqueId,
+            amount,
+            category,
+            reason,
+          });
+          success++;
+        } catch { failed++; }
+      }
+      res.json({ success, failed, total: rows.length });
+    } catch (err: any) { sendError(res, err, "استيراد النقاط"); }
+  });
+
 }

@@ -219,4 +219,51 @@ export function registerAttendanceRoutes(app: Express) {
     }
   });
 
+  // ==================== BULK IMPORT FROM EXCEL ====================
+  // POST /api/attendance/bulk-import
+  // Accepts { rows: [{اسم الطالب, التاريخ, الحالة, ملاحظات}] }
+  app.post("/api/attendance/bulk-import", requireAuth, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const { rows } = req.body;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+      }
+      const STATUS_MAP: Record<string, string> = {
+        "حاضر": "present", "غائب": "absent", "متأخر": "late", "معذور": "excused",
+        "present": "present", "absent": "absent", "late": "late", "excused": "excused",
+      };
+      let success = 0, failed = 0;
+      for (const row of rows) {
+        try {
+          const nameQuery = (row["اسم الطالب"] || row["الاسم"] || "").trim();
+          const dateStr = (row["التاريخ"] || "").trim();
+          if (!nameQuery || !dateStr) { failed++; continue; }
+          const { pool } = await import("../db");
+          const sr = await pool.query(
+            `SELECT id FROM users WHERE mosque_id = $1 AND role = 'student' AND (LOWER(name) = LOWER($2) OR LOWER(username) = LOWER($2)) LIMIT 1`,
+            [currentUser.mosqueId, nameQuery]
+          );
+          if (sr.rows.length === 0) { failed++; continue; }
+          const student = { id: sr.rows[0].id };
+          if (!student) { failed++; continue; }
+          const status = STATUS_MAP[row["الحالة"]?.trim()] || "present";
+          await storage.createAttendance({
+            studentId: student.id,
+            teacherId: currentUser.id,
+            mosqueId: currentUser.mosqueId,
+            date: new Date(dateStr),
+            status,
+            notes: row["ملاحظات"]?.trim() || undefined,
+          });
+          success++;
+        } catch { failed++; }
+      }
+      res.json({ success, failed, total: rows.length });
+    } catch (err: any) { sendError(res, err, "استيراد الحضور"); }
+  });
+
 }

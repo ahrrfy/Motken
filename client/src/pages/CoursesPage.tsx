@@ -203,6 +203,9 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
   const [graduatingExtId, setGraduatingExtId] = useState<string | null>(null);
   const [extGradeMap, setExtGradeMap] = useState<Record<string, string>>({});
 
+  // Inline external participants for create form
+  const [createExtList, setCreateExtList] = useState<Array<{ tempId: string; name: string; phone: string; age: string }>>([]);
+
   const isTeacher = user?.role === "teacher";
   const isStudent = user?.role === "student";
   const isSupervisor = user?.role === "supervisor";
@@ -293,16 +296,12 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     setCategory("memorization");
     setMaxStudents("");
     setNotes("");
+    setCreateExtList([]);
   };
 
   const handleCreateCourse = async () => {
     if (!title || !startDate) {
       toast({ title: "خطأ", description: "يرجى تعبئة عنوان الدورة وتاريخ البداية", variant: "destructive" });
-      return;
-    }
-
-    if (targetType === "specific" && selectedStudentIds.length === 0) {
-      toast({ title: "خطأ", description: "يرجى اختيار طالب واحد على الأقل", variant: "destructive" });
       return;
     }
 
@@ -327,6 +326,22 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
       });
 
       if (res.ok) {
+        const newCourse = await res.json();
+        // POST inline external participants
+        for (const ext of createExtList) {
+          if (ext.name.trim()) {
+            await fetch(`/api/courses/${newCourse.id}/external-participants`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                name: ext.name.trim(),
+                phone: ext.phone.trim() || undefined,
+                age: ext.age ? parseInt(ext.age) : undefined,
+              }),
+            }).catch(() => {});
+          }
+        }
         toast({ title: "تم بنجاح", description: "تم إنشاء الدورة بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
         setDialogOpen(false);
         resetForm();
@@ -1385,6 +1400,65 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
                     <p className="text-xs text-muted-foreground" data-testid="text-selected-teachers-count">
                       تم اختيار {selectedTeacherIds.length} أستاذ
                     </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 border rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium flex items-center gap-1">
+                      <Globe className="w-3.5 h-3.5 text-blue-500" />
+                      مشاركون خارجيون
+                    </label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => setCreateExtList(prev => [...prev, { tempId: String(Date.now() + Math.random()), name: "", phone: "", age: "" }])}
+                    >
+                      <Plus className="w-3 h-3" />
+                      إضافة
+                    </Button>
+                  </div>
+                  {createExtList.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-1">لا يوجد مشاركون خارجيون — اضغط إضافة لإدراجهم</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {createExtList.map((ext, idx) => (
+                        <div key={ext.tempId} className="flex items-center gap-1.5">
+                          <Input
+                            placeholder="الاسم *"
+                            value={ext.name}
+                            onChange={e => setCreateExtList(prev => prev.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))}
+                            className="h-8 text-sm flex-1"
+                          />
+                          <Input
+                            placeholder="الجوال"
+                            value={ext.phone}
+                            onChange={e => setCreateExtList(prev => prev.map((p, i) => i === idx ? { ...p, phone: e.target.value } : p))}
+                            className="h-8 text-sm w-24"
+                          />
+                          <Input
+                            placeholder="العمر"
+                            type="number"
+                            value={ext.age}
+                            onChange={e => setCreateExtList(prev => prev.map((p, i) => i === idx ? { ...p, age: e.target.value } : p))}
+                            className="h-8 text-sm w-16"
+                            min={1}
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setCreateExtList(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                      <p className="text-xs text-muted-foreground">{createExtList.length} مشارك خارجي</p>
+                    </div>
                   )}
                 </div>
 

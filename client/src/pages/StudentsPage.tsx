@@ -21,6 +21,7 @@ import { formatDateAr } from "@/lib/utils";
 import { HijriDatePicker } from "@/components/HijriDatePicker";
 import { ImportWizard } from "@/components/ImportWizard";
 import { ExportDialog } from "@/components/ExportDialog";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
@@ -854,42 +855,42 @@ export default function StudentsPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {user?.role !== "student" && (
-            <>
-              <Button variant="outline" onClick={() => {
+            <DataTableToolbar
+              data={filteredStudents}
+              columns={[
+                { label: "الاسم", field: "name" },
+                { label: "الهاتف", field: "phone" },
+                { label: "العمر", field: "age" },
+                { label: "هاتف ولي الأمر", field: "parentPhone" },
+                { label: "المستوى الدراسي", field: "educationLevel" },
+                { label: "الحالة", field: "isActive" },
+              ]}
+              importColumns={[
+                { label: "الاسم", field: "name" },
+                { label: "اسم المستخدم", field: "username" },
+                { label: "كلمة المرور", field: "password" },
+                { label: "الهاتف", field: "phone" },
+                { label: "العمر", field: "age" },
+                { label: "هاتف ولي الأمر", field: "parentPhone" },
+                { label: "المستوى الدراسي", field: "educationLevel" },
+              ]}
+              entityName="الطلاب"
+              filename="students"
+              importEndpoint="/api/users/bulk-import?role=student"
+              onImportSuccess={fetchData}
+              onExport={handleExport}
+              onPrint={() => {
                 const tableHtml = `
                   <h3 class="section-title">قائمة الطلاب (${filteredStudents.length})</h3>
                   <table>
-                    <thead>
-                      <tr><th>#</th><th>الاسم</th><th>الهاتف</th><th>العمر</th><th>المستوى الدراسي</th><th>الحالة</th></tr>
-                    </thead>
-                    <tbody>
-                      ${filteredStudents.map((s, i) => `
-                        <tr>
-                          <td>${i + 1}</td>
-                          <td>${s.name}</td>
-                          <td>${s.phone || "—"}</td>
-                          <td>${s.age || "—"}</td>
-                          <td>${s.educationLevel || "—"}</td>
-                          <td>${s.isActive ? "نشط" : "متوقف"}</td>
-                        </tr>
-                      `).join("")}
-                    </tbody>
-                  </table>
-                `;
+                    <thead><tr><th>#</th><th>الاسم</th><th>الهاتف</th><th>العمر</th><th>المستوى الدراسي</th><th>الحالة</th></tr></thead>
+                    <tbody>${filteredStudents.map((s, i) => `
+                      <tr><td>${i + 1}</td><td>${s.name}</td><td>${s.phone || "—"}</td><td>${s.age || "—"}</td><td>${s.educationLevel || "—"}</td><td>${s.isActive ? "نشط" : "متوقف"}</td></tr>
+                    `).join("")}</tbody>
+                  </table>`;
                 openPrintWindow("قائمة الطلاب", tableHtml);
-              }} className="gap-2" data-testid="button-print">
-                <Printer className="w-4 h-4" />
-                طباعة
-              </Button>
-              <Button variant="outline" onClick={() => setImportWizardOpen(true)} className="gap-2" data-testid="button-import">
-                <Upload className="w-4 h-4" />
-                استيراد
-              </Button>
-              <Button variant="outline" onClick={() => setExportDialogOpen(true)} className="gap-2" data-testid="button-export">
-                <Download className="w-4 h-4" />
-                تصدير
-              </Button>
-            </>
+              }}
+            />
           )}
           {isTeacher && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

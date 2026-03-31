@@ -15,6 +15,7 @@ import {
   Phone, CalendarDays, BarChart3, Users, AlertTriangle, Download, Monitor
 } from "lucide-react";
 import { exportJsonToExcel } from "@/lib/excel-utils";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAr } from "@/lib/utils";
@@ -563,8 +564,28 @@ export default function AttendancePage() {
           </h1>
           <p className="text-muted-foreground">إدارة حضور وغياب الطلاب</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => {
+        <DataTableToolbar
+          data={(history.length > 0 ? history : Object.entries(attendanceData).map(([sid, entry]) => {
+            const student = students.find(s => s.id === sid);
+            return { studentName: student?.name || sid, date: attendanceDate, statusLabel: statusLabels[entry.status] || entry.status, notes: entry.notes || "" };
+          })).map(r => ({ ...r, statusLabel: statusLabels[(r as any).status] || (r as any).statusLabel || (r as any).status || "" }))}
+          columns={[
+            { label: "اسم الطالب", field: "studentName" },
+            { label: "التاريخ", field: "date" },
+            { label: "الحالة", field: "statusLabel" },
+            { label: "ملاحظات", field: "notes" },
+          ]}
+          importColumns={[
+            { label: "اسم الطالب", field: "studentName" },
+            { label: "التاريخ", field: "date" },
+            { label: "الحالة", field: "status" },
+            { label: "ملاحظات", field: "notes" },
+          ]}
+          entityName="الحضور"
+          filename="attendance"
+          importEndpoint="/api/attendance/bulk-import"
+          onImportSuccess={() => {}}
+          onExport={() => {
             const dataToExport = history.length > 0 ? history : Object.entries(attendanceData).map(([sid, entry]) => {
               const student = students.find(s => s.id === sid);
               return { studentId: sid, studentName: student?.name || sid, date: attendanceDate, status: entry.status, notes: entry.notes };
@@ -579,15 +600,9 @@ export default function AttendancePage() {
               "Attendance",
               "attendance_export.xlsx"
             );
-          }} className="gap-2" data-testid="button-export-attendance">
-            <Download className="w-4 h-4" />
-            تصدير
-          </Button>
-          <Button variant="outline" onClick={handlePrint} className="gap-2" data-testid="button-print-attendance">
-            <Printer className="w-4 h-4" />
-            طباعة
-          </Button>
-        </div>
+          }}
+          onPrint={handlePrint}
+        />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="stats-cards">

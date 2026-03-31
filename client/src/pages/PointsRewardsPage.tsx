@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAr } from "@/lib/utils";
 import { exportJsonToExcel } from "@/lib/excel-utils";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
 
 interface LeaderboardEntry {
   id: string;
@@ -604,10 +605,37 @@ export default function PointsRewardsPage() {
           </p>
         </div>
         {isTeacherOrAdmin && (
-          <Button onClick={handleExport} variant="outline" className="gap-2" data-testid="button-export-report">
-            <Download className="w-4 h-4" />
-            تصدير التقرير
-          </Button>
+          <DataTableToolbar
+            data={points.map(p => ({
+              studentName: p.userName || p.userId,
+              points: p.amount,
+              reason: p.reason || "—",
+              category: getCategoryLabel(p.category),
+              date: formatDateAr(p.createdAt),
+            }))}
+            columns={[
+              { label: "الطالب", field: "studentName" },
+              { label: "النقاط", field: "points" },
+              { label: "السبب", field: "reason" },
+              { label: "التصنيف", field: "category" },
+              { label: "التاريخ", field: "date" },
+            ]}
+            importColumns={[
+              { label: "اسم الطالب", field: "studentName" },
+              { label: "النقاط", field: "points" },
+              { label: "السبب", field: "reason" },
+              { label: "التصنيف", field: "category" },
+            ]}
+            entityName="النقاط"
+            filename="points"
+            importEndpoint="/api/points/bulk-import"
+            onImportSuccess={async () => {
+              const res = await fetch("/api/points", { credentials: "include" });
+              if (res.ok) setPoints(await res.json());
+            }}
+            onExport={handleExport}
+            printTitle="تقرير النقاط والمكافآت"
+          />
         )}
       </div>
 

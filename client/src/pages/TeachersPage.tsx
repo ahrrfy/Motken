@@ -8,14 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, MessageCircle, X, Layers, ArrowUpCircle } from "lucide-react";
+import { Plus, Phone, Loader2, Camera, MessageCircle, X, Layers, ArrowUpCircle } from "lucide-react";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
 import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
-import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
+import type { ColumnDef } from "@/components/data-table-toolbar";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
@@ -90,59 +92,30 @@ export default function TeachersPage() {
     reader.readAsDataURL(file);
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const TEACHER_EXPORT_COLS: ColumnDef[] = [
+    { label: "الاسم", field: "name" },
+    { label: "اسم المستخدم", field: "username" },
+    { label: "الهاتف", field: "phone" },
+    { label: "الحالة", field: "statusLabel" },
+  ];
+  const TEACHER_IMPORT_COLS: ColumnDef[] = [
+    { label: "الاسم", field: "name" },
+    { label: "اسم المستخدم", field: "username" },
+    { label: "كلمة المرور", field: "password" },
+    { label: "الهاتف", field: "phone" },
+    { label: "العمر", field: "age" },
+  ];
 
-  const handleExport = () => {
-    exportJsonToExcel(
-      teachers.map(t => ({
-        الاسم: t.name,
-        "اسم المستخدم": t.username,
-        الهاتف: t.phone || "",
-        الحالة: t.isActive ? "نشط" : "متوقف"
-      })),
-      "Teachers",
-      "teachers_list.xlsx",
-    );
-  };
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const rows = await readExcelFile(file);
-      let success = 0;
-      let failed = 0;
-      for (const row of rows) {
-        try {
-          const res = await fetch("/api/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              name: row["الاسم"] || "",
-              username: row["اسم المستخدم"] || "",
-              password: row["كلمة المرور"] || "",
-              phone: row["الهاتف"] || "",
-              role: "teacher",
-            }),
-          });
-          if (res.ok) success++;
-          else failed++;
-        } catch {
-          failed++;
-        }
-      }
-      toast({
-        title: "نتيجة الاستيراد",
-        description: `تم استيراد ${success} أستاذ بنجاح${failed > 0 ? `، فشل ${failed}` : ""}`,
-        className: failed === 0 ? "bg-green-50 border-green-200 text-green-800" : undefined,
-        variant: failed > 0 && success === 0 ? "destructive" : undefined,
-      });
-      if (success > 0) fetchTeachers();
-    } catch {
-      toast({ title: "خطأ", description: "فشل في قراءة الملف", variant: "destructive" });
-    }
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  const teacherPrint = () => {
+    const tableHtml = `
+      <h3 class="section-title">قائمة الأساتذة (${filteredTeachers.length})</h3>
+      <table>
+        <thead><tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الهاتف</th><th>الحالة</th></tr></thead>
+        <tbody>${filteredTeachers.map((t, i) => `
+          <tr><td>${i + 1}</td><td>${t.name}</td><td>${t.username}</td><td>${t.phone || "—"}</td><td>${t.isActive ? "نشط" : "متوقف"}</td></tr>
+        `).join("")}</tbody>
+      </table>`;
+    openPrintWindow("قائمة الأساتذة", tableHtml);
   };
 
   const fetchTeachers = async () => {
@@ -288,51 +261,18 @@ export default function TeachersPage() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-teachers">الأساتذة</h1>
           <p className="text-muted-foreground">إدارة هيئة التدريس والمشرفين</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={handleImport}
-            data-testid="input-file-import"
-          />
+        <div className="flex gap-2 flex-wrap items-center">
           {user?.role !== "student" && (
-            <>
-              <Button variant="outline" onClick={() => {
-                const tableHtml = `
-                  <h3 class="section-title">قائمة الأساتذة (${filteredTeachers.length})</h3>
-                  <table>
-                    <thead>
-                      <tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الهاتف</th><th>الحالة</th></tr>
-                    </thead>
-                    <tbody>
-                      ${filteredTeachers.map((t, i) => `
-                        <tr>
-                          <td>${i + 1}</td>
-                          <td>${t.name}</td>
-                          <td>${t.username}</td>
-                          <td>${t.phone || "—"}</td>
-                          <td>${t.isActive ? "نشط" : "متوقف"}</td>
-                        </tr>
-                      `).join("")}
-                    </tbody>
-                  </table>
-                `;
-                openPrintWindow("قائمة الأساتذة", tableHtml);
-              }} className="gap-2" data-testid="button-print">
-                <Printer className="w-4 h-4" />
-                طباعة
-              </Button>
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" data-testid="button-import">
-                <Upload className="w-4 h-4" />
-                استيراد
-              </Button>
-              <Button variant="outline" onClick={handleExport} className="gap-2" data-testid="button-export">
-                <Download className="w-4 h-4" />
-                تصدير
-              </Button>
-            </>
+            <DataTableToolbar
+              data={filteredTeachers.map(t => ({ ...t, statusLabel: t.isActive ? "نشط" : "متوقف" }))}
+              columns={TEACHER_EXPORT_COLS}
+              importColumns={TEACHER_IMPORT_COLS}
+              entityName="الأساتذة"
+              filename="teachers"
+              importEndpoint="/api/users/bulk-import?role=teacher"
+              onImportSuccess={fetchTeachers}
+              onPrint={teacherPrint}
+            />
           )}
           {user?.role === "supervisor" && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -451,7 +391,6 @@ export default function TeachersPage() {
           </div>
           <div className="flex flex-wrap items-end gap-3 mt-3">
             <div className="relative w-full sm:w-52">
-              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="بحث عن أستاذ..."
                 className="pr-8"

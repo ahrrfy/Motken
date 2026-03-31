@@ -2,11 +2,11 @@ import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
-import { BookOpen, GraduationCap, Award, Shield, Globe, CheckCircle, Phone, Loader2, Search } from "lucide-react";
+import { BookOpen, GraduationCap, Award, Shield, Globe, CheckCircle, Phone, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDateAr } from "@/lib/utils";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
 import CoursesPage from "./CoursesPage";
 import GraduationPage from "./GraduationPage";
 import CertificatesPage from "./CertificatesPage";
@@ -31,13 +31,16 @@ function ExternalParticipantsArchive() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
+  const fetchParticipants = () => {
+    setLoading(true);
     fetch("/api/external-participants", { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(d => setParticipants(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchParticipants(); }, []);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return participants;
@@ -48,6 +51,14 @@ function ExternalParticipantsArchive() {
       p.course_title?.toLowerCase().includes(q)
     );
   }, [participants, search]);
+
+  const exportData = filtered.map(p => ({
+    ...p,
+    categoryLabel: CATEGORY_LABELS[p.course_category] || p.course_category || "",
+    statusLabel: p.graduated ? "متخرج" : "في الدورة",
+    gradeLabel: p.graduated && p.graduation_grade ? (GRADE_LABELS[p.graduation_grade] || p.graduation_grade) : "",
+    graduatedAtLabel: p.graduated && p.graduated_at ? formatDateAr(p.graduated_at) : "",
+  }));
 
   if (loading) {
     return (
@@ -60,26 +71,45 @@ function ExternalParticipantsArchive() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="ابحث بالاسم أو الجوال أو الدورة..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pr-9"
-          />
-        </div>
-        <Badge variant="outline" className="text-muted-foreground whitespace-nowrap">
-          {filtered.length} مشارك
-        </Badge>
-      </div>
+      <DataTableToolbar
+        data={exportData}
+        columns={[
+          { label: "الاسم", field: "name" },
+          { label: "الجوال", field: "phone" },
+          { label: "العمر", field: "age" },
+          { label: "اسم الدورة", field: "course_title" },
+          { label: "التصنيف", field: "categoryLabel" },
+          { label: "الحالة", field: "statusLabel" },
+          { label: "التقدير", field: "gradeLabel" },
+          { label: "تاريخ التخرج", field: "graduatedAtLabel" },
+          { label: "رقم الشهادة", field: "certificate_number" },
+        ]}
+        importColumns={[
+          { label: "الاسم", field: "name" },
+          { label: "الجوال", field: "phone" },
+          { label: "العمر", field: "age" },
+          { label: "اسم الدورة", field: "courseTitle" },
+          { label: "ملاحظات", field: "notes" },
+        ]}
+        entityName="المشاركون الخارجيون"
+        filename="external-participants"
+        importEndpoint="/api/external-participants/bulk-import"
+        onImportSuccess={fetchParticipants}
+        printTitle="أرشيف المشاركين الخارجيين"
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="ابحث بالاسم أو الجوال أو الدورة..."
+      />
 
       {filtered.length === 0 ? (
         <div className="text-center py-12">
           <Globe className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-muted-foreground">لا يوجد مشاركون خارجيون</p>
-          <p className="text-sm text-muted-foreground/60 mt-1">يمكنك إضافتهم من داخل صفحة الدورات</p>
+          <p className="text-sm text-muted-foreground/60 mt-1">
+            يمكنك إضافتهم من داخل صفحة الدورات أو استيرادهم من ملف Excel
+            <br />
+            <span className="font-mono text-[11px]">أعمدة الاستيراد: الاسم | الجوال | العمر | اسم الدورة | ملاحظات</span>
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

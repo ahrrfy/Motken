@@ -786,4 +786,47 @@ export function registerUsersRoutes(app: Express) {
     }
   });
 
+  // ==================== BULK IMPORT ====================
+  // POST /api/users/bulk-import?role=student|teacher|supervisor
+  // Accepts { rows: [{الاسم, اسم المستخدم, كلمة المرور, الهاتف, العمر, ...}] }
+  app.post("/api/users/bulk-import", requireAuth, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      const role = (req.query.role as string) || "student";
+      const { rows } = req.body;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+      }
+      let success = 0, failed = 0;
+      for (const row of rows) {
+        try {
+          const name = row["الاسم"]?.trim();
+          const username = row["اسم المستخدم"]?.trim();
+          const rawPassword = row["كلمة المرور"]?.trim() || row["الرمز"]?.trim();
+          if (!name || !username || !rawPassword) { failed++; continue; }
+          const data: any = {
+            name,
+            username,
+            password: await hashPassword(rawPassword),
+            role,
+            mosqueId: currentUser.mosqueId || null,
+            phone: row["الهاتف"]?.trim() || null,
+            age: row["العمر"] ? parseInt(row["العمر"]) : null,
+            address: row["العنوان"]?.trim() || null,
+            parentPhone: row["هاتف ولي الأمر"]?.trim() || null,
+            educationLevel: row["المستوى الدراسي"]?.trim() || null,
+            isActive: true,
+            pendingApproval: false,
+          };
+          await storage.createUser(data);
+          success++;
+        } catch { failed++; }
+      }
+      res.json({ success, failed, total: rows.length });
+    } catch (err: any) { sendError(res, err, "استيراد المستخدمين"); }
+  });
+
 }

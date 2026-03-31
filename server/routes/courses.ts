@@ -650,6 +650,53 @@ export function registerCoursesRoutes(app: Express) {
     }
   });
 
+  // POST bulk import external participants from Excel
+  app.post("/api/external-participants/bulk-import", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!["admin", "supervisor", "teacher"].includes(user.role)) {
+        return res.status(403).json({ message: "غير مصرح" });
+      }
+      // Accept both {participants:[{name,phone,...}]} and {rows:[{الاسم,الجوال,...}]}
+      let items: any[] = req.body.participants || req.body.rows || [];
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+      }
+      // Normalize Arabic-keyed rows to English
+      const participants = items.map(r => ({
+        name: r.name || r["الاسم"] || "",
+        phone: r.phone || r["الجوال"] || r["الهاتف"] || "",
+        age: r.age || r["العمر"] || "",
+        courseTitle: r.courseTitle || r["اسم الدورة"] || "",
+        notes: r.notes || r["ملاحظات"] || "",
+      }));
+      const { pool } = await import("../db");
+      let success = 0;
+      let failed = 0;
+      for (const p of participants) {
+        try {
+          if (!p.name?.trim()) { failed++; continue; }
+          let courseId: string | null = null;
+          if (p.courseTitle?.trim()) {
+            const cr = await pool.query(
+              `SELECT id FROM courses WHERE mosque_id = $1 AND LOWER(title) = LOWER($2) LIMIT 1`,
+              [user.mosqueId, p.courseTitle.trim()]
+            );
+            if (cr.rows.length > 0) courseId = cr.rows[0].id;
+          }
+          if (!courseId) { failed++; continue; }
+          await pool.query(
+            `INSERT INTO external_participants (id, course_id, mosque_id, name, phone, age, notes, graduated, created_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, false, NOW())`,
+            [courseId, user.mosqueId, p.name.trim(), p.phone?.trim() || null, p.age ? parseInt(p.age) : null, p.notes?.trim() || null]
+          );
+          success++;
+        } catch { failed++; }
+      }
+      res.json({ success, failed, total: participants.length });
+    } catch (err: any) { sendError(res, err, "استيراد المشاركين الخارجيين"); }
+  });
+
   // GET lookup external participants by phone (for auto-fill)
   app.get("/api/external-participants/lookup", requireAuth, async (req: any, res) => {
     try {

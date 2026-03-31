@@ -8,14 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Search, Plus, Phone, Download, Printer, Upload, Loader2, Camera, Building2 } from "lucide-react";
+import { Plus, Phone, Loader2, Camera, Building2, Search } from "lucide-react";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
+import type { ColumnDef } from "@/components/data-table-toolbar";
 import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { usePhoneValidation, phoneInputClassName, isValidPhone } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
 import { openPrintWindow } from "@/lib/print-utils";
 import { useToast } from "@/hooks/use-toast";
-import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
@@ -72,67 +73,36 @@ export default function SupervisorsPage() {
     reader.readAsDataURL(file);
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const SUPERVISOR_EXPORT_COLS: ColumnDef[] = [
+    { label: "الاسم", field: "name" },
+    { label: "اسم المستخدم", field: "username" },
+    { label: "الهاتف", field: "phone" },
+    { label: "الجامع/المركز", field: "mosqueName" },
+    { label: "الحالة", field: "statusLabel" },
+  ];
+  const SUPERVISOR_IMPORT_COLS: ColumnDef[] = [
+    { label: "الاسم", field: "name" },
+    { label: "اسم المستخدم", field: "username" },
+    { label: "كلمة المرور", field: "password" },
+    { label: "الهاتف", field: "phone" },
+    { label: "الجنس", field: "gender" },
+  ];
+  const supervisorPrint = () => {
+    const tableHtml = `
+      <h3 class="section-title">قائمة المشرفين (${filteredSupervisors.length})</h3>
+      <table>
+        <thead><tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الهاتف</th><th>الجامع/المركز</th><th>الحالة</th></tr></thead>
+        <tbody>${filteredSupervisors.map((s, i) => `
+          <tr><td>${i + 1}</td><td>${s.name}</td><td>${s.username}</td><td>${s.phone || "—"}</td><td>${getMosqueName(s.mosqueId)}</td><td>${s.isActive ? "نشط" : "متوقف"}</td></tr>
+        `).join("")}</tbody>
+      </table>`;
+    openPrintWindow("قائمة المشرفين", tableHtml);
+  };
 
   const getMosqueName = (mosqueId?: string | null) => {
     if (!mosqueId) return "—";
     const mosque = mosques.find(m => m.id === mosqueId);
     return mosque?.name || "—";
-  };
-
-  const handleExport = () => {
-    exportJsonToExcel(
-      supervisors.map(s => ({
-        الاسم: s.name,
-        "اسم المستخدم": s.username,
-        الهاتف: s.phone || "",
-        "الجامع/المركز": getMosqueName(s.mosqueId),
-        الحالة: s.isActive ? "نشط" : "متوقف"
-      })),
-      "Supervisors",
-      "supervisors_list.xlsx",
-    );
-  };
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const rows = await readExcelFile(file);
-      let success = 0;
-      let failed = 0;
-      for (const row of rows) {
-        try {
-          const res = await fetch("/api/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              name: row["الاسم"] || "",
-              username: row["اسم المستخدم"] || "",
-              password: row["كلمة المرور"] || "",
-              phone: row["الهاتف"] || "",
-              role: "supervisor",
-              mosqueId: row["معرف الجامع"] || "",
-            }),
-          });
-          if (res.ok) success++;
-          else failed++;
-        } catch {
-          failed++;
-        }
-      }
-      toast({
-        title: "نتيجة الاستيراد",
-        description: `تم استيراد ${success} مشرف بنجاح${failed > 0 ? `، فشل ${failed}` : ""}`,
-        className: failed === 0 ? "bg-green-50 border-green-200 text-green-800" : undefined,
-        variant: failed > 0 && success === 0 ? "destructive" : undefined,
-      });
-      if (success > 0) fetchSupervisors();
-    } catch {
-      toast({ title: "خطأ", description: "فشل في قراءة الملف", variant: "destructive" });
-    }
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const fetchSupervisors = async () => {
@@ -211,50 +181,17 @@ export default function SupervisorsPage() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-supervisors">المشرفون</h1>
           <p className="text-muted-foreground">إدارة المشرفين على الجوامع ومراكز التحفيظ</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={handleImport}
-            data-testid="input-file-import-supervisors"
+        <div className="flex gap-2 flex-wrap items-center">
+          <DataTableToolbar
+            data={filteredSupervisors.map(s => ({ ...s, mosqueName: getMosqueName(s.mosqueId), statusLabel: s.isActive ? "نشط" : "متوقف" }))}
+            columns={SUPERVISOR_EXPORT_COLS}
+            importColumns={SUPERVISOR_IMPORT_COLS}
+            entityName="المشرفون"
+            filename="supervisors"
+            importEndpoint="/api/users/bulk-import?role=supervisor"
+            onImportSuccess={fetchSupervisors}
+            onPrint={supervisorPrint}
           />
-          <Button variant="outline" onClick={() => {
-            const tableHtml = `
-              <h3 class="section-title">قائمة المشرفين (${filteredSupervisors.length})</h3>
-              <table>
-                <thead>
-                  <tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الجنس</th><th>الهاتف</th><th>الجامع/المركز</th><th>الحالة</th></tr>
-                </thead>
-                <tbody>
-                  ${filteredSupervisors.map((s, i) => `
-                    <tr>
-                      <td>${i + 1}</td>
-                      <td>${s.name}</td>
-                      <td>${s.username}</td>
-                      <td>${s.gender === "female" ? "أنثى" : "ذكر"}</td>
-                      <td>${s.phone || "—"}</td>
-                      <td>${getMosqueName(s.mosqueId)}</td>
-                      <td>${s.isActive ? "نشط" : "متوقف"}</td>
-                    </tr>
-                  `).join("")}
-                </tbody>
-              </table>
-            `;
-            openPrintWindow("قائمة المشرفين", tableHtml);
-          }} className="gap-2" data-testid="button-print-supervisors">
-            <Printer className="w-4 h-4" />
-            طباعة
-          </Button>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" data-testid="button-import-supervisors">
-            <Upload className="w-4 h-4" />
-            استيراد
-          </Button>
-          <Button variant="outline" onClick={handleExport} className="gap-2" data-testid="button-export-supervisors">
-            <Download className="w-4 h-4" />
-            تصدير
-          </Button>
           {user?.role === "admin" && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
