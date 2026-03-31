@@ -98,7 +98,11 @@
       "Bash(powershell -Command \"Get-WmiObject -Class Win32_BaseBoard | Select-Object Manufacturer, Product\")",
       "Bash(git fetch:*)",
       "Bash(git status:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git diff:*)",
+      "Bash(printf '\\\\n')",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   },
   "hooks": {
