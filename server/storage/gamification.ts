@@ -1,12 +1,11 @@
 import { db } from "../db";
-import { eq, desc, asc, sum } from "drizzle-orm";
+import { eq, desc, sum } from "drizzle-orm";
 import {
   type Point, type InsertPoint,
   type Badge, type InsertBadge,
-  type Schedule, type InsertSchedule,
   type Competition, type InsertCompetition,
   type CompetitionParticipant, type InsertCompetitionParticipant,
-  points, badges, schedules, competitions, competitionParticipants,
+  points, badges, competitions, competitionParticipants,
 } from "@shared/schema";
 
 export const gamificationMethods = {
@@ -71,34 +70,6 @@ export const gamificationMethods = {
 
   async deleteBadge(id: string): Promise<void> {
     await db.delete(badges).where(eq(badges.id, id));
-  },
-
-  // ==================== SCHEDULES ====================
-  async getSchedule(id: string): Promise<Schedule | undefined> {
-    const [entry] = await db.select().from(schedules).where(eq(schedules.id, id));
-    return entry;
-  },
-
-  async getSchedulesByMosque(mosqueId: string): Promise<Schedule[]> {
-    return db.select().from(schedules).where(eq(schedules.mosqueId, mosqueId)).orderBy(asc(schedules.dayOfWeek));
-  },
-
-  async getSchedulesByTeacher(teacherId: string): Promise<Schedule[]> {
-    return db.select().from(schedules).where(eq(schedules.teacherId, teacherId)).orderBy(asc(schedules.dayOfWeek));
-  },
-
-  async createSchedule(s: InsertSchedule): Promise<Schedule> {
-    const [entry] = await db.insert(schedules).values(s).returning();
-    return entry;
-  },
-
-  async updateSchedule(id: string, data: Partial<InsertSchedule>): Promise<Schedule | undefined> {
-    const [entry] = await db.update(schedules).set(data).where(eq(schedules.id, id)).returning();
-    return entry;
-  },
-
-  async deleteSchedule(id: string): Promise<void> {
-    await db.delete(schedules).where(eq(schedules.id, id));
   },
 
   // ==================== COMPETITIONS ====================

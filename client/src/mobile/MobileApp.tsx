@@ -18,12 +18,8 @@ const AssignmentsExamsPage = lazy(() => import("@/pages/AssignmentsExamsPage"));
 const QuranTracker = lazy(() => import("@/pages/QuranTracker"));
 const CoursesGraduationPage = lazy(() => import("@/pages/CoursesGraduationPage"));
 const LibraryPage = lazy(() => import("@/pages/LibraryPage"));
-const KnowledgeBasePage = lazy(() => import("@/pages/KnowledgeBasePage"));
-const EducationalContentPage = lazy(() => import("@/pages/EducationalContentPage"));
 const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
 const PointsRewardsPage = lazy(() => import("@/pages/PointsRewardsPage"));
-const RatingsPage = lazy(() => import("@/pages/RatingsPage"));
-const SchedulesPage = lazy(() => import("@/pages/SchedulesPage"));
 const CompetitionsPage = lazy(() => import("@/pages/CompetitionsPage"));
 const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
 const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
@@ -54,7 +50,7 @@ const ChangelogPage = lazy(() => import("@/pages/ChangelogPage"));
 function getSkeleton(path: string) {
   if (path === "/" || path === "/dashboard") return <DashboardSkeleton />;
   if (["/students", "/teachers", "/supervisors", "/users"].some(p => path.startsWith(p))) return <ListSkeleton />;
-  if (["/assignments", "/attendance", "/points-rewards", "/ratings"].some(p => path.startsWith(p))) return <CardsSkeleton />;
+  if (["/assignments", "/attendance", "/points-rewards"].some(p => path.startsWith(p))) return <CardsSkeleton />;
   return <GenericSkeleton />;
 }
 
@@ -96,14 +92,10 @@ export default function MobileApp() {
                 <Route path="/quran" component={QuranTracker} />
                 <Route path="/courses" component={CoursesGraduationPage} />
                 <Route path="/library" component={LibraryPage} />
-                <Route path="/knowledge-base" component={KnowledgeBasePage} />
-                <Route path="/educational-content" component={EducationalContentPage} />
                 <Route path="/graduation" component={CoursesGraduationPage} />
                 <Route path="/certificates" component={CoursesGraduationPage} />
                 <Route path="/attendance" component={AttendancePage} />
                 <Route path="/points-rewards" component={PointsRewardsPage} />
-                <Route path="/ratings" component={RatingsPage} />
-                <Route path="/schedules" component={SchedulesPage} />
                 <Route path="/competitions" component={CompetitionsPage} />
                 <Route path="/messages" component={MessagesPage} />
                 <Route path="/notifications" component={NotificationsPage} />

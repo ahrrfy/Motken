@@ -6,7 +6,7 @@ import { trackingMethods } from "./tracking";
 import { communicationMethods } from "./communication";
 import { gamificationMethods } from "./gamification";
 import { managementMethods } from "./management";
-import { knowledgeMethods } from "./knowledge";
+
 import { systemMethods } from "./system";
 
 import type { IStorage } from "./types";
@@ -27,7 +27,6 @@ Object.assign(
   communicationMethods,
   gamificationMethods,
   managementMethods,
-  knowledgeMethods,
   systemMethods,
 );
 

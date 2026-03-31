@@ -4,7 +4,6 @@ import {
   type Assignment, type InsertAssignment,
   type ActivityLog, type InsertActivityLog,
   type Notification, type InsertNotification,
-  type Rating, type InsertRating,
   type Exam, type InsertExam,
   type ExamStudent, type InsertExamStudent,
   type Course, type InsertCourse,
@@ -17,7 +16,6 @@ import {
   type Message, type InsertMessage,
   type Point, type InsertPoint,
   type Badge, type InsertBadge,
-  type Schedule, type InsertSchedule,
   type Competition, type InsertCompetition,
   type CompetitionParticipant, type InsertCompetitionParticipant,
   type ParentReport, type InsertParentReport,
@@ -28,8 +26,6 @@ import {
   type StudentTransfer, type InsertStudentTransfer,
   type FamilyLink, type InsertFamilyLink,
   type Feedback, type InsertFeedback,
-  type TajweedRule, type InsertTajweedRule,
-  type SimilarVerse, type InsertSimilarVerse,
   type QuranProgress,
 } from "@shared/schema";
 
@@ -62,10 +58,6 @@ export interface IStorage {
   updateAssignment(id: string, data: Partial<InsertAssignment>): Promise<Assignment | undefined>;
   updateAssignments(studentId: string, oldTeacherId: string | null, newTeacherId: string): Promise<void>;
   deleteAssignment(id: string): Promise<void>;
-
-  getRatingsByUser(toUserId: string): Promise<Rating[]>;
-  getRatingsByMosque(mosqueId: string): Promise<Rating[]>;
-  createRating(r: InsertRating): Promise<Rating>;
 
   getExam(id: string): Promise<Exam | undefined>;
   getExamsByTeacher(teacherId: string): Promise<Exam[]>;
@@ -159,13 +151,6 @@ export interface IStorage {
   createBadge(b: InsertBadge): Promise<Badge>;
   deleteBadge(id: string): Promise<void>;
 
-  getSchedule(id: string): Promise<Schedule | undefined>;
-  getSchedulesByMosque(mosqueId: string): Promise<Schedule[]>;
-  getSchedulesByTeacher(teacherId: string): Promise<Schedule[]>;
-  createSchedule(s: InsertSchedule): Promise<Schedule>;
-  updateSchedule(id: string, data: Partial<InsertSchedule>): Promise<Schedule | undefined>;
-  deleteSchedule(id: string): Promise<void>;
-
   getCompetition(id: string): Promise<Competition | undefined>;
   getCompetitions(): Promise<Competition[]>;
   getCompetitionsByMosque(mosqueId: string): Promise<Competition[]>;
@@ -232,19 +217,6 @@ export interface IStorage {
   createFeedback(data: InsertFeedback): Promise<Feedback>;
   updateFeedback(id: string, data: Partial<InsertFeedback>): Promise<Feedback | undefined>;
   deleteFeedback(id: string): Promise<void>;
-
-  getTajweedRule(id: string): Promise<TajweedRule | undefined>;
-  getAllTajweedRules(): Promise<TajweedRule[]>;
-  getTajweedRulesByCategory(category: string): Promise<TajweedRule[]>;
-  createTajweedRule(data: InsertTajweedRule): Promise<TajweedRule>;
-  updateTajweedRule(id: string, data: Partial<InsertTajweedRule>): Promise<TajweedRule | undefined>;
-  deleteTajweedRule(id: string): Promise<void>;
-
-  getSimilarVerse(id: string): Promise<SimilarVerse | undefined>;
-  getAllSimilarVerses(): Promise<SimilarVerse[]>;
-  createSimilarVerse(data: InsertSimilarVerse): Promise<SimilarVerse>;
-  updateSimilarVerse(id: string, data: Partial<InsertSimilarVerse>): Promise<SimilarVerse | undefined>;
-  deleteSimilarVerse(id: string): Promise<void>;
 
   resetSystemData(): Promise<void>;
   getQuranProgress(userId: string, surahNumber?: number): Promise<QuranProgress | undefined>;
