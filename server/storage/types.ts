@@ -16,8 +16,6 @@ import {
   type Message, type InsertMessage,
   type Point, type InsertPoint,
   type Badge, type InsertBadge,
-  type Competition, type InsertCompetition,
-  type CompetitionParticipant, type InsertCompetitionParticipant,
   type ParentReport, type InsertParentReport,
   type EmergencySubstitution, type InsertEmergencySubstitution,
   type IncidentRecord, type InsertIncidentRecord,
@@ -150,18 +148,6 @@ export interface IStorage {
   getBadgesByMosque(mosqueId: string): Promise<Badge[]>;
   createBadge(b: InsertBadge): Promise<Badge>;
   deleteBadge(id: string): Promise<void>;
-
-  getCompetition(id: string): Promise<Competition | undefined>;
-  getCompetitions(): Promise<Competition[]>;
-  getCompetitionsByMosque(mosqueId: string): Promise<Competition[]>;
-  createCompetition(c: InsertCompetition): Promise<Competition>;
-  updateCompetition(id: string, data: Partial<InsertCompetition>): Promise<Competition | undefined>;
-  deleteCompetition(id: string): Promise<void>;
-
-  getCompetitionParticipants(competitionId: string): Promise<CompetitionParticipant[]>;
-  createCompetitionParticipant(cp: InsertCompetitionParticipant): Promise<CompetitionParticipant>;
-  updateCompetitionParticipant(id: string, data: Partial<InsertCompetitionParticipant>): Promise<CompetitionParticipant | undefined>;
-  deleteCompetitionParticipant(id: string): Promise<void>;
 
   getParentReport(id: string): Promise<ParentReport | undefined>;
   getParentReportByToken(token: string): Promise<ParentReport | undefined>;

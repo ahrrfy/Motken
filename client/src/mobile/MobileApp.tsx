@@ -20,11 +20,9 @@ const CoursesGraduationPage = lazy(() => import("@/pages/CoursesGraduationPage")
 const LibraryPage = lazy(() => import("@/pages/LibraryPage"));
 const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
 const PointsRewardsPage = lazy(() => import("@/pages/PointsRewardsPage"));
-const CompetitionsPage = lazy(() => import("@/pages/CompetitionsPage"));
 const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
 const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
 const SmartAlertsPage = lazy(() => import("@/pages/SmartAlertsPage"));
-const ParentPortalPage = lazy(() => import("@/pages/ParentPortalPage"));
 const FamilySystemPage = lazy(() => import("@/pages/FamilySystemPage"));
 const WhiteboardPage = lazy(() => import("@/pages/WhiteboardPage"));
 const SpreadPage = lazy(() => import("@/pages/SpreadPage"));
@@ -96,11 +94,9 @@ export default function MobileApp() {
                 <Route path="/certificates" component={CoursesGraduationPage} />
                 <Route path="/attendance" component={AttendancePage} />
                 <Route path="/points-rewards" component={PointsRewardsPage} />
-                <Route path="/competitions" component={CompetitionsPage} />
                 <Route path="/messages" component={MessagesPage} />
                 <Route path="/notifications" component={NotificationsPage} />
                 <Route path="/smart-alerts" component={SmartAlertsPage} />
-                <Route path="/parent-portal" component={ParentPortalPage} />
                 <Route path="/parent-dashboard" component={ParentDashboardPage} />
                 <Route path="/family-system" component={FamilySystemPage} />
                 <Route path="/whiteboard" component={WhiteboardPage} />

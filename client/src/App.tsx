@@ -35,8 +35,6 @@ const TeacherDailyPage = lazy(() => import("@/pages/TeacherDailyPage"));
 const OnlineUsersPage = lazy(() => import("@/pages/OnlineUsersPage"));
 const MonitoringPage = lazy(() => import("@/pages/MonitoringPage"));
 const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
-const CompetitionsPage = lazy(() => import("@/pages/CompetitionsPage"));
-const ParentPortalPage = lazy(() => import("@/pages/ParentPortalPage"));
 const FeatureControlPage = lazy(() => import("@/pages/FeatureControlPage"));
 const TestimonialsManagePage = lazy(() => import("@/pages/TestimonialsManagePage"));
 const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
@@ -280,8 +278,6 @@ function App() {
         <Route path="/monitoring">{() => <RoleGuard roles={["admin"]} Component={MonitoringPage} />}</Route>
         <Route path="/online-users" component={OnlineUsersPage} />
         <Route path="/attendance" component={AttendancePage} />
-        <Route path="/competitions" component={CompetitionsPage} />
-        <Route path="/parent-portal" component={ParentPortalPage} />
         <Route path="/feature-control">{() => <RoleGuard roles={["admin"]} Component={FeatureControlPage} />}</Route>
         <Route path="/testimonials-manage">{() => <RoleGuard roles={["admin"]} Component={TestimonialsManagePage} />}</Route>
         <Route path="/messages" component={MessagesPage} />

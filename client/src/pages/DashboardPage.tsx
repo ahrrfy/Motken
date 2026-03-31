@@ -246,7 +246,6 @@ export default function DashboardPage() {
     { href: "/points-rewards", label: "النقاط", labelEn: "Points", icon: Gift, color: "from-purple-500 to-purple-600", roles: ["admin", "teacher", "student", "supervisor"] },
     { href: "/courses", label: "الدورات", labelEn: "Courses", icon: Award, color: "from-pink-500 to-pink-600", roles: ["admin", "teacher", "supervisor", "student"] },
     { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, color: "from-indigo-500 to-indigo-600", roles: ["admin", "teacher", "student", "supervisor"] },
-    { href: "/competitions", label: "المسابقات", labelEn: "Competitions", icon: Trophy, color: "from-orange-500 to-orange-600", roles: ["admin", "teacher", "supervisor", "student"] },
     { href: "/reports", label: "التقارير", labelEn: "Reports", icon: BarChart3, color: "from-rose-500 to-rose-600", roles: ["admin", "supervisor"] },
     { href: "/teachers", label: "الأساتذة", labelEn: "Teachers", icon: GraduationCap, color: "from-lime-500 to-lime-600", roles: ["admin", "supervisor"] },
   ].filter(l => l.roles.includes(currentRole ?? ""));

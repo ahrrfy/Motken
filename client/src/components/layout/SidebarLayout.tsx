@@ -27,7 +27,6 @@ import {
   Wifi,
   ArrowLeftRight,
   MessageSquare,
-  Trophy,
   AlertTriangle,
   Shield,
   UserCog,
@@ -140,7 +139,6 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/attendance", label: "الحضور والغياب", labelEn: "Attendance", icon: CalendarCheck, roles: ["admin", "teacher", "supervisor"], featureKey: "attendance" },
       { href: "/points-rewards", label: "النقاط والمكافآت", labelEn: "Points & Rewards", icon: Gift, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "points_rewards" },
-      { href: "/competitions", label: "المسابقات القرآنية", labelEn: "Competitions", icon: Trophy, roles: ["admin", "teacher", "supervisor", "student"], featureKey: "competitions" },
     ],
   },
   {
@@ -152,7 +150,6 @@ const navCategories: NavCategory[] = [
       { href: "/messages", label: "المحادثات", labelEn: "Messages", icon: MessageSquare, roles: ["admin", "teacher", "student", "supervisor"], featureKey: "messaging" },
       { href: "/notifications", label: "الإشعارات", labelEn: "Notifications", icon: Bell, roles: ["admin", "teacher", "student", "supervisor"] },
       { href: "/smart-alerts", label: "التنبيهات الذكية", labelEn: "Smart Alerts", icon: AlertTriangle, roles: ["admin", "supervisor", "teacher"], featureKey: "smart_alerts" },
-      { href: "/parent-portal", label: "بوابة ولي الأمر", labelEn: "Parent Portal", icon: UserCog, roles: ["admin", "teacher", "supervisor"], featureKey: "parent_portal" },
       { href: "/family-system", label: "نظام الأسرة", labelEn: "Family System", icon: HeartHandshake, roles: ["admin", "supervisor", "teacher"], featureKey: "family_system" },
       { href: "/whiteboard", label: "السبورة التفاعلية", labelEn: "Interactive Whiteboard", icon: Pen, roles: ["admin", "supervisor", "teacher"], featureKey: "whiteboard" },
       { href: "/spread", label: "انشر النظام", labelEn: "Spread System", icon: Share2, roles: ["admin", "supervisor", "teacher"] },

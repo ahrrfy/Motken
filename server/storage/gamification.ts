@@ -3,9 +3,7 @@ import { eq, desc, sum } from "drizzle-orm";
 import {
   type Point, type InsertPoint,
   type Badge, type InsertBadge,
-  type Competition, type InsertCompetition,
-  type CompetitionParticipant, type InsertCompetitionParticipant,
-  points, badges, competitions, competitionParticipants,
+  points, badges,
 } from "@shared/schema";
 
 export const gamificationMethods = {
@@ -72,51 +70,4 @@ export const gamificationMethods = {
     await db.delete(badges).where(eq(badges.id, id));
   },
 
-  // ==================== COMPETITIONS ====================
-  async getCompetition(id: string): Promise<Competition | undefined> {
-    const [entry] = await db.select().from(competitions).where(eq(competitions.id, id));
-    return entry;
-  },
-
-  async getCompetitions(): Promise<Competition[]> {
-    return db.select().from(competitions).orderBy(desc(competitions.createdAt));
-  },
-
-  async getCompetitionsByMosque(mosqueId: string): Promise<Competition[]> {
-    return db.select().from(competitions).where(eq(competitions.mosqueId, mosqueId)).orderBy(desc(competitions.createdAt));
-  },
-
-  async createCompetition(c: InsertCompetition): Promise<Competition> {
-    const [entry] = await db.insert(competitions).values(c).returning();
-    return entry;
-  },
-
-  async updateCompetition(id: string, data: Partial<InsertCompetition>): Promise<Competition | undefined> {
-    const [entry] = await db.update(competitions).set(data).where(eq(competitions.id, id)).returning();
-    return entry;
-  },
-
-  async deleteCompetition(id: string): Promise<void> {
-    await db.delete(competitionParticipants).where(eq(competitionParticipants.competitionId, id));
-    await db.delete(competitions).where(eq(competitions.id, id));
-  },
-
-  // ==================== COMPETITION PARTICIPANTS ====================
-  async getCompetitionParticipants(competitionId: string): Promise<CompetitionParticipant[]> {
-    return db.select().from(competitionParticipants).where(eq(competitionParticipants.competitionId, competitionId)).orderBy(desc(competitionParticipants.createdAt));
-  },
-
-  async createCompetitionParticipant(cp: InsertCompetitionParticipant): Promise<CompetitionParticipant> {
-    const [entry] = await db.insert(competitionParticipants).values(cp).returning();
-    return entry;
-  },
-
-  async updateCompetitionParticipant(id: string, data: Partial<InsertCompetitionParticipant>): Promise<CompetitionParticipant | undefined> {
-    const [entry] = await db.update(competitionParticipants).set(data).where(eq(competitionParticipants.id, id)).returning();
-    return entry;
-  },
-
-  async deleteCompetitionParticipant(id: string): Promise<void> {
-    await db.delete(competitionParticipants).where(eq(competitionParticipants.id, id));
-  },
 };

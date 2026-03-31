@@ -7,7 +7,7 @@ import { isNotificationsEnabled, setNotificationsEnabled, startNotificationPolli
 import { hapticLight } from "@/lib/haptic";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Bell, Users, CalendarCheck,
-  MessageSquare, BarChart3, GraduationCap, Trophy, Settings, LogOut,
+  MessageSquare, BarChart3, GraduationCap, Settings, LogOut,
   Award, Library, Sparkles, Gift, Shield,
   AlertTriangle, HeartHandshake, Pen, Share2, QrCode, Eye, UserCircle,
   MapPin, Lightbulb, X, Building2, UserCog, ArrowUpDown,
@@ -29,11 +29,9 @@ const allNavItems = [
   { href: "/library", label: "المكتبة الإسلامية", icon: Library, roles: ["admin","teacher","student","supervisor"], group: "edu", featureKey: "library" },
   { href: "/attendance", label: "الحضور والغياب", icon: CalendarCheck, roles: ["admin","teacher","supervisor"], group: "track", featureKey: "attendance" },
   { href: "/points-rewards", label: "النقاط والمكافآت", icon: Gift, roles: ["admin","teacher","student","supervisor"], group: "track", featureKey: "points_rewards" },
-  { href: "/competitions", label: "المسابقات القرآنية", icon: Trophy, roles: ["admin","teacher","supervisor","student"], group: "track", featureKey: "competitions" },
   { href: "/messages", label: "المحادثات", icon: MessageSquare, roles: ["admin","teacher","student","supervisor"], group: "comm", featureKey: "messaging" },
   { href: "/notifications", label: "الإشعارات", icon: Bell, roles: ["admin","teacher","student","supervisor","parent"], group: "comm" },
   { href: "/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "smart_alerts" },
-  { href: "/parent-portal", label: "بوابة ولي الأمر", icon: UserCog, roles: ["admin","teacher","supervisor"], group: "comm", featureKey: "parent_portal" },
   { href: "/parent-dashboard", label: "متابعة أبنائي", icon: UserCog, roles: ["parent"], group: "comm" },
   { href: "/family-system", label: "نظام الأسرة", icon: HeartHandshake, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "family_system" },
   { href: "/whiteboard", label: "السبورة التفاعلية", icon: Pen, roles: ["admin","supervisor","teacher"], group: "comm", featureKey: "whiteboard" },

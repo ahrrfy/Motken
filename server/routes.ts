@@ -18,7 +18,6 @@ import { registerAttendanceRoutes } from "./routes/attendance";
 import { registerMessagesRoutes } from "./routes/messages";
 import { registerPointsRoutes } from "./routes/points";
 
-import { registerCompetitionsRoutes } from "./routes/competitions";
 import { registerReportsRoutes } from "./routes/reports";
 import { registerAlertsRoutes } from "./routes/alerts";
 import { registerGraduatesRoutes } from "./routes/graduates";
@@ -113,7 +112,6 @@ export async function registerRoutes(
   registerMessagesRoutes(app);
   registerPointsRoutes(app);
 
-  registerCompetitionsRoutes(app);
   registerReportsRoutes(app);
   registerAlertsRoutes(app);
   registerGraduatesRoutes(app);
