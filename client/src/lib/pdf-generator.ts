@@ -140,7 +140,7 @@ ${config.graduationGrade ? `<div class="gr">بتقدير: <strong>${esc(config.g
 
 // ─── Core: HTML → Canvas → PDF ────────────────────────────────
 
-async function renderHtmlToPdf(
+export async function renderHtmlToPdf(
   html: string,
   opts: {
     orientation?: "portrait" | "landscape";

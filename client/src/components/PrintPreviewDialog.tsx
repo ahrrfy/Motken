@@ -143,6 +143,7 @@ export function PrintPreviewDialog() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [pageConfigKey, setPageConfigKey] = useState<PageConfig>("a4-portrait");
   const [savingPdf, setSavingPdf] = useState(false);
+  const [iframeMounted, setIframeMounted] = useState(false);
 
   // اسم المسجد + اسم المستخدم
   const mosqueName = options?.mosqueName || user?.mosqueName || "مُتْقِن";
@@ -154,9 +155,15 @@ export function PrintPreviewDialog() {
     }
   }, [options]);
 
-  // كتابة المحتوى مباشرة — بدون أي تأخير
+  // Callback ref: يُستدعى فوراً عند ربط/فصل الـ iframe من DOM
+  const iframeCallbackRef = useCallback((node: HTMLIFrameElement | null) => {
+    iframeRef.current = node;
+    setIframeMounted(!!node);
+  }, []);
+
+  // كتابة المحتوى فور جاهزية الـ iframe
   useEffect(() => {
-    if (!isOpen || !options) return;
+    if (!isOpen || !options || !iframeMounted) return;
     const iframe = iframeRef.current;
     if (!iframe) return;
 
@@ -165,33 +172,38 @@ export function PrintPreviewDialog() {
       mosqueName, issuedBy, options.mosqueImage,
       options.showHeader !== false, options.showFooter !== false,
     );
-  }, [isOpen, options, pageConfigKey, mosqueName]);
+  }, [isOpen, options, pageConfigKey, mosqueName, iframeMounted]);
 
   const handlePrint = useCallback(() => {
     iframeRef.current?.contentWindow?.print();
   }, []);
 
-  // حفظ PDF حقيقي عبر pdf-generator
+  // حفظ PDF حقيقي — يأخذ HTML الكامل من الـ iframe ويحوله لملف PDF
   const handleSavePdf = useCallback(async () => {
     if (!options) return;
+    const iframe = iframeRef.current;
+    const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+    if (!iframeDoc) return;
+
     setSavingPdf(true);
     try {
-      const { generateReportPdf } = await import("@/lib/pdf-generator");
-      await generateReportPdf({
-        title: options.title,
-        mosqueName: mosqueName,
-        orientation: options.orientation || "portrait",
-        format: options.format || "a4",
-        // نمرر HTML كنص عادي — pdf-generator يولّد من القالب
-        text: "", // سيُستخدم contentHtml مباشرة عبر دالة مخصصة
-      });
+      const fullHtml = iframeDoc.documentElement.outerHTML;
+      const { renderHtmlToPdf } = await import("@/lib/pdf-generator");
+      await renderHtmlToPdf(
+        `<!DOCTYPE html>${fullHtml}`,
+        {
+          orientation: options.orientation || "portrait",
+          format: options.format || "a4",
+          filename: `${options.title.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`,
+        },
+      );
     } catch {
-      // fallback: استخدام طباعة المتصفح كـ PDF
-      iframeRef.current?.contentWindow?.print();
+      // fallback: طباعة المتصفح كـ PDF
+      iframe?.contentWindow?.print();
     } finally {
       setSavingPdf(false);
     }
-  }, [options, mosqueName]);
+  }, [options]);
 
   const handlePageConfigChange = useCallback(
     (value: string) => {
@@ -265,7 +277,7 @@ export function PrintPreviewDialog() {
             style={{ width: `min(100%, ${PAGE_SIZES[pageConfigKey].widthPx}px)` }}
           >
             <iframe
-              ref={iframeRef}
+              ref={iframeCallbackRef}
               className="w-full border-0"
               style={{ minHeight: "1100px", height: "100%" }}
               title="معاينة الطباعة"
