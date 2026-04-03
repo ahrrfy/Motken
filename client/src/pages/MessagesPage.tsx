@@ -253,7 +253,7 @@ export default function MessagesPage() {
       fetchConversations();
     } catch (err: any) {
       toast({ title: "خطأ", description: err.message || "فشل في الإرسال", variant: "destructive" });
-    } finally { setSending(false); }
+    } finally { setSending(false); inputRef.current?.focus(); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

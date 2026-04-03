@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Trophy, Star, Heart, Clock, BookOpen, Plus, Award, Medal, TrendingUp, Crown, Download, Users, Filter, MinusCircle, PlusCircle, Target, Zap } from "lucide-react";
+import { Loader2, Trophy, Star, Heart, Clock, BookOpen, Plus, Award, Medal, TrendingUp, Crown, Download, Users, Filter, MinusCircle, PlusCircle, Target, Zap, Settings, Save } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAr } from "@/lib/utils";
@@ -177,6 +177,27 @@ export default function PointsRewardsPage() {
   const [redeemDialogOpen, setRedeemDialogOpen] = useState(false);
   const [redeemForm, setRedeemForm] = useState({ studentId: "", amount: "", rewardName: "" });
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+
+  // إعدادات تخصيص النقاط
+  const DEFAULT_POINT_VALUES: Record<string, number> = {
+    assignment: 10, exam: 20, behavior: 5, attendance: 5, extra: 10,
+    competition: 15, graduation: 50, memorization: 25, participation: 10,
+  };
+  const [pointValues, setPointValues] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem("mutqin_point_values");
+      return saved ? JSON.parse(saved) : DEFAULT_POINT_VALUES;
+    } catch { return DEFAULT_POINT_VALUES; }
+  });
+  const [pointExchangeRate, setPointExchangeRate] = useState(() => {
+    try {
+      const saved = localStorage.getItem("mutqin_point_exchange_rate");
+      return saved ? Number(saved) : 100;
+    } catch { return 100; }
+  });
+  const [exchangeLabel, setExchangeLabel] = useState(() => {
+    return localStorage.getItem("mutqin_exchange_label") || "هدية";
+  });
   const [resetStudentId, setResetStudentId] = useState("");
   const [studentTotals, setStudentTotals] = useState<Record<string, number>>({});
 
@@ -188,6 +209,7 @@ export default function PointsRewardsPage() {
   const [filterDateTo, setFilterDateTo] = useState("");
 
   const isStudent = user?.role === "student";
+  const isAdmin = user?.role === "admin";
   const isTeacherOrAdmin = user?.role === "teacher" || user?.role === "admin" || user?.role === "supervisor";
 
   const fetchLeaderboard = async () => {
@@ -707,6 +729,13 @@ export default function PointsRewardsPage() {
             <span className="hidden sm:inline">الإنجازات</span>
             <span className="sm:hidden">إنجازات</span>
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="settings" data-testid="tab-settings">
+              <Settings className="w-4 h-4 ml-1" />
+              <span className="hidden sm:inline">إعدادات النقاط</span>
+              <span className="sm:hidden">إعدادات</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="leaderboard" className="space-y-4">
@@ -717,7 +746,7 @@ export default function PointsRewardsPage() {
           ) : (
             <>
               {leaderboard.length >= 3 && (
-                <div className="flex items-end justify-center gap-3 sm:gap-6 pt-6 pb-4" data-testid="podium-display">
+                <div className="flex items-end justify-center gap-4 sm:gap-8 pt-6 pb-4 px-2" data-testid="podium-display">
                   {[1, 0, 2].map((idx) => {
                     const entry = leaderboard[idx];
                     if (!entry) return null;
@@ -748,7 +777,7 @@ export default function PointsRewardsPage() {
                           </div>
                           <span className="absolute -top-2 -right-2 text-xl">{medal}</span>
                         </div>
-                        <p className="font-bold text-sm sm:text-base text-center truncate max-w-[100px]" data-testid={`text-podium-name-${rank}`}>
+                        <p className="font-bold text-xs sm:text-sm text-center line-clamp-2 max-w-[90px] sm:max-w-[120px] leading-tight" data-testid={`text-podium-name-${rank}`}>
                           {entry.name}
                         </p>
                         <p className="text-emerald-600 font-bold text-sm" data-testid={`text-podium-points-${rank}`}>
@@ -1367,6 +1396,75 @@ export default function PointsRewardsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* تبويب إعدادات النقاط — المدير فقط */}
+        {isAdmin && (
+          <TabsContent value="settings" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-serif flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-primary" />
+                  تخصيص عدد النقاط لكل عمل
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {POINT_CATEGORIES.filter(c => !["redemption", "reset"].includes(c.value)).map(cat => (
+                    <div key={cat.value} className="space-y-1">
+                      <Label className="text-sm">{cat.label}</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={pointValues[cat.value] || 0}
+                        onChange={e => setPointValues(prev => ({ ...prev, [cat.value]: Number(e.target.value) }))}
+                        className="h-9"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t pt-4 mt-4 space-y-3">
+                  <h3 className="font-bold text-sm">نظام الصرف</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm">كل كم نقطة = مكافأة</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={pointExchangeRate}
+                        onChange={e => setPointExchangeRate(Number(e.target.value))}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">اسم المكافأة</Label>
+                      <Input
+                        value={exchangeLabel}
+                        onChange={e => setExchangeLabel(e.target.value)}
+                        placeholder="مثال: هدية، جائزة"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    كل <strong>{pointExchangeRate}</strong> نقطة = <strong>{exchangeLabel}</strong> واحدة
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    localStorage.setItem("mutqin_point_values", JSON.stringify(pointValues));
+                    localStorage.setItem("mutqin_point_exchange_rate", String(pointExchangeRate));
+                    localStorage.setItem("mutqin_exchange_label", exchangeLabel);
+                    toast({ title: "تم الحفظ", description: "تم حفظ إعدادات النقاط", className: "bg-green-50 border-green-200 text-green-800" });
+                  }}
+                  className="gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  حفظ الإعدادات
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={pointDialogOpen} onOpenChange={setPointDialogOpen}>

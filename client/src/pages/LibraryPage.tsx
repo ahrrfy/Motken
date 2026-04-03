@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Book, Search, Filter, BookOpen, ArrowRight, Heart, ChevronLeft, ChevronRight, Plus, Trash2, Minus, Sun, Moon, Bookmark, BookmarkCheck, Type } from "lucide-react";
+import { Book, Search, Filter, BookOpen, ArrowRight, Heart, ChevronLeft, ChevronRight, Plus, Trash2, Minus, Sun, Moon, Bookmark, BookmarkCheck, Type, Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { BookUploadDialog } from "@/components/BookUploadDialog";
@@ -279,6 +279,25 @@ export default function LibraryPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [bookSearchQuery, setBookSearchQuery] = useState("");
 
+  // أدوات تعديل/حذف المدير
+  const [editBookOpen, setEditBookOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState<BookItem | null>(null);
+  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", category: "", description: "" });
+
+  const [hiddenBooks, setHiddenBooks] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem("mutqin_hidden_books");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [bookOverrides, setBookOverrides] = useState<Record<number, Partial<BookItem>>>(() => {
+    try {
+      const saved = localStorage.getItem("mutqin_book_overrides");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
   const [fontSize, setFontSize] = useState(() => {
     try {
       const saved = localStorage.getItem("library-font-size");
@@ -312,6 +331,14 @@ export default function LibraryPage() {
   }, [customBooks]);
 
   useEffect(() => {
+    localStorage.setItem("mutqin_hidden_books", JSON.stringify(hiddenBooks));
+  }, [hiddenBooks]);
+
+  useEffect(() => {
+    localStorage.setItem("mutqin_book_overrides", JSON.stringify(bookOverrides));
+  }, [bookOverrides]);
+
+  useEffect(() => {
     localStorage.setItem("library-font-size", String(fontSize));
   }, [fontSize]);
 
@@ -327,6 +354,32 @@ export default function LibraryPage() {
     if (e) e.stopPropagation();
     setBookmarks(prev => prev.includes(bookId) ? prev.filter(id => id !== bookId) : [...prev, bookId]);
   }, []);
+
+  const isAdmin = user?.role === "admin";
+
+  const openEditBook = (book: BookItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingBook(book);
+    setEditBookForm({ title: book.title, author: book.author, category: book.category, description: book.description });
+    setEditBookOpen(true);
+  };
+
+  const saveEditBook = () => {
+    if (!editingBook || !editBookForm.title) return;
+    if (editingBook.isCustom) {
+      setCustomBooks(prev => prev.map(b => b.id === editingBook.id ? { ...b, ...editBookForm } : b));
+    } else {
+      setBookOverrides(prev => ({ ...prev, [editingBook.id]: editBookForm }));
+    }
+    toast({ title: "تم بنجاح", description: `تم تحديث "${editBookForm.title}"`, className: "bg-green-50 border-green-200 text-green-800" });
+    setEditBookOpen(false);
+  };
+
+  const handleHideBook = (bookId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setHiddenBooks(prev => [...prev, bookId]);
+    toast({ title: "تم الحذف", description: "تم إخفاء الكتاب من المكتبة" });
+  };
 
   const openBook = useCallback((book: BookItem) => {
     setSelectedBook(book);
@@ -387,7 +440,12 @@ export default function LibraryPage() {
     toast({ title: "تم الحذف", description: "تم حذف الكتاب بنجاح" });
   }, [toast]);
 
-  const allBooks = useMemo(() => [...books, ...customBooks], [customBooks]);
+  const allBooks = useMemo(() => {
+    const merged = [...books, ...customBooks]
+      .filter(b => !hiddenBooks.includes(b.id))
+      .map(b => bookOverrides[b.id] ? { ...b, ...bookOverrides[b.id] } : b);
+    return merged;
+  }, [customBooks, hiddenBooks, bookOverrides]);
 
   const filteredBooks = useMemo(() => {
     return allBooks.filter((book) => {
@@ -760,6 +818,24 @@ export default function LibraryPage() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={(e) => openEditBook(book, e)}
+                      className="p-1 rounded-full hover:bg-blue-100 transition-colors text-muted-foreground hover:text-blue-600"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    {!book.isCustom && (
+                      <button
+                        onClick={(e) => handleHideBook(book.id, e)}
+                        className="p-1 rounded-full hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
               <div className="w-16 h-16 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 relative overflow-hidden" style={{ background: book.isCustom ? "linear-gradient(135deg, #2d5a8a, #3d7aaf)" : "linear-gradient(135deg, #1a5e3a, #2d7a4f)" }}>
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "repeating-conic-gradient(#c8a45e 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }} />
@@ -807,6 +883,47 @@ export default function LibraryPage() {
         categories={categories.filter(c => c !== "الكل")}
         onSubmit={handleUpload}
       />
+
+      {/* حوار تعديل كتاب — المدير فقط */}
+      <Dialog open={editBookOpen} onOpenChange={setEditBookOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-blue-600" />
+              تعديل بيانات الكتاب
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label>عنوان الكتاب *</Label>
+              <Input value={editBookForm.title} onChange={e => setEditBookForm(p => ({ ...p, title: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>المؤلف</Label>
+              <Input value={editBookForm.author} onChange={e => setEditBookForm(p => ({ ...p, author: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>التصنيف</Label>
+              <Select value={editBookForm.category} onValueChange={v => setEditBookForm(p => ({ ...p, category: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {categories.filter(c => c !== "الكل").map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>الوصف</Label>
+              <Textarea value={editBookForm.description} onChange={e => setEditBookForm(p => ({ ...p, description: e.target.value }))} className="min-h-[80px]" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" onClick={() => setEditBookOpen(false)}>إلغاء</Button>
+            <Button onClick={saveEditBook} disabled={!editBookForm.title}>حفظ التعديلات</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -194,8 +194,18 @@ export function registerGraduatesRoutes(app: Express) {
         return res.json(all);
       }
       if (currentUser.mosqueId) {
-        const transfers = await storage.getStudentTransfersByMosque(currentUser.mosqueId);
-        return res.json(transfers);
+        // المشرف يرى التحويلات الواردة والصادرة لمسجده
+        const allMosques = await storage.getMosques();
+        let all: any[] = [];
+        for (const m of allMosques) {
+          const transfers = await storage.getStudentTransfersByMosque(m.id);
+          all.push(...transfers);
+        }
+        // فلترة: التحويلات المتعلقة بمسجد المشرف (صادرة أو واردة)
+        const relevant = all.filter((t: any) =>
+          t.fromMosqueId === currentUser.mosqueId || t.toMosqueId === currentUser.mosqueId
+        );
+        return res.json(relevant);
       }
       res.json([]);
     } catch (err: any) {

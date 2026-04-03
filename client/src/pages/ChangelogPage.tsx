@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, ShieldCheck, Zap, Wrench, BookOpen } from "lucide-react";
+import { Sparkles, ShieldCheck, Zap, Wrench, BookOpen, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface ChangelogEntry {
   version: string;
@@ -17,118 +18,26 @@ const typeConfig = {
   security: { label: "أمان", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200", icon: ShieldCheck },
 };
 
-const changelog: ChangelogEntry[] = [
-  {
-    version: "2.8",
-    date: "2026/03/14",
-    type: "feature",
-    title: "شاشة ترحيب وسجل التغييرات",
-    items: [
-      "شاشة ترحيب تفاعلية للمستخدمين الجدد تشرح الخطوات الأساسية حسب الدور",
-      "صفحة سجل التغييرات لعرض آخر التحديثات",
-      "بيانات أولية لأحكام التجويد والآيات المتشابهة",
-    ],
-  },
-  {
-    version: "2.7",
-    date: "2026/03/14",
-    type: "improvement",
-    title: "تحسينات الأداء والتحديثات",
-    items: [
-      "تحسين سرعة تحميل لوحة العائلة (استعلامات متوازية)",
-      "ضمان وصول التحديثات فوراً لجميع المستخدمين",
-      "رفع إصدار الكاش لتحديث المتصفحات القديمة تلقائياً",
-      "إضافة رؤوس no-cache لصفحة HTML الرئيسية وService Worker",
-    ],
-  },
-  {
-    version: "2.6",
-    date: "2026/03/13",
-    type: "feature",
-    title: "أدوات التحليل والتواصل",
-    items: [
-      "تبويب أداء الأساتذة — عرض إحصائيات تفصيلية لكل أستاذ",
-      "تبويب نقاط الضعف الجماعية — تحليل السور ذات الدرجات المنخفضة",
-      "سجل التواصل مع أولياء الأمور (هاتف، واتساب، رسالة، شخصياً)",
-      "إدارة قوالب الرسائل (إنشاء وحذف) للمشرفين والمدراء",
-      "زر تصدير Excel في صفحتي الحضور والواجبات",
-    ],
-  },
-  {
-    version: "2.5",
-    date: "2026/03/10",
-    type: "feature",
-    title: "نظام التسميع الصوتي",
-    items: [
-      "تسجيل تلاوة صوتية للطالب (10 دقائق كحد أقصى)",
-      "الأستاذ يستمع بسرعات مختلفة (0.5x - 2x)",
-      "حذف الملف الصوتي تلقائياً بعد 5 دقائق من التقييم",
-    ],
-  },
-  {
-    version: "2.4",
-    date: "2026/03/07",
-    type: "feature",
-    title: "نظام التسجيل والتزكية",
-    items: [
-      "تسجيل مساجد جديدة مع موافقة المدير",
-      "نظام التزكية — مشرف حالي يزكي مسجداً جديداً",
-      "لوحة تحكم لكل مسجد مع إحصائيات مفصلة",
-      "نظام المراسلة بين المدير والمشرفين",
-    ],
-  },
-  {
-    version: "2.3",
-    date: "2026/03/04",
-    type: "improvement",
-    title: "تحسينات الذكاء والأتمتة",
-    items: [
-      "نقاط تلقائية على الحضور والتقييم والانتظام",
-      "اقتراح الواجب التالي تلقائياً بناءً على تاريخ الطالب",
-      "إنشاء واجب مراجعة تلقائي عند الدرجة المنخفضة",
-      "ملخص يومي ذكي وقياس صحة المسجد",
-    ],
-  },
-  {
-    version: "2.2",
-    date: "2026/03/01",
-    type: "security",
-    title: "تعزيزات أمنية شاملة",
-    items: [
-      "فحص أمني معمّق وإصلاح جميع الثغرات",
-      "حماية من XSS وCSRF وحقن SQL",
-      "تحديد معدل الطلبات وحظر IP المشبوه",
-      "تشفير كلمات المرور بخوارزمية Scrypt",
-    ],
-  },
-  {
-    version: "2.1",
-    date: "2026/02/25",
-    type: "feature",
-    title: "المحتوى التعليمي والمكتبة",
-    items: [
-      "أحكام التجويد مع أمثلة ومراجع قرآنية",
-      "الآيات المتشابهة مع شرح الفروقات",
-      "المكتبة الإسلامية مع أكثر من 50 كتاباً",
-      "تتبع تقدم الحفظ بشجرة بصرية تفاعلية",
-    ],
-  },
-  {
-    version: "2.0",
-    date: "2026/02/20",
-    type: "feature",
-    title: "الإطلاق الرئيسي",
-    items: [
-      "نظام متعدد المساجد مع عزل كامل للبيانات",
-      "أربعة أدوار: مدير، مشرف، أستاذ، طالب",
-      "إدارة الطلاب والحضور والواجبات والامتحانات",
-      "نظام النقاط والأوسمة والمسابقات",
-      "تصميم كامل بالعربية (RTL) مع وضع داكن",
-    ],
-  },
-];
-
 export default function ChangelogPage() {
+  const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/changelog.json")
+      .then(res => res.json())
+      .then((data: ChangelogEntry[]) => setChangelog(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-3xl" dir="rtl">
       <div className="flex items-center gap-3 mb-6">

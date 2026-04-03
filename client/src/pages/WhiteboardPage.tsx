@@ -1,34 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
   Pen, Eraser, Type, Square, Circle, Trash2, Download, Undo2, Redo2,
-  Palette, Minus, Plus, MousePointer, Move, Save, FolderOpen, BookOpen
+  MousePointer, Save, BookOpen, Image as ImageIcon
 } from "lucide-react";
-
-type Tool = "pen" | "eraser" | "text" | "rect" | "circle" | "select";
-type DrawAction = {
-  type: "path" | "text" | "rect" | "circle";
-  points?: { x: number; y: number }[];
-  text?: string;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  radius?: number;
-  color: string;
-  lineWidth: number;
-  fontSize?: number;
-};
+import * as fabric from "fabric";
 
 const COLORS = [
-  "#000000", "#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#14b8a6", "#f97316", "#6366f1",
+  "#8b5cf6", "#3b82f6", "#000000", "#1a1a1a", "#404040", "#666666",
+  "#ef4444", "#ec4899", "#f59e0b", "#10b981", "#14b8a6", "#6366f1",
+  "#f97316", "#8b4513",
 ];
 
 const BRUSH_SIZES = [2, 4, 6, 8, 12, 16];
@@ -54,570 +37,433 @@ const TAJWEED_MARKS = [
   { label: "قلقلة", color: "#14b8a6", symbol: "●" },
 ];
 
+type Tool = "select" | "pen" | "eraser" | "text" | "rect" | "circle";
+
 export default function WhiteboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const fabricRef = useRef<fabric.Canvas | null>(null);
+  const historyRef = useRef<string[]>([]);
+  const redoRef = useRef<string[]>([]);
+  const ignoreHistory = useRef(false);
+
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState("#000000");
-  const [lineWidth, setLineWidth] = useState(4);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [actions, setActions] = useState<DrawAction[]>([]);
-  const [redoStack, setRedoStack] = useState<DrawAction[]>([]);
-  const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
-  const [textInput, setTextInput] = useState("");
-  const [textPosition, setTextPosition] = useState<{ x: number; y: number } | null>(null);
-  const [showTextInput, setShowTextInput] = useState(false);
-  const [fontSize, setFontSize] = useState(24);
-  const [selectedVerse, setSelectedVerse] = useState("");
-  const [canvasSize, setCanvasSize] = useState({ width: 900, height: 600 });
-  const [shapeStart, setShapeStart] = useState<{ x: number; y: number } | null>(null);
+  const [brushSize, setBrushSize] = useState(4);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
-  const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+  // ─── تهيئة Fabric.js ─────────────────────────────────────────────────────
 
-    if ("touches" in e) {
-      const touch = e.touches[0];
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
-      };
-    }
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    };
-  }, []);
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
 
-  const redrawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const parent = el.parentElement!;
+    const w = parent.clientWidth;
+    const h = Math.max(600, window.innerHeight - 200);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = "#f1f5f9";
-    ctx.lineWidth = 0.5;
-    for (let x = 0; x < canvas.width; x += 30) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += 30) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-
-    actions.forEach((action) => {
-      ctx.strokeStyle = action.color;
-      ctx.fillStyle = action.color;
-      ctx.lineWidth = action.lineWidth;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      if (action.type === "path" && action.points && action.points.length > 0) {
-        ctx.beginPath();
-        ctx.moveTo(action.points[0].x, action.points[0].y);
-        for (let i = 1; i < action.points.length; i++) {
-          ctx.lineTo(action.points[i].x, action.points[i].y);
-        }
-        ctx.stroke();
-      } else if (action.type === "text" && action.text && action.x !== undefined && action.y !== undefined) {
-        ctx.font = `${action.fontSize || 24}px 'Amiri', serif`;
-        ctx.textAlign = "right";
-        ctx.direction = "rtl";
-        ctx.fillText(action.text, action.x, action.y);
-      } else if (action.type === "rect" && action.x !== undefined && action.y !== undefined) {
-        ctx.strokeRect(action.x, action.y, action.width || 0, action.height || 0);
-      } else if (action.type === "circle" && action.x !== undefined && action.y !== undefined) {
-        ctx.beginPath();
-        ctx.arc(action.x, action.y, action.radius || 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
+    const canvas = new fabric.Canvas(el, {
+      width: w,
+      height: h,
+      backgroundColor: "#ffffff",
+      selection: true,
+      isDrawingMode: true,
     });
-  }, [actions]);
 
-  useEffect(() => {
-    redrawCanvas();
-  }, [actions, redrawCanvas]);
+    // خلفية شبكية
+    const gridSize = 30;
+    for (let x = 0; x <= w; x += gridSize) {
+      canvas.add(new fabric.Line([x, 0, x, h], { stroke: "#f0f0f0", strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: false }));
+    }
+    for (let y = 0; y <= h; y += gridSize) {
+      canvas.add(new fabric.Line([0, y, w, y], { stroke: "#f0f0f0", strokeWidth: 0.5, selectable: false, evented: false, excludeFromExport: false }));
+    }
 
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        const width = Math.min(containerRef.current.clientWidth - 16, 1200);
-        setCanvasSize({ width: Math.max(width, 400), height: 600 });
+    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+    canvas.freeDrawingBrush.color = color;
+    canvas.freeDrawingBrush.width = brushSize;
+
+    fabricRef.current = canvas;
+
+    // حفظ الحالة الأولية
+    historyRef.current = [JSON.stringify(canvas.toJSON())];
+
+    // تتبع التغييرات
+    canvas.on("object:added", () => {
+      if (ignoreHistory.current) return;
+      historyRef.current.push(JSON.stringify(canvas.toJSON()));
+      redoRef.current = [];
+      setCanUndo(historyRef.current.length > 1);
+      setCanRedo(false);
+    });
+
+    canvas.on("object:modified", () => {
+      if (ignoreHistory.current) return;
+      historyRef.current.push(JSON.stringify(canvas.toJSON()));
+      redoRef.current = [];
+      setCanUndo(historyRef.current.length > 1);
+      setCanRedo(false);
+    });
+
+    // تحميل حالة محفوظة
+    try {
+      const saved = localStorage.getItem("mutqin_whiteboard");
+      if (saved) {
+        ignoreHistory.current = true;
+        canvas.loadFromJSON(JSON.parse(saved)).then(() => {
+          canvas.renderAll();
+          ignoreHistory.current = false;
+          historyRef.current = [JSON.stringify(canvas.toJSON())];
+        });
       }
+    } catch {}
+
+    return () => {
+      canvas.dispose();
+      fabricRef.current = null;
     };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  const handlePointerDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const coords = getCanvasCoords(e);
+  // ─── تحديث الأداة ─────────────────────────────────────────────────────────
 
-    if (tool === "text") {
-      setTextPosition(coords);
-      setShowTextInput(true);
-      return;
-    }
-
-    if (tool === "rect" || tool === "circle") {
-      setShapeStart(coords);
-      setIsDrawing(true);
-      return;
-    }
-
-    if (tool === "eraser") {
-      setIsDrawing(true);
-      setCurrentPath([coords]);
-      return;
-    }
-
-    setIsDrawing(true);
-    setCurrentPath([coords]);
-  };
-
-  const handlePointerMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const coords = getCanvasCoords(e);
-
-    if (tool === "pen" || tool === "eraser") {
-      setCurrentPath((prev) => [...prev, coords]);
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.strokeStyle = tool === "eraser" ? "#ffffff" : color;
-      ctx.lineWidth = tool === "eraser" ? lineWidth * 3 : lineWidth;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      const prevPoint = currentPath[currentPath.length - 1] || coords;
-      ctx.beginPath();
-      ctx.moveTo(prevPoint.x, prevPoint.y);
-      ctx.lineTo(coords.x, coords.y);
-      ctx.stroke();
-    }
-  };
-
-  const handlePointerUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-
-    if ((tool === "pen" || tool === "eraser") && currentPath.length > 0) {
-      const newAction: DrawAction = {
-        type: "path",
-        points: [...currentPath],
-        color: tool === "eraser" ? "#ffffff" : color,
-        lineWidth: tool === "eraser" ? lineWidth * 3 : lineWidth,
-      };
-      setActions((prev) => [...prev, newAction]);
-      setRedoStack([]);
-      setCurrentPath([]);
-    } else if (tool === "rect" && shapeStart) {
-      const coords = getCanvasCoords(e);
-      const newAction: DrawAction = {
-        type: "rect",
-        x: Math.min(shapeStart.x, coords.x),
-        y: Math.min(shapeStart.y, coords.y),
-        width: Math.abs(coords.x - shapeStart.x),
-        height: Math.abs(coords.y - shapeStart.y),
-        color,
-        lineWidth,
-      };
-      setActions((prev) => [...prev, newAction]);
-      setRedoStack([]);
-      setShapeStart(null);
-    } else if (tool === "circle" && shapeStart) {
-      const coords = getCanvasCoords(e);
-      const radius = Math.sqrt(Math.pow(coords.x - shapeStart.x, 2) + Math.pow(coords.y - shapeStart.y, 2));
-      const newAction: DrawAction = {
-        type: "circle",
-        x: shapeStart.x,
-        y: shapeStart.y,
-        radius,
-        color,
-        lineWidth,
-      };
-      setActions((prev) => [...prev, newAction]);
-      setRedoStack([]);
-      setShapeStart(null);
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const coords = getCanvasCoords(e);
-    if (tool === "pen" || tool === "eraser") {
-      setIsDrawing(true);
-      setCurrentPath([coords]);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const coords = getCanvasCoords(e);
-    setCurrentPath((prev) => [...prev, coords]);
-
-    const canvas = canvasRef.current;
+  useEffect(() => {
+    const canvas = fabricRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.strokeStyle = tool === "eraser" ? "#ffffff" : color;
-    ctx.lineWidth = tool === "eraser" ? lineWidth * 3 : lineWidth;
-    ctx.lineCap = "round";
-    const prevPoint = currentPath[currentPath.length - 1] || coords;
-    ctx.beginPath();
-    ctx.moveTo(prevPoint.x, prevPoint.y);
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
-  };
 
-  const handleTouchEnd = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    if (currentPath.length > 0) {
-      setActions((prev) => [...prev, {
-        type: "path",
-        points: [...currentPath],
-        color: tool === "eraser" ? "#ffffff" : color,
-        lineWidth: tool === "eraser" ? lineWidth * 3 : lineWidth,
-      }]);
-      setRedoStack([]);
-      setCurrentPath([]);
+    if (tool === "pen") {
+      canvas.isDrawingMode = true;
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush.color = color;
+      canvas.freeDrawingBrush.width = brushSize;
+      canvas.selection = false;
+    } else if (tool === "eraser") {
+      canvas.isDrawingMode = true;
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush.color = "#ffffff";
+      canvas.freeDrawingBrush.width = brushSize * 3;
+      canvas.selection = false;
+    } else if (tool === "select") {
+      canvas.isDrawingMode = false;
+      canvas.selection = true;
+    } else {
+      canvas.isDrawingMode = false;
+      canvas.selection = false;
     }
-  };
+  }, [tool, color, brushSize]);
 
-  const addText = () => {
-    if (!textInput || !textPosition) return;
-    const newAction: DrawAction = {
-      type: "text",
-      text: textInput,
-      x: textPosition.x,
-      y: textPosition.y,
-      color,
-      lineWidth,
-      fontSize,
-    };
-    setActions((prev) => [...prev, newAction]);
-    setRedoStack([]);
-    setTextInput("");
-    setShowTextInput(false);
-    setTextPosition(null);
-  };
+  // ─── إضافة أشكال ──────────────────────────────────────────────────────────
 
-  const addVerse = () => {
-    if (!selectedVerse) return;
-    const newAction: DrawAction = {
-      type: "text",
-      text: selectedVerse,
-      x: canvasSize.width / 2 + 100,
-      y: 80,
-      color: "#1e3a5f",
-      lineWidth: 1,
-      fontSize: 32,
-    };
-    setActions((prev) => [...prev, newAction]);
-    setRedoStack([]);
-    setSelectedVerse("");
-  };
-
-  const addTajweedMark = (mark: typeof TAJWEED_MARKS[0]) => {
-    const canvas = canvasRef.current;
+  const addText = useCallback((text: string) => {
+    const canvas = fabricRef.current;
     if (!canvas) return;
-    const newAction: DrawAction = {
-      type: "text",
-      text: `${mark.symbol} ${mark.label}`,
-      x: canvasSize.width / 2,
-      y: canvasSize.height / 2,
-      color: mark.color,
-      lineWidth: 1,
-      fontSize: 20,
-    };
-    setActions((prev) => [...prev, newAction]);
-    setRedoStack([]);
-  };
+    const textObj = new fabric.IText(text, {
+      left: canvas.width! / 2 - 100,
+      top: canvas.height! / 2 - 20,
+      fontFamily: "'Amiri', serif",
+      fontSize: 28,
+      fill: color,
+      direction: "rtl",
+      textAlign: "right",
+    });
+    canvas.add(textObj);
+    canvas.setActiveObject(textObj);
+    setTool("select");
+  }, [color]);
 
-  const handleUndo = () => {
-    if (actions.length === 0) return;
-    const lastAction = actions[actions.length - 1];
-    setActions((prev) => prev.slice(0, -1));
-    setRedoStack((prev) => [...prev, lastAction]);
-  };
-
-  const handleRedo = () => {
-    if (redoStack.length === 0) return;
-    const lastRedo = redoStack[redoStack.length - 1];
-    setRedoStack((prev) => prev.slice(0, -1));
-    setActions((prev) => [...prev, lastRedo]);
-  };
-
-  const handleClear = () => {
-    setActions([]);
-    setRedoStack([]);
-  };
-
-  const handleDownload = () => {
-    const canvas = canvasRef.current;
+  const addRect = useCallback(() => {
+    const canvas = fabricRef.current;
     if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = `whiteboard-${new Date().toISOString().split("T")[0]}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    toast({ title: "تم", description: "تم تحميل الصورة بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
-  };
+    const rect = new fabric.Rect({
+      left: canvas.width! / 2 - 50,
+      top: canvas.height! / 2 - 25,
+      width: 100,
+      height: 50,
+      fill: "transparent",
+      stroke: color,
+      strokeWidth: brushSize,
+      rx: 6,
+      ry: 6,
+    });
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    setTool("select");
+  }, [color, brushSize]);
 
-  const handleSave = () => {
-    try {
-      localStorage.setItem(`mutqin_whiteboard_${user?.id || "guest"}`, JSON.stringify(actions));
-      toast({ title: "تم", description: "تم حفظ السبورة بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
-    } catch {
-      toast({ title: "خطأ", description: "فشل في حفظ السبورة", variant: "destructive" });
-    }
-  };
+  const addCircle = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const circle = new fabric.Circle({
+      left: canvas.width! / 2 - 30,
+      top: canvas.height! / 2 - 30,
+      radius: 30,
+      fill: "transparent",
+      stroke: color,
+      strokeWidth: brushSize,
+    });
+    canvas.add(circle);
+    canvas.setActiveObject(circle);
+    setTool("select");
+  }, [color, brushSize]);
 
-  const handleLoad = () => {
-    try {
-      const stored = localStorage.getItem(`mutqin_whiteboard_${user?.id || "guest"}`);
-      if (stored) {
-        setActions(JSON.parse(stored));
-        setRedoStack([]);
-        toast({ title: "تم", description: "تم تحميل السبورة المحفوظة", className: "bg-green-50 border-green-200 text-green-800" });
-      } else {
-        toast({ title: "تنبيه", description: "لا يوجد سبورة محفوظة" });
+  const addTajweedMark = useCallback((mark: typeof TAJWEED_MARKS[0]) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const text = new fabric.IText(`${mark.symbol} ${mark.label}`, {
+      left: canvas.width! / 2 - 40,
+      top: canvas.height! / 2 - 15,
+      fontFamily: "'Tajawal', sans-serif",
+      fontSize: 22,
+      fill: mark.color,
+      direction: "rtl",
+      textAlign: "center",
+    });
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    setTool("select");
+  }, []);
+
+  // ─── تراجع / إعادة ────────────────────────────────────────────────────────
+
+  const undo = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas || historyRef.current.length <= 1) return;
+    redoRef.current.push(historyRef.current.pop()!);
+    const prev = historyRef.current[historyRef.current.length - 1];
+    ignoreHistory.current = true;
+    canvas.loadFromJSON(JSON.parse(prev)).then(() => {
+      canvas.renderAll();
+      ignoreHistory.current = false;
+      setCanUndo(historyRef.current.length > 1);
+      setCanRedo(redoRef.current.length > 0);
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas || redoRef.current.length === 0) return;
+    const next = redoRef.current.pop()!;
+    historyRef.current.push(next);
+    ignoreHistory.current = true;
+    canvas.loadFromJSON(JSON.parse(next)).then(() => {
+      canvas.renderAll();
+      ignoreHistory.current = false;
+      setCanUndo(historyRef.current.length > 1);
+      setCanRedo(redoRef.current.length > 0);
+    });
+  }, []);
+
+  // ─── حذف العنصر المحدد ────────────────────────────────────────────────────
+
+  const deleteSelected = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const active = canvas.getActiveObjects();
+    if (active.length === 0) return;
+    active.forEach(obj => canvas.remove(obj));
+    canvas.discardActiveObject();
+    canvas.renderAll();
+  }, []);
+
+  // ─── مسح الكل ─────────────────────────────────────────────────────────────
+
+  const clearAll = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    canvas.clear();
+    canvas.backgroundColor = "#ffffff";
+    canvas.renderAll();
+  }, []);
+
+  // ─── حفظ / تنزيل ─────────────────────────────────────────────────────────
+
+  const handleSave = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    localStorage.setItem("mutqin_whiteboard", JSON.stringify(canvas.toJSON()));
+    toast({ title: "تم الحفظ", description: "تم حفظ السبورة بنجاح", className: "bg-green-50 border-green-200 text-green-800" });
+  }, [toast]);
+
+  const handleDownload = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL({ format: "png", quality: 1, multiplier: 2 });
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `whiteboard-${Date.now()}.png`;
+    a.click();
+  }, []);
+
+  // ─── Keyboard shortcuts ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+          deleteSelected();
+        }
       }
-    } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل السبورة", variant: "destructive" });
-    }
-  };
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [deleteSelected, undo, redo]);
 
-  const tools: { id: Tool; label: string; icon: React.ElementType }[] = [
-    { id: "pen", label: "قلم", icon: Pen },
-    { id: "eraser", label: "ممحاة", icon: Eraser },
-    { id: "text", label: "نص", icon: Type },
-    { id: "rect", label: "مستطيل", icon: Square },
-    { id: "circle", label: "دائرة", icon: Circle },
-  ];
+  // mouse handler for rect/circle tools
+  useEffect(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const handleMouseDown = (opt: fabric.TPointerEventInfo) => {
+      if (tool === "text") {
+        const pointer = canvas.getScenePoint(opt.e);
+        const text = new fabric.IText("اكتب هنا...", {
+          left: pointer.x,
+          top: pointer.y,
+          fontFamily: "'Amiri', serif",
+          fontSize: 24,
+          fill: color,
+          direction: "rtl",
+          textAlign: "right",
+        });
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        text.enterEditing();
+        setTool("select");
+      } else if (tool === "rect") {
+        addRect();
+      } else if (tool === "circle") {
+        addCircle();
+      }
+    };
+    canvas.on("mouse:down", handleMouseDown);
+    return () => { canvas.off("mouse:down", handleMouseDown); };
+  }, [tool, color, brushSize, addRect, addCircle]);
+
+  // ─── الواجهة ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 page-transition" dir="rtl" data-testid="whiteboard-page">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-primary" data-testid="text-page-title-whiteboard">
-            السبورة التفاعلية
-          </h1>
-          <p className="text-muted-foreground text-sm">أداة بصرية لتصحيح التجويد والتعليم التفاعلي</p>
+    <div className="min-h-screen bg-background" dir="rtl">
+      {/* العنوان */}
+      <div className="px-4 py-3 border-b">
+        <h1 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
+          <span className="text-2xl">🖊️</span>
+          السبورة التفاعلية
+        </h1>
+        <p className="text-xs text-muted-foreground">أداة بصرية لتصحيح التجويد والتعليم التفاعلي</p>
+      </div>
+
+      {/* شريط الأدوات */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-2 space-y-2">
+        {/* صف الأدوات الرئيسية */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {/* أدوات الرسم */}
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            <Button variant={tool === "select" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setTool("select")} title="تحديد ونقل">
+              <MousePointer className="w-4 h-4" />
+            </Button>
+            <Button variant={tool === "pen" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setTool("pen")} title="قلم">
+              <Pen className="w-4 h-4" />
+            </Button>
+            <Button variant={tool === "eraser" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setTool("eraser")} title="ممحاة">
+              <Eraser className="w-4 h-4" />
+            </Button>
+            <Button variant={tool === "text" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setTool("text")} title="نص">
+              <Type className="w-4 h-4" />
+            </Button>
+            <Button variant={tool === "rect" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => { setTool("select"); addRect(); }} title="مستطيل">
+              <Square className="w-4 h-4" />
+            </Button>
+            <Button variant={tool === "circle" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => { setTool("select"); addCircle(); }} title="دائرة">
+              <Circle className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* تراجع / إعادة / حذف / مسح */}
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={!canUndo} title="تراجع">
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={!canRedo} title="إعادة">
+              <Redo2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={deleteSelected} title="حذف المحدد (Delete)">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={clearAll} title="مسح الكل">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* حفظ / تنزيل */}
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave} title="حفظ">
+              <Save className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title="تنزيل صورة">
+              <Download className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* الألوان */}
+          <div className="flex items-center gap-0.5 border rounded-lg p-1">
+            {COLORS.map(c => (
+              <button
+                key={c}
+                className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c ? "scale-125 border-primary" : "border-transparent hover:scale-110"}`}
+                style={{ backgroundColor: c }}
+                onClick={() => setColor(c)}
+              />
+            ))}
+          </div>
+
+          {/* حجم الفرشاة */}
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            {BRUSH_SIZES.slice(0, 4).map(size => (
+              <button
+                key={size}
+                className={`w-7 h-7 rounded flex items-center justify-center ${brushSize === size ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                onClick={() => setBrushSize(size)}
+              >
+                <div className="rounded-full bg-current" style={{ width: size + 2, height: size + 2 }} />
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleSave} className="gap-1" data-testid="btn-save">
-            <Save className="w-4 h-4" />
-            حفظ
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleLoad} className="gap-1" data-testid="btn-load">
-            <FolderOpen className="w-4 h-4" />
-            تحميل
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1" data-testid="btn-download">
-            <Download className="w-4 h-4" />
-            تنزيل صورة
-          </Button>
+
+        {/* الشريط الجانبي — آيات + تجويد */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex items-center gap-1">
+            <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+            <select
+              className="text-xs border rounded px-2 py-1 bg-background"
+              defaultValue=""
+              onChange={e => { if (e.target.value) { addText(e.target.value); e.target.value = ""; } }}
+            >
+              <option value="">إدراج آية...</option>
+              {QURAN_VERSES.map((v, i) => <option key={i} value={v}>{v.slice(0, 30)}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {TAJWEED_MARKS.map(mark => (
+              <button
+                key={mark.label}
+                onClick={() => addTajweedMark(mark)}
+                className="flex items-center gap-1 text-xs px-2 py-1 border rounded-full hover:bg-muted transition-colors whitespace-nowrap"
+                style={{ borderColor: mark.color, color: mark.color }}
+              >
+                {mark.symbol} {mark.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <Card data-testid="toolbar">
-        <CardContent className="p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1 border-l pl-3">
-              {tools.map((t) => (
-                <Button
-                  key={t.id}
-                  variant={tool === t.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTool(t.id)}
-                  className="gap-1"
-                  data-testid={`btn-tool-${t.id}`}
-                  title={t.label}
-                >
-                  <t.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline text-xs">{t.label}</span>
-                </Button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-1 border-l pl-3">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c ? "scale-125 border-gray-900 dark:border-white" : "border-transparent hover:scale-110"}`}
-                  style={{ backgroundColor: c }}
-                  data-testid={`btn-color-${c}`}
-                />
-              ))}
-            </div>
-
-            <div className="flex items-center gap-1 border-l pl-3">
-              <Minus className="w-3 h-3 text-muted-foreground" />
-              {BRUSH_SIZES.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setLineWidth(size)}
-                  className={`rounded-full bg-current transition-transform ${lineWidth === size ? "ring-2 ring-primary scale-125" : "hover:scale-110"}`}
-                  style={{ width: size + 6, height: size + 6, color: color }}
-                  data-testid={`btn-size-${size}`}
-                />
-              ))}
-              <Plus className="w-3 h-3 text-muted-foreground" />
-            </div>
-
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" onClick={handleUndo} disabled={actions.length === 0} data-testid="btn-undo" title="تراجع">
-                <Undo2 className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleRedo} disabled={redoStack.length === 0} data-testid="btn-redo" title="إعادة">
-                <Redo2 className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleClear} className="text-red-500 hover:text-red-700" data-testid="btn-clear" title="مسح الكل">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-4">
-        <Card ref={containerRef} data-testid="canvas-container">
-          <CardContent className="p-2">
-            <canvas
-              ref={canvasRef}
-              width={canvasSize.width}
-              height={canvasSize.height}
-              className="border rounded-lg cursor-crosshair w-full touch-none"
-              style={{ maxHeight: "70vh" }}
-              onMouseDown={handlePointerDown}
-              onMouseMove={handlePointerMove}
-              onMouseUp={handlePointerUp}
-              onMouseLeave={handlePointerUp}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              data-testid="canvas-whiteboard"
-            />
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card data-testid="verse-panel">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                إدراج آية قرآنية
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Select value={selectedVerse} onValueChange={setSelectedVerse}>
-                <SelectTrigger data-testid="select-verse" className="text-xs">
-                  <SelectValue placeholder="اختر آية..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {QURAN_VERSES.map((v, i) => (
-                    <SelectItem key={i} value={v} className="text-xs font-serif">{v.slice(0, 30)}...</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" onClick={addVerse} disabled={!selectedVerse} className="w-full text-xs" data-testid="btn-add-verse">
-                إدراج الآية
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="tajweed-panel">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Palette className="w-4 h-4" />
-                علامات التجويد
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-1.5">
-                {TAJWEED_MARKS.map((mark) => (
-                  <Button
-                    key={mark.label}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs gap-1 justify-start"
-                    style={{ borderColor: mark.color, color: mark.color }}
-                    onClick={() => addTajweedMark(mark)}
-                    data-testid={`btn-tajweed-${mark.label}`}
-                  >
-                    <span className="font-bold">{mark.symbol}</span>
-                    {mark.label}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {tool === "text" && (
-            <Card data-testid="text-settings">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">حجم الخط</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setFontSize(Math.max(12, fontSize - 4))} data-testid="btn-decrease-font">
-                    <Minus className="w-3 h-3" />
-                  </Button>
-                  <span className="text-sm font-bold w-8 text-center">{fontSize}</span>
-                  <Button variant="outline" size="sm" onClick={() => setFontSize(Math.min(72, fontSize + 4))} data-testid="btn-increase-font">
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+      {/* منطقة الرسم */}
+      <div className="relative" style={{ cursor: tool === "pen" ? "crosshair" : tool === "eraser" ? "cell" : tool === "text" ? "text" : "default" }}>
+        <canvas ref={canvasRef} />
       </div>
-
-      {showTextInput && textPosition && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowTextInput(false)}>
-          <div className="bg-background rounded-xl p-4 shadow-xl space-y-3 min-w-[300px]" onClick={e => e.stopPropagation()} data-testid="text-input-dialog">
-            <h3 className="font-semibold text-sm">إضافة نص</h3>
-            <Input
-              value={textInput}
-              onChange={e => setTextInput(e.target.value)}
-              placeholder="اكتب النص هنا..."
-              className="font-serif text-lg"
-              autoFocus
-              data-testid="input-text-content"
-              onKeyDown={e => e.key === "Enter" && addText()}
-            />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={addText} disabled={!textInput} className="flex-1" data-testid="btn-confirm-text">
-                إضافة
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setShowTextInput(false)} data-testid="btn-cancel-text">
-                إلغاء
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

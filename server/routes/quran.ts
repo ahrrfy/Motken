@@ -296,7 +296,13 @@ export function registerQuranRoutes(app: Express) {
         const totalVerses = data.surahs.reduce((sum: number, s: any) => sum + s.totalVerses, 0);
         const memorizedVerses = data.surahs.reduce((sum: number, s: any) => sum + s.memorizedVerses, 0);
         const completionPercent = totalVerses > 0 ? Math.round((memorizedVerses / totalVerses) * 100) : 0;
-        return { juz, surahs: data.surahs, totalVerses, memorizedVerses, completionPercent, complete: completionPercent >= 95 };
+        const complete = completionPercent >= 95;
+        // حالة المسيرة: لم يبدأ / قيد الحفظ / محفوظ / مُتقَن
+        let masteryStatus: "not_started" | "memorizing" | "memorized" | "mastered" = "not_started";
+        if (complete) masteryStatus = "memorized";
+        else if (memorizedVerses > 0) masteryStatus = "memorizing";
+        // مُتقَن = محفوظ + اجتاز الاختبار (يُحدَّث لاحقاً عند إضافة جدول الاختبارات)
+        return { juz, surahs: data.surahs, totalVerses, memorizedVerses, completionPercent, complete, masteryStatus };
       });
 
       const totalMemorizedVerses = juzProgress.reduce((s, j) => s + j.memorizedVerses, 0);

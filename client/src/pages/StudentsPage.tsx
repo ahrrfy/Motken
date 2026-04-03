@@ -139,8 +139,27 @@ export default function StudentsPage() {
     name: "", phone: "", parentPhone: "", address: "", gender: "male",
     age: "", telegramId: "", educationLevel: "", level: "1",
     isChild: false, isSpecialNeeds: false, isOrphan: false,
-    studyMode: "in-person", teacherId: "", password: "",
+    studyMode: "in-person", teacherId: "", password: "", avatar: "",
   });
+  const editAvatarInputRef = useRef<HTMLInputElement>(null);
+  const handleEditAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "خطأ", description: "يرجى اختيار ملف صورة", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result as string;
+      if (base64.length > 500000) {
+        toast({ title: "خطأ", description: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)", variant: "destructive" });
+        return;
+      }
+      setEditFormData(prev => ({ ...prev, avatar: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
   const [showEditPassword, setShowEditPassword] = useState(false);
 
   const [commLogOpen, setCommLogOpen] = useState(false);
@@ -278,7 +297,7 @@ export default function StudentsPage() {
     try {
       const [studentsRes, teachersRes] = await Promise.all([
         fetch("/api/users?role=student", { credentials: "include" }),
-        isSupervisor ? fetch("/api/users?role=teacher", { credentials: "include" }) : Promise.resolve(null),
+        (isSupervisor || user?.role === "admin") ? fetch("/api/users?role=teacher", { credentials: "include" }) : Promise.resolve(null),
       ]);
       if (studentsRes.ok) setStudents(await studentsRes.json());
       if (teachersRes?.ok) setTeachers(await teachersRes.json());
@@ -651,6 +670,7 @@ export default function StudentsPage() {
       studyMode: student.studyMode || "in-person",
       teacherId: student.teacherId || "",
       password: "",
+      avatar: student.avatar || "",
     });
     setShowEditPassword(false);
     setEditDialogOpen(true);
@@ -678,6 +698,7 @@ export default function StudentsPage() {
         isOrphan: editFormData.isOrphan,
         studyMode: editFormData.studyMode,
         teacherId: editFormData.teacherId || null,
+        avatar: editFormData.avatar || null,
       };
       if (editFormData.password) body.password = editFormData.password;
       const res = await fetch(`/api/users/${editStudent.id}`, {
@@ -707,10 +728,15 @@ export default function StudentsPage() {
     return teacher?.name || "غير محدد";
   };
 
-  const openTransferDialog = (student: Student) => {
+  const openTransferDialog = async (student: Student) => {
     setSelectedStudent(student);
     setNewTeacherId("");
     setTransferDialogOpen(true);
+    // إعادة جلب الأساتذة لضمان تحديث القائمة
+    try {
+      const res = await fetch("/api/users?role=teacher", { credentials: "include" });
+      if (res.ok) setTeachers(await res.json());
+    } catch {}
   };
 
   const hasActiveFilters = filterGender !== "all" || filterStatus !== "all" || filterSpecialNeeds !== "all" || filterOrphan !== "all" || filterLevel !== "all" || filterStudyMode !== "all" || filterDateFrom || filterDateTo;
@@ -2028,6 +2054,27 @@ export default function StudentsPage() {
           </DialogHeader>
           {editStudent && (
             <div className="space-y-4 mt-2">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden shrink-0">
+                  {editFormData.avatar ? (
+                    <img src={editFormData.avatar} alt="صورة" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-muted-foreground/40" />
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input type="file" ref={editAvatarInputRef} accept="image/*" className="hidden" onChange={handleEditAvatarSelect} />
+                  <Button type="button" variant="outline" size="sm" onClick={() => editAvatarInputRef.current?.click()} className="gap-1">
+                    <Camera className="w-3.5 h-3.5" />
+                    تغيير الصورة
+                  </Button>
+                  {editFormData.avatar && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setEditFormData(p => ({ ...p, avatar: "" }))} className="text-destructive">
+                      حذف
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1.5">
                   <Label htmlFor="edit-name">الاسم الكامل *</Label>

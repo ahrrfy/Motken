@@ -139,6 +139,81 @@ export function registerFamilyRoutes(app: Express) {
   });
 
 
+  // ==================== AUTO-DETECT FAMILY RELATIONSHIPS ====================
+
+  app.get("/api/family/auto-detect", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!["admin", "supervisor"].includes(currentUser.role)) {
+        return res.status(403).json({ message: "غير مصرح بالوصول" });
+      }
+
+      // جلب كل الطلاب والأساتذة في المسجد
+      let allUsers: any[];
+      if (currentUser.role === "admin") {
+        allUsers = await storage.getUsersByRole("student");
+        const teachers = await storage.getUsersByRole("teacher");
+        allUsers = [...allUsers, ...teachers];
+      } else {
+        allUsers = currentUser.mosqueId
+          ? await storage.getUsersByMosque(currentUser.mosqueId)
+          : [];
+      }
+
+      const students = allUsers.filter(u => u.role === "student");
+      const teachers = allUsers.filter(u => u.role === "teacher");
+
+      // 1. تجميع الطلاب حسب رقم هاتف ولي الأمر
+      const phoneGroups: Record<string, any[]> = {};
+      for (const s of students) {
+        const phone = cleanDigits(s.parentPhone || "");
+        if (phone.length >= 7) {
+          if (!phoneGroups[phone]) phoneGroups[phone] = [];
+          phoneGroups[phone].push({ id: s.id, name: s.name, gender: s.gender, role: "student" });
+        }
+      }
+
+      const suggestions: Array<{
+        groupKey: string;
+        matchType: "shared_phone" | "teacher_parent";
+        matchValue: string;
+        members: Array<{ id: string; name: string; gender?: string; role: string }>;
+      }> = [];
+
+      // عائلات بنفس رقم ولي الأمر (إخوة)
+      for (const [phone, members] of Object.entries(phoneGroups)) {
+        if (members.length >= 2) {
+          suggestions.push({
+            groupKey: `phone_${phone}`,
+            matchType: "shared_phone",
+            matchValue: phone,
+            members,
+          });
+        }
+      }
+
+      // 2. كشف أستاذ = أب (هاتف الأستاذ = هاتف ولي أمر طلاب)
+      for (const teacher of teachers) {
+        const teacherPhone = cleanDigits(teacher.phone || "");
+        if (teacherPhone.length >= 7 && phoneGroups[teacherPhone]) {
+          suggestions.push({
+            groupKey: `teacher_${teacher.id}`,
+            matchType: "teacher_parent",
+            matchValue: teacher.name,
+            members: [
+              { id: teacher.id, name: teacher.name, gender: teacher.gender, role: "teacher" },
+              ...phoneGroups[teacherPhone],
+            ],
+          });
+        }
+      }
+
+      res.json(suggestions);
+    } catch (err: any) {
+      sendError(res, err, "اكتشاف تلقائي للعائلات");
+    }
+  });
+
   // ==================== PARENT ACCOUNT ====================
 
   // Smart phone search — find students by parent phone

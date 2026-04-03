@@ -324,7 +324,8 @@ export default function SettingsPage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>اسم الجامع/المركز</Label>
-                    <Input defaultValue={user?.mosqueName || ""} />
+                    <Input defaultValue={user?.mosqueName || ""} readOnly disabled className="bg-muted cursor-not-allowed" />
+                    <p className="text-xs text-muted-foreground">لتغيير اسم الجامع/المركز تواصل مع مدير النظام</p>
                   </div>
                   <div className="space-y-2">
                     <Label>العنوان</Label>

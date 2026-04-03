@@ -182,6 +182,23 @@ export default function FamilySystemPage() {
 
   const canManage = user?.role === "admin" || user?.role === "supervisor";
 
+  // ==================== Auto-detect families ====================
+  const [suggestedFamilies, setSuggestedFamilies] = useState<Array<{
+    groupKey: string;
+    matchType: "shared_phone" | "teacher_parent";
+    matchValue: string;
+    members: Array<{ id: string; name: string; gender?: string; role: string }>;
+  }>>([]);
+  const [detectingFamilies, setDetectingFamilies] = useState(false);
+
+  const fetchSuggestedFamilies = async () => {
+    setDetectingFamilies(true);
+    try {
+      const res = await fetch("/api/family/auto-detect", { credentials: "include" });
+      if (res.ok) setSuggestedFamilies(await res.json());
+    } catch {} finally { setDetectingFamilies(false); }
+  };
+
   // ==================== Shared fetch ====================
 
   const fetchStudents = async () => {
@@ -628,6 +645,7 @@ export default function FamilySystemPage() {
   useEffect(() => {
     fetchLinks();
     fetchStudents();
+    if (canManage) fetchSuggestedFamilies();
   }, []);
 
   useEffect(() => {
@@ -984,6 +1002,41 @@ export default function FamilySystemPage() {
                     </p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* عائلات مقترحة — اكتشاف تلقائي */}
+          {canManage && suggestedFamilies.length > 0 && (
+            <Card className="shadow-md border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                  <Star className="w-5 h-5" />
+                  عائلات مقترحة ({suggestedFamilies.length})
+                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">اكتشاف تلقائي</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {suggestedFamilies.map(family => (
+                  <div key={family.groupKey} className="flex items-center justify-between p-3 bg-white dark:bg-stone-900 rounded-lg border">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={family.matchType === "teacher_parent" ? "default" : "secondary"} className="text-xs">
+                          {family.matchType === "teacher_parent" ? "أستاذ = ولي أمر" : "رقم هاتف مشترك"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{family.matchValue}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {family.members.map(m => (
+                          <span key={m.id} className="text-sm font-medium">
+                            {m.name}
+                            {m.role === "teacher" && <Badge variant="outline" className="text-xs mr-1">أستاذ</Badge>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}

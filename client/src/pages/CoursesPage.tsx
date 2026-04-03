@@ -217,7 +217,14 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
   const fetchCourses = async () => {
     try {
       const res = await fetch("/api/courses", { credentials: "include" });
-      if (res.ok) setCourses(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setCourses(data);
+        // جلب المشاركين الخارجيين لكل الدورات للتمييز البصري
+        for (const c of data) {
+          fetchExtParticipants(c.id);
+        }
+      }
     } catch {
       toast({ title: "خطأ", description: "فشل في تحميل الدورات", variant: "destructive" });
     } finally {
@@ -1045,12 +1052,12 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
               <div class="underline-decoration"></div>
             </div>
             <div class="cert-body">
-              <span class="cert-intro">يشهد بأن</span>
+              <span class="cert-intro">تشهد إدارة <strong>${mosqueData.name || "المركز"}</strong> بأن الطالب</span>
               <span class="student-name">${studentName}</span>
               <span class="cert-text">${theme.completionText}</span>
               <span class="course-name">${courseName}</span>
               ${gradeText}
-              <span class="cert-text">وقد استوفى جميع المتطلبات والشروط المقررة</span>
+              <span class="cert-text" style="display:block;margin-top:8px;font-style:italic;color:#666;">نسأل الله أن يوفقنا وإياه لخدمة دينه وكتابه</span>
             </div>
             <div class="cert-details">
               <div class="cert-detail-item">
@@ -1593,15 +1600,23 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
                 return (
                   <Card
                     key={course.id}
-                    className={`cursor-pointer transition-shadow hover:shadow-md ${expandedCourseId === course.id ? "ring-2 ring-primary" : ""}`}
+                    className={`cursor-pointer transition-shadow hover:shadow-md ${expandedCourseId === course.id ? "ring-2 ring-primary" : ""} ${(extParticipants[course.id] || []).length > 0 ? "border-r-4 border-r-orange-400" : ""}`}
                     data-testid={`card-course-${course.id}`}
                     onClick={() => setExpandedCourseId(expandedCourseId === course.id ? null : course.id)}
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg leading-tight" data-testid={`text-course-title-${course.id}`}>
-                          {course.title}
-                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg leading-tight" data-testid={`text-course-title-${course.id}`}>
+                            {course.title}
+                          </CardTitle>
+                          {(extParticipants[course.id] || []).length > 0 && (
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-200 gap-1 shrink-0 text-xs">
+                              <Globe className="w-3 h-3" />
+                              خارجية
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1 shrink-0">
                           {statusBadge(course.status)}
                           {canEditCourse(course) && (

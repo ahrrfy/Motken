@@ -217,6 +217,7 @@ export interface QuranPassportData {
     memorizedVerses: number;
     completionPercent: number;
     complete: boolean;
+    masteryStatus?: "not_started" | "memorizing" | "memorized" | "mastered";
     surahs: Array<{ number: number; name: string; totalVerses: number; memorizedVerses: number; complete: boolean; }>;
   }>;
   totalMemorizedVerses: number;
@@ -226,8 +227,6 @@ export interface QuranPassportData {
 }
 
 export function openQuranPassport(data: QuranPassportData): void {
-  const win = window.open("", "_blank");
-  if (!win) return;
 
   const hijriDate = toHijri(new Date(data.generatedAt));
   const gregorianDate = formatDateAr(data.generatedAt);
@@ -236,27 +235,29 @@ export function openQuranPassport(data: QuranPassportData): void {
 
   const juzCells = data.juzProgress.map(j => {
     const pct = j.completionPercent;
-    const isComplete = j.complete;
-    const hasStarted = j.memorizedVerses > 0;
+    const status = j.masteryStatus || (j.complete ? "memorized" : j.memorizedVerses > 0 ? "memorizing" : "not_started");
     const mainSurahs = j.surahs.slice(0, 3).map(s => s.name).join("، ");
     const moreCount = j.surahs.length > 3 ? `+${j.surahs.length - 3}` : "";
     const r = 22;
     const circ = 2 * Math.PI * r;
     const dash = circ * (pct / 100);
     const gap = circ - dash;
-    const bgColor = isComplete ? "#e8f5e9" : hasStarted ? "#fffde7" : "#f5f5f5";
-    const borderColor = isComplete ? "#2e7d32" : hasStarted ? "#f59e0b" : "#e0e0e0";
-    const numberColor = isComplete ? "#1b5e20" : hasStarted ? "#92400e" : "#9e9e9e";
-    const trackColor = isComplete ? "#c8e6c9" : hasStarted ? "#fde68a" : "#e0e0e0";
-    const progressColor = isComplete ? "#2e7d32" : "#f59e0b";
-    const stampHtml = isComplete ? `<div style="position:absolute;top:4px;left:4px;width:24px;height:24px;border:2px solid #2e7d32;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e8f5e9;"><span style="color:#2e7d32;font-size:12px;font-weight:700;">✓</span></div>` : "";
-    return `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:10px;padding:7px 5px 5px;display:flex;flex-direction:column;align-items:center;position:relative;min-height:90px;gap:1px;">
+    // ألوان حسب الحالة: لم يبدأ / قيد الحفظ / محفوظ / مُتقَن
+    const colors: Record<string, { bg: string; border: string; text: string; track: string; progress: string; label: string; stamp: string }> = {
+      not_started: { bg: "#f5f5f5", border: "#e0e0e0", text: "#9e9e9e", track: "#e0e0e0", progress: "#bbb", label: "—", stamp: "" },
+      memorizing: { bg: "#fffde7", border: "#f59e0b", text: "#92400e", track: "#fde68a", progress: "#f59e0b", label: `${pct}%`, stamp: "" },
+      memorized: { bg: "#e8f5e9", border: "#2e7d32", text: "#1b5e20", track: "#c8e6c9", progress: "#2e7d32", label: "حافظ", stamp: "✓" },
+      mastered: { bg: "#e3f2fd", border: "#1565c0", text: "#0d47a1", track: "#bbdefb", progress: "#1565c0", label: "مُتقِن", stamp: "★" },
+    };
+    const c = colors[status];
+    const stampHtml = c.stamp ? `<div style="position:absolute;top:4px;left:4px;width:24px;height:24px;border:2px solid ${c.border};border-radius:50%;display:flex;align-items:center;justify-content:center;background:${c.bg};"><span style="color:${c.border};font-size:12px;font-weight:700;">${c.stamp}</span></div>` : "";
+    return `<div style="background:${c.bg};border:1.5px solid ${c.border};border-radius:10px;padding:7px 5px 5px;display:flex;flex-direction:column;align-items:center;position:relative;min-height:90px;gap:1px;">
       ${stampHtml}
-      <p style="font-size:8.5px;font-weight:700;color:${numberColor};margin-bottom:1px;text-align:center;line-height:1.2;">الجزء ${JUZ_NAMES_AR[j.juz - 1]}</p>
+      <p style="font-size:8.5px;font-weight:700;color:${c.text};margin-bottom:1px;text-align:center;line-height:1.2;">الجزء ${JUZ_NAMES_AR[j.juz - 1]}</p>
       <svg width="52" height="52" viewBox="0 0 54 54">
-        <circle cx="27" cy="27" r="${r}" fill="none" stroke="${trackColor}" stroke-width="4"/>
-        ${hasStarted || isComplete ? `<circle cx="27" cy="27" r="${r}" fill="none" stroke="${progressColor}" stroke-width="4" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(circ * 0.25).toFixed(1)}" stroke-linecap="round"/>` : ""}
-        <text x="27" y="31" text-anchor="middle" fill="${numberColor}" font-size="${isComplete ? '11' : '10'}" font-weight="700" font-family="Tajawal,sans-serif">${isComplete ? "حافظ" : hasStarted ? pct + "%" : "—"}</text>
+        <circle cx="27" cy="27" r="${r}" fill="none" stroke="${c.track}" stroke-width="4"/>
+        ${status !== "not_started" ? `<circle cx="27" cy="27" r="${r}" fill="none" stroke="${c.progress}" stroke-width="4" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(circ * 0.25).toFixed(1)}" stroke-linecap="round"/>` : ""}
+        <text x="27" y="31" text-anchor="middle" fill="${c.text}" font-size="${status === "not_started" ? '10' : '11'}" font-weight="700" font-family="Tajawal,sans-serif">${c.label}</text>
       </svg>
       <p style="font-size:7px;color:#666;text-align:center;line-height:1.3;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(mainSurahs)}${moreCount ? " " + moreCount : ""}</p>
     </div>`;
@@ -330,6 +331,14 @@ body{font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;direction:rtl;background
         <div style="font-size:19px;font-weight:800;color:#f59e0b;">${data.totalCompletionPercent}%</div>
         <div style="font-size:7px;color:#92400e;">نسبة الإتمام الكلية</div>
       </div>
+      <div class="divider"></div>
+      <div style="font-size:7.5px;color:#888;font-weight:500;margin-bottom:2px;">دليل الألوان:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+        <div style="display:flex;align-items:center;gap:3px;"><div style="width:8px;height:8px;border-radius:2px;background:#f5f5f5;border:1px solid #e0e0e0;"></div><span style="font-size:6.5px;color:#888;">لم يبدأ</span></div>
+        <div style="display:flex;align-items:center;gap:3px;"><div style="width:8px;height:8px;border-radius:2px;background:#fffde7;border:1px solid #f59e0b;"></div><span style="font-size:6.5px;color:#888;">قيد الحفظ</span></div>
+        <div style="display:flex;align-items:center;gap:3px;"><div style="width:8px;height:8px;border-radius:2px;background:#e8f5e9;border:1px solid #2e7d32;"></div><span style="font-size:6.5px;color:#888;">محفوظ</span></div>
+        <div style="display:flex;align-items:center;gap:3px;"><div style="width:8px;height:8px;border-radius:2px;background:#e3f2fd;border:1px solid #1565c0;"></div><span style="font-size:6.5px;color:#888;">مُتقَن</span></div>
+      </div>
     </div>
     <div class="right-panel">
       <div class="juz-grid">${juzCells}</div>
@@ -348,6 +357,12 @@ body{font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;direction:rtl;background
 </div>
 </body></html>`;
 
-  win.document.write(html);
-  win.document.close();
+  const blob = new Blob([html], { type: "text/html; charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+  if (!win) {
+    // fallback: فتح في نفس النافذة إذا كان popup محظوراً
+    window.location.href = url;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
