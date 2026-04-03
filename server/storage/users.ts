@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { cleanDigits } from "@shared/phone-utils";
 import {
   type User, type InsertUser,
   users, courseStudents, courseTeachers, certificates,
@@ -48,7 +49,7 @@ export const userMethods = {
   },
 
   async checkPhoneExists(phone: string, excludeId?: string, allowedRoles?: string[]): Promise<boolean> {
-    const phoneClean = (phone || "").replace(/[^\d]/g, "");
+    const phoneClean = cleanDigits(phone);
     if (!phoneClean) return false;
     const excludeParam = excludeId || "";
     const result = await db.execute(sql`
@@ -65,7 +66,7 @@ export const userMethods = {
   },
 
   async getLinkedAccounts(phone: string, excludeId?: string): Promise<User[]> {
-    const phoneClean = (phone || "").replace(/[^\d]/g, "");
+    const phoneClean = cleanDigits(phone);
     if (!phoneClean) return [];
     const excludeParam = excludeId || "";
     const result = await db.execute(sql`

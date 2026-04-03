@@ -702,7 +702,7 @@ export default function FamilySystemPage() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>رقم هاتف ولي الأمر *</Label>
+                      <Label>هاتف ولي الأمر *</Label>
                       <Input
                         value={parentAccountPhone}
                         onChange={e => handleParentPhoneChange(e.target.value)}
@@ -844,7 +844,7 @@ export default function FamilySystemPage() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>رقم هاتف ولي الأمر *</Label>
+                      <Label>هاتف ولي الأمر *</Label>
                       <Input value={parentPhone} onChange={e => setParentPhone(e.target.value)} placeholder="07xxxxxxxxx" data-testid="input-parent-phone" />
                     </div>
                     <div className="space-y-2">

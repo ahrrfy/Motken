@@ -20,6 +20,7 @@ import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateBoolean, sanitizeImageUrl } from "@shared/security-utils";
 import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
+import { cleanDigits, normalizePhone, PHONE_MAX_LENGTH } from "@shared/phone-utils";
 
 export function registerMosquesRoutes(app: Express) {
   // ==================== PRIVACY POLICY ====================
@@ -219,7 +220,7 @@ export function registerMosquesRoutes(app: Express) {
         updateData.address = address;
       }
       if (phone !== undefined) {
-        if (typeof phone !== "string" || phone.length > 20) return res.status(400).json({ message: "رقم الهاتف يجب ألا يتجاوز 20 حرف" });
+        if (typeof phone !== "string" || phone.length > PHONE_MAX_LENGTH) return res.status(400).json({ message: `رقم الهاتف يجب ألا يتجاوز ${PHONE_MAX_LENGTH} حرف` });
         updateData.phone = phone;
       }
       if (managerName !== undefined) {
@@ -492,7 +493,7 @@ export function registerMosquesRoutes(app: Express) {
   app.get("/api/phone/check", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
-      const phone = (req.query.phone as string || "").replace(/[\s\-\.]/g, "");
+      const phone = cleanDigits(req.query.phone as string || "");
       const excludeId = req.query.excludeId as string | undefined;
       if (!phone) {
         return res.json({ exists: false });
@@ -505,13 +506,13 @@ export function registerMosquesRoutes(app: Express) {
       } else {
         usersToCheck = [];
       }
-      const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
       const cleanPhone = cleanDigits(phone);
       const isParentPhoneCheck = req.query.type === "parent";
       const exists = usersToCheck.some(u => {
         if (excludeId && u.id === excludeId) return false;
         if (isParentPhoneCheck) {
-          return false;
+          const upp = cleanDigits(u.parentPhone || "");
+          return upp && upp === cleanPhone;
         }
         const up = cleanDigits(u.phone || "");
         return up && up === cleanPhone;

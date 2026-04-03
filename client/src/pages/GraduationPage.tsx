@@ -15,7 +15,8 @@ import { formatDateAr } from "@/lib/utils";
 import {
   Loader2, Plus, GraduationCap, ArrowRight, Award, Users, Download, BookOpen, ClipboardList, Printer, Pencil, Trash2
 } from "lucide-react";
-import { CERTIFICATE_TEMPLATES, printCertificate, type CertificateData } from "@/lib/certificate-templates";
+import { CERTIFICATE_TEMPLATES, getCertificateContentHtml, type CertificateData } from "@/lib/certificate-templates";
+import { usePrintPreview } from "@/lib/print-context";
 
 interface Graduate {
   id: string;
@@ -77,6 +78,7 @@ const gradeOptions = [
 export default function GraduationPage({ embedded }: { embedded?: boolean }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
 
   const [graduates, setGraduates] = useState<Graduate[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -259,7 +261,8 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
       recitationStyle: grad.recitationStyle,
       ijazahTeacher: grad.ijazahTeacher,
     };
-    printCertificate(certData, templateId);
+    const contentHtml = getCertificateContentHtml(certData, templateId);
+    openPrintPreview({ title: `شهادة تخرج - ${certData.studentName}`, contentHtml, orientation: "landscape" });
   };
 
   const openEditDialog = (g: Graduate) => {

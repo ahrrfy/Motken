@@ -11,10 +11,11 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Download, Plus, Printer, Upload, Loader2, ArrowRightLeft, GraduationCap, Camera, MessageCircle, X, Users, UserCheck, Heart, Shield, Eye, EyeOff, Archive, CheckSquare, BarChart3, TrendingUp, SortAsc, FileText, Star, Award, Clock, CheckCircle, XCircle, AlertTriangle, PhoneCall, Monitor, Repeat, UserPlus, ArrowUpCircle, Pencil, BookMarked } from "lucide-react";
-import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
+import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName, phoneMatchesSearch, isPhoneQuery } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
-import { openPrintWindow, openQuranPassport, type QuranPassportData } from "@/lib/print-utils";
+import { openQuranPassport, type QuranPassportData } from "@/lib/print-utils";
+import { usePrintPreview } from "@/lib/print-context";
 import { useToast } from "@/hooks/use-toast";
 import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
 import { formatDateAr } from "@/lib/utils";
@@ -83,6 +84,7 @@ function getStudentLevel(student: Student): { label: string; color: string; leve
 export default function StudentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGender, setFilterGender] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -244,7 +246,7 @@ export default function StudentsPage() {
               name: row["الاسم"] || "",
               username: row["اسم المستخدم"] || "",
               password: row["كلمة المرور"] || "",
-              phone: row["الهاتف"] || undefined,
+              phone: row["رقم الهاتف"] || row["الهاتف"] || undefined,
               address: row["العنوان"] || undefined,
               age: row["العمر"] ? parseInt(row["العمر"]) : undefined,
               parentPhone: row["هاتف ولي الأمر"] || undefined,
@@ -374,7 +376,7 @@ export default function StudentsPage() {
         const level = getStudentLevel(s);
         return {
           الاسم: s.name,
-          الهاتف: s.phone || "",
+          "رقم الهاتف": s.phone || "",
           العمر: s.age || "",
           "هاتف ولي الأمر": s.parentPhone || "",
           التلغرام: s.telegramId || "",
@@ -727,7 +729,9 @@ export default function StudentsPage() {
 
   const filteredStudents = students
     .filter(s => {
-      if (searchTerm && !s.name.includes(searchTerm) && !s.username.includes(searchTerm)) return false;
+      if (searchTerm && isPhoneQuery(searchTerm)) {
+        if (!phoneMatchesSearch(s.phone, searchTerm) && !phoneMatchesSearch(s.parentPhone, searchTerm)) return false;
+      } else if (searchTerm && !s.name.includes(searchTerm) && !s.username.includes(searchTerm)) return false;
       if (filterGender !== "all" && s.gender !== filterGender) return false;
       if (filterStatus !== "all") {
         if (filterStatus === "active" && !s.isActive) return false;
@@ -799,7 +803,7 @@ export default function StudentsPage() {
         const level = getStudentLevel(s);
         return {
           الاسم: s.name,
-          الهاتف: s.phone || "",
+          "رقم الهاتف": s.phone || "",
           العمر: s.age || "",
           "هاتف ولي الأمر": s.parentPhone || "",
           "مستوى الطالب": level.label,
@@ -859,7 +863,7 @@ export default function StudentsPage() {
               data={filteredStudents}
               columns={[
                 { label: "الاسم", field: "name" },
-                { label: "الهاتف", field: "phone" },
+                { label: "رقم الهاتف", field: "phone" },
                 { label: "العمر", field: "age" },
                 { label: "هاتف ولي الأمر", field: "parentPhone" },
                 { label: "المستوى الدراسي", field: "educationLevel" },
@@ -869,7 +873,7 @@ export default function StudentsPage() {
                 { label: "الاسم", field: "name" },
                 { label: "اسم المستخدم", field: "username" },
                 { label: "كلمة المرور", field: "password" },
-                { label: "الهاتف", field: "phone" },
+                { label: "رقم الهاتف", field: "phone" },
                 { label: "العمر", field: "age" },
                 { label: "هاتف ولي الأمر", field: "parentPhone" },
                 { label: "المستوى الدراسي", field: "educationLevel" },
@@ -883,12 +887,12 @@ export default function StudentsPage() {
                 const tableHtml = `
                   <h3 class="section-title">قائمة الطلاب (${filteredStudents.length})</h3>
                   <table>
-                    <thead><tr><th>#</th><th>الاسم</th><th>الهاتف</th><th>العمر</th><th>المستوى الدراسي</th><th>الحالة</th></tr></thead>
+                    <thead><tr><th>#</th><th>الاسم</th><th>رقم الهاتف</th><th>العمر</th><th>المستوى الدراسي</th><th>الحالة</th></tr></thead>
                     <tbody>${filteredStudents.map((s, i) => `
                       <tr><td>${i + 1}</td><td>${s.name}</td><td>${s.phone || "—"}</td><td>${s.age || "—"}</td><td>${s.educationLevel || "—"}</td><td>${s.isActive ? "نشط" : "متوقف"}</td></tr>
                     `).join("")}</tbody>
                   </table>`;
-                openPrintWindow("قائمة الطلاب", tableHtml);
+                openPrintPreview({ title: "قائمة الطلاب", contentHtml: tableHtml });
               }}
             />
           )}
@@ -961,7 +965,7 @@ export default function StudentsPage() {
                   </div>
                   {!formData.isChild && (
                     <div className="space-y-2">
-                      <Label>الهاتف <span className="text-red-500">*</span></Label>
+                      <Label>رقم الهاتف <span className="text-red-500">*</span></Label>
                       <InternationalPhoneInput
                         value={formData.phone}
                         onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}
@@ -1537,7 +1541,7 @@ export default function StudentsPage() {
                     )}
                     <TableHead className="text-right">الاسم</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الجنس</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">الهاتف</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">رقم الهاتف</TableHead>
                     <TableHead className="text-right hidden md:table-cell">المستوى</TableHead>
                     {isSupervisor && <TableHead className="text-right hidden md:table-cell">الأستاذ</TableHead>}
                     <TableHead className="text-right">الحالة</TableHead>
@@ -1822,7 +1826,7 @@ export default function StudentsPage() {
                   <p className="font-medium" data-testid="text-profile-gender">{profileStudent.gender === "female" ? "أنثى" : "ذكر"}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-muted-foreground">الهاتف</span>
+                  <span className="text-muted-foreground">رقم الهاتف</span>
                   <p className="font-medium" dir="ltr" data-testid="text-profile-phone">{profileStudent.phone || "—"}</p>
                 </div>
                 <div className="space-y-1">
@@ -2380,7 +2384,7 @@ export default function StudentsPage() {
           { key: "name", label: "الاسم", required: true },
           { key: "username", label: "اسم المستخدم", required: true },
           { key: "password", label: "كلمة المرور", required: true },
-          { key: "phone", label: "الهاتف" },
+          { key: "phone", label: "رقم الهاتف" },
           { key: "address", label: "العنوان" },
           { key: "age", label: "العمر" },
           { key: "parentPhone", label: "هاتف ولي الأمر" },
@@ -2396,7 +2400,7 @@ export default function StudentsPage() {
           const phone = getVal("phone");
           for (const s of students) {
             if (username && s.username === username) return { matchedBy: `اسم المستخدم: ${username}`, existingId: s.id };
-            if (phone && s.phone === phone) return { matchedBy: `الهاتف: ${phone}`, existingId: s.id };
+            if (phone && s.phone === phone) return { matchedBy: `رقم الهاتف: ${phone}`, existingId: s.id };
           }
           return null;
         }}
@@ -2463,7 +2467,7 @@ export default function StudentsPage() {
         sheetName="Students"
         fields={[
           { key: "name", label: "الاسم" },
-          { key: "phone", label: "الهاتف" },
+          { key: "phone", label: "رقم الهاتف" },
           { key: "age", label: "العمر" },
           { key: "parentPhone", label: "هاتف ولي الأمر" },
           { key: "telegramId", label: "التلغرام" },

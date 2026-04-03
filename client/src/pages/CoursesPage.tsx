@@ -12,7 +12,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
-import { openPrintWindow, generateCertificateHtml } from "@/lib/print-utils";
+import { generateCertificateHtml } from "@/lib/print-utils";
+import { usePrintPreview } from "@/lib/print-context";
 import { generateCertificatePdf } from "@/lib/pdf-generator";
 import {
   BookOpen, Plus, Trash2, Award, Loader2, Users, CalendarDays, Printer,
@@ -131,6 +132,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function CoursesPage({ embedded }: { embedded?: boolean }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
   const [courses, setCourses] = useState<CourseData[]>([]);
   const [certificates, setCertificates] = useState<CertificateData[]>([]);
   const [allStudents, setAllStudents] = useState<StudentUser[]>([]);
@@ -1145,24 +1147,8 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
   const printCertificate = (cert: CertificateData, courseName: string, studentName: string, studentId: string) => {
     const { certHtml, theme, decorations } = buildCertificateHtml(cert, courseName, studentName, studentId);
     const styles = getCertificateStyles(theme, decorations);
-
-    const win = window.open("", "_blank");
-    if (!win) return;
-    const esc = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة إتمام - ${esc(studentName)}</title><style>${styles}</style></head><body>
-    <div class="actions-bar">
-      <button class="btn-print" id="btnPrint">🖨️ طباعة مباشرة</button>
-      <button class="btn-save" id="btnSave">📥 حفظ كـ PDF</button>
-      <button class="btn-close" id="btnClose">✕ إغلاق</button>
-    </div>
-    <div class="cert-area">${certHtml}</div>
-    <script>
-      document.getElementById('btnPrint').addEventListener('click', function() { window.print(); });
-      document.getElementById('btnSave').addEventListener('click', function() { window.print(); });
-      document.getElementById('btnClose').addEventListener('click', function() { window.close(); });
-    </script>
-    </body></html>`);
-    win.document.close();
+    const contentHtml = `<style>${styles}</style><div class="cert-area">${certHtml}</div>`;
+    openPrintPreview({ title: `شهادة إتمام - ${studentName}`, contentHtml, orientation: "landscape" });
   };
 
   const printAllCertificates = (course: CourseData) => {
@@ -1189,23 +1175,8 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     if (allCertHtmlParts.length === 0) return;
 
     const styles = getCertificateStyles(lastTheme, lastDecorations);
-    const win = window.open("", "_blank");
-    if (!win) return;
-    const esc2 = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادات دورة - ${esc2(course.title)}</title><style>${styles}</style></head><body>
-    <div class="actions-bar">
-      <button class="btn-print" id="btnPrint">🖨️ طباعة الكل</button>
-      <button class="btn-save" id="btnSave">📥 حفظ كـ PDF</button>
-      <button class="btn-close" id="btnClose">✕ إغلاق</button>
-    </div>
-    <div class="cert-area">${allCertHtmlParts.join("")}</div>
-    <script>
-      document.getElementById('btnPrint').addEventListener('click', function() { window.print(); });
-      document.getElementById('btnSave').addEventListener('click', function() { window.print(); });
-      document.getElementById('btnClose').addEventListener('click', function() { window.close(); });
-    </script>
-    </body></html>`);
-    win.document.close();
+    const contentHtml = `<style>${styles}</style><div class="cert-area">${allCertHtmlParts.join("")}</div>`;
+    openPrintPreview({ title: `شهادات دورة - ${course.title}`, contentHtml, orientation: "landscape" });
   };
 
   const handlePrint = async (cert: CertificateData) => {
@@ -1950,7 +1921,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
                                                   theme: getCertificateTheme("children"),
                                                   decorations: getTemplateDecorations("children"),
                                                 });
-                                                openPrintWindow(certHtml);
+                                                openPrintPreview({ title: "شهادة", contentHtml: certHtml });
                                               }}>
                                               <Printer className="w-3 h-3" />شهادة
                                             </Button>

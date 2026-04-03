@@ -9,7 +9,7 @@ import { Download, Filter, Search, ShieldAlert, ShieldCheck, Printer, Loader2, X
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAr, formatDateTimeAr } from "@/lib/utils";
-import { openPrintWindow } from "@/lib/print-utils";
+import { usePrintPreview } from "@/lib/print-context";
 
 interface ActivityLog {
   id: string;
@@ -26,6 +26,7 @@ interface ActivityLog {
 
 export default function ActivityLogsPage() {
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterModule, setFilterModule] = useState("all");
@@ -117,7 +118,7 @@ export default function ActivityLogsPage() {
                 </tbody>
               </table>
             `;
-            openPrintWindow("سجل الحركات", tableHtml, { landscape: true });
+            openPrintPreview({ title: "سجل الحركات", contentHtml: tableHtml, orientation: "landscape" });
           }} data-testid="button-print">
             <Printer className="w-4 h-4" />
             طباعة السجل

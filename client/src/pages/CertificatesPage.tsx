@@ -14,7 +14,8 @@ import { formatDateAr } from "@/lib/utils";
 import {
   Loader2, Search, Printer, Award, FileText, CheckCircle2, Shield, X, Eye
 } from "lucide-react";
-import { CERTIFICATE_TEMPLATES, printCertificate, type CertificateData, type TemplateInfo } from "@/lib/certificate-templates";
+import { CERTIFICATE_TEMPLATES, getCertificateContentHtml, type CertificateData, type TemplateInfo } from "@/lib/certificate-templates";
+import { usePrintPreview } from "@/lib/print-context";
 
 interface CertificateRecord {
   id: string;
@@ -43,6 +44,7 @@ interface CertificateRecord {
 export default function CertificatesPage({ embedded, defaultTab }: { embedded?: boolean; defaultTab?: string }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
 
   const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +107,8 @@ export default function CertificatesPage({ embedded, defaultTab }: { embedded?: 
       recitationStyle: cert.recitationStyle,
       ijazahTeacher: cert.ijazahTeacher,
     };
-    printCertificate(certData, templateId);
+    const contentHtml = getCertificateContentHtml(certData, templateId);
+    openPrintPreview({ title: `شهادة - ${certData.studentName}`, contentHtml, orientation: "landscape" });
   };
 
   const openPreview = (cert: CertificateRecord) => {

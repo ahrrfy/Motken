@@ -13,6 +13,7 @@ import {
 } from "@shared/schema";
 import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
+import { cleanDigits, normalizePhone, buildWhatsAppUrl, phoneMatchesSearch } from "@shared/phone-utils";
 
 export function registerFamilyRoutes(app: Express) {
   // ==================== FAMILY LINKS ====================
@@ -95,7 +96,6 @@ export function registerFamilyRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
       if (!["admin", "supervisor"].includes(currentUser.role)) {
-        const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
         const requestedPhone = cleanDigits(phone);
         const myStudents = await storage.getUsersByTeacher(currentUser.id);
         const hasAccess = myStudents.some(s => cleanDigits(s.parentPhone || "") === requestedPhone);
@@ -149,7 +149,6 @@ export function registerFamilyRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح بالوصول" });
       }
       const phone = req.params.phone;
-      const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
       const cleanPhone = cleanDigits(phone);
       if (cleanPhone.length < 7) {
         return res.json([]);
@@ -265,7 +264,7 @@ export function registerFamilyRoutes(app: Express) {
   });
 
   // Get parent's linked children with FULL stats
-  app.get("/api/parent/children", requireAuth, async (req, res) => {
+  app.get("/api/family/children", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
       if (currentUser.role !== "parent") {
@@ -371,7 +370,7 @@ export function registerFamilyRoutes(app: Express) {
   });
 
   // Parent testimonial / rating
-  app.post("/api/parent/testimonial", requireAuth, async (req, res) => {
+  app.post("/api/family/testimonial", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
       if (currentUser.role !== "parent") {
@@ -399,7 +398,7 @@ export function registerFamilyRoutes(app: Express) {
   });
 
   // Check if parent already submitted a testimonial
-  app.get("/api/parent/testimonial", requireAuth, async (req, res) => {
+  app.get("/api/family/testimonial", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user!;
       if (currentUser.role !== "parent") {

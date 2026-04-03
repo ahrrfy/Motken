@@ -33,7 +33,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { exportMultiSheetExcel } from "@/lib/excel-utils";
-import { openPrintWindow, generateStatsHtml, generateUsersTableHtml, generateSemesterReportHtml, generateAnnualSummaryHtml } from "@/lib/print-utils";
+import { generateStatsHtml, generateUsersTableHtml, generateSemesterReportHtml, generateAnnualSummaryHtml } from "@/lib/print-utils";
+import { usePrintPreview } from "@/lib/print-context";
 import { generateReportPdf } from "@/lib/pdf-generator";
 import { quranSurahs } from "@shared/quran-surahs";
 import { formatDateAr } from "@/lib/utils";
@@ -455,6 +456,7 @@ function MosqueInfographic({ stats, isAdmin }: { stats: StatsData; isAdmin: bool
 
 export default function ReportsPage() {
   const { user } = useAuth();
+  const { openPrintPreview } = usePrintPreview();
   const [stats, setStats] = useState<StatsData>({});
   const [mosques, setMosques] = useState<Mosque[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -643,7 +645,7 @@ export default function ReportsPage() {
 
   const handlePrint = () => {
     const content = generateStatsHtml(stats, isAdmin) + generateUsersTableHtml(stats.users || []);
-    openPrintWindow("التقارير والإحصائيات", content, printOpts);
+    openPrintPreview({ title: "التقارير والإحصائيات", contentHtml: content, mosqueName: printOpts?.mosqueName, mosqueImage: printOpts?.mosqueImage });
   };
 
   const handlePrintSemesterReport = async () => {

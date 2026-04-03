@@ -15,9 +15,11 @@ import {
   Phone, CalendarDays, BarChart3, Users, AlertTriangle, Download, Monitor
 } from "lucide-react";
 import { exportJsonToExcel } from "@/lib/excel-utils";
+import { getWhatsAppUrl } from "@/lib/phone-utils";
 import { DataTableToolbar } from "@/components/data-table-toolbar";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { usePrintPreview } from "@/lib/print-context";
 import { formatDateAr } from "@/lib/utils";
 
 interface Student {
@@ -75,6 +77,7 @@ const DAYS_AR = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خمي
 export default function AttendancePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
 
   const [activeTab, setActiveTab] = useState("mark");
   const [students, setStudents] = useState<Student[]>([]);
@@ -424,9 +427,6 @@ export default function AttendancePage() {
   };
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
     const esc = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     const rows = students.map((s, i) => {
       const entry = attendanceData[s.id];
@@ -438,31 +438,22 @@ export default function AttendancePage() {
       </tr>`;
     }).join("");
 
-    printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
-      <meta charset="UTF-8">
-      <title>كشف الحضور - ${esc(attendanceDate)}</title>
-      <style>
-        body { font-family: 'Arial', sans-serif; padding: 30px; direction: rtl; }
-        h1 { text-align: center; color: #1a5276; margin-bottom: 5px; }
-        .info { text-align: center; color: #555; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #1a5276; color: white; padding: 10px; border: 1px solid #ccc; }
-        @media print { body { padding: 10px; } }
-      </style>
-    </head><body>
-      <h1>كشف الحضور والغياب</h1>
-      <div class="info">
+    const contentHtml = `
+      <h1 style="text-align:center;color:#1a5276;margin-bottom:5px;">كشف الحضور والغياب</h1>
+      <div style="text-align:center;color:#555;margin-bottom:20px;">
         <p>التاريخ: ${esc(formatDateAr(attendanceDate))} | المعلم: ${esc(user?.name || "—")}</p>
       </div>
-      <table>
+      <table style="width:100%;border-collapse:collapse;margin-top:20px;">
         <thead><tr>
-          <th>#</th><th>اسم الطالب</th><th>الحالة</th><th>ملاحظات</th>
+          <th style="background:#1a5276;color:white;padding:10px;border:1px solid #ccc;">#</th>
+          <th style="background:#1a5276;color:white;padding:10px;border:1px solid #ccc;">اسم الطالب</th>
+          <th style="background:#1a5276;color:white;padding:10px;border:1px solid #ccc;">الحالة</th>
+          <th style="background:#1a5276;color:white;padding:10px;border:1px solid #ccc;">ملاحظات</th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>
-      <script>setTimeout(()=>window.print(),500)</script>
-    </body></html>`);
-    printWindow.document.close();
+      </table>`;
+
+    openPrintPreview({ title: `كشف الحضور - ${attendanceDate}`, contentHtml });
   };
 
   const openWhatsApp = (student: Student) => {
@@ -471,11 +462,8 @@ export default function AttendancePage() {
       toast({ title: "خطأ", description: "لا يوجد رقم هاتف لولي أمر هذا الطالب", variant: "destructive" });
       return;
     }
-    const cleanPhone = phone.replace(/[^0-9]/g, "");
-    const message = encodeURIComponent(
-      `السلام عليكم ورحمة الله وبركاته\nنود إبلاغكم بأن الطالب/ة ${student.name} كان غائباً اليوم ${formatDateAr(attendanceDate)}.\nنرجو التواصل مع إدارة الحلقة.\nجزاكم الله خيراً`
-    );
-    window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
+    const message = `السلام عليكم ورحمة الله وبركاته\nنود إبلاغكم بأن الطالب/ة ${student.name} كان غائباً اليوم ${formatDateAr(attendanceDate)}.\nنرجو التواصل مع إدارة الحلقة.\nجزاكم الله خيراً`;
+    window.open(getWhatsAppUrl(phone, message), "_blank");
   };
 
   const resolvedHistory = useMemo(() => {

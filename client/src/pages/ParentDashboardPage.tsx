@@ -145,7 +145,7 @@ export default function ParentDashboardPage() {
   const [hoverRating, setHoverRating] = useState(0);
 
   useEffect(() => {
-    fetch("/api/parent/children", { credentials: "include" })
+    fetch("/api/family/children", { credentials: "include" })
       .then(res => res.ok ? res.json() : [])
       .then(data => {
         setChildren(data);
@@ -154,7 +154,7 @@ export default function ParentDashboardPage() {
       .catch(() => toast({ title: "خطأ", description: "فشل في تحميل البيانات", variant: "destructive" }))
       .finally(() => setLoading(false));
 
-    fetch("/api/parent/testimonial", { credentials: "include" })
+    fetch("/api/family/testimonial", { credentials: "include" })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.submitted) setTestimonialSubmitted(true);
@@ -169,7 +169,7 @@ export default function ParentDashboardPage() {
     }
     setTestimonialSubmitting(true);
     try {
-      const res = await fetch("/api/parent/testimonial", {
+      const res = await fetch("/api/family/testimonial", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

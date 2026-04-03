@@ -10,6 +10,7 @@ import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateAge, validateBoolean, validateEnum, validateDate, sanitizeImageUrl, validateTeacherLevels } from "@shared/security-utils";
 import { logActivity, canTeacherAccessStudent } from "./shared";
 import { sendError } from "../error-handler";
+import { cleanDigits, normalizePhone, PHONE_MAX_LENGTH } from "@shared/phone-utils";
 import crypto from "crypto";
 
 export function registerUsersRoutes(app: Express) {
@@ -269,7 +270,6 @@ export function registerUsersRoutes(app: Express) {
         }
       }
       if (parentPhone) {
-        const cleanDigits = (s: string) => (s || "").replace(/[^\d]/g, "");
         const cleanPP = cleanDigits(parentPhone);
         let siblingPool: User[];
         if (currentUser.role === "admin") {

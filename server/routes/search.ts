@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { storage } from "../storage";
 import { sendError } from "../error-handler";
+import { cleanDigits, phoneMatchesSearch, isPhoneQuery } from "@shared/phone-utils";
 
 export function registerSearchRoutes(app: Express) {
   /**
@@ -49,7 +50,7 @@ export function registerSearchRoutes(app: Express) {
           .filter(s =>
             s.name.toLowerCase().includes(searchLower) ||
             s.username.toLowerCase().includes(searchLower) ||
-            (s.phone && s.phone.includes(query))
+            phoneMatchesSearch(s.phone, query)
           )
           .slice(0, limit)
           .map(s => ({

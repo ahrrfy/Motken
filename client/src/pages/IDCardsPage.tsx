@@ -106,7 +106,7 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
     { label: "رقم الهوية", value: `<span style="font-family:'Courier New',monospace;font-weight:700;color:#16213e;letter-spacing:0.5px;">${formattedId}</span>` },
     safeMosqueName ? { label: "الجامع/المركز", value: `<span style="font-weight:500;">${safeMosqueName}</span>` } : null,
     levelInfo ? { label: "المستوى", value: `<span style="font-weight:600;color:${levelInfo.colors.hex};">${levelInfo.name}</span>` } : null,
-    user.phone ? { label: "الهاتف", value: `<span dir="ltr">${esc(user.phone)}</span>` } : null,
+    user.phone ? { label: "رقم الهاتف", value: `<span dir="ltr">${esc(user.phone)}</span>` } : null,
     { label: "الانضمام", value: joinDate },
   ].filter(Boolean) as { label: string; value: string }[];
 

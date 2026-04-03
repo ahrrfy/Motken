@@ -1,18 +1,15 @@
 import jsPDF from "jspdf";
 import { toPng } from "html-to-image";
 import { toHijri } from "./utils";
+import { escapeHtml as esc } from "@/lib/html-utils";
 
 /**
  * Professional Arabic PDF Generator
  *
  * Strategy: Render HTML in a hidden iframe with Arabic fonts loaded,
- * capture via html2canvas (browser renders Arabic perfectly),
+ * capture via html-to-image (browser renders Arabic perfectly),
  * then place high-quality images into jsPDF with smart pagination.
  */
-
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
 
 // ─── HTML Templates ───────────────────────────────────────────
 
@@ -152,91 +149,84 @@ async function renderHtmlToPdf(
     scale?: number;
   },
 ) {
-  // 1. Extract body content from full HTML and inject into a hidden div
-  //    on the MAIN page — uses the already-loaded Cairo font (no iframe needed)
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/);
-  const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/g);
-  const bodyContent = bodyMatch?.[1] || html;
+  // 1. Create a hidden iframe for full style isolation
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:0;height:0;border:none;z-index:-1;";
+  document.body.appendChild(iframe);
 
-  const container = document.createElement("div");
-  container.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
-  document.body.appendChild(container);
+  try {
+    // 2. Write the full HTML into the iframe
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) throw new Error("Cannot access iframe document");
 
-  // Create shadow-like isolation with a wrapper
-  const wrapper = document.createElement("div");
-  const w = opts.orientation === "landscape" ? 1122 : 794;
-  wrapper.style.cssText = `width:${w}px;background:#fff;font-family:'Cairo','Segoe UI',Tahoma,sans-serif;direction:rtl;`;
+    // Use srcdoc-like approach: write full HTML
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
 
-  // Inject styles
-  if (styleMatch) {
-    // Skip the @font-face style block (not needed, main page has Cairo)
-    const styles = styleMatch
-      .map(s => s.replace(/<\/?style>/g, ""))
-      .filter(s => !s.includes("@font-face"))
-      .join("\n");
-    const styleEl = document.createElement("style");
-    styleEl.textContent = styles;
-    wrapper.appendChild(styleEl);
-  }
+    // 3. Wait for fonts to load inside the iframe
+    await iframeDoc.fonts.ready;
+    // Additional settle time for layout
+    await new Promise((r) => setTimeout(r, 200));
 
-  wrapper.innerHTML += bodyContent;
-  container.appendChild(wrapper);
+    // 4. Find the render target (body content)
+    const wrapper = iframeDoc.body;
+    const w = opts.orientation === "landscape" ? 1122 : 794;
+    wrapper.style.width = `${w}px`;
 
-  // 2. Wait for layout to settle
-  await new Promise((r) => setTimeout(r, 200));
+    // 5. Capture with html-to-image (SVG-based — preserves Arabic text perfectly)
+    const scale = opts.scale || 4;
+    const dataUrl = await toPng(wrapper, {
+      pixelRatio: scale,
+      backgroundColor: "#ffffff",
+      cacheBust: true,
+    });
 
-  // 3. Capture with html-to-image (SVG-based — preserves Arabic text perfectly)
-  const scale = opts.scale || 3;
-  const dataUrl = await toPng(wrapper, {
-    pixelRatio: scale,
-    backgroundColor: "#ffffff",
-    cacheBust: true,
-  });
+    // Convert dataUrl to Image for dimensions
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+    const canvas = { width: img.naturalWidth, height: img.naturalHeight };
 
-  // Convert dataUrl to Image for dimensions
-  const img = new Image();
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-  const canvas = { width: img.naturalWidth, height: img.naturalHeight };
+    // 6. Create PDF with proper pagination
+    const orient = opts.orientation || "portrait";
+    const pdf = new jsPDF({ orientation: orient, unit: "mm", format: opts.format || "a4" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 5;
+    const imgW = pageW - margin * 2;
+    const imgH = (canvas.height * imgW) / canvas.width;
 
-  // 4. Create PDF with proper pagination
-  const orient = opts.orientation || "portrait";
-  const pdf = new jsPDF({ orientation: orient, unit: "mm", format: opts.format || "a4" });
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
-  const margin = 5;
-  const imgW = pageW - margin * 2;
-  const imgH = (canvas.height * imgW) / canvas.width;
+    if (imgH <= pageH - margin * 2) {
+      // Single page
+      pdf.addImage(dataUrl, "PNG", margin, margin, imgW, imgH);
+    } else {
+      // Multi-page: slice using an offscreen canvas
+      const srcPageH = (canvas.width * (pageH - margin * 2)) / imgW;
+      const totalPages = Math.ceil(canvas.height / srcPageH);
 
-  if (imgH <= pageH - margin * 2) {
-    // Single page
-    pdf.addImage(dataUrl, "PNG", margin, margin, imgW, imgH);
-  } else {
-    // Multi-page: slice using an offscreen canvas
-    const srcPageH = (canvas.width * (pageH - margin * 2)) / imgW;
-    const totalPages = Math.ceil(canvas.height / srcPageH);
-
-    for (let p = 0; p < totalPages; p++) {
-      if (p > 0) pdf.addPage();
-      const sliceH = Math.min(srcPageH, canvas.height - p * srcPageH);
-      const pageCanvas = document.createElement("canvas");
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = sliceH;
-      const ctx = pageCanvas.getContext("2d")!;
-      ctx.drawImage(img, 0, p * srcPageH, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-      const sliceData = pageCanvas.toDataURL("image/png");
-      const drawH = (sliceH * imgW) / canvas.width;
-      pdf.addImage(sliceData, "PNG", margin, margin, imgW, drawH);
+      for (let p = 0; p < totalPages; p++) {
+        if (p > 0) pdf.addPage();
+        const sliceH = Math.min(srcPageH, canvas.height - p * srcPageH);
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceH;
+        const ctx = pageCanvas.getContext("2d")!;
+        ctx.drawImage(img, 0, p * srcPageH, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        const sliceData = pageCanvas.toDataURL("image/png");
+        const drawH = (sliceH * imgW) / canvas.width;
+        pdf.addImage(sliceData, "PNG", margin, margin, imgW, drawH);
+      }
     }
+
+    pdf.save(opts.filename);
+  } finally {
+    // Cleanup: always remove the iframe
+    document.body.removeChild(iframe);
   }
-
-  pdf.save(opts.filename);
-
-  // Cleanup
-  document.body.removeChild(container);
 }
 
 // ─── Public API ───────────────────────────────────────────────

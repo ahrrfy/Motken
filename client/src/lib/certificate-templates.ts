@@ -1,6 +1,4 @@
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-}
+import { escapeHtml } from "@/lib/html-utils";
 
 export interface CertificateData {
   certificateNumber: string;
@@ -495,11 +493,23 @@ function teacherHonorTemplate(data: CertificateData): string {
   `);
 }
 
+/**
+ * @deprecated Use generateCertificateHtmlByTemplate() + usePrintPreview() instead.
+ */
 export function printCertificate(data: CertificateData, templateId: string): void {
+  console.warn("[certificate-templates] printCertificate is deprecated. Use generateCertificateHtmlByTemplate() + usePrintPreview() instead.");
   const html = generateCertificateHtmlByTemplate(data, templateId);
   const printWindow = window.open("", "_blank");
   if (!printWindow) return;
   printWindow.document.write(html);
   printWindow.document.close();
   setTimeout(() => printWindow.print(), 600);
+}
+
+/**
+ * Returns the full certificate HTML string for use with usePrintPreview().
+ * Extracts the inner content (body) from the full HTML document template.
+ */
+export function getCertificateContentHtml(data: CertificateData, templateId: string): string {
+  return generateCertificateHtmlByTemplate(data, templateId);
 }

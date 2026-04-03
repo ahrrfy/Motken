@@ -441,7 +441,7 @@ export default function MosquesPage() {
     { key: "area", label: "المنطقة" },
     { key: "landmark", label: "أقرب نقطة دالة" },
     { key: "address", label: "العنوان التفصيلي" },
-    { key: "phone", label: "الهاتف" },
+    { key: "phone", label: "هاتف المسجد" },
     { key: "description", label: "الوصف" },
   ];
 

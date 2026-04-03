@@ -67,9 +67,9 @@ export function registerAnalyticsRoutes(app: Express) {
 
 
   // ==================== ACTIVITY HEATMAP ====================
-  app.get("/api/activity-heatmap/:userId", requireAuth, async (req, res) => {
+  app.get("/api/activity-heatmap/:studentId", requireAuth, async (req, res) => {
     try {
-      const userId = req.params.userId;
+      const userId = req.params.studentId;
       if (!(await checkDataAccess(req.user!, userId, res))) return;
       const now = new Date();
       const yearAgo = new Date(now);

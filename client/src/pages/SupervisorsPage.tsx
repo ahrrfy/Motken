@@ -15,7 +15,7 @@ import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { usePhoneValidation, phoneInputClassName, isValidPhone } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
-import { openPrintWindow } from "@/lib/print-utils";
+import { usePrintPreview } from "@/lib/print-context";
 import { useToast } from "@/hooks/use-toast";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
@@ -41,6 +41,7 @@ interface Mosque {
 export default function SupervisorsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
   const [searchTerm, setSearchTerm] = useState("");
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [mosques, setMosques] = useState<Mosque[]>([]);
@@ -76,7 +77,7 @@ export default function SupervisorsPage() {
   const SUPERVISOR_EXPORT_COLS: ColumnDef[] = [
     { label: "الاسم", field: "name" },
     { label: "اسم المستخدم", field: "username" },
-    { label: "الهاتف", field: "phone" },
+    { label: "رقم الهاتف", field: "phone" },
     { label: "الجامع/المركز", field: "mosqueName" },
     { label: "الحالة", field: "statusLabel" },
   ];
@@ -84,19 +85,19 @@ export default function SupervisorsPage() {
     { label: "الاسم", field: "name" },
     { label: "اسم المستخدم", field: "username" },
     { label: "كلمة المرور", field: "password" },
-    { label: "الهاتف", field: "phone" },
+    { label: "رقم الهاتف", field: "phone" },
     { label: "الجنس", field: "gender" },
   ];
   const supervisorPrint = () => {
     const tableHtml = `
       <h3 class="section-title">قائمة المشرفين (${filteredSupervisors.length})</h3>
       <table>
-        <thead><tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الهاتف</th><th>الجامع/المركز</th><th>الحالة</th></tr></thead>
+        <thead><tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>رقم الهاتف</th><th>الجامع/المركز</th><th>الحالة</th></tr></thead>
         <tbody>${filteredSupervisors.map((s, i) => `
           <tr><td>${i + 1}</td><td>${s.name}</td><td>${s.username}</td><td>${s.phone || "—"}</td><td>${getMosqueName(s.mosqueId)}</td><td>${s.isActive ? "نشط" : "متوقف"}</td></tr>
         `).join("")}</tbody>
       </table>`;
-    openPrintWindow("قائمة المشرفين", tableHtml);
+    openPrintPreview({ title: "قائمة المشرفين", contentHtml: tableHtml });
   };
 
   const getMosqueName = (mosqueId?: string | null) => {
@@ -246,7 +247,7 @@ export default function SupervisorsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>الهاتف <span className="text-red-500">*</span></Label>
+                    <Label>رقم الهاتف <span className="text-red-500">*</span></Label>
                     <InternationalPhoneInput
                       value={formData.phone}
                       onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}

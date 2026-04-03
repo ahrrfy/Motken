@@ -9,6 +9,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { PrintPreviewProvider } from "@/lib/print-context";
+import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
@@ -245,6 +247,7 @@ function App() {
   }
 
   return (
+    <PrintPreviewProvider>
     <SidebarLayout>
       <UpdateBanner />
       {showWelcome && user && (
@@ -310,6 +313,8 @@ function App() {
       </Suspense>
       <Toaster />
     </SidebarLayout>
+    <PrintPreviewDialog />
+    </PrintPreviewProvider>
   );
 }
 

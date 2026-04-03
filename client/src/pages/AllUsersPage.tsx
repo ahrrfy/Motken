@@ -14,7 +14,7 @@ import { Users, UserPlus, Search, Building2, Shield, GraduationCap, BookOpen, Tr
 import { Switch } from "@/components/ui/switch";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
-import { openPrintWindow } from "@/lib/print-utils";
+import { usePrintPreview } from "@/lib/print-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
@@ -68,6 +68,7 @@ const roleIcons: Record<string, any> = {
 export default function AllUsersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [mosques, setMosques] = useState<Mosque[]>([]);
   const [loading, setLoading] = useState(true);
@@ -373,7 +374,7 @@ export default function AllUsersPage() {
                 </tbody>
               </table>
             `;
-            openPrintWindow("جميع المستخدمين", tableHtml);
+            openPrintPreview({ title: "جميع المستخدمين", contentHtml: tableHtml });
           }}>
             <Printer className="w-4 h-4 ml-2" />
             طباعة

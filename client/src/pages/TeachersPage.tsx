@@ -14,7 +14,7 @@ import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
-import { openPrintWindow } from "@/lib/print-utils";
+import { usePrintPreview } from "@/lib/print-context";
 import { useToast } from "@/hooks/use-toast";
 import { DataTableToolbar } from "@/components/data-table-toolbar";
 import type { ColumnDef } from "@/components/data-table-toolbar";
@@ -53,6 +53,7 @@ function getTeacherLevels(t: Teacher): number[] {
 export default function TeachersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { openPrintPreview } = usePrintPreview();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGender, setFilterGender] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -95,14 +96,14 @@ export default function TeachersPage() {
   const TEACHER_EXPORT_COLS: ColumnDef[] = [
     { label: "الاسم", field: "name" },
     { label: "اسم المستخدم", field: "username" },
-    { label: "الهاتف", field: "phone" },
+    { label: "رقم الهاتف", field: "phone" },
     { label: "الحالة", field: "statusLabel" },
   ];
   const TEACHER_IMPORT_COLS: ColumnDef[] = [
     { label: "الاسم", field: "name" },
     { label: "اسم المستخدم", field: "username" },
     { label: "كلمة المرور", field: "password" },
-    { label: "الهاتف", field: "phone" },
+    { label: "رقم الهاتف", field: "phone" },
     { label: "العمر", field: "age" },
   ];
 
@@ -110,12 +111,12 @@ export default function TeachersPage() {
     const tableHtml = `
       <h3 class="section-title">قائمة الأساتذة (${filteredTeachers.length})</h3>
       <table>
-        <thead><tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الهاتف</th><th>الحالة</th></tr></thead>
+        <thead><tr><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>رقم الهاتف</th><th>الحالة</th></tr></thead>
         <tbody>${filteredTeachers.map((t, i) => `
           <tr><td>${i + 1}</td><td>${t.name}</td><td>${t.username}</td><td>${t.phone || "—"}</td><td>${t.isActive ? "نشط" : "متوقف"}</td></tr>
         `).join("")}</tbody>
       </table>`;
-    openPrintWindow("قائمة الأساتذة", tableHtml);
+    openPrintPreview({ title: "قائمة الأساتذة", contentHtml: tableHtml });
   };
 
   const fetchTeachers = async () => {
@@ -340,7 +341,7 @@ export default function TeachersPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>الهاتف <span className="text-red-500">*</span></Label>
+                    <Label>رقم الهاتف <span className="text-red-500">*</span></Label>
                     <InternationalPhoneInput
                       value={formData.phone}
                       onChange={(full) => setFormData(prev => ({ ...prev, phone: full }))}

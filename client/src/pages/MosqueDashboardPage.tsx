@@ -220,7 +220,7 @@ export default function MosqueDashboardPage() {
                 { label: "المنطقة / الحي", value: mosque.area },
                 { label: "أقرب نقطة دالة", value: mosque.landmark },
                 { label: "العنوان التفصيلي", value: mosque.address },
-                { label: "الهاتف", value: mosque.phone },
+                { label: "هاتف المسجد", value: mosque.phone },
                 { label: "المسؤول", value: mosque.managerName },
                 { label: "الوصف", value: mosque.description },
                 { label: "تاريخ التسجيل", value: mosque.createdAt ? formatDateAr(mosque.createdAt) : "—" },

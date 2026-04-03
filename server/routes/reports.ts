@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
+import { buildWhatsAppUrl } from "@shared/phone-utils";
 import crypto from "crypto";
 
 export function registerReportsRoutes(app: Express) {
@@ -134,7 +135,7 @@ export function registerReportsRoutes(app: Express) {
         stats: { present, absent, done, pending, weekPoints: 0 },
         whatsappText,
         whatsappUrl: student.parentPhone
-          ? `https://wa.me/964${student.parentPhone.replace(/^0/,"")}?text=${encodeURIComponent(whatsappText)}`
+          ? buildWhatsAppUrl(student.parentPhone, whatsappText)
           : null,
       });
     } catch (err: any) {
