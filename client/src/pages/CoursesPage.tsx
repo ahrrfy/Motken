@@ -1183,7 +1183,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
 
     const styles = getCertificateStyles(lastTheme, lastDecorations);
     const contentHtml = `<style>${styles}</style><div class="cert-area">${allCertHtmlParts.join("")}</div>`;
-    openPrintPreview({ title: `شهادات دورة - ${course.title}`, contentHtml, orientation: "landscape" });
+    openPrintPreview({ title: `شهادات دورة - ${course.title}`, contentHtml, orientation: "landscape", showHeader: false, showFooter: false });
   };
 
   const handlePrint = async (cert: CertificateData) => {

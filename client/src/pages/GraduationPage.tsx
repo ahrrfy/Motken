@@ -262,7 +262,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
       ijazahTeacher: grad.ijazahTeacher,
     };
     const contentHtml = getCertificateContentHtml(certData, templateId);
-    openPrintPreview({ title: `شهادة تخرج - ${certData.studentName}`, contentHtml, orientation: "landscape" });
+    openPrintPreview({ title: `شهادة تخرج - ${certData.studentName}`, contentHtml, orientation: "landscape", showHeader: false, showFooter: false });
   };
 
   const openEditDialog = (g: Graduate) => {

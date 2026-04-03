@@ -122,12 +122,13 @@ function writeToIframe(
         <span>برمجة وتطوير أحمد خالد الزبيدي</span>
       </div></div>` : "";
 
+  const noPadding = !showHeader && !showFooter;
   doc.open();
   doc.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700;800&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
 <style>${PRINT_CSS}
-.page-content { max-width: ${size.widthPx}px; }
-${buildPrintPageCss(size.cssSize)}
+.page-content { max-width: ${size.widthPx}px; ${noPadding ? "padding: 0;" : ""} }
+${noPadding ? `@media print { @page { size: ${size.cssSize}; margin: 0; } html, body { margin: 0; padding: 0; } .page-content { padding: 0; max-width: none; } }` : buildPrintPageCss(size.cssSize)}
 </style></head><body>
 <div class="page-content">
   ${headerHtml}

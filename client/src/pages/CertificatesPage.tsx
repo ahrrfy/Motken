@@ -108,7 +108,7 @@ export default function CertificatesPage({ embedded, defaultTab }: { embedded?: 
       ijazahTeacher: cert.ijazahTeacher,
     };
     const contentHtml = getCertificateContentHtml(certData, templateId);
-    openPrintPreview({ title: `شهادة - ${certData.studentName}`, contentHtml, orientation: "landscape" });
+    openPrintPreview({ title: `شهادة - ${certData.studentName}`, contentHtml, orientation: "landscape", showHeader: false, showFooter: false });
   };
 
   const openPreview = (cert: CertificateRecord) => {
