@@ -323,8 +323,8 @@ function buildIframeHtml(
 
   /* Font loading indicator */
   .font-loading {
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    opacity: 0.01;
+    transition: opacity 0.25s ease;
   }
   .font-loaded {
     opacity: 1;
@@ -340,21 +340,30 @@ function buildIframeHtml(
     ${footerHtml}
   </div>
   <script>
-    // Wait for Cairo font to load then reveal content
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function() {
-        document.getElementById('print-root').classList.remove('font-loading');
-        document.getElementById('print-root').classList.add('font-loaded');
+    (function() {
+      var root = document.getElementById('print-root');
+      function reveal() {
+        if (root) {
+          root.classList.remove('font-loading');
+          root.classList.add('font-loaded');
+        }
         window.__FONTS_LOADED__ = true;
-      });
-    } else {
-      // Fallback for older browsers
-      setTimeout(function() {
-        document.getElementById('print-root').classList.remove('font-loading');
-        document.getElementById('print-root').classList.add('font-loaded');
-        window.__FONTS_LOADED__ = true;
-      }, 1000);
-    }
+      }
+
+      // Try loading fonts, but reveal quickly regardless
+      var revealed = false;
+      function revealOnce() {
+        if (!revealed) { revealed = true; reveal(); }
+      }
+
+      // Fast fallback: reveal after 500ms regardless of fonts
+      setTimeout(revealOnce, 500);
+
+      // If fonts API available, reveal as soon as fonts load
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(revealOnce).catch(revealOnce);
+      }
+    })();
   </script>
 </body>
 </html>`;
@@ -374,12 +383,43 @@ export function PrintPreviewDialog() {
     }
   }, [options]);
 
-  // Reset loading when content changes
+  const blobUrlRef = useRef<string | null>(null);
+
+  // Reset loading when content changes, and use Blob URL for same-origin font access
   useEffect(() => {
     if (isOpen && options) {
       setLoading(true);
+
+      // Cleanup previous blob
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+
+      const html = buildIframeHtml(options.contentHtml, options.title, pageConfigKey, {
+        showHeader: options.showHeader !== false,
+        showFooter: options.showFooter !== false,
+        mosqueName: options.mosqueName,
+        mosqueImage: options.mosqueImage,
+      });
+
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+
+      const iframe = iframeRef.current;
+      if (iframe) {
+        iframe.src = url;
+      }
     }
-  }, [isOpen, options?.contentHtml]);
+
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [isOpen, options?.contentHtml, pageConfigKey]);
 
   const handleIframeLoad = useCallback(() => {
     const iframe = iframeRef.current;
@@ -398,7 +438,6 @@ export function PrintPreviewDialog() {
       }
       setTimeout(check, 100);
     };
-    // Start checking after a brief delay
     setTimeout(check, 200);
 
     // Fallback: max wait 3 seconds
@@ -428,13 +467,6 @@ export function PrintPreviewDialog() {
   );
 
   if (!options) return null;
-
-  const iframeSrcDoc = buildIframeHtml(options.contentHtml, options.title, pageConfigKey, {
-    showHeader: options.showHeader !== false,
-    showFooter: options.showFooter !== false,
-    mosqueName: options.mosqueName,
-    mosqueImage: options.mosqueImage,
-  });
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closePrintPreview()}>
@@ -518,7 +550,6 @@ export function PrintPreviewDialog() {
           >
             <iframe
               ref={iframeRef}
-              srcDoc={iframeSrcDoc}
               className="w-full h-full border-0"
               style={{ minHeight: PAGE_SIZES[pageConfigKey].height }}
               title="معاينة الطباعة"
