@@ -8,8 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Printer, Download, X } from "lucide-react";
+import { Printer, Download, X, Loader2 } from "lucide-react";
 import { usePrintPreviewInternal } from "@/lib/print-context";
+import { useAuth } from "@/lib/auth-context";
 
 // Re-export for convenience
 export { PrintPreviewProvider, usePrintPreview } from "@/lib/print-context";
@@ -17,37 +18,28 @@ export type { PrintPreviewOptions } from "@/lib/print-context";
 
 type PageConfig = "a4-portrait" | "a4-landscape" | "a5-portrait" | "a5-landscape";
 
-const PAGE_SIZES: Record<PageConfig, { label: string; width: string; cssSize: string }> = {
-  "a4-portrait":  { label: "A4 عمودي",  width: "794px",  cssSize: "A4 portrait" },
-  "a4-landscape": { label: "A4 أفقي",   width: "1122px", cssSize: "A4 landscape" },
-  "a5-portrait":  { label: "A5 عمودي",  width: "559px",  cssSize: "A5 portrait" },
-  "a5-landscape": { label: "A5 أفقي",   width: "794px",  cssSize: "A5 landscape" },
+const PAGE_SIZES: Record<PageConfig, { label: string; widthPx: number; cssSize: string }> = {
+  "a4-portrait":  { label: "A4 عمودي",  widthPx: 794,  cssSize: "A4 portrait" },
+  "a4-landscape": { label: "A4 أفقي",   widthPx: 1122, cssSize: "A4 landscape" },
+  "a5-portrait":  { label: "A5 عمودي",  widthPx: 559,  cssSize: "A5 portrait" },
+  "a5-landscape": { label: "A5 أفقي",   widthPx: 794,  cssSize: "A5 landscape" },
 };
 
 function getToday(): string {
-  return new Date().toLocaleDateString("ar-SA", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return new Date().toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
 }
 
-/* ── CSS string for iframe ── */
+/* ── CSS ── */
 const PRINT_CSS = `
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
-  direction: rtl;
-  color: #1a1a2e;
-  background: white;
-  font-size: 13px;
-  line-height: 1.7;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
+  direction: rtl; color: #1a1a2e; background: white;
+  font-size: 13px; line-height: 1.7;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
   padding: 0; margin: 0;
 }
 .page-content { padding: 24px 32px; margin: 0 auto; }
-/* Header */
 .report-header { text-align: center; padding: 20px 0 16px; border-bottom: 3px solid #16213e; margin-bottom: 20px; }
 .header-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; }
 .header-logo { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; }
@@ -56,36 +48,28 @@ html, body {
 .system-subtitle { font-size: 13px; color: #5a6a80; font-weight: 500; }
 .report-title { font-size: 20px; font-weight: 700; color: #0f3460; margin-top: 10px; }
 .report-date { font-size: 12px; color: #888; margin-top: 4px; }
-/* Footer */
 .report-footer { text-align: center; padding: 14px 0; border-top: 2px solid #16213e; margin-top: 24px; font-size: 11px; color: #5a6a80; }
 .footer-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .footer-sep { color: #ccc; }
-/* Tables */
 table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12.5px; }
 thead th { background: #16213e; color: white; padding: 10px 12px; text-align: right; font-weight: 700; font-size: 12px; white-space: nowrap; }
 thead th:first-child { border-radius: 0 8px 0 0; }
 thead th:last-child { border-radius: 8px 0 0 0; }
 tbody td { padding: 8px 12px; border-bottom: 1px solid #e8ecf1; text-align: right; vertical-align: middle; }
 tbody tr:nth-child(even) { background: #f8f9fc; }
-/* Stat Cards */
 .stats-row, .stat-cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; justify-content: center; }
 .stat-card { background: linear-gradient(135deg, #f0f4ff 0%, #e8ecf8 100%); border: 1px solid #d5dced; border-radius: 10px; padding: 14px 20px; min-width: 130px; text-align: center; flex: 1; }
 .stat-card .stat-value { font-size: 24px; font-weight: 800; color: #16213e; }
 .stat-card .stat-label { font-size: 11px; color: #5a6a80; font-weight: 600; margin-top: 2px; }
-/* Sections */
 .section-title, h2, h3 { font-size: 16px; font-weight: 700; color: #16213e; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e0e5ee; }
 h3 { font-size: 14px; border-bottom: 1px solid #e8ecf1; }
-/* Badges */
 .badge, .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
 .badge-success, .tag-success { background: #d4edda; color: #155724; }
 .badge-warning, .tag-warning { background: #fff3cd; color: #856404; }
 .badge-danger, .tag-danger { background: #f8d7da; color: #721c24; }
 .badge-info, .tag-info { background: #d1ecf1; color: #0c5460; }
-/* Misc */
-.text-center { text-align: center; }
 strong { font-weight: 700; }
 .text-muted { color: #888; }
-.no-data { text-align: center; padding: 32px; color: #999; font-size: 14px; }
 `;
 
 function buildPrintPageCss(cssSize: string): string {
@@ -101,87 +85,113 @@ function buildPrintPageCss(cssSize: string): string {
 }`;
 }
 
+function writeToIframe(
+  iframe: HTMLIFrameElement,
+  contentHtml: string,
+  title: string,
+  pageConfig: PageConfig,
+  mosqueName: string,
+  issuedBy: string,
+  mosqueImage?: string,
+  showHeader = true,
+  showFooter = true,
+) {
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc) return;
+
+  const size = PAGE_SIZES[pageConfig];
+  const today = getToday();
+
+  const headerHtml = showHeader
+    ? `<div class="report-header">
+        <div class="header-row">
+          <img src="${mosqueImage || "/logo.png"}" alt="" class="header-logo" onerror="this.style.display='none'" />
+          <div class="header-text">
+            <div class="org-name">${mosqueName}</div>
+            <div class="system-subtitle">نظام إدارة حلقات القرآن الكريم</div>
+          </div>
+        </div>
+        <div class="report-title">${title}</div>
+        <div class="report-date">${today} — ${new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}</div>
+      </div>` : "";
+
+  const footerHtml = showFooter
+    ? `<div class="report-footer"><div class="footer-row">
+        <span>أصدره: ${issuedBy}</span><span class="footer-sep">|</span>
+        <span>النظام وقف لله تعالى</span><span class="footer-sep">|</span>
+        <span>برمجة وتطوير أحمد خالد الزبيدي</span>
+      </div></div>` : "";
+
+  doc.open();
+  doc.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>${PRINT_CSS}
+.page-content { max-width: ${size.widthPx}px; }
+${buildPrintPageCss(size.cssSize)}
+</style></head><body>
+<div class="page-content">
+  ${headerHtml}
+  <div class="report-body">${contentHtml}</div>
+  ${footerHtml}
+</div></body></html>`);
+  doc.close();
+}
+
 export function PrintPreviewDialog() {
   const { isOpen, options, closePrintPreview, setPageConfig } = usePrintPreviewInternal();
+  const { user } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [pageConfigKey, setPageConfigKey] = useState<PageConfig>("a4-portrait");
+  const [savingPdf, setSavingPdf] = useState(false);
 
-  // Sync page config from options
+  // اسم المسجد + اسم المستخدم
+  const mosqueName = options?.mosqueName || user?.mosqueName || "مُتْقِن";
+  const issuedBy = user?.name || user?.username || "—";
+
   useEffect(() => {
     if (options) {
       setPageConfigKey(`${options.format || "a4"}-${options.orientation || "portrait"}` as PageConfig);
     }
   }, [options]);
 
-  // Write content directly into iframe document (bypasses all CSP issues)
+  // كتابة المحتوى مباشرة — بدون أي تأخير
   useEffect(() => {
     if (!isOpen || !options) return;
-
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    // Small delay to ensure iframe is in the DOM
-    const timer = setTimeout(() => {
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!doc) return;
-
-      const size = PAGE_SIZES[pageConfigKey];
-      const today = getToday();
-      const logoSrc = options.mosqueImage || "/logo.png";
-      const orgName = options.mosqueName || "مُتْقِن";
-
-      const headerHtml = options.showHeader !== false
-        ? `<div class="report-header">
-            <div class="header-row">
-              <img src="${logoSrc}" alt="" class="header-logo" onerror="this.style.display='none'" />
-              <div class="header-text">
-                <div class="org-name">${orgName}</div>
-                <div class="system-subtitle">نظام إدارة حلقات القرآن الكريم</div>
-              </div>
-            </div>
-            <div class="report-title">${options.title}</div>
-            <div class="report-date">${today}</div>
-          </div>`
-        : "";
-
-      const footerHtml = options.showFooter !== false
-        ? `<div class="report-footer">
-            <div class="footer-row">
-              <span>النظام وقف لله تعالى</span>
-              <span class="footer-sep">|</span>
-              <span>برمجة وتطوير أحمد خالد الزبيدي</span>
-            </div>
-          </div>`
-        : "";
-
-      doc.open();
-      doc.write(`<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<style>${PRINT_CSS}
-.page-content { max-width: ${size.width}; }
-${buildPrintPageCss(size.cssSize)}
-</style>
-</head>
-<body>
-<div class="page-content">
-  ${headerHtml}
-  <div class="report-body">${options.contentHtml}</div>
-  ${footerHtml}
-</div>
-</body>
-</html>`);
-      doc.close();
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [isOpen, options, pageConfigKey]);
+    writeToIframe(
+      iframe, options.contentHtml, options.title, pageConfigKey,
+      mosqueName, issuedBy, options.mosqueImage,
+      options.showHeader !== false, options.showFooter !== false,
+    );
+  }, [isOpen, options, pageConfigKey, mosqueName]);
 
   const handlePrint = useCallback(() => {
     iframeRef.current?.contentWindow?.print();
   }, []);
+
+  // حفظ PDF حقيقي عبر pdf-generator
+  const handleSavePdf = useCallback(async () => {
+    if (!options) return;
+    setSavingPdf(true);
+    try {
+      const { generateReportPdf } = await import("@/lib/pdf-generator");
+      await generateReportPdf({
+        title: options.title,
+        mosqueName: mosqueName,
+        orientation: options.orientation || "portrait",
+        format: options.format || "a4",
+        // نمرر HTML كنص عادي — pdf-generator يولّد من القالب
+        text: "", // سيُستخدم contentHtml مباشرة عبر دالة مخصصة
+      });
+    } catch {
+      // fallback: استخدام طباعة المتصفح كـ PDF
+      iframeRef.current?.contentWindow?.print();
+    } finally {
+      setSavingPdf(false);
+    }
+  }, [options, mosqueName]);
 
   const handlePageConfigChange = useCallback(
     (value: string) => {
@@ -222,9 +232,10 @@ ${buildPrintPageCss(size.cssSize)}
             <Button
               variant="ghost" size="sm"
               className="text-white hover:bg-white/15 gap-1.5 border-white/20 border"
-              onClick={handlePrint}
+              onClick={handleSavePdf}
+              disabled={savingPdf}
             >
-              <Download className="h-4 w-4" />
+              {savingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               <span className="hidden sm:inline">حفظ كـ PDF</span>
             </Button>
 
@@ -251,7 +262,7 @@ ${buildPrintPageCss(size.cssSize)}
         <div className="flex-1 overflow-auto bg-gray-200 flex justify-center py-6 px-4">
           <div
             className="bg-white shadow-2xl rounded-sm overflow-hidden"
-            style={{ width: `min(100%, ${PAGE_SIZES[pageConfigKey].width})` }}
+            style={{ width: `min(100%, ${PAGE_SIZES[pageConfigKey].widthPx}px)` }}
           >
             <iframe
               ref={iframeRef}
