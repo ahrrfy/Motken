@@ -97,7 +97,7 @@ export default function CertificatesPage({ embedded, defaultTab }: { embedded?: 
     const certData: CertificateData = {
       certificateNumber: cert.certificateNumber,
       studentName: cert.studentName || "",
-      title: cert.title || (cert.certificateType === "graduation" ? "شهادة إتمام حفظ القرآن الكريم" : `شهادة إتمام دورة: ${cert.courseName || ""}`),
+      title: cert.certificateType === "graduation" ? "شهادة إتمام حفظ القرآن الكريم" : "شهادة إتمام دورة",
       mosqueName: cert.mosqueName || "",
       grade: cert.graduationGrade,
       issuedAt: cert.issuedAt,
@@ -106,6 +106,7 @@ export default function CertificatesPage({ embedded, defaultTab }: { embedded?: 
       totalJuz: cert.totalJuz,
       recitationStyle: cert.recitationStyle,
       ijazahTeacher: cert.ijazahTeacher,
+      courseName: cert.courseName || "",
     };
     const contentHtml = getCertificateContentHtml(certData, templateId);
     openPrintPreview({ title: `شهادة - ${certData.studentName}`, contentHtml, orientation: "landscape", showHeader: false, showFooter: false });
