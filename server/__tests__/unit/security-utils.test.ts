@@ -31,9 +31,9 @@ describe("validateStringField", () => {
   });
 
   it("should use field-specific max lengths", () => {
-    // phone max = 30
-    expect(validateStringField("0".repeat(30), "phone").valid).toBe(true);
-    expect(validateStringField("0".repeat(31), "phone").valid).toBe(false);
+    // phone max = 20
+    expect(validateStringField("0".repeat(20), "phone").valid).toBe(true);
+    expect(validateStringField("0".repeat(21), "phone").valid).toBe(false);
 
     // username max = 50
     expect(validateStringField("a".repeat(50), "username").valid).toBe(true);

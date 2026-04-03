@@ -1054,7 +1054,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
             <div class="cert-body">
               <span class="cert-intro">تشهد إدارة <strong>${mosqueData.name || "المركز"}</strong> بأن الطالب</span>
               <span class="student-name">${studentName}</span>
-              <span class="cert-text">${theme.completionText}</span>
+              <span class="cert-text">قد حضر دورة</span>
               <span class="course-name">${courseName}</span>
               ${gradeText}
               <span class="cert-text" style="display:block;margin-top:8px;font-style:italic;color:#666;">نسأل الله أن يوفقنا وإياه لخدمة دينه وكتابه</span>
@@ -1108,8 +1108,9 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
       .btn-print { background: ${theme.btnPrint}; color: white; }
       .btn-save { background: ${theme.btnSave}; color: white; }
       .btn-close { background: #555; color: white; }
-      .cert-area { margin-top: 60px; }
+      .cert-area { margin-top: 0; }
       .cert-container { width: 29.7cm; height: 21cm; margin: 0 auto; position: relative; padding: 0; background: white; page-break-after: always; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+      @media print { .cert-area { margin: 0; } .cert-container { box-shadow: none; } }
       .cert-frame { border: 3px solid ${theme.primary}; padding: 30px 40px 25px; position: relative; background: ${theme.bg}; width: 100%; height: 100%; overflow: hidden; display: flex; flex-direction: column; }
       ${decorations.extraFrame}
       ${decorations.cornerStyle}
