@@ -1911,16 +1911,13 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
                                             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1"
                                               onClick={() => {
                                                 const certHtml = generateCertificateHtml({
-                                                  studentName: ep.name,
-                                                  courseName: course.title,
-                                                  mosqueName: mosqueData.name || "مركز التحفيظ",
                                                   certificateNumber: ep.certificate_number,
                                                   graduationGrade: ep.graduation_grade,
                                                   issuedAt: ep.graduated_at,
                                                   mosqueImage: mosqueData.image || undefined,
                                                   theme: getCertificateTheme("children"),
                                                   decorations: getTemplateDecorations("children"),
-                                                });
+                                                }, ep.name, course.title, mosqueData.name || "مركز التحفيظ");
                                                 openPrintPreview({ title: "شهادة", contentHtml: certHtml });
                                               }}>
                                               <Printer className="w-3 h-3" />شهادة

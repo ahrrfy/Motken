@@ -10,14 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Phone, Loader2, Camera, MessageCircle, X, Layers, ArrowUpCircle } from "lucide-react";
 import { DataTableToolbar } from "@/components/data-table-toolbar";
+import type { ColumnDef } from "@/components/data-table-toolbar";
 import LinkedAccountsBadge from "@/components/LinkedAccountsBadge";
 import { isValidPhone, getWhatsAppUrl, usePhoneValidation, phoneInputClassName } from "@/lib/phone-utils";
 import { InternationalPhoneInput } from "@/components/international-phone-input";
 import { useAuth } from "@/lib/auth-context";
 import { usePrintPreview } from "@/lib/print-context";
 import { useToast } from "@/hooks/use-toast";
-import { DataTableToolbar } from "@/components/data-table-toolbar";
-import type { ColumnDef } from "@/components/data-table-toolbar";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
