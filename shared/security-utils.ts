@@ -89,7 +89,9 @@ export function validateDate(value: any, fieldName: string): { valid: boolean; e
 
 export function sanitizeImageUrl(url: any): string | null {
   if (!url || typeof url !== "string") return null;
-  if (url.length > 5000) return null;
+  // الصور base64 قد تكون كبيرة (~375KB)، الحد 500KB
+  if (url.startsWith("data:image/") && url.length > 500000) return null;
+  if (!url.startsWith("data:image/") && url.length > 5000) return null;
   if (url.startsWith("data:image/")) return url;
   if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/")) return url;
   return null;

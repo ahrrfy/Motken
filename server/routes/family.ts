@@ -104,17 +104,43 @@ export function registerFamilyRoutes(app: Express) {
         }
       }
       const links = await storage.getFamilyLinksByParentPhone(phone);
-      if (links.length === 0) {
-        return res.json({ children: [] });
+      const cleanPhone = cleanDigits(phone);
+
+      // البحث أيضاً بحقل parentPhone عند الطلاب مباشرة (بدون الحاجة لإنشاء رابط عائلي)
+      let allStudents: any[];
+      if (currentUser.role === "admin") {
+        allStudents = await storage.getUsersByRole("student");
+      } else {
+        allStudents = currentUser.mosqueId
+          ? (await storage.getUsersByMosque(currentUser.mosqueId)).filter(u => u.role === "student")
+          : [];
       }
-      const filteredLinks = [];
+      const matchedByPhone = allStudents.filter(s => {
+        const sp = cleanDigits(s.parentPhone || "");
+        return sp && (sp === cleanPhone || sp.includes(cleanPhone) || cleanPhone.includes(sp));
+      });
+
+      // دمج الطلاب من الروابط العائلية + البحث بالهاتف
+      const studentMap = new Map<string, { student: any; relationship: string }>();
+
       for (const link of links) {
         const student = await storage.getUser(link.studentId);
         if (!student) continue;
         if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId) continue;
-        filteredLinks.push({ link, student });
+        studentMap.set(student.id, { student, relationship: link.relationship });
       }
-      const children = await Promise.all(filteredLinks.map(async ({ link, student }) => {
+
+      for (const student of matchedByPhone) {
+        if (!studentMap.has(student.id)) {
+          studentMap.set(student.id, { student, relationship: "ابن/ابنة" });
+        }
+      }
+
+      if (studentMap.size === 0) {
+        return res.json({ children: [] });
+      }
+
+      const children = await Promise.all(Array.from(studentMap.values()).map(async ({ student, relationship }) => {
         const [studentAssignments, studentAttendance, studentPoints] = await Promise.all([
           storage.getAssignmentsByStudent(student.id),
           storage.getAttendanceByStudent(student.id),
@@ -127,7 +153,7 @@ export function registerFamilyRoutes(app: Express) {
         const totalPoints = studentPoints.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
         return {
           id: student.id, studentName: student.name, name: student.name, level: student.level,
-          relationship: link.relationship,
+          relationship,
           attendance: presentCount, points: totalPoints, assignments: completedAssignments,
           stats: { totalAssignments, completedAssignments, avgGrade: Math.round(avgGrade) },
         };

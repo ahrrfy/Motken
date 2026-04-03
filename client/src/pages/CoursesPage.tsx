@@ -1155,7 +1155,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
     const { certHtml, theme, decorations } = buildCertificateHtml(cert, courseName, studentName, studentId);
     const styles = getCertificateStyles(theme, decorations);
     const contentHtml = `<style>${styles}</style><div class="cert-area">${certHtml}</div>`;
-    openPrintPreview({ title: `شهادة إتمام - ${studentName}`, contentHtml, orientation: "landscape" });
+    openPrintPreview({ title: `شهادة إتمام - ${studentName}`, contentHtml, orientation: "landscape", showHeader: false, showFooter: false });
   };
 
   const printAllCertificates = (course: CourseData) => {
@@ -1933,7 +1933,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
                                                   theme: getCertificateTheme("children"),
                                                   decorations: getTemplateDecorations("children"),
                                                 }, ep.name, course.title, mosqueData.name || "مركز التحفيظ");
-                                                openPrintPreview({ title: "شهادة", contentHtml: certHtml });
+                                                openPrintPreview({ title: "شهادة", contentHtml: certHtml, orientation: "landscape", showHeader: false, showFooter: false });
                                               }}>
                                               <Printer className="w-3 h-3" />شهادة
                                             </Button>
