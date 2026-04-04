@@ -356,6 +356,7 @@ export default function LibraryPage() {
   }, []);
 
   const isAdmin = user?.role === "admin";
+  const canManageLibrary = user?.role === "admin" || user?.role === "supervisor";
 
   const openEditBook = (book: BookItem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -792,54 +793,63 @@ export default function LibraryPage() {
             className="group hover:shadow-lg transition-all duration-300 border-primary/10 hover:border-primary/30 flex flex-col cursor-pointer"
             onClick={() => openBook(book)}
           >
-            <CardHeader className="pb-3 relative flex-shrink-0">
-              <div className="absolute top-4 left-4 flex gap-1">
-                {book.featured && (
-                  <Badge variant="default" className="bg-accent text-accent-foreground" data-testid={`badge-featured-${book.id}`}>مميز</Badge>
-                )}
-                {book.isCustom && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" data-testid={`badge-custom-${book.id}`}>مضاف</Badge>
-                )}
-              </div>
-              <div className="absolute top-4 right-4 flex gap-1">
-                <button
-                  data-testid={`button-bookmark-${book.id}`}
-                  onClick={(e) => toggleBookmark(book.id, e)}
-                  className="p-1 rounded-full hover:bg-muted transition-colors"
-                >
-                  <Heart className={`w-4 h-4 ${bookmarks.includes(book.id) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
-                </button>
-                {book.isCustom && canDelete(book) && (
-                  <button
-                    data-testid={`button-delete-${book.id}`}
-                    onClick={(e) => handleDeleteCustomBook(book.id, e)}
-                    className="p-1 rounded-full hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-                {isAdmin && (
-                  <>
-                    <button
-                      onClick={(e) => openEditBook(book, e)}
-                      className="p-1 rounded-full hover:bg-blue-100 transition-colors text-muted-foreground hover:text-blue-600"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    {!book.isCustom && (
-                      <button
-                        onClick={(e) => handleHideBook(book.id, e)}
-                        className="p-1 rounded-full hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+            <CardHeader className="pb-3 flex-shrink-0">
+              {/* صف الأيقونة + الشارات + الأزرار */}
+              <div className="flex items-start justify-between mb-3">
+                {/* أيقونة الكتاب + الشارات */}
+                <div className="flex items-center gap-2">
+                  <div className="w-14 h-14 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300 relative overflow-hidden shrink-0" style={{ background: book.isCustom ? "linear-gradient(135deg, #2d5a8a, #3d7aaf)" : "linear-gradient(135deg, #1a5e3a, #2d7a4f)" }}>
+                    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "repeating-conic-gradient(#c8a45e 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }} />
+                    <Book className="w-7 h-7 text-[#c8a45e] relative z-10" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {book.featured && (
+                      <Badge variant="default" className="bg-accent text-accent-foreground text-xs" data-testid={`badge-featured-${book.id}`}>مميز</Badge>
                     )}
-                  </>
-                )}
-              </div>
-              <div className="w-16 h-16 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 relative overflow-hidden" style={{ background: book.isCustom ? "linear-gradient(135deg, #2d5a8a, #3d7aaf)" : "linear-gradient(135deg, #1a5e3a, #2d7a4f)" }}>
-                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "repeating-conic-gradient(#c8a45e 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }} />
-                <Book className="w-8 h-8 text-[#c8a45e] relative z-10" />
+                    {book.isCustom && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs" data-testid={`badge-custom-${book.id}`}>مضاف</Badge>
+                    )}
+                  </div>
+                </div>
+                {/* أزرار التحكم */}
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    data-testid={`button-bookmark-${book.id}`}
+                    onClick={(e) => toggleBookmark(book.id, e)}
+                    className="p-1.5 rounded-full hover:bg-muted transition-colors"
+                  >
+                    <Heart className={`w-4 h-4 ${bookmarks.includes(book.id) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+                  </button>
+                  {book.isCustom && canDelete(book) && (
+                    <button
+                      data-testid={`button-delete-${book.id}`}
+                      onClick={(e) => handleDeleteCustomBook(book.id, e)}
+                      className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  {canManageLibrary && (
+                    <>
+                      <button
+                        onClick={(e) => openEditBook(book, e)}
+                        className="p-1.5 rounded-full hover:bg-blue-100 transition-colors text-muted-foreground hover:text-blue-600"
+                        title="تعديل"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      {!book.isCustom && (
+                        <button
+                          onClick={(e) => handleHideBook(book.id, e)}
+                          className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                          title="حذف"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               <CardTitle className="font-serif text-xl leading-tight" data-testid={`text-book-title-${book.id}`}>{book.title}</CardTitle>
               <CardDescription data-testid={`text-book-author-${book.id}`}>{book.author}</CardDescription>
