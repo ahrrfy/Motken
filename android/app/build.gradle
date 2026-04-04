@@ -19,9 +19,9 @@ android {
     signingConfigs {
         release {
             storeFile file('../motken-release.keystore')
-            storePassword 'motken2026'
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
             keyAlias 'motken'
-            keyPassword 'motken2026'
+            keyPassword System.getenv("KEY_PASSWORD") ?: ""
         }
     }
     buildTypes {

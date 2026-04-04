@@ -18,6 +18,16 @@ vite.config.ts.*
 .local/
 .config/
 
+# Android keystore & signing
+android/*.keystore
+android/*.jks
+
+# Attached assets (personal images & old files)
+attached_assets/
+
+# Replit config
+.replit
+
 # Agent-generated files (must never be committed)
 .claude/fix-log*
 .claude/.fix-tracker
