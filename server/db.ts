@@ -205,6 +205,10 @@ export async function createIndexes() {
     `CREATE INDEX IF NOT EXISTS idx_ext_participants_course ON external_participants(course_id)`,
     `CREATE INDEX IF NOT EXISTS idx_ext_participants_mosque ON external_participants(mosque_id)`,
     `CREATE INDEX IF NOT EXISTS idx_ext_participants_phone ON external_participants(phone) WHERE phone IS NOT NULL`,
+    // v3.1 — حقول مساعد المدير واستثناءات الأساتذة
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_permissions JSONB DEFAULT '{}'`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_assistant_admin BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS assistant_permissions JSONB DEFAULT '{}'`,
   ];
 
   let created = 0;
