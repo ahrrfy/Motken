@@ -7,6 +7,6 @@ export * from "./tracking";
 export * from "./communication";
 export * from "./gamification";
 export * from "./management";
-export * from "./knowledge";
+
 export * from "./graduates";
 export * from "./system";
