@@ -36,6 +36,9 @@ export const users = pgTable("users", {
   suspendedUntil: timestamp("suspended_until"),
   studyMode: text("study_mode").notNull().default("in-person"),
   supervisorPermissions: jsonb("supervisor_permissions").default({}),
+  teacherPermissions: jsonb("teacher_permissions").default({}),
+  isAssistantAdmin: boolean("is_assistant_admin").notNull().default(false),
+  assistantPermissions: jsonb("assistant_permissions").default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_users_mosque_id").on(table.mosqueId),

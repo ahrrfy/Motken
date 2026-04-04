@@ -60,6 +60,26 @@ export default function ActivityLogsPage() {
     setFilterDateTo("");
   };
 
+  const moduleLabels: Record<string, string> = {
+    assignments: "الواجبات",
+    messages: "الرسائل",
+    points: "النقاط",
+    courses: "الدورات",
+    attendance: "الحضور",
+    privacy: "الخصوصية",
+    exams: "الامتحانات",
+    ratings: "التقييمات",
+    students: "الطلاب",
+    users: "المستخدمين",
+    mosques: "الجوامع",
+    settings: "الإعدادات",
+    auth: "المصادقة",
+    certificates: "الشهادات",
+    competitions: "المسابقات",
+    notifications: "الإشعارات",
+  };
+  const getModuleLabel = (mod: string) => moduleLabels[mod] || mod;
+
   const uniqueModules = Array.from(new Set(logs.map(l => l.module)));
   const uniqueActions = Array.from(new Set(logs.map(l => l.action)));
 
@@ -110,7 +130,7 @@ export default function ActivityLogsPage() {
                       <td>${i + 1}</td>
                       <td>${log.userName}</td>
                       <td>${log.action}</td>
-                      <td>${log.module}</td>
+                      <td>${getModuleLabel(log.module)}</td>
                       <td>${log.status === "success" ? "ناجح" : "فشل"}</td>
                       <td>${formatDate(log.createdAt)}</td>
                     </tr>
@@ -169,7 +189,7 @@ export default function ActivityLogsPage() {
                 <SelectContent>
                   <SelectItem value="all">القسم - الكل</SelectItem>
                   {uniqueModules.map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                    <SelectItem key={m} value={m}>{getModuleLabel(m)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -243,7 +263,7 @@ export default function ActivityLogsPage() {
                       <TableCell className="font-bold" data-testid={`text-user-${log.id}`}>{log.userName}</TableCell>
                       <TableCell>{log.action}</TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline" className="bg-slate-100">{log.module}</Badge>
+                        <Badge variant="outline" className="bg-slate-100">{getModuleLabel(log.module)}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{log.details || "—"}</TableCell>
                       <TableCell className="font-mono text-xs hidden lg:table-cell">{log.ipAddress || "—"}</TableCell>

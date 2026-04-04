@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Printer, Users, CreditCard, Loader2, FileDown, ChevronDown, Image } from "lucide-react";
+import { Printer, Users, CreditCard, Loader2, FileDown, ChevronDown, Image, Building2, Eye } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface UserData {
   id: string;
@@ -323,6 +325,8 @@ export default function IDCardsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [filterRole, setFilterRole] = useState<string>("all");
+  const [selectedMosqueId, setSelectedMosqueId] = useState<string>("");
+  const [previewUser, setPreviewUser] = useState<UserData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -351,14 +355,18 @@ export default function IDCardsPage() {
   const getMosqueName = (mosqueId?: string | null) => mosqueId ? (mosqueMap.get(mosqueId)?.name || "") : "";
   const getMosqueImage = (mosqueId?: string | null) => mosqueId ? (mosqueMap.get(mosqueId)?.image || "") : "";
 
+  const mosqueFilteredUsers = selectedMosqueId
+    ? users.filter((u) => u.mosqueId === selectedMosqueId)
+    : users;
+
   const groupedUsers = {
-    student: users.filter((u) => u.role === "student"),
-    teacher: users.filter((u) => u.role === "teacher"),
-    supervisor: users.filter((u) => u.role === "supervisor"),
-    admin: users.filter((u) => u.role === "admin"),
+    student: mosqueFilteredUsers.filter((u) => u.role === "student"),
+    teacher: mosqueFilteredUsers.filter((u) => u.role === "teacher"),
+    supervisor: mosqueFilteredUsers.filter((u) => u.role === "supervisor"),
+    admin: mosqueFilteredUsers.filter((u) => u.role === "admin"),
   };
 
-  const filteredUsers = filterRole === "all" ? users : users.filter((u) => u.role === filterRole);
+  const filteredUsers = filterRole === "all" ? mosqueFilteredUsers : mosqueFilteredUsers.filter((u) => u.role === filterRole);
 
   const toggleUser = (id: string) => {
     setSelectedUserIds((prev) => {
@@ -434,6 +442,12 @@ export default function IDCardsPage() {
     win.document.close();
   };
 
+  // Reset selection when mosque changes
+  const handleMosqueChange = (val: string) => {
+    setSelectedMosqueId(val === "all" ? "" : val);
+    setSelectedUserIds(new Set());
+  };
+
   const [exporting, setExporting] = useState(false);
 
   const handlePngExport = async () => {
@@ -480,52 +494,91 @@ export default function IDCardsPage() {
           </h1>
           <p className="text-muted-foreground mt-1">طباعة بطاقات التعريف والـ QR Code</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-          <Select value={filterRole} onValueChange={setFilterRole} data-testid="select-filter-role">
-            <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-filter-role-trigger">
-              <SelectValue placeholder="تصفية حسب الدور" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">الكل</SelectItem>
-              <SelectItem value="student">طلاب</SelectItem>
-              <SelectItem value="teacher">أساتذة</SelectItem>
-              <SelectItem value="supervisor">مشرفين</SelectItem>
-              <SelectItem value="admin">مدراء</SelectItem>
-            </SelectContent>
-          </Select>
+      </div>
+
+      {/* اختيار المسجد/المركز أولاً */}
+      <Card className="print:hidden">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex items-center gap-2 shrink-0">
+              <Building2 className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-sm">اختر الجامع/المركز:</span>
+            </div>
+            <SearchableSelect
+              options={[
+                { value: "all", label: "جميع الجوامع والمراكز" },
+                ...mosques.map((m) => ({ value: m.id, label: m.name })),
+              ]}
+              value={selectedMosqueId || "all"}
+              onValueChange={handleMosqueChange}
+              placeholder="اختر الجامع أو المركز"
+              searchPlaceholder="ابحث عن جامع..."
+              emptyText="لا يوجد جامع بهذا الاسم"
+              triggerClassName="w-full sm:w-[280px]"
+              data-testid="select-mosque-idcards"
+            />
+            <div className="flex flex-wrap gap-2 sm:mr-auto">
+              <Select value={filterRole} onValueChange={setFilterRole} data-testid="select-filter-role">
+                <SelectTrigger className="w-[140px]" data-testid="select-filter-role-trigger">
+                  <SelectValue placeholder="تصفية حسب الدور" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="student">طلاب</SelectItem>
+                  <SelectItem value="teacher">أساتذة</SelectItem>
+                  <SelectItem value="supervisor">مشرفين</SelectItem>
+                  <SelectItem value="admin">مدراء</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* شريط الأدوات */}
+      <div className="flex flex-wrap gap-2 print:hidden">
+        <Button
+          onClick={() => handlePrint()}
+          className="bg-primary hover:bg-primary/90"
+          disabled={selectedUsers.length === 0}
+          data-testid="button-print-idcard"
+        >
+          <Printer className="w-4 h-4 ml-2" />
+          طباعة ({selectedUsers.length})
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" disabled={selectedUsers.length === 0 || exporting} data-testid="button-export-pdf">
+              {exporting ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <FileDown className="w-4 h-4 ml-2" />}
+              {exporting ? "جاري التصدير..." : "تصدير"}
+              <ChevronDown className="w-3 h-3 mr-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleIndividualExport} data-testid="menu-export-individual">
+              <FileDown className="w-4 h-4 ml-2" />
+              تصدير PDF منفرد
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleBatchExport} data-testid="menu-export-batch">
+              <FileDown className="w-4 h-4 ml-2" />
+              تصدير PDF مجمع
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handlePngExport} data-testid="menu-export-png">
+              <Image className="w-4 h-4 ml-2" />
+              تصدير PNG (300 نقطة)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {selectedUsers.length > 0 && selectedUsers.length <= 4 && (
           <Button
-            onClick={() => handlePrint()}
-            className="bg-primary hover:bg-primary/90"
-            disabled={selectedUsers.length === 0}
-            data-testid="button-print-idcard"
+            variant="outline"
+            onClick={() => setPreviewUser(selectedUsers[0])}
+            data-testid="button-preview-card"
           >
-            <Printer className="w-4 h-4 ml-2" />
-            طباعة ({selectedUsers.length})
+            <Eye className="w-4 h-4 ml-2" />
+            معاينة حية
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={selectedUsers.length === 0 || exporting} data-testid="button-export-pdf">
-                {exporting ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <FileDown className="w-4 h-4 ml-2" />}
-                {exporting ? "جاري التصدير..." : "تصدير"}
-                <ChevronDown className="w-3 h-3 mr-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleIndividualExport} data-testid="menu-export-individual">
-                <FileDown className="w-4 h-4 ml-2" />
-                تصدير PDF منفرد
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleBatchExport} data-testid="menu-export-batch">
-                <FileDown className="w-4 h-4 ml-2" />
-                تصدير PDF مجمع
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handlePngExport} data-testid="menu-export-png">
-                <Image className="w-4 h-4 ml-2" />
-                تصدير PNG (300 نقطة)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        )}
       </div>
 
       {users.length === 0 ? (
@@ -628,6 +681,58 @@ export default function IDCardsPage() {
           )}
         </>
       )}
+
+      {/* نافذة المعاينة الحية */}
+      <Dialog open={!!previewUser} onOpenChange={(open) => !open && setPreviewUser(null)}>
+        <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="p-4 pb-2">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-primary" />
+              معاينة البطاقة
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center p-4 pt-0 bg-gray-50">
+            {previewUser && (
+              <IDCard
+                user={previewUser}
+                mosqueName={getMosqueName(previewUser.mosqueId)}
+                mosqueImage={getMosqueImage(previewUser.mosqueId) || undefined}
+              />
+            )}
+          </div>
+          <div className="flex gap-2 p-4 pt-2 border-t justify-center">
+            {selectedUsers.length > 1 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const idx = selectedUsers.findIndex(u => u.id === previewUser?.id);
+                    const prev = idx > 0 ? selectedUsers[idx - 1] : selectedUsers[selectedUsers.length - 1];
+                    setPreviewUser(prev);
+                  }}
+                >
+                  السابق
+                </Button>
+                <span className="text-sm text-muted-foreground self-center">
+                  {selectedUsers.findIndex(u => u.id === previewUser?.id) + 1} / {selectedUsers.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const idx = selectedUsers.findIndex(u => u.id === previewUser?.id);
+                    const next = idx < selectedUsers.length - 1 ? selectedUsers[idx + 1] : selectedUsers[0];
+                    setPreviewUser(next);
+                  }}
+                >
+                  التالي
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
