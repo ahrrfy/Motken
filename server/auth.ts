@@ -250,7 +250,9 @@ export function setupAuth(app: Express) {
       const mosque = await storage.getMosque(req.user!.mosqueId);
       mosqueName = mosque?.name || null;
     }
-    res.json({ ...safeUser, mosqueName });
+    const previewRole = (req.session as any).previewRole || null;
+    const originalRole = (req.session as any).originalRole || null;
+    res.json({ ...safeUser, mosqueName, previewRole, originalRole });
   });
 
 }

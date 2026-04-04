@@ -54,6 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(data => {
         if (data && !data.message) {
           setUser(data);
+          // استعادة حالة المعاينة من السيرفر بعد reload
+          if (data.previewRole) {
+            setPreviewRole(data.previewRole);
+          }
         }
       })
       .catch(() => {})

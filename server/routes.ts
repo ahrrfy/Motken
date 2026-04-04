@@ -42,10 +42,19 @@ export async function registerRoutes(
   setupSwagger(app);
 
   // Role preview middleware — temporarily change role for admin preview
-  app.use((req: any, _res: any, next: any) => {
+  app.use(async (req: any, _res: any, next: any) => {
     if (req.user && (req.session as any).previewRole) {
       (req.user as any).role = (req.session as any).previewRole;
       (req.user as any).actualRole = (req.session as any).originalRole || "admin";
+      // إذا المدير ليس لديه مسجد، نعيّن أول مسجد متاح للمعاينة
+      if (!req.user.mosqueId) {
+        try {
+          const mosques = await storage.getMosques();
+          if (mosques.length > 0) {
+            (req.user as any).mosqueId = mosques[0].id;
+          }
+        } catch {}
+      }
     }
     next();
   });
