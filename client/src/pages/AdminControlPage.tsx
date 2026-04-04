@@ -11,15 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users, Building2, Wifi, CheckCircle, Shield, Activity,
-  Clock, ChevronRight, LayoutGrid, AlertCircle, Loader2,
+  Clock, LayoutGrid, AlertCircle, Loader2,
   LogOut, Ban, UserCheck, UserX, RefreshCw, Eye,
   ShieldCheck, KeyRound, UserCog, Settings2, Crown,
   TrendingUp, BookOpen, AlertTriangle, Zap, Lock,
+  Search, Trash2, Edit, UserPlus, Power, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 
 // ===================== الأنواع =====================
@@ -37,12 +38,17 @@ interface Stats {
 interface SessionInfo {
   sessionId: string;
   userId: string;
-  userName: string;
-  userRole: string;
-  mosqueName?: string;
-  ip?: string;
-  lastActivity?: string;
-  createdAt?: string;
+  username: string;
+  name: string;
+  role: string;
+  mosqueId?: string | null;
+  ipAddress: string;
+  deviceInfo?: string;
+  browser?: string;
+  os?: string;
+  isOnline?: boolean;
+  lastActivity: number;
+  loginTime: number;
 }
 
 interface PendingUser {
@@ -51,6 +57,7 @@ interface PendingUser {
   username: string;
   role: string;
   mosqueId?: string;
+  phone?: string;
   createdAt: string;
 }
 
@@ -72,6 +79,7 @@ interface ActivityLog {
   userName: string;
   action: string;
   module: string;
+  details?: string | null;
   status: string;
   createdAt: string;
 }
@@ -81,30 +89,41 @@ interface UserInfo {
   name: string;
   username: string;
   role: string;
-  mosqueId?: string;
+  mosqueId?: string | null;
+  phone?: string;
   isActive: boolean;
   isAssistantAdmin?: boolean;
   assistantPermissions?: Record<string, boolean>;
   supervisorPermissions?: Record<string, boolean>;
   teacherPermissions?: Record<string, boolean>;
+  createdAt?: string;
 }
 
-// ===================== ثوابت الصلاحيات =====================
+interface FeatureFlag {
+  id: string;
+  featureKey: string;
+  featureName: string;
+  description: string | null;
+  category: string;
+  isEnabled: boolean;
+}
 
-const ASSISTANT_PERMISSIONS = [
-  { key: "manage_users", label: "إدارة المستخدمين", icon: Users, desc: "إضافة وتعديل وحذف المستخدمين" },
-  { key: "approve_users", label: "الموافقة على الطلبات", icon: UserCheck, desc: "قبول ورفض طلبات التسجيل" },
-  { key: "manage_mosques", label: "إدارة الجوامع", icon: Building2, desc: "إضافة وتعديل الجوامع والمراكز" },
-  { key: "view_reports", label: "عرض التقارير", icon: TrendingUp, desc: "الاطلاع على جميع التقارير" },
-  { key: "manage_features", label: "التحكم بالمميزات", icon: Shield, desc: "تفعيل وتعطيل المميزات" },
-  { key: "view_activity_logs", label: "سجل الحركات", icon: Activity, desc: "مراجعة جميع العمليات" },
-  { key: "manage_sessions", label: "إدارة الجلسات", icon: LogOut, desc: "طرد المستخدمين وإدارة الجلسات" },
-  { key: "system_backup", label: "النسخ الاحتياطي", icon: KeyRound, desc: "إنشاء واستعادة النسخ" },
-  { key: "manage_permissions", label: "إدارة الصلاحيات", icon: ShieldCheck, desc: "تعديل صلاحيات المشرفين" },
-  { key: "send_notifications", label: "الإشعارات الجماعية", icon: Zap, desc: "إرسال إشعارات لجميع المستخدمين" },
+// ===================== ثوابت =====================
+
+const ASSISTANT_PERMS = [
+  { key: "manage_users", label: "إدارة المستخدمين" },
+  { key: "approve_users", label: "الموافقة على الطلبات" },
+  { key: "manage_mosques", label: "إدارة الجوامع" },
+  { key: "view_reports", label: "عرض التقارير" },
+  { key: "manage_features", label: "التحكم بالمميزات" },
+  { key: "view_activity_logs", label: "سجل الحركات" },
+  { key: "manage_sessions", label: "إدارة الجلسات" },
+  { key: "system_backup", label: "النسخ الاحتياطي" },
+  { key: "manage_permissions", label: "إدارة الصلاحيات" },
+  { key: "send_notifications", label: "الإشعارات الجماعية" },
 ];
 
-const SUPERVISOR_PERMISSIONS = [
+const SUPERVISOR_PERMS = [
   { key: "manage_students", label: "إدارة الطلاب" },
   { key: "manage_teachers", label: "إدارة الأساتذة" },
   { key: "manage_assignments", label: "إدارة الواجبات" },
@@ -117,25 +136,23 @@ const SUPERVISOR_PERMISSIONS = [
   { key: "approve_users", label: "الموافقة على المستخدمين" },
 ];
 
-const TEACHER_PERMISSIONS = [
+const TEACHER_PERMS = [
   { key: "create_students", label: "إنشاء طلاب جدد" },
   { key: "edit_students", label: "تعديل بيانات الطلاب" },
   { key: "delete_assignments", label: "حذف واجبات" },
   { key: "view_all_students", label: "رؤية كل طلاب المسجد" },
-  { key: "manage_attendance", label: "تسجيل حضور لكل الطلاب" },
+  { key: "manage_attendance", label: "حضور لكل الطلاب" },
   { key: "export_data", label: "تصدير بيانات" },
 ];
 
-const SUPERVISOR_TEMPLATES: Record<string, { label: string; permissions: Record<string, boolean> }> = {
-  full: { label: "مشرف كامل الصلاحيات", permissions: Object.fromEntries(SUPERVISOR_PERMISSIONS.map(p => [p.key, true])) },
-  limited: { label: "مشرف محدود (عرض فقط)", permissions: Object.fromEntries(SUPERVISOR_PERMISSIONS.map(p => [p.key, p.key === "view_reports"])) },
-  academic: { label: "مشرف أكاديمي", permissions: { manage_students: true, manage_assignments: true, view_reports: true, manage_attendance: true, manage_courses: true, manage_teachers: false, print_ids: false, send_messages: true, export_data: true, approve_users: false } },
+const SUP_TEMPLATES: Record<string, Record<string, boolean>> = {
+  full: Object.fromEntries(SUPERVISOR_PERMS.map(p => [p.key, true])),
+  limited: Object.fromEntries(SUPERVISOR_PERMS.map(p => [p.key, p.key === "view_reports"])),
+  academic: { manage_students: true, manage_assignments: true, view_reports: true, manage_attendance: true, manage_courses: true, send_messages: true, export_data: true, manage_teachers: false, print_ids: false, approve_users: false },
 };
 
-// ===================== المساعدات =====================
-
-const roleLabels: Record<string, string> = { admin: "مدير النظام", admin_assistant: "مساعد المدير", supervisor: "مشرف", teacher: "أستاذ", student: "طالب", parent: "ولي أمر" };
-const roleColors: Record<string, string> = { admin: "bg-red-100 text-red-700", admin_assistant: "bg-purple-100 text-purple-700", supervisor: "bg-blue-100 text-blue-700", teacher: "bg-emerald-100 text-emerald-700", student: "bg-sky-100 text-sky-700", parent: "bg-amber-100 text-amber-700" };
+const roleLabels: Record<string, string> = { admin: "مدير", supervisor: "مشرف", teacher: "أستاذ", student: "طالب", parent: "ولي أمر" };
+const roleBg: Record<string, string> = { admin: "bg-red-100 text-red-700", supervisor: "bg-blue-100 text-blue-700", teacher: "bg-emerald-100 text-emerald-700", student: "bg-sky-100 text-sky-700", parent: "bg-amber-100 text-amber-700" };
 
 const moduleLabels: Record<string, string> = {
   assignments: "الواجبات", messages: "الرسائل", points: "النقاط", courses: "الدورات",
@@ -143,16 +160,16 @@ const moduleLabels: Record<string, string> = {
   mosques: "الجوامع", settings: "الإعدادات", certificates: "الشهادات",
 };
 
-function formatTime(dateStr: string) {
+function timeAgo(d: string) {
   try {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const m = Math.floor(diff / 60000);
+    const ms = Date.now() - new Date(d).getTime();
+    const m = Math.floor(ms / 60000);
     if (m < 1) return "الآن";
-    if (m < 60) return `منذ ${m} د`;
+    if (m < 60) return `${m} د`;
     const h = Math.floor(m / 60);
-    if (h < 24) return `منذ ${h} س`;
-    return `منذ ${Math.floor(h / 24)} يوم`;
-  } catch { return dateStr; }
+    if (h < 24) return `${h} س`;
+    return `${Math.floor(h / 24)} يوم`;
+  } catch { return d; }
 }
 
 // ===================== المكون الرئيسي =====================
@@ -160,351 +177,464 @@ function formatTime(dateStr: string) {
 export default function AdminControlPage() {
   const { user: authUser } = useAuth();
   const { toast } = useToast();
+
+  // البيانات
   const [stats, setStats] = useState<Stats | null>(null);
   const [onlineCount, setOnlineCount] = useState(0);
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
-  const [enabledFeatures, setEnabledFeatures] = useState(0);
-  const [totalFeatures, setTotalFeatures] = useState(0);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [mosques, setMosques] = useState<MosqueInfo[]>([]);
   const [mosqueHealth, setMosqueHealth] = useState<Record<string, MosqueHealth>>({});
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [allUsers, setAllUsers] = useState<UserInfo[]>([]);
+  const [features, setFeatures] = useState<FeatureFlag[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  // حالة نوافذ الصلاحيات
+  // فلاتر المستخدمين
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [userMosqueFilter, setUserMosqueFilter] = useState("all");
+
+  // نوافذ
   const [permDialogOpen, setPermDialogOpen] = useState(false);
-  const [permDialogType, setPermDialogType] = useState<"assistant" | "supervisor" | "teacher">("assistant");
+  const [permType, setPermType] = useState<"assistant" | "supervisor" | "teacher">("supervisor");
   const [permUser, setPermUser] = useState<UserInfo | null>(null);
   const [permValues, setPermValues] = useState<Record<string, boolean>>({});
-  const [allUsers, setAllUsers] = useState<UserInfo[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-
-  // حالة الموافقات
-  const [rejectReason, setRejectReason] = useState("");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectUserId, setRejectUserId] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<"reset_passwords" | "toggle_active" | "move">("reset_passwords");
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [bulkMosqueTarget, setBulkMosqueTarget] = useState("");
 
-  // جلب البيانات
-  const fetchData = useCallback(async () => {
+  // ===================== جلب البيانات =====================
+
+  const fetchAll = useCallback(async () => {
     try {
-      const [statsRes, onlineRes, pendingRes, flagsRes, logsRes, mosquesRes, sessionsRes] = await Promise.all([
+      const [s, o, p, l, m, ss, u, f] = await Promise.all([
         fetch("/api/stats", { credentials: "include" }).then(r => r.ok ? r.json() : null),
         fetch("/api/admin/online-count", { credentials: "include" }).then(r => r.ok ? r.json() : null),
         fetch("/api/users/pending-approval", { credentials: "include" }).then(r => r.ok ? r.json() : []),
-        fetch("/api/feature-flags", { credentials: "include" }).then(r => r.ok ? r.json() : []),
-        fetch("/api/activity-logs?limit=30", { credentials: "include" }).then(r => r.ok ? r.json() : []),
+        fetch("/api/activity-logs?limit=50", { credentials: "include" }).then(r => r.ok ? r.json() : []),
         fetch("/api/mosques", { credentials: "include" }).then(r => r.ok ? r.json() : []),
         fetch("/api/admin/sessions", { credentials: "include" }).then(r => r.ok ? r.json() : []),
+        fetch("/api/users", { credentials: "include" }).then(r => r.ok ? r.json() : []),
+        fetch("/api/feature-flags", { credentials: "include" }).then(r => r.ok ? r.json() : []),
       ]);
-      if (statsRes) setStats(statsRes);
-      if (onlineRes) setOnlineCount(onlineRes.count ?? 0);
-      setPendingUsers(pendingRes);
-      setEnabledFeatures((flagsRes as any[]).filter((f: any) => f.isEnabled).length);
-      setTotalFeatures((flagsRes as any[]).length);
-      setActivityLogs((logsRes as any[]).slice(0, 30));
-      const mosqueData = Array.isArray(mosquesRes) ? mosquesRes : [mosquesRes];
-      setMosques(mosqueData);
-      setSessions(sessionsRes);
+      if (s) setStats(s);
+      if (o) setOnlineCount(o.count ?? 0);
+      setPendingUsers(p);
+      setActivityLogs((l as any[]).slice(0, 50));
+      const md = Array.isArray(m) ? m : [m];
+      setMosques(md);
+      setSessions(ss);
+      setAllUsers(u);
+      setFeatures(f);
       setLastRefresh(new Date());
-
-      // جلب صحة الجوامع
-      if (mosqueData.length > 0) {
-        const healthResults = await Promise.all(
-          mosqueData.slice(0, 15).map((m: MosqueInfo) =>
-            fetch(`/api/mosque-health/${m.id}`, { credentials: "include" })
-              .then(r => r.ok ? r.json() : null)
-              .then(d => d ? [m.id, d] : null)
-              .catch(() => null)
-          )
-        );
-        const map: Record<string, MosqueHealth> = {};
-        healthResults.forEach(r => { if (r) map[r[0]] = r[1]; });
-        setMosqueHealth(map);
+      // صحة الجوامع
+      if (md.length > 0) {
+        Promise.all(md.slice(0, 20).map((mosque: MosqueInfo) =>
+          fetch(`/api/mosque-health/${mosque.id}`, { credentials: "include" }).then(r => r.ok ? r.json() : null).then(d => d ? [mosque.id, d] : null).catch(() => null)
+        )).then(res => {
+          const map: Record<string, MosqueHealth> = {};
+          res.forEach(r => { if (r) map[r[0]] = r[1]; });
+          setMosqueHealth(map);
+        });
       }
-    } catch { } finally { setLoading(false); }
+    } catch {} finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { const i = setInterval(fetchAll, 30000); return () => clearInterval(i); }, [fetchAll]);
 
-  // تحديث تلقائي كل 30 ثانية
-  useEffect(() => {
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  // ===================== الإجراءات =====================
 
-  // جلب المستخدمين عند فتح تبويب الصلاحيات
-  const loadUsers = useCallback(async () => {
-    if (allUsers.length > 0) return;
-    setUsersLoading(true);
-    try {
-      const res = await fetch("/api/users", { credentials: "include" });
-      if (res.ok) setAllUsers(await res.json());
-    } catch { } finally { setUsersLoading(false); }
-  }, [allUsers.length]);
-
-  // إجراءات الجلسات
-  const kickSession = async (sessionId: string) => {
-    const res = await fetch("/api/admin/kick-session", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ sessionId }) });
-    if (res.ok) { toast({ title: "تم طرد الجلسة" }); fetchData(); }
-    else toast({ title: "فشل", variant: "destructive" });
+  const api = async (url: string, method = "POST", body?: any) => {
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, credentials: "include", ...(body ? { body: JSON.stringify(body) } : {}) });
+    return res;
   };
 
-  const kickUser = async (userId: string) => {
-    const res = await fetch("/api/admin/kick-user", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ userId }) });
-    if (res.ok) { toast({ title: "تم طرد جميع جلسات المستخدم" }); fetchData(); }
-    else toast({ title: "فشل", variant: "destructive" });
+  const kickSession = async (sid: string) => { if ((await api("/api/admin/kick-session", "POST", { sessionId: sid })).ok) { toast({ title: "تم طرد الجلسة" }); fetchAll(); } };
+  const kickUser = async (uid: string) => { if ((await api("/api/admin/kick-user", "POST", { userId: uid })).ok) { toast({ title: "تم طرد جميع الجلسات" }); fetchAll(); } };
+  const suspendUser = async (uid: string) => { if ((await api("/api/admin/suspend-user", "POST", { userId: uid })).ok) { toast({ title: "تم إيقاف الحساب" }); fetchAll(); } };
+  const activateUser = async (uid: string) => { if ((await api("/api/admin/activate-user", "POST", { userId: uid })).ok) { toast({ title: "تم تفعيل الحساب" }); fetchAll(); } };
+  const approveUser = async (uid: string) => { if ((await api(`/api/users/${uid}/approve`)).ok) { toast({ title: "تمت الموافقة" }); fetchAll(); } };
+  const rejectUser = async () => { if (!rejectUserId) return; if ((await api(`/api/users/${rejectUserId}/reject`, "POST", { reason: rejectReason })).ok) { toast({ title: "تم الرفض" }); setRejectDialogOpen(false); setRejectReason(""); fetchAll(); } };
+
+  const toggleFeature = async (f: FeatureFlag) => {
+    const res = await api(`/api/feature-flags/${f.id}`, "PATCH", { isEnabled: !f.isEnabled });
+    if (res.ok) { setFeatures(prev => prev.map(ff => ff.id === f.id ? { ...ff, isEnabled: !ff.isEnabled } : ff)); toast({ title: `تم ${!f.isEnabled ? "تفعيل" : "تعطيل"} ${f.featureName}` }); }
   };
 
-  const suspendUser = async (userId: string) => {
-    const res = await fetch("/api/admin/suspend-user", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ userId }) });
-    if (res.ok) { toast({ title: "تم إيقاف الحساب" }); fetchData(); }
-    else toast({ title: "فشل", variant: "destructive" });
+  const deleteUser = async (uid: string) => { if ((await api(`/api/users/${uid}`, "DELETE")).ok) { toast({ title: "تم حذف المستخدم" }); fetchAll(); } };
+
+  const toggleUserActive = async (u: UserInfo) => {
+    const res = await api(`/api/users/${u.id}`, "PATCH", { isActive: !u.isActive });
+    if (res.ok) { toast({ title: u.isActive ? "تم تعطيل الحساب" : "تم تفعيل الحساب" }); fetchAll(); }
   };
 
-  // موافقة/رفض
-  const approveUser = async (userId: string) => {
-    const res = await fetch(`/api/users/${userId}/approve`, { method: "POST", credentials: "include" });
-    if (res.ok) { toast({ title: "تمت الموافقة" }); fetchData(); }
-    else toast({ title: "فشل", variant: "destructive" });
-  };
-
-  const rejectUser = async () => {
-    if (!rejectUserId) return;
-    const res = await fetch(`/api/users/${rejectUserId}/reject`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ reason: rejectReason }) });
-    if (res.ok) { toast({ title: "تم الرفض" }); setRejectDialogOpen(false); setRejectReason(""); fetchData(); }
-    else toast({ title: "فشل", variant: "destructive" });
-  };
-
-  // فتح نافذة الصلاحيات
-  const openPermDialog = (user: UserInfo, type: "assistant" | "supervisor" | "teacher") => {
-    setPermUser(user);
-    setPermDialogType(type);
-    const current = type === "assistant" ? (user.assistantPermissions || {})
-      : type === "supervisor" ? (user.supervisorPermissions || {})
-      : (user.teacherPermissions || {});
-    setPermValues(current as Record<string, boolean>);
+  // صلاحيات
+  const openPerms = (u: UserInfo, type: "assistant" | "supervisor" | "teacher") => {
+    setPermUser(u);
+    setPermType(type);
+    const c = type === "assistant" ? (u.assistantPermissions || {}) : type === "supervisor" ? (u.supervisorPermissions || {}) : (u.teacherPermissions || {});
+    setPermValues(c as Record<string, boolean>);
     setPermDialogOpen(true);
   };
 
-  const savePermissions = async () => {
+  const savePerms = async () => {
     if (!permUser) return;
-    const field = permDialogType === "assistant" ? "assistantPermissions"
-      : permDialogType === "supervisor" ? "supervisorPermissions"
-      : "teacherPermissions";
+    const field = permType === "assistant" ? "assistantPermissions" : permType === "supervisor" ? "supervisorPermissions" : "teacherPermissions";
     const body: any = { [field]: permValues };
-    if (permDialogType === "assistant") body.isAssistantAdmin = true;
-
-    const res = await fetch(`/api/users/${permUser.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
-    if (res.ok) {
+    if (permType === "assistant") body.isAssistantAdmin = true;
+    if ((await api(`/api/users/${permUser.id}`, "PATCH", body)).ok) {
       toast({ title: "تم حفظ الصلاحيات" });
       setPermDialogOpen(false);
-      setAllUsers(prev => prev.map(u => u.id === permUser.id ? { ...u, [field]: permValues, ...(permDialogType === "assistant" ? { isAssistantAdmin: true } : {}) } : u));
-    } else toast({ title: "فشل في الحفظ", variant: "destructive" });
-  };
-
-  const removeAssistant = async (userId: string) => {
-    const res = await fetch(`/api/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ isAssistantAdmin: false, assistantPermissions: {} }) });
-    if (res.ok) {
-      toast({ title: "تم إزالة مساعد المدير" });
-      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, isAssistantAdmin: false, assistantPermissions: {} } : u));
+      setAllUsers(prev => prev.map(u => u.id === permUser.id ? { ...u, [field]: permValues, ...(permType === "assistant" ? { isAssistantAdmin: true } : {}) } : u));
     }
   };
 
-  // الإحصائيات
-  const totalUsers = stats ? stats.totalStudents + stats.totalTeachers + stats.totalSupervisors + 1 : 0;
-  const supervisors = allUsers.filter(u => u.role === "supervisor");
-  const teachers = allUsers.filter(u => u.role === "teacher");
-  const assistants = allUsers.filter(u => u.isAssistantAdmin);
+  const removeAssistant = async (uid: string) => {
+    if ((await api(`/api/users/${uid}`, "PATCH", { isAssistantAdmin: false, assistantPermissions: {} })).ok) {
+      toast({ title: "تم إزالة مساعد المدير" });
+      setAllUsers(prev => prev.map(u => u.id === uid ? { ...u, isAssistantAdmin: false, assistantPermissions: {} } : u));
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]" dir="rtl">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // عمليات جماعية
+  const executeBulk = async () => {
+    if (selectedUserIds.size === 0) return;
+    const ids = Array.from(selectedUserIds);
+    if (bulkAction === "reset_passwords") {
+      let count = 0;
+      for (const id of ids) {
+        const res = await api(`/api/users/${id}`, "PATCH", { password: "123456" });
+        if (res.ok) count++;
+      }
+      toast({ title: `تم إعادة تعيين كلمة المرور لـ ${count} مستخدم (123456)` });
+    } else if (bulkAction === "toggle_active") {
+      let count = 0;
+      for (const id of ids) {
+        const u = allUsers.find(u => u.id === id);
+        if (u) { const res = await api(`/api/users/${id}`, "PATCH", { isActive: !u.isActive }); if (res.ok) count++; }
+      }
+      toast({ title: `تم تغيير حالة ${count} مستخدم` });
+    } else if (bulkAction === "move" && bulkMosqueTarget) {
+      let count = 0;
+      for (const id of ids) {
+        const res = await api(`/api/users/${id}`, "PATCH", { mosqueId: bulkMosqueTarget });
+        if (res.ok) count++;
+      }
+      toast({ title: `تم نقل ${count} مستخدم` });
+    }
+    setBulkDialogOpen(false);
+    setSelectedUserIds(new Set());
+    fetchAll();
+  };
+
+  // ===================== المشتقات =====================
+
+  const totalUsers = stats ? stats.totalStudents + stats.totalTeachers + stats.totalSupervisors + 1 : 0;
+  const enabledFeatures = features.filter(f => f.isEnabled).length;
+  const mosqueMap = new Map(mosques.map(m => [m.id, m.name]));
+
+  const filteredUsers = allUsers.filter(u => {
+    if (userSearch && !u.name.includes(userSearch) && !u.username.includes(userSearch)) return false;
+    if (userRoleFilter !== "all" && u.role !== userRoleFilter) return false;
+    if (userMosqueFilter !== "all" && u.mosqueId !== userMosqueFilter) return false;
+    return true;
+  });
+
+  const toggleSelectUser = (id: string) => {
+    setSelectedUserIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-[60vh]" dir="rtl"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-5 max-w-7xl mx-auto" dir="rtl">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto" dir="rtl">
       {/* العنوان */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
             <Crown className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold font-serif text-primary">لوحة السيطرة الشاملة</h1>
-            <p className="text-xs text-muted-foreground">
-              آخر تحديث: {lastRefresh.toLocaleTimeString("ar-IQ")}
-              <span className="mx-2">|</span>
-              تحديث تلقائي كل 30 ثانية
-            </p>
+            <p className="text-[10px] text-muted-foreground">آخر تحديث: {lastRefresh.toLocaleTimeString("ar-IQ")} — تحديث تلقائي كل 30 ث</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} className="gap-1">
-          <RefreshCw className="w-3.5 h-3.5" />
-          تحديث الآن
-        </Button>
+        <Button variant="outline" size="sm" onClick={fetchAll} className="gap-1"><RefreshCw className="w-3.5 h-3.5" />تحديث</Button>
       </div>
 
-      {/* بطاقات الإحصائيات */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="w-4 h-4 text-blue-600" />
-              <span className="text-xs text-blue-600 font-medium">المستخدمون</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-700">{totalUsers}</p>
-            <div className="flex gap-1 mt-1.5 flex-wrap">
-              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-sky-50 text-sky-700">{stats?.totalStudents ?? 0} طالب</Badge>
-              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-emerald-50 text-emerald-700">{stats?.totalTeachers ?? 0} أستاذ</Badge>
-              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-violet-50 text-violet-700">{stats?.totalSupervisors ?? 0} مشرف</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-50 to-white border-green-100">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Building2 className="w-4 h-4 text-green-600" />
-              <span className="text-xs text-green-600 font-medium">الجوامع والمراكز</span>
-            </div>
-            <p className="text-2xl font-bold text-green-700">{stats?.totalMosques ?? 0}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-emerald-50 to-white border-emerald-100">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Wifi className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs text-emerald-600 font-medium">متصل الآن</span>
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            </div>
-            <p className="text-2xl font-bold text-emerald-700">{onlineCount}</p>
-          </CardContent>
-        </Card>
-
-        <Card className={`bg-gradient-to-br ${pendingUsers.length > 0 ? "from-red-50 to-white border-red-200" : "from-amber-50 to-white border-amber-100"}`}>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertCircle className={`w-4 h-4 ${pendingUsers.length > 0 ? "text-red-600" : "text-amber-600"}`} />
-              <span className={`text-xs font-medium ${pendingUsers.length > 0 ? "text-red-600" : "text-amber-600"}`}>بانتظار الموافقة</span>
-            </div>
-            <p className={`text-2xl font-bold ${pendingUsers.length > 0 ? "text-red-700" : "text-amber-700"}`}>{pendingUsers.length}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Shield className="w-4 h-4 text-purple-600" />
-              <span className="text-xs text-purple-600 font-medium">المميزات</span>
-            </div>
-            <p className="text-2xl font-bold text-purple-700">{enabledFeatures}<span className="text-sm text-muted-foreground font-normal">/{totalFeatures}</span></p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-indigo-50 to-white border-indigo-100">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <BookOpen className="w-4 h-4 text-indigo-600" />
-              <span className="text-xs text-indigo-600 font-medium">الواجبات</span>
-            </div>
-            <p className="text-2xl font-bold text-indigo-700">{stats?.totalAssignments ?? 0}</p>
-            <div className="flex gap-1 mt-1">
-              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-50 text-green-700">{stats?.completedAssignments ?? 0} مكتمل</Badge>
-              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-50 text-amber-700">{stats?.pendingAssignments ?? 0} معلق</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-cyan-50 to-white border-cyan-100">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-4 h-4 text-cyan-600" />
-              <span className="text-xs text-cyan-600 font-medium">الجلسات النشطة</span>
-            </div>
-            <p className="text-2xl font-bold text-cyan-700">{sessions.length}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-50 to-white border-orange-100">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Lock className="w-4 h-4 text-orange-600" />
-              <span className="text-xs text-orange-600 font-medium">مساعدو المدير</span>
-            </div>
-            <p className="text-2xl font-bold text-orange-700">{assistants.length}</p>
-          </CardContent>
-        </Card>
+      {/* الإحصائيات */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {[
+          { label: "المستخدمون", value: totalUsers, icon: Users, color: "text-blue-600", bg: "bg-blue-50", extra: <span className="text-[9px] text-muted-foreground">{stats?.totalStudents}ط {stats?.totalTeachers}س {stats?.totalSupervisors}م</span> },
+          { label: "الجوامع", value: stats?.totalMosques ?? 0, icon: Building2, color: "text-green-600", bg: "bg-green-50" },
+          { label: "متصل الآن", value: onlineCount, icon: Wifi, color: "text-emerald-600", bg: "bg-emerald-50", extra: <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" /> },
+          { label: "معلقة", value: pendingUsers.length, icon: AlertCircle, color: pendingUsers.length > 0 ? "text-red-600" : "text-amber-600", bg: pendingUsers.length > 0 ? "bg-red-50" : "bg-amber-50" },
+          { label: "المميزات", value: `${enabledFeatures}/${features.length}`, icon: Shield, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "الواجبات", value: stats?.totalAssignments ?? 0, icon: BookOpen, color: "text-indigo-600", bg: "bg-indigo-50" },
+          { label: "الجلسات", value: sessions.length, icon: Activity, color: "text-cyan-600", bg: "bg-cyan-50" },
+          { label: "مساعدو المدير", value: allUsers.filter(u => u.isAssistantAdmin).length, icon: Crown, color: "text-orange-600", bg: "bg-orange-50" },
+        ].map(c => (
+          <Card key={c.label} className="hover:shadow-sm transition-shadow">
+            <CardContent className="p-2.5 flex items-center gap-2">
+              <div className={`p-1.5 rounded-lg ${c.bg} shrink-0`}><c.icon className={`w-4 h-4 ${c.color}`} /></div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold leading-tight">{c.value}</p>
+                  {c.extra}
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">{c.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* التبويبات المركزية */}
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); if (v === "permissions") loadUsers(); }}>
-        <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="overview" className="text-xs gap-1"><Eye className="w-3.5 h-3.5" />نظرة عامة</TabsTrigger>
-          <TabsTrigger value="sessions" className="text-xs gap-1"><Wifi className="w-3.5 h-3.5" />الجلسات <Badge variant="secondary" className="text-[9px] px-1 mr-1">{sessions.length}</Badge></TabsTrigger>
-          <TabsTrigger value="approvals" className="text-xs gap-1"><UserCheck className="w-3.5 h-3.5" />الموافقات {pendingUsers.length > 0 && <Badge variant="destructive" className="text-[9px] px-1 mr-1">{pendingUsers.length}</Badge>}</TabsTrigger>
-          <TabsTrigger value="activity" className="text-xs gap-1"><Activity className="w-3.5 h-3.5" />النشاط</TabsTrigger>
-          <TabsTrigger value="mosques" className="text-xs gap-1"><Building2 className="w-3.5 h-3.5" />الجوامع</TabsTrigger>
-          <TabsTrigger value="permissions" className="text-xs gap-1"><ShieldCheck className="w-3.5 h-3.5" />الصلاحيات</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="flex flex-wrap h-auto gap-0.5 bg-muted/50 p-1">
+          <TabsTrigger value="overview" className="text-[11px] gap-1 px-2"><Eye className="w-3 h-3" />نظرة عامة</TabsTrigger>
+          <TabsTrigger value="users" className="text-[11px] gap-1 px-2"><Users className="w-3 h-3" />المستخدمون <Badge variant="secondary" className="text-[8px] px-1 mr-0.5">{allUsers.length}</Badge></TabsTrigger>
+          <TabsTrigger value="sessions" className="text-[11px] gap-1 px-2"><Wifi className="w-3 h-3" />الجلسات</TabsTrigger>
+          <TabsTrigger value="approvals" className="text-[11px] gap-1 px-2"><UserCheck className="w-3 h-3" />الموافقات {pendingUsers.length > 0 && <Badge variant="destructive" className="text-[8px] px-1">{pendingUsers.length}</Badge>}</TabsTrigger>
+          <TabsTrigger value="features" className="text-[11px] gap-1 px-2"><Shield className="w-3 h-3" />المميزات</TabsTrigger>
+          <TabsTrigger value="permissions" className="text-[11px] gap-1 px-2"><ShieldCheck className="w-3 h-3" />الصلاحيات</TabsTrigger>
+          <TabsTrigger value="mosques" className="text-[11px] gap-1 px-2"><Building2 className="w-3 h-3" />الجوامع</TabsTrigger>
+          <TabsTrigger value="activity" className="text-[11px] gap-1 px-2"><Activity className="w-3 h-3" />السجل</TabsTrigger>
         </TabsList>
 
-        {/* تبويب: نظرة عامة */}
+        {/* ===== نظرة عامة ===== */}
         <TabsContent value="overview">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* الإجراءات السريعة */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-primary" />
-                  الإجراءات السريعة
-                </CardTitle>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Activity className="w-4 h-4 text-primary" />آخر النشاطات</CardTitle></CardHeader>
+              <CardContent className="space-y-1 max-h-64 overflow-y-auto">
+                {activityLogs.slice(0, 15).map(log => (
+                  <div key={log.id} className="flex items-center gap-2 py-1 border-b last:border-0 text-[11px]">
+                    <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="font-medium truncate">{log.userName}</span>
+                    <span className="text-muted-foreground truncate flex-1">{log.action}</span>
+                    <Badge variant="outline" className="text-[8px] px-1 shrink-0">{moduleLabels[log.module] || log.module}</Badge>
+                    <span className="text-[9px] text-muted-foreground shrink-0">{timeAgo(log.createdAt)}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-500" />الموافقات المعلقة ({pendingUsers.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-2 max-h-64 overflow-y-auto">
+                {pendingUsers.length === 0 ? <p className="text-center py-6 text-muted-foreground text-xs">لا توجد طلبات</p> :
+                  pendingUsers.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-2 rounded-lg border">
+                      <div><p className="text-xs font-medium">{u.name}</p><p className="text-[10px] text-muted-foreground">{u.username}</p></div>
+                      <div className="flex items-center gap-1">
+                        <Badge className={`text-[9px] ${roleBg[u.role] || ""}`}>{roleLabels[u.role]}</Badge>
+                        <Button size="sm" className="h-6 text-[10px] bg-green-600 hover:bg-green-700 px-2" onClick={() => approveUser(u.id)}>قبول</Button>
+                        <Button variant="destructive" size="sm" className="h-6 text-[10px] px-2" onClick={() => { setRejectUserId(u.id); setRejectDialogOpen(true); }}>رفض</Button>
+                      </div>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ===== المستخدمون ===== */}
+        <TabsContent value="users">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
+                <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4 text-primary" />إدارة المستخدمين ({filteredUsers.length})</CardTitle>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="relative"><Search className="absolute right-2 top-1.5 h-3 w-3 text-muted-foreground" /><Input placeholder="بحث..." className="h-7 text-xs pr-7 w-36" value={userSearch} onChange={e => setUserSearch(e.target.value)} /></div>
+                  <Select value={userRoleFilter} onValueChange={setUserRoleFilter}><SelectTrigger className="h-7 text-[10px] w-24"><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="all">كل الأدوار</SelectItem>
+                    <SelectItem value="student">طلاب</SelectItem>
+                    <SelectItem value="teacher">أساتذة</SelectItem>
+                    <SelectItem value="supervisor">مشرفين</SelectItem>
+                  </SelectContent></Select>
+                  <Select value={userMosqueFilter} onValueChange={setUserMosqueFilter}><SelectTrigger className="h-7 text-[10px] w-32"><SelectValue placeholder="كل الجوامع" /></SelectTrigger><SelectContent>
+                    <SelectItem value="all">كل الجوامع</SelectItem>
+                    {mosques.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  </SelectContent></Select>
+                  {selectedUserIds.size > 0 && (
+                    <Button size="sm" className="h-7 text-[10px] gap-1" onClick={() => setBulkDialogOpen(true)}>
+                      <Zap className="w-3 h-3" />عمليات ({selectedUserIds.size})
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead className="w-8"><Checkbox checked={selectedUserIds.size === filteredUsers.length && filteredUsers.length > 0} onCheckedChange={() => { if (selectedUserIds.size === filteredUsers.length) setSelectedUserIds(new Set()); else setSelectedUserIds(new Set(filteredUsers.map(u => u.id))); }} /></TableHead>
+                      <TableHead>الاسم</TableHead>
+                      <TableHead>الدور</TableHead>
+                      <TableHead className="hidden sm:table-cell">المسجد</TableHead>
+                      <TableHead className="hidden md:table-cell">الهاتف</TableHead>
+                      <TableHead>الحالة</TableHead>
+                      <TableHead>إجراءات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.slice(0, 100).map(u => (
+                      <TableRow key={u.id} className={!u.isActive ? "opacity-50" : ""}>
+                        <TableCell><Checkbox checked={selectedUserIds.has(u.id)} onCheckedChange={() => toggleSelectUser(u.id)} /></TableCell>
+                        <TableCell><div><p className="text-xs font-medium">{u.name}</p><p className="text-[9px] text-muted-foreground">{u.username}</p></div></TableCell>
+                        <TableCell><Badge className={`text-[9px] ${roleBg[u.role] || ""}`}>{roleLabels[u.role] || u.role}{u.isAssistantAdmin && " ★"}</Badge></TableCell>
+                        <TableCell className="hidden sm:table-cell text-[10px]">{mosqueMap.get(u.mosqueId || "") || "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell text-[10px]" dir="ltr">{u.phone || "—"}</TableCell>
+                        <TableCell><Badge variant="outline" className={`text-[9px] ${u.isActive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{u.isActive ? "نشط" : "معطل"}</Badge></TableCell>
+                        <TableCell>
+                          <div className="flex gap-0.5">
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => toggleUserActive(u)} title={u.isActive ? "تعطيل" : "تفعيل"}><Power className={`w-3 h-3 ${u.isActive ? "text-red-500" : "text-green-500"}`} /></Button>
+                            {u.role === "supervisor" && <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openPerms(u, "supervisor")} title="صلاحيات"><ShieldCheck className="w-3 h-3 text-blue-500" /></Button>}
+                            {u.role === "teacher" && <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openPerms(u, "teacher")} title="استثناءات"><UserCog className="w-3 h-3 text-emerald-500" /></Button>}
+                            {u.role !== "admin" && <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => deleteUser(u.id)} title="حذف"><Trash2 className="w-3 h-3 text-red-400" /></Button>}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== الجلسات ===== */}
+        <TabsContent value="sessions">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Wifi className="w-4 h-4 text-emerald-600" />الجلسات النشطة ({sessions.length}) <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /></CardTitle></CardHeader>
+            <CardContent>
+              {sessions.length === 0 ? <p className="text-center py-8 text-muted-foreground text-xs">لا توجد جلسات</p> :
+                <div className="overflow-x-auto"><Table><TableHeader><TableRow>
+                  <TableHead>المستخدم</TableHead><TableHead>الدور</TableHead><TableHead className="hidden sm:table-cell">IP</TableHead><TableHead className="hidden md:table-cell">المدة</TableHead><TableHead>إجراءات</TableHead>
+                </TableRow></TableHeader><TableBody>
+                  {sessions.map(s => (
+                    <TableRow key={s.sessionId}>
+                      <TableCell className="text-xs font-medium">{s.name || "—"}</TableCell>
+                      <TableCell><Badge className={`text-[9px] ${roleBg[s.role] || ""}`}>{roleLabels[s.role] || s.role}</Badge></TableCell>
+                      <TableCell className="hidden sm:table-cell font-mono text-[10px]">{s.ip || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-[10px]">{s.createdAt ? timeAgo(s.createdAt) : "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="outline" size="sm" className="h-6 text-[9px] gap-0.5 text-red-600" onClick={() => kickSession(s.sessionId)}><LogOut className="w-3 h-3" />طرد</Button>
+                          <Button variant="outline" size="sm" className="h-6 text-[9px] gap-0.5 text-orange-600" onClick={() => suspendUser(s.userId)}><Ban className="w-3 h-3" />إيقاف</Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody></Table></div>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== الموافقات ===== */}
+        <TabsContent value="approvals">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><UserCheck className="w-4 h-4 text-amber-600" />الموافقات المعلقة ({pendingUsers.length})</CardTitle></CardHeader>
+            <CardContent>
+              {pendingUsers.length === 0 ? <div className="text-center py-12"><CheckCircle className="w-10 h-10 mx-auto text-green-300 mb-2" /><p className="text-muted-foreground text-xs">لا توجد طلبات</p></div> :
+                <div className="space-y-2">{pendingUsers.map(u => (
+                  <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><span className="text-xs font-bold text-primary">{u.name.charAt(0)}</span></div>
+                      <div><p className="text-xs font-medium">{u.name}</p><p className="text-[10px] text-muted-foreground">{u.username} | {u.phone || "—"} | {timeAgo(u.createdAt)}</p></div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Badge className={roleBg[u.role] || ""}>{roleLabels[u.role]}</Badge>
+                      <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => approveUser(u.id)}>قبول</Button>
+                      <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => { setRejectUserId(u.id); setRejectDialogOpen(true); }}>رفض</Button>
+                    </div>
+                  </div>
+                ))}</div>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== المميزات ===== */}
+        <TabsContent value="features">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Shield className="w-4 h-4 text-purple-600" />التحكم بالمميزات ({enabledFeatures}/{features.length})</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-1.5">
+                {features.map(f => (
+                  <div key={f.id} className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${f.isEnabled ? "bg-green-50/50 border-green-200/50" : "bg-muted/20"}`}>
+                    <div className="flex-1 ml-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium">{f.featureName}</span>
+                        <Badge variant={f.isEnabled ? "default" : "outline"} className={`text-[9px] px-1 py-0 ${f.isEnabled ? "bg-green-100 text-green-700 border-green-200" : "text-muted-foreground"}`}>{f.isEnabled ? "مفعّل" : "معطّل"}</Badge>
+                      </div>
+                      {f.description && <p className="text-[10px] text-muted-foreground mt-0.5">{f.description}</p>}
+                    </div>
+                    <Switch checked={f.isEnabled} onCheckedChange={() => toggleFeature(f)} />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== الصلاحيات ===== */}
+        <TabsContent value="permissions">
+          <div className="space-y-3">
+            {/* مساعدو المدير */}
+            <Card className="border-purple-200">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2"><Crown className="w-4 h-4 text-purple-600" />مساعدو المدير</CardTitle>
+                  <Select onValueChange={(uid) => { const u = allUsers.find(u => u.id === uid); if (u) openPerms(u, "assistant"); }}>
+                    <SelectTrigger className="h-7 text-[10px] w-36"><SelectValue placeholder="تعيين مساعد..." /></SelectTrigger>
+                    <SelectContent>{allUsers.filter(u => u.role !== "admin" && !u.isAssistantAdmin).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    { href: "/users", label: "المستخدمون", icon: Users, color: "text-blue-600" },
-                    { href: "/mosques", label: "الجوامع", icon: Building2, color: "text-green-600" },
-                    { href: "/monitoring", label: "المراقبة", icon: Eye, color: "text-amber-600" },
-                    { href: "/feature-control", label: "المميزات", icon: Shield, color: "text-purple-600" },
-                    { href: "/reports", label: "التقارير", icon: TrendingUp, color: "text-indigo-600" },
-                    { href: "/settings", label: "الإعدادات", icon: Settings2, color: "text-gray-600" },
-                  ].map(a => (
-                    <Link key={a.href} href={a.href}>
-                      <Button variant="outline" className="w-full flex flex-col h-14 gap-1 text-xs hover:bg-muted/50">
-                        <a.icon className={`w-4 h-4 ${a.color}`} />
-                        {a.label}
-                      </Button>
-                    </Link>
+                {allUsers.filter(u => u.isAssistantAdmin).length === 0 ? <p className="text-center py-4 text-muted-foreground text-xs">لم يُعيَّن مساعد بعد</p> :
+                  allUsers.filter(u => u.isAssistantAdmin).map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-2 rounded-lg border mb-1">
+                      <div><p className="text-xs font-medium">{u.name}</p><p className="text-[10px] text-muted-foreground">{Object.values(u.assistantPermissions || {}).filter(Boolean).length} صلاحية</p></div>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => openPerms(u, "assistant")}>تعديل</Button>
+                        <Button variant="outline" size="sm" className="h-6 text-[10px] text-red-600" onClick={() => removeAssistant(u.id)}>إزالة</Button>
+                      </div>
+                    </div>
                   ))}
-                </div>
               </CardContent>
             </Card>
 
-            {/* آخر النشاطات */}
+            {/* المشرفون */}
             <Card>
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-primary" />
-                  آخر النشاطات
-                </CardTitle>
-                <Link href="/monitoring">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs">الكل <ChevronRight className="w-3 h-3" /></Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-1.5 max-h-60 overflow-y-auto">
-                {activityLogs.slice(0, 10).map(log => (
-                  <div key={log.id} className="flex items-center gap-2 py-1 border-b last:border-0">
-                    <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] truncate"><strong>{log.userName}</strong>: {log.action}</p>
-                    </div>
-                    <Badge variant="outline" className="text-[9px] px-1 shrink-0">{moduleLabels[log.module] || log.module}</Badge>
-                    <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(log.createdAt)}</span>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-blue-600" />صلاحيات المشرفين ({allUsers.filter(u => u.role === "supervisor").length})</CardTitle></CardHeader>
+              <CardContent className="space-y-1">
+                {allUsers.filter(u => u.role === "supervisor").map(u => (
+                  <div key={u.id} className="flex items-center justify-between p-2 rounded-lg border hover:bg-muted/30">
+                    <div><p className="text-xs font-medium">{u.name}</p><p className="text-[10px] text-muted-foreground">{Object.values(u.supervisorPermissions || {}).filter(Boolean).length}/{SUPERVISOR_PERMS.length} صلاحية</p></div>
+                    <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => openPerms(u, "supervisor")}>تعديل</Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* الأساتذة */}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><UserCog className="w-4 h-4 text-emerald-600" />استثناءات الأساتذة ({allUsers.filter(u => u.role === "teacher").length})</CardTitle></CardHeader>
+              <CardContent className="space-y-1">
+                {allUsers.filter(u => u.role === "teacher").map(u => (
+                  <div key={u.id} className="flex items-center justify-between p-2 rounded-lg border hover:bg-muted/30">
+                    <div><p className="text-xs font-medium">{u.name}</p><p className="text-[10px] text-muted-foreground">{Object.values(u.teacherPermissions || {}).filter(Boolean).length > 0 ? `${Object.values(u.teacherPermissions || {}).filter(Boolean).length} استثناء` : "بدون"}</p></div>
+                    <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => openPerms(u, "teacher")}>تعديل</Button>
                   </div>
                 ))}
               </CardContent>
@@ -512,422 +642,104 @@ export default function AdminControlPage() {
           </div>
         </TabsContent>
 
-        {/* تبويب: الجلسات النشطة */}
-        <TabsContent value="sessions">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Wifi className="w-4 h-4 text-emerald-600" />
-                الجلسات النشطة ({sessions.length})
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {sessions.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">لا توجد جلسات نشطة</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>المستخدم</TableHead>
-                        <TableHead>الدور</TableHead>
-                        <TableHead className="hidden sm:table-cell">IP</TableHead>
-                        <TableHead className="hidden md:table-cell">المدة</TableHead>
-                        <TableHead>إجراءات</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sessions.map(s => (
-                        <TableRow key={s.sessionId}>
-                          <TableCell className="font-medium">{s.userName || "—"}</TableCell>
-                          <TableCell>
-                            <Badge className={`text-[10px] ${roleColors[s.userRole] || ""}`}>
-                              {roleLabels[s.userRole] || s.userRole}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell font-mono text-xs">{s.ip || "—"}</TableCell>
-                          <TableCell className="hidden md:table-cell text-xs">{s.createdAt ? formatTime(s.createdAt) : "—"}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 text-red-600 hover:bg-red-50" onClick={() => kickSession(s.sessionId)}>
-                                <LogOut className="w-3 h-3" />طرد
-                              </Button>
-                              <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 text-orange-600 hover:bg-orange-50" onClick={() => suspendUser(s.userId)}>
-                                <Ban className="w-3 h-3" />إيقاف
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* تبويب: الموافقات */}
-        <TabsContent value="approvals">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-amber-600" />
-                الموافقات المعلقة ({pendingUsers.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pendingUsers.length === 0 ? (
-                <div className="text-center py-12">
-                  <CheckCircle className="w-12 h-12 mx-auto text-green-300 mb-3" />
-                  <p className="text-muted-foreground">لا توجد طلبات معلقة</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {pendingUsers.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-sm font-bold text-primary">{u.name.charAt(0)}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{u.name}</p>
-                          <p className="text-xs text-muted-foreground">{u.username} | {formatTime(u.createdAt)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={roleColors[u.role] || ""} variant="outline">{roleLabels[u.role] || u.role}</Badge>
-                        <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700" onClick={() => approveUser(u.id)}>
-                          <UserCheck className="w-3 h-3" />قبول
-                        </Button>
-                        <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => { setRejectUserId(u.id); setRejectDialogOpen(true); }}>
-                          <UserX className="w-3 h-3" />رفض
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* تبويب: النشاط */}
-        <TabsContent value="activity">
-          <Card>
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="w-4 h-4 text-primary" />
-                سجل النشاط الحي ({activityLogs.length})
-              </CardTitle>
-              <Link href="/monitoring">
-                <Button variant="outline" size="sm" className="text-xs gap-1">عرض الكل <ChevronRight className="w-3 h-3" /></Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>المستخدم</TableHead>
-                      <TableHead>العملية</TableHead>
-                      <TableHead className="hidden sm:table-cell">القسم</TableHead>
-                      <TableHead>الوقت</TableHead>
-                      <TableHead>الحالة</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {activityLogs.map(log => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium text-xs">{log.userName}</TableCell>
-                        <TableCell className="text-xs">{log.action}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="outline" className="text-[10px]">{moduleLabels[log.module] || log.module}</Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{formatTime(log.createdAt)}</TableCell>
-                        <TableCell>
-                          <Badge className={log.status === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"} variant="outline">
-                            {log.status === "success" ? "ناجح" : "تنبيه"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* تبويب: صحة الجوامع */}
+        {/* ===== الجوامع ===== */}
         <TabsContent value="mosques">
           <Card>
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary" />
-                صحة الجوامع ({mosques.length})
-              </CardTitle>
-              <Link href="/mosques">
-                <Button variant="outline" size="sm" className="text-xs gap-1">إدارة <ChevronRight className="w-3 h-3" /></Button>
-              </Link>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Building2 className="w-4 h-4 text-primary" />صحة الجوامع ({mosques.length})</CardTitle></CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>الجامع/المركز</TableHead>
-                      <TableHead className="hidden sm:table-cell">المدينة</TableHead>
-                      <TableHead>الطلاب</TableHead>
-                      <TableHead>نقطة الصحة</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mosques.slice(0, 15).map(m => {
-                      const health = mosqueHealth[m.id];
-                      const score = health?.score ?? null;
-                      return (
-                        <TableRow key={m.id}>
-                          <TableCell className="font-medium">{m.name}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{m.city || "—"}</TableCell>
-                          <TableCell className="text-xs">
-                            {health ? `${health.activeStudents ?? 0}/${health.totalStudents ?? 0}` : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {score !== null ? (
-                              <div className="flex items-center gap-2">
-                                <Progress
-                                  value={Math.min(100, score)}
-                                  className="h-2 w-16"
-                                />
-                                <span className={`text-xs font-medium ${score >= 70 ? "text-green-600" : score >= 40 ? "text-amber-600" : "text-red-600"}`}>
-                                  {score}%
-                                </span>
-                              </div>
-                            ) : <span className="text-xs text-muted-foreground">—</span>}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+              <div className="overflow-x-auto"><Table><TableHeader><TableRow>
+                <TableHead>المسجد</TableHead><TableHead className="hidden sm:table-cell">المدينة</TableHead><TableHead>الطلاب</TableHead><TableHead>الصحة</TableHead>
+              </TableRow></TableHeader><TableBody>
+                {mosques.map(m => { const h = mosqueHealth[m.id]; const s = h?.score ?? null; return (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-xs font-medium">{m.name}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-[10px] text-muted-foreground">{m.city || "—"}</TableCell>
+                    <TableCell className="text-[10px]">{h ? `${h.activeStudents ?? 0}/${h.totalStudents ?? 0}` : "—"}</TableCell>
+                    <TableCell>{s !== null ? <div className="flex items-center gap-1"><Progress value={Math.min(100, s)} className="h-1.5 w-12" /><span className={`text-[10px] font-medium ${s >= 70 ? "text-green-600" : s >= 40 ? "text-amber-600" : "text-red-600"}`}>{s}%</span></div> : "—"}</TableCell>
+                  </TableRow>
+                ); })}
+              </TableBody></Table></div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* تبويب: الصلاحيات */}
-        <TabsContent value="permissions">
-          <div className="space-y-4">
-            {/* مساعدو المدير */}
-            <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-white">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-purple-600" />
-                    مساعدو المدير
-                  </CardTitle>
-                  <Button size="sm" className="text-xs gap-1" onClick={() => {
-                    const nonAdmins = allUsers.filter(u => u.role !== "admin" && !u.isAssistantAdmin);
-                    if (nonAdmins.length > 0) openPermDialog(nonAdmins[0], "assistant");
-                  }}>
-                    <UserCog className="w-3 h-3" />تعيين مساعد
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {usersLoading ? (
-                  <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
-                ) : assistants.length === 0 ? (
-                  <p className="text-center py-6 text-muted-foreground text-sm">لم يتم تعيين مساعد مدير بعد</p>
-                ) : (
-                  <div className="space-y-2">
-                    {assistants.map(u => (
-                      <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border bg-white">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                            <Crown className="w-4 h-4 text-purple-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">{u.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {Object.values(u.assistantPermissions || {}).filter(Boolean).length} صلاحية
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openPermDialog(u, "assistant")}>
-                            <Settings2 className="w-3 h-3 ml-1" />تعديل
-                          </Button>
-                          <Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:bg-red-50" onClick={() => removeAssistant(u.id)}>إزالة</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* استثناءات المشرفين */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-blue-600" />
-                  صلاحيات المشرفين ({supervisors.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {usersLoading ? (
-                  <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
-                ) : supervisors.length === 0 ? (
-                  <p className="text-center py-6 text-muted-foreground text-sm">لا يوجد مشرفون</p>
-                ) : (
-                  <div className="space-y-2">
-                    {supervisors.map(u => {
-                      const permCount = Object.values(u.supervisorPermissions || {}).filter(Boolean).length;
-                      return (
-                        <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30">
-                          <div>
-                            <p className="text-sm font-medium">{u.name}</p>
-                            <p className="text-xs text-muted-foreground">{permCount} من {SUPERVISOR_PERMISSIONS.length} صلاحية</p>
-                          </div>
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openPermDialog(u, "supervisor")}>
-                            <Settings2 className="w-3 h-3 ml-1" />تعديل الصلاحيات
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* استثناءات الأساتذة */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <UserCog className="w-4 h-4 text-emerald-600" />
-                  استثناءات الأساتذة ({teachers.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {usersLoading ? (
-                  <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
-                ) : teachers.length === 0 ? (
-                  <p className="text-center py-6 text-muted-foreground text-sm">لا يوجد أساتذة</p>
-                ) : (
-                  <div className="space-y-2">
-                    {teachers.map(u => {
-                      const permCount = Object.values(u.teacherPermissions || {}).filter(Boolean).length;
-                      return (
-                        <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30">
-                          <div>
-                            <p className="text-sm font-medium">{u.name}</p>
-                            <p className="text-xs text-muted-foreground">{permCount > 0 ? `${permCount} استثناء` : "بدون استثناءات"}</p>
-                          </div>
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openPermDialog(u, "teacher")}>
-                            <Settings2 className="w-3 h-3 ml-1" />الاستثناءات
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+        {/* ===== السجل ===== */}
+        <TabsContent value="activity">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Activity className="w-4 h-4 text-primary" />سجل النشاط ({activityLogs.length})</CardTitle></CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-background"><TableRow>
+                <TableHead>المستخدم</TableHead><TableHead>العملية</TableHead><TableHead className="hidden sm:table-cell">القسم</TableHead><TableHead className="hidden md:table-cell">التفاصيل</TableHead><TableHead>الوقت</TableHead><TableHead>الحالة</TableHead>
+              </TableRow></TableHeader><TableBody>
+                {activityLogs.map(log => (
+                  <TableRow key={log.id}>
+                    <TableCell className="text-xs font-medium">{log.userName}</TableCell>
+                    <TableCell className="text-[10px]">{log.action}</TableCell>
+                    <TableCell className="hidden sm:table-cell"><Badge variant="outline" className="text-[9px]">{moduleLabels[log.module] || log.module}</Badge></TableCell>
+                    <TableCell className="hidden md:table-cell text-[10px] text-muted-foreground max-w-[200px] truncate">{log.details || "—"}</TableCell>
+                    <TableCell className="text-[10px] text-muted-foreground">{timeAgo(log.createdAt)}</TableCell>
+                    <TableCell><Badge variant="outline" className={`text-[9px] ${log.status === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{log.status === "success" ? "ناجح" : "تنبيه"}</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody></Table></div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
-      {/* نافذة إدارة الصلاحيات */}
+      {/* ===== نوافذ الحوار ===== */}
+
+      {/* نافذة الصلاحيات */}
       <Dialog open={permDialogOpen} onOpenChange={setPermDialogOpen}>
-        <DialogContent className="sm:max-w-lg" dir="rtl">
+        <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {permDialogType === "assistant" ? <Crown className="w-5 h-5 text-purple-600" /> :
-               permDialogType === "supervisor" ? <ShieldCheck className="w-5 h-5 text-blue-600" /> :
-               <UserCog className="w-5 h-5 text-emerald-600" />}
-              {permDialogType === "assistant" ? "صلاحيات مساعد المدير" :
-               permDialogType === "supervisor" ? "صلاحيات المشرف" : "استثناءات الأستاذ"}
+              {permType === "assistant" ? <Crown className="w-5 h-5 text-purple-600" /> : permType === "supervisor" ? <ShieldCheck className="w-5 h-5 text-blue-600" /> : <UserCog className="w-5 h-5 text-emerald-600" />}
+              {permType === "assistant" ? "صلاحيات مساعد المدير" : permType === "supervisor" ? "صلاحيات المشرف" : "استثناءات الأستاذ"}
             </DialogTitle>
           </DialogHeader>
-
-          {permDialogType === "assistant" && (
-            <div className="mb-3">
-              <Label className="text-xs text-muted-foreground mb-1 block">اختر المستخدم</Label>
-              <Select value={permUser?.id || ""} onValueChange={(v) => {
-                const u = allUsers.find(u => u.id === v);
-                if (u) { setPermUser(u); setPermValues(u.assistantPermissions as Record<string, boolean> || {}); }
-              }}>
-                <SelectTrigger><SelectValue placeholder="اختر مستخدم" /></SelectTrigger>
-                <SelectContent>
-                  {allUsers.filter(u => u.role !== "admin").map(u => (
-                    <SelectItem key={u.id} value={u.id}>{u.name} ({roleLabels[u.role] || u.role})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {permUser && (
-            <div className="bg-muted/50 p-3 rounded-lg mb-3">
-              <p className="font-medium text-sm">{permUser.name}</p>
-              <p className="text-xs text-muted-foreground">{roleLabels[permUser.role] || permUser.role} | {permUser.username}</p>
-            </div>
-          )}
-
-          {/* قوالب جاهزة للمشرفين */}
-          {permDialogType === "supervisor" && (
-            <div className="flex gap-2 mb-3">
-              {Object.entries(SUPERVISOR_TEMPLATES).map(([key, tmpl]) => (
-                <Button key={key} variant="outline" size="sm" className="text-[10px] h-7" onClick={() => setPermValues(tmpl.permissions)}>
-                  {tmpl.label}
-                </Button>
-              ))}
-            </div>
-          )}
-
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {(permDialogType === "assistant" ? ASSISTANT_PERMISSIONS :
-              permDialogType === "supervisor" ? SUPERVISOR_PERMISSIONS :
-              TEACHER_PERMISSIONS
-            ).map(p => (
-              <div key={p.key} className="flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/30">
-                <div className="flex items-center gap-2">
-                  {"icon" in p && <p.icon className="w-4 h-4 text-muted-foreground" />}
-                  <div>
-                    <span className="text-sm font-medium">{p.label}</span>
-                    {"desc" in p && <p className="text-[10px] text-muted-foreground">{(p as any).desc}</p>}
-                  </div>
-                </div>
-                <Switch
-                  checked={!!permValues[p.key]}
-                  onCheckedChange={(v) => setPermValues(prev => ({ ...prev, [p.key]: v }))}
-                />
+          {permUser && <div className="bg-muted/50 p-2 rounded-lg"><p className="text-sm font-medium">{permUser.name}</p><p className="text-[10px] text-muted-foreground">{roleLabels[permUser.role]} | {permUser.username}</p></div>}
+          {permType === "supervisor" && <div className="flex gap-1">{[["full", "كامل"], ["limited", "محدود"], ["academic", "أكاديمي"]].map(([k, l]) => <Button key={k} variant="outline" size="sm" className="text-[10px] h-6" onClick={() => setPermValues(SUP_TEMPLATES[k])}>{l}</Button>)}</div>}
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {(permType === "assistant" ? ASSISTANT_PERMS : permType === "supervisor" ? SUPERVISOR_PERMS : TEACHER_PERMS).map(p => (
+              <div key={p.key} className="flex items-center justify-between p-2 rounded-lg border">
+                <span className="text-xs">{p.label}</span>
+                <Switch checked={!!permValues[p.key]} onCheckedChange={v => setPermValues(prev => ({ ...prev, [p.key]: v }))} />
               </div>
             ))}
           </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button className="flex-1" onClick={savePermissions}>حفظ الصلاحيات</Button>
-            <Button variant="outline" onClick={() => setPermDialogOpen(false)}>إلغاء</Button>
-          </DialogFooter>
+          <DialogFooter><Button onClick={savePerms} className="flex-1">حفظ</Button><Button variant="outline" onClick={() => setPermDialogOpen(false)}>إلغاء</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* نافذة الرفض */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
+        <DialogContent className="sm:max-w-sm" dir="rtl">
           <DialogHeader><DialogTitle>رفض الطلب</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Label>سبب الرفض (اختياري)</Label>
-            <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض..." />
-          </div>
-          <DialogFooter>
-            <Button variant="destructive" onClick={rejectUser}>تأكيد الرفض</Button>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>إلغاء</Button>
-          </DialogFooter>
+          <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="سبب الرفض (اختياري)..." />
+          <DialogFooter><Button variant="destructive" onClick={rejectUser}>تأكيد</Button><Button variant="outline" onClick={() => setRejectDialogOpen(false)}>إلغاء</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* نافذة العمليات الجماعية */}
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent className="sm:max-w-sm" dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Zap className="w-5 h-5" />عمليات جماعية ({selectedUserIds.size} مستخدم)</DialogTitle></DialogHeader>
+          <Select value={bulkAction} onValueChange={(v: any) => setBulkAction(v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="reset_passwords">إعادة تعيين كلمات المرور (123456)</SelectItem>
+              <SelectItem value="toggle_active">تفعيل/تعطيل الحسابات</SelectItem>
+              <SelectItem value="move">نقل إلى مسجد آخر</SelectItem>
+            </SelectContent>
+          </Select>
+          {bulkAction === "move" && (
+            <Select value={bulkMosqueTarget} onValueChange={setBulkMosqueTarget}>
+              <SelectTrigger><SelectValue placeholder="اختر المسجد الهدف" /></SelectTrigger>
+              <SelectContent>{mosques.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
+          <DialogFooter><Button onClick={executeBulk}>تنفيذ</Button><Button variant="outline" onClick={() => setBulkDialogOpen(false)}>إلغاء</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

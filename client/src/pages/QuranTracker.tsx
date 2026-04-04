@@ -33,8 +33,8 @@ const juzStartPages: number[] = [
 
 const TOTAL_PAGES = 604;
 
-// رابط صور مصحف المدينة المنورة
-const MUSHAF_CDN = "https://maknoon.com/download/quran/hafs";
+// رابط صور مصحف المدينة المنورة — jsdelivr CDN
+const MUSHAF_CDN = "https://cdn.jsdelivr.net/gh/GovarJabbar/Quran-PNG@master";
 
 function getPageImageUrl(pageNum: number): string {
   const padded = String(pageNum).padStart(3, "0");
