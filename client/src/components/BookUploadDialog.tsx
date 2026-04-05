@@ -225,7 +225,11 @@ export function BookUploadDialog({
           "pdfjs-dist/build/pdf.worker.min.mjs",
           import.meta.url
         ).href;
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+        const pdf = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
         const pageCount = pdf.numPages;
         setExtractProgress(60);
 

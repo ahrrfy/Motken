@@ -49,7 +49,12 @@ export function PdfViewer({ pdfStorageKey, bookTitle, bookAuthor, totalPages: in
           import.meta.url
         ).href;
 
-        const pdf = await pdfjsLib.getDocument({ data }).promise;
+        const pdf = await pdfjsLib.getDocument({
+          data,
+          cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+          standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+        }).promise;
         if (!cancelled) {
           setPdfDoc(pdf);
           setTotalPages(pdf.numPages);
@@ -82,10 +87,10 @@ export function PdfViewer({ pdfStorageKey, bookTitle, bookAuthor, totalPages: in
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Calculate scale
+      // Calculate scale — fill full container width
       let renderScale = scale;
       if (fitWidth) {
-        const containerWidth = containerRef.current.clientWidth - 32; // padding
+        const containerWidth = containerRef.current.clientWidth;
         const baseViewport = page.getViewport({ scale: 1 });
         renderScale = containerWidth / baseViewport.width;
         setScale(renderScale);
@@ -248,9 +253,9 @@ export function PdfViewer({ pdfStorageKey, bookTitle, bookAuthor, totalPages: in
         <div className="h-1" style={{ background: "repeating-linear-gradient(90deg, #c8a45e 0px, #c8a45e 8px, transparent 8px, transparent 16px, #e8c96e 16px, #e8c96e 24px, transparent 24px, transparent 32px)" }} />
       </div>
 
-      {/* Canvas area */}
-      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center py-4 px-2 sm:px-4">
-        <div className="relative">
+      {/* Canvas area — full width */}
+      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center bg-gray-50">
+        <div className="relative w-full flex justify-center">
           {rendering && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
               <Loader2 className="w-8 h-8 animate-spin text-[#1a5e3a]" />
@@ -258,8 +263,8 @@ export function PdfViewer({ pdfStorageKey, bookTitle, bookAuthor, totalPages: in
           )}
           <canvas
             ref={canvasRef}
-            className="shadow-lg rounded"
-            style={{ background: "#fff" }}
+            className="block"
+            style={{ background: "#fff", maxWidth: "100%" }}
           />
         </div>
       </div>
