@@ -103,11 +103,17 @@ export function PdfViewer({ pdfStorageKey, bookTitle, bookAuthor, onClose }: Pdf
 
       {/* PDF — native browser viewer via iframe */}
       {blobUrl && (
-        <iframe
-          src={`${blobUrl}#view=FitH`}
-          className="flex-1 w-full border-0"
-          title={bookTitle}
-        />
+        <object
+          data={`${blobUrl}#view=FitH`}
+          type="application/pdf"
+          className="flex-1 w-full"
+        >
+          <embed
+            src={`${blobUrl}#view=FitH`}
+            type="application/pdf"
+            className="w-full h-full"
+          />
+        </object>
       )}
     </div>
   );
