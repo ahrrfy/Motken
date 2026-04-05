@@ -26,8 +26,8 @@ const helmetMiddleware = helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       connectSrc: ["'self'", "https://api.alquran.cloud", "https://wa.me", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "ws:", "wss:"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
+      frameSrc: ["'self'", "blob:"],
+      objectSrc: ["'self'", "blob:"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
       upgradeInsecureRequests: [],
@@ -42,7 +42,7 @@ const helmetMiddleware = helmet({
   noSniff: true,
   xssFilter: true,
   dnsPrefetchControl: { allow: false },
-  frameguard: { action: "deny" },
+  frameguard: { action: "sameorigin" },
   permittedCrossDomainPolicies: { permittedPolicies: "none" },
 });
 app.use((req, res, next) => {
