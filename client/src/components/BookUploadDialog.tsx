@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Upload, FileText, BookOpen, Loader2, Eye, ChevronDown,
-  ChevronUp, Trash2, Edit, UploadCloud,
+  ChevronUp, Trash2, Edit, UploadCloud, FileType,
 } from "lucide-react";
+import { savePdf, generatePdfKey } from "@/lib/pdf-storage";
 
 interface ChapterData {
   title: string;
@@ -29,6 +30,9 @@ interface BookUploadDialogProps {
     description: string;
     content: string;
     chapters: ChapterData[];
+    isPdf?: boolean;
+    pdfStorageKey?: string;
+    pdfPageCount?: number;
   }) => void;
 }
 
@@ -51,6 +55,9 @@ export function BookUploadDialog({
   const [fileName, setFileName] = useState("");
   const [editingChapter, setEditingChapter] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [isPdfMode, setIsPdfMode] = useState(false);
+  const [pdfStorageKey, setPdfStorageKey] = useState("");
+  const [pdfPageCount, setPdfPageCount] = useState(0);
 
   const reset = () => {
     setStep("input");
@@ -65,6 +72,9 @@ export function BookUploadDialog({
     setExtractProgress(0);
     setFileName("");
     setEditingChapter(null);
+    setIsPdfMode(false);
+    setPdfStorageKey("");
+    setPdfPageCount(0);
   };
 
   const handleClose = (v: boolean) => {
@@ -204,39 +214,65 @@ export function BookUploadDialog({
     setExtractProgress(0);
 
     try {
-      let text: string;
       if (file.name.endsWith(".pdf")) {
-        text = await extractFromPdf(file);
-      } else if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
-        text = await extractFromWord(file);
-      } else if (file.name.endsWith(".txt")) {
-        text = await file.text();
+        // PDF: store binary directly, no text extraction
+        const arrayBuffer = await file.arrayBuffer();
+        setExtractProgress(30);
+
+        // Get page count
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url
+        ).href;
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+        const pageCount = pdf.numPages;
+        setExtractProgress(60);
+
+        // Save to IndexedDB
+        const key = generatePdfKey();
+        await savePdf(key, arrayBuffer);
         setExtractProgress(100);
+
+        setIsPdfMode(true);
+        setPdfStorageKey(key);
+        setPdfPageCount(pageCount);
+
+        // Auto-fill title from filename
+        if (!title) {
+          const nameNoExt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+          setTitle(nameNoExt);
+        }
+        if (!description) {
+          setDescription(`كتاب PDF — ${pageCount} صفحة`);
+        }
       } else {
-        throw new Error("صيغة غير مدعومة. استخدم PDF أو Word أو TXT");
+        // Word / TXT: extract text as before
+        let text: string;
+        if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
+          text = await extractFromWord(file);
+        } else if (file.name.endsWith(".txt")) {
+          text = await file.text();
+          setExtractProgress(100);
+        } else {
+          throw new Error("صيغة غير مدعومة. استخدم PDF أو Word أو TXT");
+        }
+
+        text = text.replace(/---PAGE_BREAK---/g, "\n\n").replace(/\s{3,}/g, "\n\n").trim();
+        setTextContent(text);
+        const autoChapters = splitIntoChapters(text);
+        setChapters(autoChapters);
+
+        if (!title) {
+          const nameNoExt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+          setTitle(nameNoExt);
+        }
+        if (!description) {
+          setDescription(text.slice(0, 150).replace(/\n/g, " ") + "...");
+        }
       }
-
-      // Clean up text
-      text = text.replace(/---PAGE_BREAK---/g, "\n\n").replace(/\s{3,}/g, "\n\n").trim();
-      setTextContent(text);
-
-      // Auto-split into chapters
-      const autoChapters = splitIntoChapters(text);
-      setChapters(autoChapters);
-
-      // Auto-fill title from filename if empty
-      if (!title) {
-        const nameNoExt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-        setTitle(nameNoExt);
-      }
-
-      // Auto-generate description
-      if (!description) {
-        setDescription(text.slice(0, 150).replace(/\n/g, " ") + "...");
-      }
-
     } catch (err) {
-      alert(err instanceof Error ? err.message : "فشل في استخراج النص");
+      alert(err instanceof Error ? err.message : "فشل في معالجة الملف");
     } finally {
       setExtracting(false);
     }
@@ -265,21 +301,35 @@ export function BookUploadDialog({
 
   const moveToPreview = () => {
     if (!title.trim() || !author.trim() || !category) return;
-    if (chapters.length === 0 && textContent.trim()) {
+    if (!isPdfMode && chapters.length === 0 && textContent.trim()) {
       handleTextSubmit();
     }
     setStep("preview");
   };
 
   const handleFinalSubmit = () => {
-    onSubmit({
-      title: title.trim(),
-      author: author.trim(),
-      category,
-      description: description.trim() || title.trim(),
-      content: textContent,
-      chapters: chapters.length > 0 ? chapters : [{ title: "المحتوى", content: textContent }],
-    });
+    if (isPdfMode) {
+      onSubmit({
+        title: title.trim(),
+        author: author.trim(),
+        category,
+        description: description.trim() || title.trim(),
+        content: "",
+        chapters: [],
+        isPdf: true,
+        pdfStorageKey,
+        pdfPageCount,
+      });
+    } else {
+      onSubmit({
+        title: title.trim(),
+        author: author.trim(),
+        category,
+        description: description.trim() || title.trim(),
+        content: textContent,
+        chapters: chapters.length > 0 ? chapters : [{ title: "المحتوى", content: textContent }],
+      });
+    }
     handleClose(false);
   };
 
@@ -372,21 +422,29 @@ export function BookUploadDialog({
                     <Progress value={extractProgress} className="h-2 max-w-xs mx-auto" />
                     <p className="text-sm text-muted-foreground">{extractProgress}%</p>
                   </div>
-                ) : textContent ? (
+                ) : (isPdfMode || textContent) ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200">
                       <div className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-green-600" />
+                        {isPdfMode ? <FileType className="w-5 h-5 text-red-600" /> : <FileText className="w-5 h-5 text-green-600" />}
                         <span className="text-sm font-medium text-green-700">{fileName}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {textContent.length.toLocaleString()} حرف
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {chapters.length} فصل
-                        </Badge>
-                        <Button variant="ghost" size="sm" onClick={() => { setTextContent(""); setChapters([]); setFileName(""); }}>
+                        {isPdfMode ? (
+                          <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                            PDF — {pdfPageCount} صفحة
+                          </Badge>
+                        ) : (
+                          <>
+                            <Badge variant="outline" className="text-xs">
+                              {textContent.length.toLocaleString()} حرف
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {chapters.length} فصل
+                            </Badge>
+                          </>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => { setTextContent(""); setChapters([]); setFileName(""); setIsPdfMode(false); setPdfStorageKey(""); setPdfPageCount(0); }}>
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
@@ -445,7 +503,7 @@ export function BookUploadDialog({
               <Button variant="outline" onClick={() => handleClose(false)}>إلغاء</Button>
               <Button
                 onClick={moveToPreview}
-                disabled={!title.trim() || !author.trim() || !category || (!textContent.trim() && chapters.length === 0)}
+                disabled={!title.trim() || !author.trim() || !category || (!isPdfMode && !textContent.trim() && chapters.length === 0)}
                 className="gap-1"
               >
                 <Eye className="w-4 h-4" />
@@ -463,56 +521,72 @@ export function BookUploadDialog({
               <p className="text-sm text-muted-foreground">{author} • {category}</p>
               <p className="text-xs text-muted-foreground">{description}</p>
               <div className="flex gap-2 mt-2">
-                <Badge variant="outline">{chapters.length} فصل</Badge>
-                <Badge variant="outline">{totalChars.toLocaleString()} حرف</Badge>
-                <Badge variant="outline">~{Math.ceil(totalChars / 2000)} صفحة</Badge>
+                {isPdfMode ? (
+                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">PDF — {pdfPageCount} صفحة</Badge>
+                ) : (
+                  <>
+                    <Badge variant="outline">{chapters.length} فصل</Badge>
+                    <Badge variant="outline">{totalChars.toLocaleString()} حرف</Badge>
+                    <Badge variant="outline">~{Math.ceil(totalChars / 2000)} صفحة</Badge>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Chapter List */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block">جدول المحتويات</Label>
-              <div className="space-y-1 max-h-60 overflow-y-auto rounded-lg border p-2">
-                {chapters.map((ch, i) => (
-                  <div key={i} className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 group">
-                    <span className="text-xs text-muted-foreground w-6">{i + 1}.</span>
-                    {editingChapter === i ? (
-                      <Input
-                        value={ch.title}
-                        onChange={e => updateChapterTitle(i, e.target.value)}
-                        onBlur={() => setEditingChapter(null)}
-                        onKeyDown={e => { if (e.key === "Enter") setEditingChapter(null); }}
-                        className="h-7 text-sm flex-1"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="text-sm flex-1 truncate">{ch.title}</span>
-                    )}
-                    <span className="text-xs text-muted-foreground">{ch.content.length.toLocaleString()} حرف</span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingChapter(i)}>
-                        <Edit className="w-3 h-3" />
-                      </Button>
-                      {chapters.length > 1 && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeChapter(i)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      )}
+            {isPdfMode ? (
+              <div className="p-6 rounded-lg border bg-red-50/50 text-center space-y-2">
+                <FileType className="w-12 h-12 mx-auto text-red-500" />
+                <p className="font-medium text-gray-700">ملف PDF — {pdfPageCount} صفحة</p>
+                <p className="text-xs text-muted-foreground">سيتم عرض الملف مباشرة بدون استخراج نص</p>
+              </div>
+            ) : (
+              <>
+                {/* Chapter List */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">جدول المحتويات</Label>
+                  <div className="space-y-1 max-h-60 overflow-y-auto rounded-lg border p-2">
+                    {chapters.map((ch, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 group">
+                        <span className="text-xs text-muted-foreground w-6">{i + 1}.</span>
+                        {editingChapter === i ? (
+                          <Input
+                            value={ch.title}
+                            onChange={e => updateChapterTitle(i, e.target.value)}
+                            onBlur={() => setEditingChapter(null)}
+                            onKeyDown={e => { if (e.key === "Enter") setEditingChapter(null); }}
+                            className="h-7 text-sm flex-1"
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="text-sm flex-1 truncate">{ch.title}</span>
+                        )}
+                        <span className="text-xs text-muted-foreground">{ch.content.length.toLocaleString()} حرف</span>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingChapter(i)}>
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          {chapters.length > 1 && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeChapter(i)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Chapter Preview */}
+                {chapters.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">معاينة المحتوى (الفصل الأول)</Label>
+                    <div className="p-3 rounded-lg border bg-white max-h-32 overflow-y-auto text-sm font-serif leading-relaxed text-right" dir="rtl">
+                      {chapters[0].content.slice(0, 500)}
+                      {chapters[0].content.length > 500 && "..."}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Chapter Preview */}
-            {chapters.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium mb-2 block">معاينة المحتوى (الفصل الأول)</Label>
-                <div className="p-3 rounded-lg border bg-white max-h-32 overflow-y-auto text-sm font-serif leading-relaxed text-right" dir="rtl">
-                  {chapters[0].content.slice(0, 500)}
-                  {chapters[0].content.length > 500 && "..."}
-                </div>
-              </div>
+                )}
+              </>
             )}
 
             <DialogFooter className="gap-2 sm:gap-0">

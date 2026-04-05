@@ -12,6 +12,8 @@ import { Book, Search, Filter, BookOpen, ArrowRight, Heart, ChevronLeft, Chevron
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { BookUploadDialog } from "@/components/BookUploadDialog";
+import { PdfViewer } from "@/components/PdfViewer";
+import { deletePdf } from "@/lib/pdf-storage";
 
 interface BookItem {
   id: number;
@@ -26,6 +28,8 @@ interface BookItem {
   customContent?: string;
   customChapters?: { title: string; content: string }[];
   addedByRole?: string;
+  isPdf?: boolean;
+  pdfStorageKey?: string;
 }
 
 interface Chapter {
@@ -414,32 +418,43 @@ export default function LibraryPage() {
     description: string;
     content: string;
     chapters: { title: string; content: string }[];
+    isPdf?: boolean;
+    pdfStorageKey?: string;
+    pdfPageCount?: number;
   }) => {
     const newId = Date.now();
+    const isPdf = bookData.isPdf || false;
     const newBook: BookItem = {
       id: newId,
       title: bookData.title,
       author: bookData.author,
       category: bookData.category,
       description: bookData.description.slice(0, 120),
-      pages: Math.ceil(bookData.content.length / 250),
+      pages: isPdf ? (bookData.pdfPageCount || 0) : Math.ceil(bookData.content.length / 250),
       url: "",
       featured: false,
       isCustom: true,
-      customContent: bookData.content,
-      customChapters: bookData.chapters,
+      customContent: isPdf ? undefined : bookData.content,
+      customChapters: isPdf ? undefined : bookData.chapters,
       addedByRole: user?.role || "teacher",
+      isPdf,
+      pdfStorageKey: isPdf ? bookData.pdfStorageKey : undefined,
     };
     setCustomBooks(prev => [...prev, newBook]);
     setUploadOpen(false);
-    toast({ title: "تم الإضافة", description: `تم إضافة كتاب "${newBook.title}" بنجاح (${bookData.chapters.length} فصل)` });
+    const detail = isPdf ? `${bookData.pdfPageCount} صفحة` : `${bookData.chapters.length} فصل`;
+    toast({ title: "تم الإضافة", description: `تم إضافة كتاب "${newBook.title}" بنجاح (${detail})` });
   }, [user, toast]);
 
-  const handleDeleteCustomBook = useCallback((bookId: number, e?: React.MouseEvent) => {
+  const handleDeleteCustomBook = useCallback(async (bookId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    const book = customBooks.find(b => b.id === bookId);
+    if (book?.isPdf && book?.pdfStorageKey) {
+      await deletePdf(book.pdfStorageKey).catch(() => {});
+    }
     setCustomBooks(prev => prev.filter(b => b.id !== bookId));
     toast({ title: "تم الحذف", description: "تم حذف الكتاب بنجاح" });
-  }, [toast]);
+  }, [toast, customBooks]);
 
   const allBooks = useMemo(() => {
     const merged = [...books, ...customBooks]
@@ -481,6 +496,19 @@ export default function LibraryPage() {
   const readingProgress = currentChapters.length > 0 ? ((activeChapter + 1) / currentChapters.length) * 100 : 0;
 
   if (selectedBook) {
+    // PDF books: use the dedicated PDF viewer
+    if (selectedBook.isPdf && selectedBook.pdfStorageKey) {
+      return (
+        <PdfViewer
+          pdfStorageKey={selectedBook.pdfStorageKey}
+          bookTitle={selectedBook.title}
+          bookAuthor={selectedBook.author}
+          totalPages={selectedBook.pages}
+          onClose={closeReader}
+        />
+      );
+    }
+
     const chapter = currentChapters[activeChapter];
     const isDark = bgTheme === "dark";
     return (
@@ -808,6 +836,9 @@ export default function LibraryPage() {
                     )}
                     {book.isCustom && (
                       <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs" data-testid={`badge-custom-${book.id}`}>مضاف</Badge>
+                    )}
+                    {book.isPdf && (
+                      <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-xs">PDF</Badge>
                     )}
                   </div>
                 </div>
