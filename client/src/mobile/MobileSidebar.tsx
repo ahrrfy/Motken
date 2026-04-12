@@ -47,7 +47,7 @@ const allNavItems = [
   { href: "/crisis-management", label: "إدارة الأزمات", icon: AlertTriangle, roles: ["admin","supervisor"], group: "admin", featureKey: "crisis_management" },
   { href: "/institutional", label: "التكامل المؤسسي", icon: ArrowUpDown, roles: ["admin","supervisor"], group: "admin", featureKey: "institutional" },
   { href: "/maintenance", label: "الملاحظات والتحسين", icon: Lightbulb, roles: ["admin","supervisor","teacher","student"], group: "admin" },
-  { href: "/changelog", label: "سجل التغييرات", icon: Sparkles, roles: ["admin","supervisor","teacher","student"], group: "admin" },
+  { href: "/changelog", label: "سجل التغييرات", icon: Sparkles, roles: ["admin"], group: "admin" },
   { href: "/settings", label: "الإعدادات", icon: Settings, roles: ["admin","teacher","student","supervisor","parent"], group: "admin" },
 ];
 

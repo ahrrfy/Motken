@@ -300,7 +300,7 @@ function App() {
         <Route path="/floor-plan" component={FloorPlanPage} />
         <Route path="/whiteboard" component={WhiteboardPage} />
         <Route path="/spread" component={SpreadPage} />
-        <Route path="/changelog" component={ChangelogPage} />
+        <Route path="/changelog">{() => <RoleGuard roles={["admin"]} Component={ChangelogPage} />}</Route>
         <Route path="/parent-dashboard">{() => <RoleGuard roles={["parent"]} Component={ParentDashboardPage} />}</Route>
         <Route path="/">{() => user?.role === "parent" ? <ParentDashboardPage /> : <DashboardPage />}</Route>
         <Route>

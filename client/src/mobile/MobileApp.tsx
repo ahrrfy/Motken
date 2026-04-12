@@ -115,7 +115,7 @@ export default function MobileApp() {
                 <Route path="/settings" component={SettingsPage} />
                 <Route path="/activity-logs" component={ActivityLogsPage} />
                 <Route path="/online-users" component={OnlineUsersPage} />
-                <Route path="/changelog" component={ChangelogPage} />
+                <Route path="/changelog">{() => user?.role === "admin" ? <ChangelogPage /> : <DashboardPage />}</Route>
                 <Route path="/">{() => user?.role === "parent" ? <ParentDashboardPage /> : <DashboardPage />}</Route>
                 <Route>
                   {() => (
