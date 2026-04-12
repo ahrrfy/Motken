@@ -109,7 +109,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 function csrfProtection(req: Request, res: Response, next: NextFunction) {
   if (SAFE_METHODS.has(req.method)) return next();
 
-  const publicPaths = ["/api/register-mosque", "/api/auth/login"];
+  const publicPaths = ["/api/register-mosque", "/api/auth/login", "/api/auth/emergency-reset-password", "/api/auth/reset-rate-limit"];
   if (publicPaths.some(p => req.path === p)) return next();
 
   const origin = req.get("origin") || req.get("referer");
