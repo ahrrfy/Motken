@@ -23,6 +23,23 @@ import {
   examStudents,
   featureFlags,
   bannedDevices,
+  quranProgress,
+  mosqueRegistrations,
+  graduates,
+  familyLinks,
+  emergencySubstitutions,
+  studentTransfers,
+  feedback,
+  graduateFollowups,
+  messageTemplates,
+  mosqueMessages,
+  incidentRecords,
+  testimonials,
+  assignmentAudio,
+  pointRedemptions,
+  mosqueHistory,
+  communicationLogs,
+  announcements,
 } from "@shared/schema";
 import { sessionTracker } from "../session-tracker";
 import { logActivity } from "./shared";
@@ -147,6 +164,12 @@ export function registerAdminRoutes(app: Express) {
         pointsData, badgesData,
         schedulesData, parentReportsData, examsData, examStudentsData,
         featureFlagsData, bannedDevicesData,
+        quranProgressData, mosqueRegistrationsData, graduatesData, familyLinksData,
+        emergencySubstitutionsData, studentTransfersData, feedbackData,
+        graduateFollowupsData, messageTemplatesData, mosqueMessagesData,
+        incidentRecordsData, testimonialsData, assignmentAudioData,
+        pointRedemptionsData, mosqueHistoryData, communicationLogsData,
+        announcementsData,
       ] = await Promise.all([
         db.select().from(mosques),
         db.select().from(users),
@@ -168,45 +191,74 @@ export function registerAdminRoutes(app: Express) {
         db.select().from(examStudents),
         db.select().from(featureFlags),
         db.select().from(bannedDevices),
+        db.select().from(quranProgress),
+        db.select().from(mosqueRegistrations),
+        db.select().from(graduates),
+        db.select().from(familyLinks),
+        db.select().from(emergencySubstitutions),
+        db.select().from(studentTransfers),
+        db.select().from(feedback),
+        db.select().from(graduateFollowups),
+        db.select().from(messageTemplates),
+        db.select().from(mosqueMessages),
+        db.select().from(incidentRecords),
+        db.select().from(testimonials),
+        db.select().from(assignmentAudio),
+        db.select().from(pointRedemptions),
+        db.select().from(mosqueHistory),
+        db.select().from(communicationLogs),
+        db.select().from(announcements),
       ]);
 
       const safeUsersData = usersData.map(({ password, ...u }) => u);
+      const allData = {
+        mosques: mosquesData,
+        users: safeUsersData,
+        assignments: assignmentsData,
+        attendance: attendanceData,
+        courses: coursesData,
+        courseStudents: courseStudentsData,
+        courseTeachers: courseTeachersData,
+        certificates: certificatesData,
+        notifications: notificationsData,
+        messages: messagesData,
+        activityLogs: activityLogsData,
+        ratings: ratingsData,
+        points: pointsData,
+        badges: badgesData,
+        schedules: schedulesData,
+        parentReports: parentReportsData,
+        exams: examsData,
+        examStudents: examStudentsData,
+        featureFlags: featureFlagsData,
+        bannedDevices: bannedDevicesData,
+        quranProgress: quranProgressData,
+        mosqueRegistrations: mosqueRegistrationsData,
+        graduates: graduatesData,
+        familyLinks: familyLinksData,
+        emergencySubstitutions: emergencySubstitutionsData,
+        studentTransfers: studentTransfersData,
+        feedback: feedbackData,
+        graduateFollowups: graduateFollowupsData,
+        messageTemplates: messageTemplatesData,
+        mosqueMessages: mosqueMessagesData,
+        incidentRecords: incidentRecordsData,
+        testimonials: testimonialsData,
+        assignmentAudio: assignmentAudioData,
+        pointRedemptions: pointRedemptionsData,
+        mosqueHistory: mosqueHistoryData,
+        communicationLogs: communicationLogsData,
+        announcements: announcementsData,
+      };
+      const totalRecords = Object.values(allData).reduce((sum, arr) => sum + arr.length, 0);
       const backup = {
         metadata: {
-          version: "1.0",
+          version: "2.0",
           timestamp: new Date().toISOString(),
-          tableCount: 20,
-          totalRecords:
-            mosquesData.length + usersData.length + assignmentsData.length +
-            attendanceData.length + coursesData.length + courseStudentsData.length +
-            courseTeachersData.length + certificatesData.length + notificationsData.length +
-            messagesData.length + activityLogsData.length + ratingsData.length +
-            pointsData.length + badgesData.length + schedulesData.length +
-            parentReportsData.length + examsData.length + examStudentsData.length +
-            featureFlagsData.length + bannedDevicesData.length,
+          tableCount: Object.keys(allData).length,
+          totalRecords,
         },
-        data: {
-          mosques: mosquesData,
-          users: safeUsersData,
-          assignments: assignmentsData,
-          attendance: attendanceData,
-          courses: coursesData,
-          courseStudents: courseStudentsData,
-          courseTeachers: courseTeachersData,
-          certificates: certificatesData,
-          notifications: notificationsData,
-          messages: messagesData,
-          activityLogs: activityLogsData,
-          ratings: ratingsData,
-          points: pointsData,
-          badges: badgesData,
-          schedules: schedulesData,
-          parentReports: parentReportsData,
-          exams: examsData,
-          examStudents: examStudentsData,
-          featureFlags: featureFlagsData,
-          bannedDevices: bannedDevicesData,
-        },
+        data: allData,
       };
 
       const dateStr = new Date().toISOString().split("T")[0];
@@ -232,24 +284,12 @@ export function registerAdminRoutes(app: Express) {
         errors.push("البيانات الوصفية غير مكتملة");
       }
 
-      const expectedTables = [
-        "mosques", "users", "assignments", "attendance", "courses",
-        "courseStudents", "courseTeachers", "certificates", "notifications",
-        "messages", "activityLogs", "ratings", "points", "badges",
-        "competitions", "competitionParticipants", "schedules",
-        "parentReports", "exams", "examStudents", "featureFlags", "bannedDevices",
-      ];
-
+      // ديناميكي: نقرأ كل الجداول الموجودة في النسخة الاحتياطية
       const details: { tableName: string; count: number }[] = [];
       let totalRecords = 0;
 
-      for (const table of expectedTables) {
-        if (!data[table]) {
-          if (!Array.isArray(data[table]) && data[table] !== undefined) {
-            errors.push(`الجدول ${table} غير موجود في النسخة الاحتياطية`);
-          }
-          details.push({ tableName: table, count: 0 });
-        } else if (!Array.isArray(data[table])) {
+      for (const table of Object.keys(data)) {
+        if (!Array.isArray(data[table])) {
           errors.push(`الجدول ${table} ليس مصفوفة`);
           details.push({ tableName: table, count: 0 });
         } else {
@@ -311,18 +351,7 @@ export function registerAdminRoutes(app: Express) {
 
       const { data } = backup;
 
-      const allowedTables = [
-        "mosques", "users", "assignments", "attendance", "courses", "courseStudents",
-        "courseTeachers", "certificates", "notifications", "messages", "activityLogs",
-        "ratings", "points", "badges", "competitions", "competitionParticipants",
-        "schedules", "parentReports", "exams", "examStudents", "featureFlags", "bannedDevices"
-      ];
-      const dataKeys = Object.keys(data);
-      const invalidKeys = dataKeys.filter(k => !allowedTables.includes(k));
-      if (invalidKeys.length > 0) {
-        return res.status(400).json({ message: `جداول غير معروفة في النسخة الاحتياطية: ${invalidKeys.join(", ")}` });
-      }
-
+      // تحقق من أدوار المستخدمين
       if (data.users?.length) {
         const validRoles = ["admin", "supervisor", "teacher", "student", "parent"];
         for (const u of data.users) {
@@ -339,78 +368,123 @@ export function registerAdminRoutes(app: Express) {
       const { pool } = await import("../db");
       const { hashPassword } = await import("../auth");
       const client = await pool.connect();
+
+      // دالة تحويل camelCase إلى snake_case
+      const toSnake = (s: string) => s.replace(/([A-Z])/g, '_$1').toLowerCase();
+
       try {
         await client.query("BEGIN");
 
-        // حذف البيانات بالترتيب الصحيح (عكس العلاقات) — عبر client وليس db
-        const deleteOrder = [
-          "competition_participants", "competitions", "parent_reports", "schedules",
-          "badges", "point_redemptions", "points", "messages", "attendance", "banned_devices",
-          "certificates", "course_students", "course_teachers", "courses",
-          "exam_students", "exams", "ratings", "assignment_audio", "assignments",
-          "notifications", "activity_logs", "feature_flags",
-          "quran_progress", "family_links", "graduates", "graduate_followups",
-          "student_transfers", "emergency_substitutions", "incident_records",
-          "feedback", "communication_logs", "message_templates",
-          "mosque_messages", "mosque_history", "mosque_registrations",
-          "users", "mosques"
-        ];
-        for (const table of deleteOrder) {
+        // === 1. جلب كل الجداول الموجودة حالياً في قاعدة البيانات ===
+        const { rows: dbTablesRows } = await client.query(
+          `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
+        );
+        const existingDbTables = new Set(dbTablesRows.map((r: any) => r.table_name));
+
+        // === 2. تحديد الجداول في النسخة الاحتياطية وتحويل أسمائها ===
+        const backupKeys = Object.keys(data).filter(k => Array.isArray(data[k]) && data[k].length > 0);
+        const tableMapping: { dataKey: string; dbTable: string }[] = backupKeys.map(k => ({
+          dataKey: k,
+          dbTable: toSnake(k),
+        }));
+
+        // === 3. إنشاء الجداول الناقصة تلقائياً ===
+        for (const { dataKey, dbTable } of tableMapping) {
+          if (!existingDbTables.has(dbTable)) {
+            // جمع كل أسماء الأعمدة من كل السجلات
+            const allCols = new Set<string>();
+            for (const row of data[dataKey]) {
+              for (const key of Object.keys(row)) {
+                allCols.add(key);
+              }
+            }
+            // تحديد نوع كل عمود من القيم
+            const colDefs: string[] = [];
+            for (const col of allCols) {
+              const snakeCol = toSnake(col);
+              // استنتاج النوع من أول قيمة غير فارغة
+              let pgType = "text";
+              for (const row of data[dataKey]) {
+                const val = row[col];
+                if (val !== undefined && val !== null) {
+                  if (typeof val === "boolean") {
+                    pgType = "boolean";
+                  } else if (typeof val === "number") {
+                    pgType = Number.isInteger(val) ? "integer" : "double precision";
+                  } else if (typeof val === "object") {
+                    pgType = "jsonb";
+                  }
+                  break;
+                }
+              }
+              if (snakeCol === "id") {
+                colDefs.push(`"id" text PRIMARY KEY`);
+              } else {
+                colDefs.push(`"${snakeCol}" ${pgType}`);
+              }
+            }
+            await client.query(`CREATE TABLE IF NOT EXISTS "${dbTable}" (${colDefs.join(", ")})`);
+            existingDbTables.add(dbTable);
+            console.log(`[Restore] تم إنشاء جدول جديد: ${dbTable}`);
+          }
+        }
+
+        // === 4. حذف البيانات ديناميكياً (الجداول الفرعية أولاً، ثم users، ثم mosques) ===
+        const protectedTables = ["users", "mosques"];
+        const tablesToDelete = tableMapping
+          .map(t => t.dbTable)
+          .filter(t => !protectedTables.includes(t) && existingDbTables.has(t));
+        for (const table of tablesToDelete) {
           await client.query(`DELETE FROM "${table}" WHERE TRUE`).catch(() => {});
         }
-
-        // كلمة مرور افتراضية للمستخدمين بدون كلمة مرور
-        const defaultPasswordHash = await hashPassword("123456");
-
-        // إدخال المساجد
-        if (data.mosques?.length) {
-          for (const row of data.mosques) {
-            const cols = Object.keys(row).filter(k => row[k] !== undefined);
-            const vals = cols.map(k => row[k]);
-            const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
-            const colNames = cols.map(k => `"${k.replace(/([A-Z])/g, '_$1').toLowerCase()}"`).join(", ");
-            await client.query(`INSERT INTO mosques (${colNames}) VALUES (${placeholders}) ON CONFLICT (id) DO NOTHING`, vals);
-          }
+        // حذف الجداول المحمية بالترتيب الصحيح
+        if (existingDbTables.has("users")) {
+          await client.query(`DELETE FROM "users" WHERE TRUE`).catch(() => {});
+        }
+        if (existingDbTables.has("mosques")) {
+          await client.query(`DELETE FROM "mosques" WHERE TRUE`).catch(() => {});
         }
 
-        // إدخال المستخدمين مع معالجة password
-        if (data.users?.length) {
-          for (const row of data.users) {
-            if (!row.password) row.password = defaultPasswordHash;
-            const cols = Object.keys(row).filter(k => row[k] !== undefined);
-            const vals = cols.map(k => row[k]);
-            const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
-            const colNames = cols.map(k => `"${k.replace(/([A-Z])/g, '_$1').toLowerCase()}"`).join(", ");
-            await client.query(`INSERT INTO users (${colNames}) VALUES (${placeholders}) ON CONFLICT (id) DO NOTHING`, vals);
+        // === 5. إدخال البيانات ===
+        const defaultPasswordHash = await hashPassword("123456");
+
+        // دالة إدخال عامة
+        const insertRows = async (dbTable: string, rows: any[], processRow?: (row: any) => void) => {
+          for (const row of rows) {
+            try {
+              if (processRow) processRow(row);
+              const cols = Object.keys(row).filter(k => row[k] !== undefined);
+              if (cols.length === 0) continue;
+              const vals = cols.map(k => row[k]);
+              const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
+              const colNames = cols.map(k => `"${toSnake(k)}"`).join(", ");
+              await client.query(
+                `INSERT INTO "${dbTable}" (${colNames}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
+                vals
+              );
+            } catch (insertErr: any) {
+              console.warn(`[Restore] تخطي سجل في ${dbTable}: ${insertErr.message}`);
+            }
           }
+        };
+
+        // إدخال المساجد أولاً (لأن الجداول الأخرى تعتمد عليها)
+        if (data.mosques?.length) {
+          await insertRows("mosques", data.mosques);
+        }
+
+        // إدخال المستخدمين (مع معالجة كلمة المرور)
+        if (data.users?.length) {
+          await insertRows("users", data.users, (row) => {
+            if (!row.password) row.password = defaultPasswordHash;
+          });
         }
 
         // إدخال بقية الجداول
-        const tableMap: Record<string, string> = {
-          assignments: "assignments", attendance: "attendance",
-          courses: "courses", courseStudents: "course_students", courseTeachers: "course_teachers",
-          certificates: "certificates", notifications: "notifications", messages: "messages",
-          activityLogs: "activity_logs", ratings: "ratings", points: "points", badges: "badges",
-          competitions: "competitions", competitionParticipants: "competition_participants",
-          schedules: "schedules", parentReports: "parent_reports",
-          exams: "exams", examStudents: "exam_students",
-          featureFlags: "feature_flags", bannedDevices: "banned_devices",
-        };
-
-        for (const [dataKey, tableName] of Object.entries(tableMap)) {
-          if (data[dataKey]?.length) {
-            for (const row of data[dataKey]) {
-              try {
-                const cols = Object.keys(row).filter(k => row[k] !== undefined);
-                const vals = cols.map(k => row[k]);
-                const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
-                const colNames = cols.map(k => `"${k.replace(/([A-Z])/g, '_$1').toLowerCase()}"`).join(", ");
-                await client.query(`INSERT INTO "${tableName}" (${colNames}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`, vals);
-              } catch (insertErr: any) {
-                console.warn(`[Restore] تخطي سجل في ${tableName}: ${insertErr.message}`);
-              }
-            }
-          }
+        for (const { dataKey, dbTable } of tableMapping) {
+          if (dataKey === "mosques" || dataKey === "users") continue;
+          if (!existingDbTables.has(dbTable)) continue;
+          await insertRows(dbTable, data[dataKey]);
         }
 
         await client.query("COMMIT");

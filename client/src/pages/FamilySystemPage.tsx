@@ -164,6 +164,7 @@ export default function FamilySystemPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [detectingStudents, setDetectingStudents] = useState(false);
   const [manualStudentId, setManualStudentId] = useState("");
+  const [createdAccountInfo, setCreatedAccountInfo] = useState<{ name: string; username: string; password: string; phone: string; studentNames: string[] } | null>(null);
 
   // -------- Parent Portal state --------
   const [portalStudentId, setPortalStudentId] = useState("");
@@ -280,11 +281,11 @@ export default function FamilySystemPage() {
         }),
       });
       if (res.ok) {
-        toast({
-          title: "تم بنجاح",
-          description: `تم إنشاء حساب ولي الأمر "${parentName}" وربطه بـ ${selectedStudentIds.length} طالب`,
-          className: "bg-green-50 border-green-200 text-green-800",
+        const studentNames = selectedStudentIds.map(id => {
+          const s = detectedStudents.find(d => d.id === id) || students.find(st => st.id === id);
+          return s?.name || id;
         });
+        setCreatedAccountInfo({ name: parentName, username: parentUsername, password: parentPassword, phone: parentAccountPhone, studentNames });
         setParentDialogOpen(false);
         setParentFormPhone("");
         setParentName("");
@@ -846,6 +847,57 @@ export default function FamilySystemPage() {
                       إنشاء حساب ولي الأمر ({selectedStudentIds.length} طالب)
                     </Button>
                   </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* نافذة نجاح إنشاء الحساب مع مشاركة */}
+              <Dialog open={!!createdAccountInfo} onOpenChange={(open) => { if (!open) setCreatedAccountInfo(null); }}>
+                <DialogContent className="sm:max-w-md" dir="rtl">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-green-700">
+                      <CheckCircle2 className="w-5 h-5" />
+                      تم إنشاء الحساب بنجاح
+                    </DialogTitle>
+                  </DialogHeader>
+                  {createdAccountInfo && (() => {
+                    const info = createdAccountInfo;
+                    const loginUrl = window.location.origin;
+                    const messageText = `مرحباً ${info.name}\nتم إنشاء حسابك في نظام مُتْقِن\n\nاسم المستخدم: ${info.username}\nكلمة المرور: ${info.password}\nرابط الدخول: ${loginUrl}\n\nالطلاب المرتبطين: ${info.studentNames.join("، ")}`;
+                    return (
+                      <div className="space-y-3 mt-2">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2 text-sm">
+                          <div className="flex justify-between"><span className="text-muted-foreground">الاسم:</span><span className="font-semibold">{info.name}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">اسم المستخدم:</span><span className="font-mono font-semibold">{info.username}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">كلمة المرور:</span><span className="font-mono font-semibold">{info.password}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">الهاتف:</span><span dir="ltr" className="font-mono">{info.phone}</span></div>
+                          <div className="flex justify-between items-start"><span className="text-muted-foreground shrink-0">الطلاب:</span><span className="text-left font-semibold">{info.studentNames.join("، ")}</span></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => {
+                              navigator.clipboard.writeText(messageText);
+                              toast({ title: "تم النسخ", description: "تم نسخ بيانات الحساب", className: "bg-green-50 border-green-200 text-green-800" });
+                            }}
+                          >
+                            <Copy className="w-4 h-4" />
+                            نسخ البيانات
+                          </Button>
+                          <Button
+                            className="gap-2 bg-green-600 hover:bg-green-700"
+                            onClick={() => {
+                              const waUrl = `https://wa.me/${info.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(messageText)}`;
+                              window.open(waUrl, "_blank");
+                            }}
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            واتساب
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </DialogContent>
               </Dialog>
 
@@ -1439,31 +1491,117 @@ export default function FamilySystemPage() {
           )}
 
           <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
-            <DialogContent className="sm:max-w-lg" dir="rtl">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col" dir="rtl">
+              <DialogHeader className="shrink-0">
                 <DialogTitle>إنشاء تقرير جديد - {portalStudent?.name}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label>نوع التقرير</Label>
-                  <Select value={reportType} onValueChange={setReportType}>
-                    <SelectTrigger data-testid="select-report-type"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">أسبوعي</SelectItem>
-                      <SelectItem value="monthly">شهري</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>تاريخ الانتهاء (اختياري)</Label>
-                  <Input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} data-testid="input-expires-at" dir="ltr" />
-                </div>
-                {progressData && (
-                  <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1" data-testid="text-report-preview">
-                    <p className="font-semibold mb-2">معاينة محتوى التقرير:</p>
-                    <pre className="whitespace-pre-wrap text-xs leading-relaxed font-sans">{generateReportContent()}</pre>
+              <div className="space-y-4 mt-2 overflow-y-auto flex-1 min-h-0 pl-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">نوع التقرير</Label>
+                    <Select value={reportType} onValueChange={setReportType}>
+                      <SelectTrigger data-testid="select-report-type"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">أسبوعي</SelectItem>
+                        <SelectItem value="monthly">شهري</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">تاريخ الانتهاء (اختياري)</Label>
+                    <Input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} data-testid="input-expires-at" dir="ltr" />
+                  </div>
+                </div>
+                {progressData && (() => {
+                  const student = getPortalStudent();
+                  const assignments = progressData.assignments;
+                  const totalAssignments = assignments.length;
+                  const completedAssignments = assignments.filter(a => a.status === "done" || a.grade !== null).length;
+                  const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
+                  const attendanceCounts = getAttendanceCounts();
+                  const categoryPoints = getPointsByCategory();
+                  let progressDesc = "جيد";
+                  if (completionRate >= 90) progressDesc = "ممتاز";
+                  else if (completionRate >= 75) progressDesc = "جيد جداً";
+                  else if (completionRate >= 60) progressDesc = "جيد";
+                  else if (completionRate >= 40) progressDesc = "مقبول";
+                  else progressDesc = "يحتاج تحسين";
+                  const progressColor = completionRate >= 75 ? "text-green-600" : completionRate >= 40 ? "text-yellow-600" : "text-red-600";
+                  return (
+                    <div className="space-y-2" data-testid="text-report-preview">
+                      <p className="font-semibold text-sm">معاينة محتوى التقرير:</p>
+                      <div className="space-y-2 text-sm">
+                        {/* المستوى */}
+                        <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+                          <span>🎓</span>
+                          <span className="text-muted-foreground">المستوى:</span>
+                          <span className="font-semibold">{student ? getLevelName(student.level) : ""}</span>
+                        </div>
+                        {/* الواجبات */}
+                        <div className="bg-muted/50 rounded-lg px-3 py-2 space-y-1.5">
+                          <div className="flex items-center gap-2 font-semibold text-xs">
+                            <span>📊</span> إحصائيات الواجبات
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>الإجمالي: {totalAssignments}</span>
+                            <span>المكتملة: {completedAssignments}</span>
+                            <span>الإنجاز: {completionRate}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${completionRate}%` }} />
+                          </div>
+                        </div>
+                        {/* الحضور */}
+                        <div className="bg-muted/50 rounded-lg px-3 py-2 space-y-1.5">
+                          <div className="flex items-center gap-2 font-semibold text-xs">
+                            <span>📅</span> ملخص الحضور
+                          </div>
+                          <div className="grid grid-cols-4 gap-1 text-center text-xs">
+                            <div><span className="block font-bold text-green-600">{attendanceCounts.present}</span><span className="text-muted-foreground">حاضر</span></div>
+                            <div><span className="block font-bold text-red-600">{attendanceCounts.absent}</span><span className="text-muted-foreground">غائب</span></div>
+                            <div><span className="block font-bold text-yellow-600">{attendanceCounts.late}</span><span className="text-muted-foreground">متأخر</span></div>
+                            <div><span className="block font-bold text-primary">{attendanceCounts.rate}%</span><span className="text-muted-foreground">النسبة</span></div>
+                          </div>
+                        </div>
+                        {/* النقاط */}
+                        <div className="bg-muted/50 rounded-lg px-3 py-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-semibold text-xs"><span>⭐</span> النقاط</div>
+                            <span className="font-bold text-primary">{progressData.totalPoints}</span>
+                          </div>
+                          {Object.keys(categoryPoints).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {Object.entries(categoryPoints).map(([cat, amount]) => (
+                                <span key={cat} className="inline-flex items-center gap-1 text-[10px] bg-background rounded px-1.5 py-0.5 border">
+                                  {cat === "assignment" ? "واجبات" : cat === "attendance" ? "حضور" : cat === "behavior" ? "سلوك" : cat === "quran" ? "قرآن" : cat}: {amount}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* الأوسمة */}
+                        {badgesData.length > 0 && (
+                          <div className="bg-muted/50 rounded-lg px-3 py-2 space-y-1">
+                            <div className="flex items-center gap-2 font-semibold text-xs"><span>🏅</span> الأوسمة ({badgesData.length})</div>
+                            <div className="flex flex-wrap gap-1">
+                              {badgesData.slice(-5).map((b, i) => (
+                                <Badge key={i} variant="secondary" className="text-[10px] py-0">{b.badgeName}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* التقدم العام */}
+                        <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+                          <span>📈</span>
+                          <span className="text-muted-foreground text-xs">التقدم العام:</span>
+                          <span className={`font-bold text-sm ${progressColor}`}>{progressDesc}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="shrink-0 pt-2">
                 <Button onClick={handleGenerateReport} disabled={generating} className="w-full gap-2" data-testid="button-submit-report">
                   {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ClipboardCheck className="w-4 h-4" />}
                   إنشاء التقرير ومشاركته

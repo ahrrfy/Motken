@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2, Save, Calendar, ClipboardList, Search,
   CheckCircle, XCircle, Clock, TrendingUp, Printer,
-  Phone, CalendarDays, BarChart3, Users, AlertTriangle, Download, Monitor
+  Phone, BarChart3, Users, AlertTriangle, Download, Monitor
 } from "lucide-react";
 import { exportJsonToExcel } from "@/lib/excel-utils";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
@@ -72,7 +72,6 @@ const absenceReasons = [
   { value: "أخرى", label: "أخرى" },
 ];
 
-const DAYS_AR = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
 export default function AttendancePage() {
   const { user } = useAuth();
@@ -101,11 +100,6 @@ export default function AttendancePage() {
   const [markFilterLevel, setMarkFilterLevel] = useState("all");
   const [teachers, setTeachers] = useState<{id: string; name: string}[]>([]);
 
-  const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
-  const [calendarData, setCalendarData] = useState<AttendanceRecord[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState(false);
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
   const [allHistory, setAllHistory] = useState<AttendanceRecord[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -259,24 +253,6 @@ export default function AttendancePage() {
     }
   };
 
-  const fetchCalendarData = async () => {
-    setCalendarLoading(true);
-    try {
-      const firstDay = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-01`;
-      const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
-      const lastDayStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
-      const params = new URLSearchParams({ dateFrom: firstDay, dateTo: lastDayStr });
-      if (isTeacher && user?.id) params.set("teacherId", user.id);
-      if (isSupervisor && user?.mosqueId) params.set("mosqueId", user.mosqueId);
-      const res = await fetch(`/api/attendance?${params.toString()}`, { credentials: "include" });
-      if (res.ok) {
-        setCalendarData(await res.json());
-      }
-    } catch {
-    } finally {
-      setCalendarLoading(false);
-    }
-  };
 
   const fetchAllHistory = async () => {
     setStatsLoading(true);
@@ -307,18 +283,11 @@ export default function AttendancePage() {
   useEffect(() => {
     if (activeTab === "history") {
       fetchHistory();
-    } else if (activeTab === "calendar") {
-      fetchCalendarData();
     } else if (activeTab === "statistics") {
       fetchAllHistory();
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    if (activeTab === "calendar") {
-      fetchCalendarData();
-    }
-  }, [calendarMonth, calendarYear]);
 
   const updateStatus = (studentId: string, status: "present" | "absent" | "late" | "excused") => {
     setAttendanceData((prev) => ({
@@ -482,32 +451,6 @@ export default function AttendancePage() {
     return true;
   });
 
-  const calendarDays = useMemo(() => {
-    const firstDayOfMonth = new Date(calendarYear, calendarMonth, 1);
-    const lastDayOfMonth = new Date(calendarYear, calendarMonth + 1, 0);
-    const startDay = firstDayOfMonth.getDay();
-    const totalDays = lastDayOfMonth.getDate();
-    const days: (number | null)[] = [];
-    for (let i = 0; i < startDay; i++) days.push(null);
-    for (let i = 1; i <= totalDays; i++) days.push(i);
-    return days;
-  }, [calendarMonth, calendarYear]);
-
-  const getCalendarDayData = (day: number) => {
-    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return calendarData.filter(r => {
-      const rDate = new Date(r.date).toISOString().split("T")[0];
-      return rDate === dateStr;
-    });
-  };
-
-  const selectedDateRecords = useMemo(() => {
-    if (!selectedCalendarDate) return [];
-    return calendarData.filter(r => {
-      const rDate = new Date(r.date).toISOString().split("T")[0];
-      return rDate === selectedCalendarDate;
-    });
-  }, [selectedCalendarDate, calendarData]);
 
   const statsData = useMemo(() => {
     if (allHistory.length === 0) return { rate: 0, studentStats: [], best: [], worst: [] };
@@ -541,7 +484,6 @@ export default function AttendancePage() {
     return { rate, studentStats, best, worst };
   }, [allHistory, students]);
 
-  const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 page-transition" data-testid="attendance-page">
@@ -651,11 +593,6 @@ export default function AttendancePage() {
             <Calendar className="w-4 h-4" />
             <span className="hidden sm:inline">سجل الحضور</span>
             <span className="sm:hidden">السجل</span>
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-1 text-xs sm:text-sm" data-testid="tab-calendar">
-            <CalendarDays className="w-4 h-4" />
-            <span className="hidden sm:inline">التقويم</span>
-            <span className="sm:hidden">التقويم</span>
           </TabsTrigger>
           <TabsTrigger value="statistics" className="gap-1 text-xs sm:text-sm" data-testid="tab-statistics">
             <BarChart3 className="w-4 h-4" />
@@ -1073,122 +1010,6 @@ export default function AttendancePage() {
                     </TableBody>
                   </Table>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="calendar">
-          <Card dir="rtl" data-testid="calendar-card">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2" data-testid="text-calendar-title">
-                  <CalendarDays className="w-5 h-5" />
-                  التقويم الشهري
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
-                      else setCalendarMonth(m => m - 1);
-                    }}
-                    data-testid="button-prev-month"
-                  >
-                    ←
-                  </Button>
-                  <span className="font-semibold min-w-[120px] text-center" data-testid="text-calendar-month">
-                    {monthNames[calendarMonth]} {calendarYear}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
-                      else setCalendarMonth(m => m + 1);
-                    }}
-                    data-testid="button-next-month"
-                  >
-                    →
-                  </Button>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-2 text-xs flex-wrap">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> حاضر</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> غائب</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> متأخر</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> معذور</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {calendarLoading ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-7 gap-1 mb-1">
-                    {DAYS_AR.map((d) => (
-                      <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-1">{d}</div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-7 gap-1" data-testid="calendar-grid">
-                    {calendarDays.map((day, idx) => {
-                      if (day === null) return <div key={`empty-${idx}`} />;
-                      const dayRecords = getCalendarDayData(day);
-                      const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                      const isSelected = selectedCalendarDate === dateStr;
-                      const presentCount = dayRecords.filter(r => r.status === "present").length;
-                      const absentCount = dayRecords.filter(r => r.status === "absent").length;
-                      const lateCount = dayRecords.filter(r => r.status === "late").length;
-                      const excusedCount = dayRecords.filter(r => r.status === "excused").length;
-                      return (
-                        <button
-                          key={day}
-                          onClick={() => setSelectedCalendarDate(isSelected ? null : dateStr)}
-                          className={`p-1 sm:p-2 rounded-lg border text-center min-h-[50px] sm:min-h-[70px] transition-all hover:bg-accent ${
-                            isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border"
-                          } ${dayRecords.length > 0 ? "" : "opacity-60"}`}
-                          data-testid={`calendar-day-${day}`}
-                        >
-                          <div className="text-sm font-medium">{day}</div>
-                          {dayRecords.length > 0 && (
-                            <div className="flex justify-center gap-0.5 mt-1 flex-wrap">
-                              {presentCount > 0 && <span className="w-2 h-2 rounded-full bg-green-500" title={`${presentCount} حاضر`} />}
-                              {absentCount > 0 && <span className="w-2 h-2 rounded-full bg-red-500" title={`${absentCount} غائب`} />}
-                              {lateCount > 0 && <span className="w-2 h-2 rounded-full bg-yellow-500" title={`${lateCount} متأخر`} />}
-                              {excusedCount > 0 && <span className="w-2 h-2 rounded-full bg-blue-500" title={`${excusedCount} معذور`} />}
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {selectedCalendarDate && (
-                    <div className="mt-4 border rounded-lg p-4" data-testid="calendar-day-details">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4" />
-                        تفاصيل يوم {formatDateAr(selectedCalendarDate)}
-                      </h3>
-                      {selectedDateRecords.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">لا توجد سجلات لهذا اليوم</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {selectedDateRecords.map((r, i) => (
-                            <div key={r.id || i} className="flex items-center justify-between py-1.5 border-b last:border-0">
-                              <span className="text-sm">{r.studentName || students.find(s => s.id === r.studentId)?.name || r.studentId}</span>
-                              <Badge variant="outline" className={statusColors[r.status] || ""}>
-                                {statusLabels[r.status] || r.status}
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
               )}
             </CardContent>
           </Card>
