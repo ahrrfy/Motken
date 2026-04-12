@@ -85,18 +85,20 @@ export const userMethods = {
   },
 
   async deleteUser(id: string): Promise<void> {
-    await db.delete(courseStudents).where(eq(courseStudents.studentId, id));
-    await db.delete(courseTeachers).where(eq(courseTeachers.teacherId, id));
-    await db.delete(certificates).where(eq(certificates.studentId, id));
-    await db.delete(certificates).where(eq(certificates.issuedBy, id));
-    await db.delete(notifications).where(eq(notifications.userId, id));
-    await db.delete(activityLogs).where(eq(activityLogs.userId, id));
-    await db.delete(ratings).where(eq(ratings.fromUserId, id));
-    await db.delete(ratings).where(eq(ratings.toUserId, id));
-    await db.delete(examStudents).where(eq(examStudents.studentId, id));
-    await db.delete(assignments).where(eq(assignments.studentId, id));
-    await db.delete(assignments).where(eq(assignments.teacherId, id));
-    await db.delete(exams).where(eq(exams.teacherId, id));
-    await db.delete(users).where(eq(users.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(courseStudents).where(eq(courseStudents.studentId, id));
+      await tx.delete(courseTeachers).where(eq(courseTeachers.teacherId, id));
+      await tx.delete(certificates).where(eq(certificates.studentId, id));
+      await tx.delete(certificates).where(eq(certificates.issuedBy, id));
+      await tx.delete(notifications).where(eq(notifications.userId, id));
+      await tx.delete(activityLogs).where(eq(activityLogs.userId, id));
+      await tx.delete(ratings).where(eq(ratings.fromUserId, id));
+      await tx.delete(ratings).where(eq(ratings.toUserId, id));
+      await tx.delete(examStudents).where(eq(examStudents.studentId, id));
+      await tx.delete(assignments).where(eq(assignments.studentId, id));
+      await tx.delete(assignments).where(eq(assignments.teacherId, id));
+      await tx.delete(exams).where(eq(exams.teacherId, id));
+      await tx.delete(users).where(eq(users.id, id));
+    });
   },
 };

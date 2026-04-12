@@ -7,6 +7,7 @@ import {
 } from "@shared/schema";
 import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
+import { ensureAllSameMosque, ensureSameMosque } from "../lib/mosque-guard";
 
 export function registerCoursesRoutes(app: Express) {
   // ==================== COURSES & CERTIFICATES ====================
@@ -29,7 +30,7 @@ export function registerCoursesRoutes(app: Express) {
         graduationGrade: cert.graduationGrade,
         notes: cert.notes,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "التحقق من الشهادة");
     }
   });
@@ -69,7 +70,7 @@ export function registerCoursesRoutes(app: Express) {
         totalCertificates,
         graduationRate: totalStudents > 0 ? Math.round((totalGraduated / totalStudents) * 100) : 0,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب إحصائيات الدورات");
     }
   });
@@ -102,7 +103,7 @@ export function registerCoursesRoutes(app: Express) {
       }
 
       res.json(enriched);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الدورات");
     }
   });
@@ -129,19 +130,21 @@ export function registerCoursesRoutes(app: Express) {
       });
 
       if (studentIds && Array.isArray(studentIds)) {
+        await ensureAllSameMosque(currentUser, studentIds);
         for (const sid of studentIds) {
           await storage.createCourseStudent({ courseId: course.id, studentId: sid });
         }
       }
 
       const allTeacherIds = Array.from(new Set<string>([...(teacherIds || []), currentUser.id]));
+      await ensureAllSameMosque(currentUser, allTeacherIds);
       for (const tid of allTeacherIds) {
         await storage.createCourseTeacher({ courseId: course.id, teacherId: tid });
       }
 
       await logActivity(currentUser, `إنشاء دورة: ${title}`, "courses");
       res.status(201).json(course);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء دورة");
     }
   });
@@ -163,7 +166,7 @@ export function registerCoursesRoutes(app: Express) {
         }
       }
 
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (req.body.title !== undefined) updateData.title = req.body.title;
       if (req.body.description !== undefined) updateData.description = req.body.description;
       if (req.body.startDate !== undefined) updateData.startDate = new Date(req.body.startDate);
@@ -173,7 +176,7 @@ export function registerCoursesRoutes(app: Express) {
       const updated = await storage.updateCourse(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "الدورة غير موجودة" });
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تعديل دورة");
     }
   });
@@ -198,7 +201,7 @@ export function registerCoursesRoutes(app: Express) {
       await storage.deleteCourse(req.params.id);
       await logActivity(currentUser, `حذف دورة: ${course.title}`, "courses");
       res.json({ message: "تم حذف الدورة بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف دورة");
     }
   });
@@ -220,6 +223,8 @@ export function registerCoursesRoutes(app: Express) {
         return res.status(400).json({ message: "يرجى تحديد الطلاب" });
       }
 
+      await ensureAllSameMosque(currentUser, studentIds);
+
       const existing = await storage.getCourseStudents(req.params.id);
       const existingIds = new Set(existing.map(e => e.studentId));
 
@@ -240,7 +245,7 @@ export function registerCoursesRoutes(app: Express) {
       }
 
       res.status(201).json(created);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إضافة طلاب للدورة");
     }
   });
@@ -261,6 +266,8 @@ export function registerCoursesRoutes(app: Express) {
       if (!studentIds || !Array.isArray(studentIds)) {
         return res.status(400).json({ message: "يرجى تحديد الطلاب" });
       }
+
+      await ensureAllSameMosque(currentUser, studentIds);
 
       const courseStudentsList = await storage.getCourseStudents(req.params.id);
       const createdCertificates = [];
@@ -312,7 +319,7 @@ export function registerCoursesRoutes(app: Express) {
 
       await logActivity(currentUser, `تخريج ${studentIds.length} طالب من دورة: ${course.title}`, "courses");
       res.json({ message: "تم تخريج الطلاب ومنح الشهادات بنجاح", certificates: createdCertificates });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تخريج طلاب الدورة");
     }
   });
@@ -341,7 +348,7 @@ export function registerCoursesRoutes(app: Express) {
       }
 
       res.json(certs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الشهادات");
     }
   });
@@ -419,7 +426,7 @@ export function registerCoursesRoutes(app: Express) {
       });
 
       res.json(enriched);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب جميع الشهادات");
     }
   });
@@ -436,13 +443,15 @@ export function registerCoursesRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح بتعديل هذه الدورة" });
       }
 
+      await ensureSameMosque(currentUser, req.params.studentId);
+
       const students = await storage.getCourseStudents(req.params.id);
       const entry = students.find(s => s.studentId === req.params.studentId);
       if (!entry) return res.status(404).json({ message: "الطالب غير مسجل في هذه الدورة" });
 
       await storage.deleteCourseStudent(entry.id);
       res.json({ message: "تم إزالة الطالب من الدورة" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إزالة طالب من الدورة");
     }
   });
@@ -476,7 +485,7 @@ export function registerCoursesRoutes(app: Express) {
 
       await logActivity(currentUser, `نسخ دورة: ${original.title}`, "courses");
       res.status(201).json(newCourse);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "نسخ دورة");
     }
   });
@@ -509,7 +518,7 @@ export function registerCoursesRoutes(app: Express) {
 
       await logActivity(currentUser, `إلغاء تخريج طالب من دورة: ${course.title}`, "courses");
       res.json({ message: "تم إلغاء التخريج بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إلغاء تخريج طالب");
     }
   });
@@ -517,7 +526,7 @@ export function registerCoursesRoutes(app: Express) {
   // ==================== EXTERNAL PARTICIPANTS ====================
 
   // GET external participants for a course
-  app.get("/api/courses/:id/external-participants", requireAuth, async (req: any, res) => {
+  app.get("/api/courses/:id/external-participants", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -529,13 +538,13 @@ export function registerCoursesRoutes(app: Express) {
         [req.params.id]
       );
       res.json(result.rows);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب المشاركين الخارجيين");
     }
   });
 
   // POST add external participant
-  app.post("/api/courses/:id/external-participants", requireAuth, async (req: any, res) => {
+  app.post("/api/courses/:id/external-participants", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -554,13 +563,13 @@ export function registerCoursesRoutes(app: Express) {
         [req.params.id, user.mosqueId || null, name.trim(), phone || null, age || null, notes || null]
       );
       res.status(201).json(result.rows[0]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إضافة مشارك خارجي");
     }
   });
 
   // DELETE external participant
-  app.delete("/api/courses/:id/external-participants/:participantId", requireAuth, async (req: any, res) => {
+  app.delete("/api/courses/:id/external-participants/:participantId", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -573,13 +582,13 @@ export function registerCoursesRoutes(app: Express) {
       );
       if (result.rows.length === 0) return res.status(404).json({ message: "غير موجود" });
       res.json({ success: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف مشارك خارجي");
     }
   });
 
   // POST graduate external participant
-  app.post("/api/courses/:id/external-participants/:participantId/graduate", requireAuth, async (req: any, res) => {
+  app.post("/api/courses/:id/external-participants/:participantId/graduate", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -602,13 +611,13 @@ export function registerCoursesRoutes(app: Express) {
 
       await logActivity(user, `تخريج مشارك خارجي من دورة: ${course.title}`, "courses");
       res.json(result.rows[0]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تخريج مشارك خارجي");
     }
   });
 
   // POST ungraduate external participant
-  app.post("/api/courses/:id/external-participants/:participantId/ungraduate", requireAuth, async (req: any, res) => {
+  app.post("/api/courses/:id/external-participants/:participantId/ungraduate", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -623,13 +632,13 @@ export function registerCoursesRoutes(app: Express) {
       );
       if (result.rows.length === 0) return res.status(404).json({ message: "غير موجود" });
       res.json(result.rows[0]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إلغاء تخريج مشارك خارجي");
     }
   });
 
   // GET archive of all external participants for mosque
-  app.get("/api/external-participants", requireAuth, async (req: any, res) => {
+  app.get("/api/external-participants", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -645,13 +654,13 @@ export function registerCoursesRoutes(app: Express) {
         [user.mosqueId]
       );
       res.json(result.rows);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب أرشيف المشاركين الخارجيين");
     }
   });
 
   // POST bulk import external participants from Excel
-  app.post("/api/external-participants/bulk-import", requireAuth, async (req: any, res) => {
+  app.post("/api/external-participants/bulk-import", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -694,11 +703,11 @@ export function registerCoursesRoutes(app: Express) {
         } catch { failed++; }
       }
       res.json({ success, failed, total: participants.length });
-    } catch (err: any) { sendError(res, err, "استيراد المشاركين الخارجيين"); }
+    } catch (err: unknown) { sendError(res, err, "استيراد المشاركين الخارجيين"); }
   });
 
   // GET lookup external participants by phone (for auto-fill)
-  app.get("/api/external-participants/lookup", requireAuth, async (req: any, res) => {
+  app.get("/api/external-participants/lookup", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -717,7 +726,7 @@ export function registerCoursesRoutes(app: Express) {
         [user.mosqueId, `%${phone}%`]
       );
       res.json(result.rows);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "البحث عن مشارك");
     }
   });

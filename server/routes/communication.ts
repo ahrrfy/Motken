@@ -19,7 +19,7 @@ export function registerCommunicationRoutes(app: Express) {
         !t.mosqueId || t.mosqueId === currentUser.mosqueId || currentUser.role === "admin"
       );
       res.json(filtered);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب قوالب الرسائل");
     }
   });
@@ -42,7 +42,7 @@ export function registerCommunicationRoutes(app: Express) {
         createdBy: currentUser.id,
       }).returning();
       res.status(201).json(template);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء قالب رسالة");
     }
   });
@@ -61,7 +61,7 @@ export function registerCommunicationRoutes(app: Express) {
       }
       await db.delete(messageTemplates).where(eq(messageTemplates.id, req.params.id));
       res.json({ message: "تم الحذف" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف قالب الرسالة");
     }
   });
@@ -84,7 +84,7 @@ export function registerCommunicationRoutes(app: Express) {
       const logs = await db.select().from(communicationLogs).where(eq(communicationLogs.studentId, req.params.studentId));
       logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       res.json(logs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب سجل التواصل");
     }
   });
@@ -115,7 +115,7 @@ export function registerCommunicationRoutes(app: Express) {
         parentPhone,
       }).returning();
       res.status(201).json(log);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تسجيل تواصل");
     }
   });

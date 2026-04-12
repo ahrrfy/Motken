@@ -135,7 +135,7 @@ function formatZodError(error: ZodError): ApiError {
 /**
  * تحويل أخطاء قاعدة البيانات لرسائل مفهومة
  */
-function formatDatabaseError(err: any): ApiError {
+function formatDatabaseError(err: { message?: string; code?: string; detail?: string; constraint?: string }): ApiError {
   const msg = err.message || "";
   const code = err.code || "";
 
@@ -189,7 +189,7 @@ function formatDatabaseError(err: any): ApiError {
  * معالج أخطاء رئيسي — يُستخدم في catch blocks
  * يكشف نوع الخطأ تلقائياً ويُرجع رسالة مناسبة
  */
-export function handleApiError(err: any, context?: string): { status: number; body: ApiError } {
+export function handleApiError(err: unknown, context?: string): { status: number; body: ApiError } {
   // Handle null/undefined errors
   if (err === null || err === undefined) {
     const contextMsg = context ? ` [${context}]` : "";
@@ -205,28 +205,31 @@ export function handleApiError(err: any, context?: string): { status: number; bo
     return { status: 400, body: formatZodError(err) };
   }
 
+  // Narrow to object with known error properties
+  const e = err as { message?: string; code?: string; status?: number; statusCode?: number; stack?: string; detail?: string; constraint?: string };
+
   // PostgreSQL errors (have error codes)
-  if (err.code && typeof err.code === "string" && err.code.match(/^[0-9]{5}$/)) {
-    return { status: 400, body: formatDatabaseError(err) };
+  if (e.code && typeof e.code === "string" && e.code.match(/^[0-9]{5}$/)) {
+    return { status: 400, body: formatDatabaseError(e) };
   }
 
   // Express validation / manual validation errors
-  if (err.status === 400 || err.statusCode === 400) {
+  if (e.status === 400 || e.statusCode === 400) {
     return {
       status: 400,
       body: {
-        message: err.message || "بيانات غير صالحة",
+        message: e.message || "بيانات غير صالحة",
         source: "validation",
       },
     };
   }
 
   // Permission errors
-  if (err.status === 403 || err.statusCode === 403) {
+  if (e.status === 403 || e.statusCode === 403) {
     return {
       status: 403,
       body: {
-        message: err.message || "غير مصرح بهذا الإجراء",
+        message: e.message || "غير مصرح بهذا الإجراء",
         source: "permission",
       },
     };
@@ -234,9 +237,9 @@ export function handleApiError(err: any, context?: string): { status: number; bo
 
   // Log unexpected errors with full details
   const contextMsg = context ? ` [${context}]` : "";
-  console.error(`[خطأ سيرفر]${contextMsg}:`, err?.message || err);
-  if (err?.stack) {
-    console.error(`[Stack]${contextMsg}:`, err.stack);
+  console.error(`[خطأ سيرفر]${contextMsg}:`, e.message || err);
+  if (e.stack) {
+    console.error(`[Stack]${contextMsg}:`, e.stack);
   }
 
   return {
@@ -258,7 +261,7 @@ export function handleApiError(err: any, context?: string): { status: number; bo
  * }
  * ```
  */
-export function sendError(res: any, err: any, context?: string): void {
+export function sendError(res: { status: (code: number) => { json: (body: unknown) => void } }, err: unknown, context?: string): void {
   const { status, body } = handleApiError(err, context);
   res.status(status).json(body);
 }

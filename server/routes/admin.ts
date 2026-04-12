@@ -45,6 +45,7 @@ import { sessionTracker } from "../session-tracker";
 import { logActivity } from "./shared";
 import { allFeatureDefaults } from "./feature-defaults";
 import { sendError } from "../error-handler";
+import { toSafeUser, toSafeUsers } from "../services/user-service";
 
 export function registerAdminRoutes(app: Express) {
   // Seed endpoint removed for security — use `npx tsx script/seed.ts` instead
@@ -77,9 +78,8 @@ export function registerAdminRoutes(app: Express) {
         const mosque = await storage.getMosque(user.mosqueId);
         mosqueName = mosque?.name || "";
       }
-      const { password, ...safe } = user;
-      res.json({ ...safe, mosqueName });
-    } catch (err: any) {
+      res.json({ ...toSafeUser(user), mosqueName });
+    } catch (err: unknown) {
       sendError(res, err, "التحقق من المستخدم");
     }
   });
@@ -102,7 +102,7 @@ export function registerAdminRoutes(app: Express) {
       await storage.resetSystemData();
       await logActivity(req.user!, "تصفير النظام بالكامل", "system", "تم مسح جميع بيانات المساجد والمستخدمين");
       res.json({ message: "تم تصفير النظام بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تصفير النظام");
     }
   });
@@ -150,123 +150,66 @@ export function registerAdminRoutes(app: Express) {
         totalUsers: Number(usersCount[0]?.count || 0),
         lastBackupDate: lastBackupLog[0]?.createdAt || null,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب إحصائيات النسخ الاحتياطي");
     }
   });
 
   app.get("/api/system/backup", requireRole("admin"), async (req, res) => {
     try {
-      const [
-        mosquesData, usersData, assignmentsData, attendanceData,
-        coursesData, courseStudentsData, courseTeachersData, certificatesData,
-        notificationsData, messagesData, activityLogsData, ratingsData,
-        pointsData, badgesData,
-        schedulesData, parentReportsData, examsData, examStudentsData,
-        featureFlagsData, bannedDevicesData,
-        quranProgressData, mosqueRegistrationsData, graduatesData, familyLinksData,
-        emergencySubstitutionsData, studentTransfersData, feedbackData,
-        graduateFollowupsData, messageTemplatesData, mosqueMessagesData,
-        incidentRecordsData, testimonialsData, assignmentAudioData,
-        pointRedemptionsData, mosqueHistoryData, communicationLogsData,
-        announcementsData,
-      ] = await Promise.all([
-        db.select().from(mosques),
-        db.select().from(users),
-        db.select().from(assignments),
-        db.select().from(attendance),
-        db.select().from(courses),
-        db.select().from(courseStudents),
-        db.select().from(courseTeachers),
-        db.select().from(certificates),
-        db.select().from(notifications),
-        db.select().from(messages),
-        db.select().from(activityLogs),
-        db.select().from(ratings),
-        db.select().from(points),
-        db.select().from(badges),
-        db.select().from(schedules),
-        db.select().from(parentReports),
-        db.select().from(exams),
-        db.select().from(examStudents),
-        db.select().from(featureFlags),
-        db.select().from(bannedDevices),
-        db.select().from(quranProgress),
-        db.select().from(mosqueRegistrations),
-        db.select().from(graduates),
-        db.select().from(familyLinks),
-        db.select().from(emergencySubstitutions),
-        db.select().from(studentTransfers),
-        db.select().from(feedback),
-        db.select().from(graduateFollowups),
-        db.select().from(messageTemplates),
-        db.select().from(mosqueMessages),
-        db.select().from(incidentRecords),
-        db.select().from(testimonials),
-        db.select().from(assignmentAudio),
-        db.select().from(pointRedemptions),
-        db.select().from(mosqueHistory),
-        db.select().from(communicationLogs),
-        db.select().from(announcements),
-      ]);
+      // Sequential table loading — prevents connection pool exhaustion and memory spikes
+      const tables: [string, any][] = [
+        ["mosques", mosques], ["users", users], ["assignments", assignments],
+        ["attendance", attendance], ["courses", courses], ["courseStudents", courseStudents],
+        ["courseTeachers", courseTeachers], ["certificates", certificates],
+        ["notifications", notifications], ["messages", messages],
+        ["activityLogs", activityLogs], ["ratings", ratings],
+        ["points", points], ["badges", badges],
+        ["schedules", schedules], ["parentReports", parentReports],
+        ["exams", exams], ["examStudents", examStudents],
+        ["featureFlags", featureFlags], ["bannedDevices", bannedDevices],
+        ["quranProgress", quranProgress], ["mosqueRegistrations", mosqueRegistrations],
+        ["graduates", graduates], ["familyLinks", familyLinks],
+        ["emergencySubstitutions", emergencySubstitutions], ["studentTransfers", studentTransfers],
+        ["feedback", feedback], ["graduateFollowups", graduateFollowups],
+        ["messageTemplates", messageTemplates], ["mosqueMessages", mosqueMessages],
+        ["incidentRecords", incidentRecords], ["testimonials", testimonials],
+        ["assignmentAudio", assignmentAudio], ["pointRedemptions", pointRedemptions],
+        ["mosqueHistory", mosqueHistory], ["communicationLogs", communicationLogs],
+        ["announcements", announcements],
+      ];
 
-      const safeUsersData = usersData.map(({ password, ...u }) => u);
-      const allData = {
-        mosques: mosquesData,
-        users: safeUsersData,
-        assignments: assignmentsData,
-        attendance: attendanceData,
-        courses: coursesData,
-        courseStudents: courseStudentsData,
-        courseTeachers: courseTeachersData,
-        certificates: certificatesData,
-        notifications: notificationsData,
-        messages: messagesData,
-        activityLogs: activityLogsData,
-        ratings: ratingsData,
-        points: pointsData,
-        badges: badgesData,
-        schedules: schedulesData,
-        parentReports: parentReportsData,
-        exams: examsData,
-        examStudents: examStudentsData,
-        featureFlags: featureFlagsData,
-        bannedDevices: bannedDevicesData,
-        quranProgress: quranProgressData,
-        mosqueRegistrations: mosqueRegistrationsData,
-        graduates: graduatesData,
-        familyLinks: familyLinksData,
-        emergencySubstitutions: emergencySubstitutionsData,
-        studentTransfers: studentTransfersData,
-        feedback: feedbackData,
-        graduateFollowups: graduateFollowupsData,
-        messageTemplates: messageTemplatesData,
-        mosqueMessages: mosqueMessagesData,
-        incidentRecords: incidentRecordsData,
-        testimonials: testimonialsData,
-        assignmentAudio: assignmentAudioData,
-        pointRedemptions: pointRedemptionsData,
-        mosqueHistory: mosqueHistoryData,
-        communicationLogs: communicationLogsData,
-        announcements: announcementsData,
-      };
-      const totalRecords = Object.values(allData).reduce((sum, arr) => sum + arr.length, 0);
+      const dateStr = new Date().toISOString().split("T")[0];
+      res.setHeader("Content-Disposition", `attachment; filename="mutqin_backup_${dateStr}.json"`);
+      res.setHeader("Content-Type", "application/json");
+
+      // Stream JSON — write metadata first, then tables sequentially
+      let totalRecords = 0;
+      const allData: Record<string, unknown[]> = {};
+
+      for (const [name, table] of tables) {
+        const rows = await db.select().from(table);
+        if (name === "users") {
+          allData[name] = toSafeUsers(rows);
+        } else {
+          allData[name] = rows;
+        }
+        totalRecords += rows.length;
+      }
+
       const backup = {
         metadata: {
           version: "2.0",
           timestamp: new Date().toISOString(),
-          tableCount: Object.keys(allData).length,
+          tableCount: tables.length,
           totalRecords,
         },
         data: allData,
       };
 
-      const dateStr = new Date().toISOString().split("T")[0];
-      res.setHeader("Content-Disposition", `attachment; filename="mutqin_backup_${dateStr}.json"`);
-      res.setHeader("Content-Type", "application/json");
-      await logActivity(req.user!, "إنشاء نسخة احتياطية", "system", `تم تصدير ${backup.metadata.totalRecords} سجل`);
+      await logActivity(req.user!, "إنشاء نسخة احتياطية", "system", `تم تصدير ${totalRecords} سجل`);
       res.json(backup);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء النسخة الاحتياطية");
     }
   });
@@ -325,7 +268,7 @@ export function registerAdminRoutes(app: Express) {
         },
         errors,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "التحقق من النسخة الاحتياطية");
     }
   });
@@ -489,13 +432,13 @@ export function registerAdminRoutes(app: Express) {
 
         await client.query("COMMIT");
         res.json({ message: "تم استعادة النسخة الاحتياطية بنجاح" });
-      } catch (err: any) {
+      } catch (err: unknown) {
         await client.query("ROLLBACK");
         throw err;
       } finally {
         client.release();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "استعادة النسخة الاحتياطية");
     }
   });
@@ -593,7 +536,7 @@ export function registerAdminRoutes(app: Express) {
     try {
       const devices = await storage.getBannedDevices();
       res.json(devices);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الأجهزة المحظورة");
     }
   });
@@ -616,7 +559,7 @@ export function registerAdminRoutes(app: Express) {
       });
       await logActivity(req.user!, `حظر عنوان IP: ${ipAddress}`, "security", reason);
       res.status(201).json(banned);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حظر عنوان IP");
     }
   });
@@ -626,7 +569,7 @@ export function registerAdminRoutes(app: Express) {
       await storage.deleteBannedDevice(req.params.id);
       await logActivity(req.user!, `إزالة حظر جهاز`, "security");
       res.json({ message: "تم إزالة الحظر" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إزالة حظر جهاز");
     }
   });
@@ -637,7 +580,7 @@ export function registerAdminRoutes(app: Express) {
     try {
       const flags = await storage.getFeatureFlags();
       res.json(flags);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب إعدادات الميزات");
     }
   });
@@ -652,7 +595,7 @@ export function registerAdminRoutes(app: Express) {
       if (!updated) return res.status(404).json({ message: "الميزة غير موجودة" });
       await logActivity(req.user!, `${isEnabled ? "تفعيل" : "تعطيل"} ميزة: ${updated.featureName}`, "feature_flags");
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث إعداد الميزة");
     }
   });
@@ -661,7 +604,7 @@ export function registerAdminRoutes(app: Express) {
     try {
       const enabled = await storage.isFeatureEnabled(req.params.key);
       res.json({ enabled });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "التحقق من حالة الميزة");
     }
   });
@@ -671,7 +614,7 @@ export function registerAdminRoutes(app: Express) {
       const flags = await storage.getFeatureFlags();
       const enabled = flags.filter(f => f.isEnabled).map(f => f.featureKey);
       res.json({ enabled });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الميزات المفعّلة");
     }
   });
@@ -691,7 +634,7 @@ export function registerAdminRoutes(app: Express) {
       }
       await logActivity(req.user!, `إضافة ${newFlags.length} ميزة جديدة`, "feature_flags");
       res.status(201).json(created);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء الميزات الافتراضية");
     }
   });

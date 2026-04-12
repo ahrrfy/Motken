@@ -33,7 +33,7 @@ export function registerGraduatesRoutes(app: Express) {
         return res.json(await enrichGraduates(grads));
       }
       res.json([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الخريجين");
     }
   });
@@ -98,7 +98,7 @@ export function registerGraduatesRoutes(app: Express) {
 
       await logActivity(currentUser, "تسجيل تخرج طالب", "graduates");
       res.status(201).json(grad);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تسجيل تخرج طالب");
     }
   });
@@ -124,7 +124,7 @@ export function registerGraduatesRoutes(app: Express) {
       const updated = await storage.updateGraduate(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث بيانات الخريج");
     }
   });
@@ -142,7 +142,7 @@ export function registerGraduatesRoutes(app: Express) {
       }
       await storage.deleteGraduate(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف سجل الخريج");
     }
   });
@@ -151,7 +151,7 @@ export function registerGraduatesRoutes(app: Express) {
     try {
       const followups = await storage.getGraduateFollowupsByGraduate(req.params.id);
       res.json(followups);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب متابعات الخريج");
     }
   });
@@ -174,7 +174,7 @@ export function registerGraduatesRoutes(app: Express) {
         contactedBy: currentUser.id,
       });
       res.status(201).json(followup);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء متابعة خريج");
     }
   });
@@ -208,7 +208,7 @@ export function registerGraduatesRoutes(app: Express) {
         return res.json(relevant);
       }
       res.json([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب طلبات النقل");
     }
   });
@@ -229,7 +229,7 @@ export function registerGraduatesRoutes(app: Express) {
       });
       await logActivity(currentUser, "طلب نقل طالب", "student_transfers");
       res.status(201).json(transfer);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء طلب نقل");
     }
   });
@@ -262,7 +262,7 @@ export function registerGraduatesRoutes(app: Express) {
       const updated = await storage.updateStudentTransfer(req.params.id, updateData);
       await logActivity(currentUser, `تحديث طلب نقل: ${req.body.status}`, "student_transfers");
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث طلب النقل");
     }
   });

@@ -6,6 +6,7 @@ import {
 } from "@shared/schema";
 import { logActivity, canTeacherAccessStudent } from "./shared";
 import { sendError } from "../error-handler";
+import { ensureSameMosque } from "../lib/mosque-guard";
 
   const enrichWithStudentNames = async (records: any[]) => {
     const studentIds = [...new Set(records.map(r => r.studentId))];
@@ -86,7 +87,7 @@ export function registerAttendanceRoutes(app: Express) {
         return res.json(await enrichWithStudentNames(records));
       }
       res.json([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب سجلات الحضور");
     }
   });
@@ -101,6 +102,7 @@ export function registerAttendanceRoutes(app: Express) {
       if (!studentId || !date || !status) {
         return res.status(400).json({ message: "جميع الحقول المطلوبة يجب تعبئتها" });
       }
+      await ensureSameMosque(currentUser, studentId);
       const record = await storage.createAttendance({
         studentId,
         teacherId: currentUser.id,
@@ -111,7 +113,7 @@ export function registerAttendanceRoutes(app: Express) {
       });
       await logActivity(currentUser, "تسجيل حضور", "attendance");
       res.status(201).json(record);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تسجيل الحضور");
     }
   });
@@ -123,14 +125,14 @@ export function registerAttendanceRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح بتعديل الحضور" });
       }
       const { status, notes } = req.body;
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (status !== undefined) updateData.status = status;
       if (notes !== undefined) updateData.notes = notes;
       const updated = await storage.updateAttendance(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "سجل الحضور غير موجود" });
       await logActivity(currentUser, "تعديل حضور", "attendance");
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تعديل الحضور");
     }
   });
@@ -149,7 +151,7 @@ export function registerAttendanceRoutes(app: Express) {
       await storage.deleteAttendance(req.params.id);
       await logActivity(currentUser, "حذف سجل حضور", "attendance");
       res.json({ message: "تم حذف سجل الحضور" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف الحضور");
     }
   });
@@ -170,10 +172,8 @@ export function registerAttendanceRoutes(app: Express) {
       const created = [];
       for (const s of students) {
         if (!s.studentId || !s.status) continue;
-        if (currentUser.role !== "admin") {
-          const student = await storage.getUser(s.studentId);
-          if (!student || student.mosqueId !== currentUser.mosqueId) continue;
-        }
+        const student = await storage.getUser(s.studentId);
+        if (!student || (currentUser.mosqueId && student.mosqueId !== currentUser.mosqueId)) continue;
         const record = await storage.createAttendance({
           studentId: s.studentId,
           teacherId: currentUser.id,
@@ -214,7 +214,7 @@ export function registerAttendanceRoutes(app: Express) {
       }
       await logActivity(currentUser, `تسجيل حضور جماعي: ${created.length} طالب`, "attendance");
       res.status(201).json(created);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تسجيل الحضور الجماعي");
     }
   });
@@ -222,7 +222,7 @@ export function registerAttendanceRoutes(app: Express) {
   // ==================== BULK IMPORT FROM EXCEL ====================
   // POST /api/attendance/bulk-import
   // Accepts { rows: [{اسم الطالب, التاريخ, الحالة, ملاحظات}] }
-  app.post("/api/attendance/bulk-import", requireAuth, async (req: any, res) => {
+  app.post("/api/attendance/bulk-import", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user;
       if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
@@ -263,7 +263,7 @@ export function registerAttendanceRoutes(app: Express) {
         } catch { failed++; }
       }
       res.json({ success, failed, total: rows.length });
-    } catch (err: any) { sendError(res, err, "استيراد الحضور"); }
+    } catch (err: unknown) { sendError(res, err, "استيراد الحضور"); }
   });
 
 }

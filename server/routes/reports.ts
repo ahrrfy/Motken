@@ -13,6 +13,8 @@ import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
 import { buildWhatsAppUrl } from "@shared/phone-utils";
 import crypto from "crypto";
+import { ensureSameMosque } from "../lib/mosque-guard";
+import { toSafeUsers } from "../services/user-service";
 
 export function registerReportsRoutes(app: Express) {
   // ==================== PARENT REPORTS ====================
@@ -26,9 +28,10 @@ export function registerReportsRoutes(app: Express) {
       if (!studentId) {
         return res.status(400).json({ message: "معرف الطالب مطلوب" });
       }
+      await ensureSameMosque(currentUser, studentId);
       const reports = await storage.getParentReportsByStudent(studentId);
       res.json(reports);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب التقارير");
     }
   });
@@ -43,10 +46,7 @@ export function registerReportsRoutes(app: Express) {
       if (!studentId || !content) {
         return res.status(400).json({ message: "معرف الطالب والمحتوى مطلوبان" });
       }
-      const student = await storage.getUser(studentId);
-      if (!student) {
-        return res.status(404).json({ message: "الطالب غير موجود" });
-      }
+      const student = await ensureSameMosque(currentUser, studentId);
       const accessToken = crypto.randomBytes(32).toString("hex");
       const mosqueId = currentUser.mosqueId || student.mosqueId;
       const report = await storage.createParentReport({
@@ -59,7 +59,7 @@ export function registerReportsRoutes(app: Express) {
       });
       await logActivity(currentUser, "إنشاء تقرير ولي أمر", "parent_reports");
       res.status(201).json(report);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء تقرير ولي أمر");
     }
   });
@@ -78,7 +78,7 @@ export function registerReportsRoutes(app: Express) {
       await storage.deleteParentReport(req.params.id);
       await logActivity(currentUser, "حذف تقرير ولي أمر", "parent_reports");
       res.json({ message: "تم حذف التقرير" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف التقرير");
     }
   });
@@ -97,7 +97,7 @@ export function registerReportsRoutes(app: Express) {
         studentName: student?.name || "",
         mosqueName: mosque?.name || "",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب التقرير بالرمز");
     }
   });
@@ -138,7 +138,7 @@ export function registerReportsRoutes(app: Express) {
           ? buildWhatsAppUrl(student.parentPhone, whatsappText)
           : null,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب التقرير الأسبوعي");
     }
   });
@@ -162,9 +162,8 @@ export function registerReportsRoutes(app: Express) {
       } else if (currentUser.mosqueId) {
         students = (await storage.getUsersByMosqueAndRole(currentUser.mosqueId, "student")).filter(s => !s.pendingApproval);
       }
-      const exported = students.map(({ password, ...s }) => s);
-      res.json(exported);
-    } catch (err: any) {
+      res.json(toSafeUsers(students));
+    } catch (err: unknown) {
       sendError(res, err, "تصدير بيانات الطلاب");
     }
   });
@@ -193,7 +192,7 @@ export function registerReportsRoutes(app: Express) {
         records = await storage.getAttendanceByMosque(currentUser.mosqueId);
       }
       res.json(records);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تصدير بيانات الحضور");
     }
   });
@@ -218,7 +217,7 @@ export function registerReportsRoutes(app: Express) {
         result = await storage.getAssignmentsByMosque(currentUser.mosqueId);
       }
       res.json(result);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تصدير بيانات الواجبات");
     }
   });

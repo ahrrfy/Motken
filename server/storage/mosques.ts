@@ -27,11 +27,14 @@ export const mosqueMethods = {
 
   async deleteMosque(this: any, id: string): Promise<void> {
     const mosqueUsers = await this.getUsersByMosque(id);
+    // Each deleteUser is its own transaction (nested transactions use savepoints in PostgreSQL)
     for (const user of mosqueUsers) {
       await this.deleteUser(user.id);
     }
-    await db.delete(activityLogs).where(eq(activityLogs.mosqueId, id));
-    await db.delete(notifications).where(eq(notifications.mosqueId, id));
-    await db.delete(mosques).where(eq(mosques.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(activityLogs).where(eq(activityLogs.mosqueId, id));
+      await tx.delete(notifications).where(eq(notifications.mosqueId, id));
+      await tx.delete(mosques).where(eq(mosques.id, id));
+    });
   },
 };

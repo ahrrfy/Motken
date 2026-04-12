@@ -11,6 +11,7 @@ import { validateFields, validateAge, validateBoolean, validateEnum, validateDat
 import { logActivity, canTeacherAccessStudent } from "./shared";
 import { sendError } from "../error-handler";
 import { cleanDigits, normalizePhone, PHONE_MAX_LENGTH } from "@shared/phone-utils";
+import { toSafeUser, toSafeUsers } from "../services/user-service";
 import crypto from "crypto";
 
 export function registerUsersRoutes(app: Express) {
@@ -60,25 +61,27 @@ export function registerUsersRoutes(app: Express) {
 
       let safe;
       if (currentUser.role === "admin" || currentUser.role === "supervisor") {
-        safe = result.map(({ password, ...u }) => u);
+        safe = toSafeUsers(result);
       } else if (currentUser.role === "teacher") {
         const myStudentIds = new Set((await storage.getUsersByTeacher(currentUser.id)).map(s => s.id));
-        safe = result.map(({ password, phone, parentPhone, address, telegramId, ...u }) => {
+        safe = result.map(u => {
+          const { password, phone, parentPhone, address, telegramId, ...rest } = u;
           if (myStudentIds.has(u.id) || u.id === currentUser.id) {
-            return { ...u, phone, parentPhone, address, telegramId };
+            return { ...rest, phone, parentPhone, address, telegramId };
           }
-          return u;
+          return rest;
         });
       } else {
-        safe = result.map(({ password, phone, parentPhone, address, telegramId, ...u }) => {
+        safe = result.map(u => {
+          const { password, phone, parentPhone, address, telegramId, ...rest } = u;
           if (u.id === currentUser.id) {
-            return { ...u, phone, parentPhone, address, telegramId };
+            return { ...rest, phone, parentPhone, address, telegramId };
           }
-          return u;
+          return rest;
         });
       }
       res.json(safe);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب المستخدمين");
     }
   });
@@ -106,9 +109,8 @@ export function registerUsersRoutes(app: Express) {
         students = students.filter(s => !s.gender || s.gender === currentUser.gender);
       }
 
-      const safe = students.map(({ password, ...u }) => u);
-      res.json(safe);
-    } catch (err: any) {
+      res.json(toSafeUsers(students));
+    } catch (err: unknown) {
       sendError(res, err, "جلب بيانات الطلاب");
     }
   });
@@ -126,9 +128,8 @@ export function registerUsersRoutes(app: Express) {
         allUsers = await storage.getUsersByMosque(currentUser.mosqueId);
       }
       const pending = allUsers.filter(u => u.pendingApproval);
-      const safe = pending.map(({ password, ...u }) => u);
-      res.json(safe);
-    } catch (err: any) {
+      res.json(toSafeUsers(pending));
+    } catch (err: unknown) {
       sendError(res, err, "جلب طلبات الموافقة");
     }
   });
@@ -155,7 +156,7 @@ export function registerUsersRoutes(app: Express) {
         updated++;
       }
       res.json({ message: `تم تحديث ${updated} طالب`, updated });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث نوع الدراسة");
     }
   });
@@ -168,7 +169,7 @@ export function registerUsersRoutes(app: Express) {
       if (currentUser.role !== "admin" && user.mosqueId !== currentUser.mosqueId) {
         return res.status(403).json({ message: "غير مصرح بالوصول لبيانات هذا المستخدم" });
       }
-      const { password, ...safe } = user;
+      const safe = toSafeUser(user);
       if (currentUser.role === "student" && user.id !== currentUser.id) {
         const { phone: _p, parentPhone: _pp, address: _a, telegramId: _t, ...limited } = safe;
         return res.json(limited);
@@ -181,7 +182,7 @@ export function registerUsersRoutes(app: Express) {
         }
       }
       res.json(safe);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب بيانات المستخدم");
     }
   });
@@ -295,7 +296,7 @@ export function registerUsersRoutes(app: Express) {
         pendingApproval: req.body.pendingApproval || false,
       };
       const user = await storage.createUser(data);
-      const { password, ...safe } = user;
+      const safe = toSafeUser(user);
       await logActivity(currentUser, `إنشاء حساب: ${user.name} (${targetRole})`, "users");
 
       if (req.body._detectedSiblings?.length > 0 && user.mosqueId && user.parentPhone) {
@@ -335,7 +336,7 @@ export function registerUsersRoutes(app: Express) {
       }
 
       res.status(201).json(safe);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء مستخدم");
     }
   });
@@ -566,9 +567,9 @@ export function registerUsersRoutes(app: Express) {
       await logActivity(currentUser, `تحديث أمني للمستخدم ${updated.name}: ${Object.keys(updateData).join(", ")}`, "security");
     }
 
-    const { password, ...safe } = updated;
+    const safe = toSafeUser(updated);
     return res.json(safe);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث بيانات المستخدم");
     }
   });
@@ -583,7 +584,7 @@ export function registerUsersRoutes(app: Express) {
       await logActivity(req.user!, `حذف المستخدم ${targetUser.name} (${targetUser.username}) - الدور: ${targetUser.role}`, "security");
       await storage.deleteUser(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف المستخدم");
     }
   });
@@ -625,7 +626,7 @@ export function registerUsersRoutes(app: Express) {
       });
       await logActivity(currentUser, `الموافقة على الطالب: ${user.name}`, "users");
       res.json({ message: "تمت الموافقة بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "الموافقة على المستخدم");
     }
   });
@@ -658,7 +659,7 @@ export function registerUsersRoutes(app: Express) {
       }
       await logActivity(currentUser, `رفض الطالب: ${user.name}`, "users", reason || undefined);
       res.json({ message: "تم الرفض بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "رفض المستخدم");
     }
   });
@@ -675,9 +676,9 @@ export function registerUsersRoutes(app: Express) {
       const updated = await storage.updateUser(req.params.id, { canPrintIds: !targetUser.canPrintIds });
       if (!updated) return res.status(500).json({ message: "فشل في تحديث الصلاحية" });
       await logActivity(req.user!, `${updated.canPrintIds ? 'منح' : 'سحب'} صلاحية طباعة الهويات ${updated.canPrintIds ? 'لـ' : 'من'} ${updated.name}`, "permissions");
-      const { password, ...safe } = updated;
+      const safe = toSafeUser(updated);
       res.json(safe);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث صلاحية الطباعة");
     }
   });
@@ -712,9 +713,9 @@ export function registerUsersRoutes(app: Express) {
       const updated = await storage.updateUser(targetId, { avatar });
       if (!updated) return res.status(500).json({ message: "فشل في تحديث الصورة" });
 
-      const { password, ...safe } = updated;
+      const safe = toSafeUser(updated);
       res.json(safe);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "رفع صورة المستخدم");
     }
   });
@@ -751,7 +752,7 @@ export function registerUsersRoutes(app: Express) {
 
     await logActivity(currentUser, `نقل الطالب ${student.name} إلى الأستاذ ${newTeacher.name}`, "students", `من الأستاذ ${oldTeacherId || "غير محدد"} إلى ${newTeacher.name}`);
 
-    const { password, ...safe } = updated;
+    const safe = toSafeUser(updated);
     res.json(safe);
   });
 
@@ -781,7 +782,7 @@ export function registerUsersRoutes(app: Express) {
         mosqueName: l.mosqueId ? mosqueNames[l.mosqueId] || "غير معروف" : "بدون مسجد",
       }));
       res.json(result);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الحسابات المرتبطة");
     }
   });
@@ -826,7 +827,7 @@ export function registerUsersRoutes(app: Express) {
         } catch { failed++; }
       }
       res.json({ success, failed, total: rows.length });
-    } catch (err: any) { sendError(res, err, "استيراد المستخدمين"); }
+    } catch (err: unknown) { sendError(res, err, "استيراد المستخدمين"); }
   });
 
 }

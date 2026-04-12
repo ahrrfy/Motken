@@ -14,7 +14,7 @@ export function registerActivityRoutes(app: Express) {
       }
       const logs = await storage.getActivityLogs();
       return res.json(limit ? logs.slice(0, limit) : logs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
     }
   });
@@ -30,7 +30,7 @@ export function registerActivityRoutes(app: Express) {
       if (!currentUser.mosqueId) return res.json([]);
       const logs = await storage.getActivityLogsByMosqueAndRole(currentUser.mosqueId, "teacher");
       res.json(logs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ message: "حدث خطأ في جلب البيانات" });
     }
   });

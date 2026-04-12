@@ -146,10 +146,12 @@ export const educationMethods = {
   },
 
   async deleteCourse(id: string): Promise<void> {
-    await db.delete(courseStudents).where(eq(courseStudents.courseId, id));
-    await db.delete(courseTeachers).where(eq(courseTeachers.courseId, id));
-    await db.delete(certificates).where(eq(certificates.courseId, id));
-    await db.delete(courses).where(eq(courses.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(courseStudents).where(eq(courseStudents.courseId, id));
+      await tx.delete(courseTeachers).where(eq(courseTeachers.courseId, id));
+      await tx.delete(certificates).where(eq(certificates.courseId, id));
+      await tx.delete(courses).where(eq(courses.id, id));
+    });
   },
 
   // ==================== COURSE STUDENTS ====================

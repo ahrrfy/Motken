@@ -12,7 +12,11 @@ import { filterTextFields } from "@shared/content-filter";
 import { validateFields, validateEnum, validateDate } from "@shared/security-utils";
 import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray } from "./shared";
 import { sendError } from "../error-handler";
+import { ensureSameMosque } from "../lib/mosque-guard";
+import { uploadAudio as uploadToMinio, getAudioStream, deleteAudio as deleteFromMinio, isMinioAvailable } from "../lib/minio";
 import multer from "multer";
+
+export let audioCleanupInterval: ReturnType<typeof setInterval> | null = null;
 
 export function registerAssignmentsRoutes(app: Express) {
   // ==================== ASSIGNMENTS ====================
@@ -70,7 +74,7 @@ export function registerAssignmentsRoutes(app: Express) {
       }
 
       res.json(result);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الواجبات");
     }
   });
@@ -106,8 +110,8 @@ export function registerAssignmentsRoutes(app: Express) {
         return res.status(400).json({ message: "أرقام الآيات غير صحيحة" });
       }
 
-      const student = await storage.getUser(studentId);
-      if (!student || student.role !== "student") {
+      const student = await ensureSameMosque(currentUser, studentId);
+      if (student.role !== "student") {
         return res.status(400).json({ message: "الطالب غير موجود" });
       }
 
@@ -151,7 +155,7 @@ export function registerAssignmentsRoutes(app: Express) {
       const studentForLog = await storage.getUser(req.body.studentId);
       await logActivity(currentUser, `إنشاء واجب: ${req.body.surahName}`, "assignments", `للطالب ${studentForLog?.name || req.body.studentId}`);
       res.status(201).json(assignment);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء واجب");
     }
   });
@@ -178,7 +182,7 @@ export function registerAssignmentsRoutes(app: Express) {
         seenAt: new Date() 
       });
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث حالة المشاهدة");
     }
   });
@@ -203,7 +207,7 @@ export function registerAssignmentsRoutes(app: Express) {
       return res.status(403).json({ message: "غير مصرح بتعديل هذا الواجب" });
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (req.body.surahName !== undefined) updateData.surahName = req.body.surahName;
     if (req.body.type !== undefined) updateData.type = req.body.type;
     if (req.body.status !== undefined) updateData.status = req.body.status;
@@ -290,7 +294,7 @@ export function registerAssignmentsRoutes(app: Express) {
       } catch (e) { console.error("خطأ في منح نقاط التقييم:", e); }
     }
     res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث الواجب");
     }
   });
@@ -324,14 +328,22 @@ export function registerAssignmentsRoutes(app: Express) {
       if (!req.file) {
         return res.status(400).json({ message: "لم يتم إرسال ملف صوتي" });
       }
-      const audioBase64 = req.file.buffer.toString("base64");
       const mimeType = req.file.mimetype || "audio/webm";
       if (assignment.hasAudio) {
+        // Clean up old audio (MinIO key if exists)
+        const [oldAudio] = await db.select().from(assignmentAudio).where(eq(assignmentAudio.assignmentId, assignmentId));
+        if (oldAudio?.audioKey) {
+          await deleteFromMinio(oldAudio.audioKey);
+        }
         await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, assignmentId));
       }
+
+      // Try MinIO first, fallback to base64 in DB
+      const minioKey = await uploadToMinio(assignmentId, req.file.buffer, mimeType);
       await db.insert(assignmentAudio).values({
         assignmentId: assignmentId,
-        audioData: audioBase64,
+        audioKey: minioKey || undefined,
+        audioData: minioKey ? undefined : req.file.buffer.toString("base64"),
         mimeType: mimeType,
       });
       const updated = await storage.updateAssignment(assignmentId, {
@@ -350,7 +362,7 @@ export function registerAssignmentsRoutes(app: Express) {
       const audioStudent = await storage.getUser(assignment.studentId);
       await logActivity(currentUser, "رفع تسميع صوتي", "assignments", `واجب ${assignment.surahName} للطالب ${audioStudent?.name || assignment.studentId}`);
       res.json({ message: "تم رفع التسجيل بنجاح", assignment: updated });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "رفع التسجيل الصوتي");
     }
   });
@@ -375,12 +387,27 @@ export function registerAssignmentsRoutes(app: Express) {
         await storage.updateAssignment(req.params.id, { hasAudio: false, audioFileName: null });
         return res.status(404).json({ message: "التسجيل الصوتي غير موجود" });
       }
-      const audioBuffer = Buffer.from(audioRecord.audioData, "base64");
+
       const contentType = audioRecord.mimeType || "audio/webm";
       res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "no-cache");
+
+      // Serve from MinIO if key exists
+      if (audioRecord.audioKey) {
+        const result = await getAudioStream(audioRecord.audioKey);
+        if (result) {
+          return result.stream.pipe(res);
+        }
+        // MinIO unavailable — fall through to base64 if available
+      }
+
+      // Serve from base64 in DB (legacy or MinIO fallback)
+      if (!audioRecord.audioData) {
+        return res.status(404).json({ message: "التسجيل الصوتي غير متوفر" });
+      }
+      const audioBuffer = Buffer.from(audioRecord.audioData, "base64");
       res.setHeader("Content-Length", audioBuffer.length);
       res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Cache-Control", "no-cache");
       const range = req.headers.range;
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
@@ -410,6 +437,11 @@ export function registerAssignmentsRoutes(app: Express) {
       if (!isOwner && !isTeacher && !isAdmin) {
         return res.status(403).json({ message: "غير مصرح بحذف هذا التسجيل" });
       }
+      // Cleanup MinIO if key exists
+      const [oldAudio] = await db.select().from(assignmentAudio).where(eq(assignmentAudio.assignmentId, req.params.id));
+      if (oldAudio?.audioKey) {
+        await deleteFromMinio(oldAudio.audioKey);
+      }
       await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, req.params.id));
       await storage.updateAssignment(req.params.id, {
         hasAudio: false,
@@ -425,7 +457,7 @@ export function registerAssignmentsRoutes(app: Express) {
     }
   });
 
-  setInterval(async () => {
+  audioCleanupInterval = setInterval(async () => {
     try {
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
       const gradedAssignments = await db
@@ -475,7 +507,7 @@ export function registerAssignmentsRoutes(app: Express) {
 
       await storage.deleteAssignment(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف الواجب");
     }
   });

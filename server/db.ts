@@ -36,7 +36,7 @@ async function ensurePoolHealthy() {
   }
 }
 
-setInterval(ensurePoolHealthy, 60000);
+export const dbHealthInterval = setInterval(ensurePoolHealthy, 60000);
 
 export const db = drizzle(pool, { schema });
 

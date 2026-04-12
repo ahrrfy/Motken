@@ -6,6 +6,7 @@ import {
 } from "@shared/schema";
 import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
+import { toSafeUser } from "../services/user-service";
 import { broadcastToUser } from "../websocket";
 
 const messageSendTimes = new Map<string, number[]>();
@@ -16,7 +17,7 @@ export function registerMessagesRoutes(app: Express) {
     try {
       const msgs = await storage.getMessagesByUser(req.user!.id);
       res.json(msgs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الرسائل");
     }
   });
@@ -33,16 +34,15 @@ export function registerMessagesRoutes(app: Express) {
       for (const uid of Array.from(userIds)) {
         const user = await storage.getUser(uid);
         if (user) {
-          const { password, ...safe } = user;
           const conv = await storage.getConversation(req.user!.id, uid);
           const lastMsg = conv[conv.length - 1];
           const unread = conv.filter(m => m.receiverId === req.user!.id && !m.isRead).length;
-          conversations.push({ user: safe, lastMessage: lastMsg, unreadCount: unread });
+          conversations.push({ user: toSafeUser(user), lastMessage: lastMsg, unreadCount: unread });
         }
       }
       conversations.sort((a, b) => new Date(b.lastMessage?.createdAt || 0).getTime() - new Date(a.lastMessage?.createdAt || 0).getTime());
       res.json(conversations);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب المحادثات");
     }
   });
@@ -58,7 +58,7 @@ export function registerMessagesRoutes(app: Express) {
       }
       const msgs = await storage.getConversation(req.user!.id, req.params.userId);
       res.json(msgs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب المحادثة");
     }
   });
@@ -67,7 +67,7 @@ export function registerMessagesRoutes(app: Express) {
     try {
       const count = await storage.getUnreadMessageCount(req.user!.id);
       res.json({ count });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب عدد الرسائل غير المقروءة");
     }
   });
@@ -109,7 +109,7 @@ export function registerMessagesRoutes(app: Express) {
       broadcastToUser(receiverId, { type: "message", data: msg });
       await logActivity(req.user!, "إرسال رسالة", "messages");
       res.status(201).json(msg);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إرسال رسالة");
     }
   });
@@ -123,7 +123,7 @@ export function registerMessagesRoutes(app: Express) {
       }
       await storage.markMessageRead(req.params.id);
       res.json({ message: "تم التحديث" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث حالة الرسالة");
     }
   });
@@ -132,7 +132,7 @@ export function registerMessagesRoutes(app: Express) {
     try {
       await storage.markAllMessagesRead(req.params.senderId, req.user!.id);
       res.json({ message: "تم تحديد الكل كمقروء" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديد الكل كمقروء");
     }
   });
@@ -147,7 +147,7 @@ export function registerMessagesRoutes(app: Express) {
       await storage.deleteMessage(req.params.id);
       await logActivity(req.user!, "حذف رسالة", "messages");
       res.json({ message: "تم حذف الرسالة" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف رسالة");
     }
   });
@@ -181,7 +181,7 @@ export function registerMessagesRoutes(app: Express) {
       }
       await logActivity(req.user!, `إرسال رسالة جماعية إلى ${sent} مستخدم`, "messages");
       res.status(201).json({ message: `تم إرسال الرسالة إلى ${sent} مستخدم`, count: sent });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إرسال رسالة جماعية");
     }
   });
@@ -199,7 +199,7 @@ export function registerMessagesRoutes(app: Express) {
       }
       await logActivity(currentUser, "حذف محادثة", "messages");
       res.json({ message: "تم حذف المحادثة" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف المحادثة");
     }
   });
@@ -211,7 +211,7 @@ export function registerMessagesRoutes(app: Express) {
       const msgs = await storage.getMessagesByUser(req.user!.id);
       const results = msgs.filter(m => m.content.toLowerCase().includes(query)).slice(0, 50);
       res.json(results);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "البحث في الرسائل");
     }
   });

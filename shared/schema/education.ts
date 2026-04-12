@@ -46,7 +46,8 @@ export type Assignment = typeof assignments.$inferSelect;
 export const assignmentAudio = pgTable("assignment_audio", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   assignmentId: varchar("assignment_id").notNull().references(() => assignments.id, { onDelete: "cascade" }).unique(),
-  audioData: text("audio_data").notNull(),
+  audioData: text("audio_data"),
+  audioKey: text("audio_key"),
   mimeType: text("mime_type").notNull().default("audio/webm"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [

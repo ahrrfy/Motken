@@ -30,7 +30,7 @@ export function registerQuranRoutes(app: Express) {
         return res.json(row || { verseStatuses: "{}", notes: null, reviewStreak: 0, reviewedToday: false });
       }
       res.json(await storage.getQuranProgressByUser(userId));
-    } catch (err: any) { sendError(res, err, "جلب تقدم القرآن"); }
+    } catch (err: unknown) { sendError(res, err, "جلب تقدم القرآن"); }
   });
 
   app.post("/api/quran-progress", requireAuth, async (req, res) => {
@@ -74,7 +74,7 @@ export function registerQuranRoutes(app: Express) {
         }
       }
       res.json(row);
-    } catch (err: any) { sendError(res, err, "حفظ تقدم القرآن"); }
+    } catch (err: unknown) { sendError(res, err, "حفظ تقدم القرآن"); }
   });
 
   // ==================== SPACED REPETITION - مراجعة ذكية ====================
@@ -151,7 +151,7 @@ export function registerQuranRoutes(app: Express) {
           return Object.values(s).some((v: any) => v === "memorized");
         }).length,
       });
-    } catch (err: any) { sendError(res, err, "جلب جدول المراجعة"); }
+    } catch (err: unknown) { sendError(res, err, "جلب جدول المراجعة"); }
   });
 
   /**
@@ -222,11 +222,11 @@ export function registerQuranRoutes(app: Express) {
             ? `جيد — المراجعة القادمة بعد ${result.newInterval} يوم`
             : `تحتاج مراجعة أكثر — المراجعة القادمة غداً`,
       });
-    } catch (err: any) { sendError(res, err, "تسجيل نتيجة المراجعة"); }
+    } catch (err: unknown) { sendError(res, err, "تسجيل نتيجة المراجعة"); }
   });
 
   // ==================== QURAN PASSPORT ====================
-  app.get("/api/quran-passport/:userId", requireAuth, async (req: any, res) => {
+  app.get("/api/quran-passport/:userId", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user;
       const targetUserId = req.params.userId;
@@ -317,7 +317,7 @@ export function registerQuranRoutes(app: Express) {
         totalCompletionPercent: Math.round((totalMemorizedVerses / TOTAL_QURAN_VERSES) * 100),
         generatedAt: new Date().toISOString(),
       });
-    } catch (err: any) { sendError(res, err, "جواز سفر القرآن"); }
+    } catch (err: unknown) { sendError(res, err, "جواز سفر القرآن"); }
   });
 
 }

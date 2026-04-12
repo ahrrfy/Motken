@@ -22,7 +22,7 @@ export function registerPublicRoutes(app: Express) {
     try {
       const all = await db.select().from(testimonials).orderBy(asc(testimonials.sortOrder), desc(testimonials.createdAt));
       res.json(all);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب آراء المستخدمين");
     }
   });
@@ -39,7 +39,7 @@ export function registerPublicRoutes(app: Express) {
       }).returning();
       await logActivity(req.user!, "إضافة رأي مستخدم", "testimonials", `${name}`);
       res.json(created);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إضافة رأي مستخدم");
     }
   });
@@ -56,7 +56,7 @@ export function registerPublicRoutes(app: Express) {
       const [updated] = await db.update(testimonials).set(updateData).where(eq(testimonials.id, req.params.id)).returning();
       if (!updated) return res.status(404).json({ message: "الرأي غير موجود" });
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث الرأي");
     }
   });
@@ -67,7 +67,7 @@ export function registerPublicRoutes(app: Express) {
       if (!deleted) return res.status(404).json({ message: "الرأي غير موجود" });
       await logActivity(req.user!, "حذف رأي مستخدم", "testimonials", `${deleted.name}`);
       res.json({ message: "تم الحذف" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف الرأي");
     }
   });

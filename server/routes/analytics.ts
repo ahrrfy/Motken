@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { storage } from "../storage";
+import { pool } from "../db";
 import { min, max } from "drizzle-orm";
 import {
   assignments,
@@ -60,7 +61,7 @@ export function registerAnalyticsRoutes(app: Express) {
       const totalPresent = allAttendance.filter(a => a.status === "present" || a.status === "late").length;
 
       res.json({ currentStreak, maxStreak, totalPresent, totalRecords: allAttendance.length });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب سلسلة الحضور");
     }
   });
@@ -103,7 +104,7 @@ export function registerAnalyticsRoutes(app: Express) {
       const heatmapData = Object.entries(dayMap).map(([date, count]) => ({ date, count }));
 
       res.json(heatmapData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب خريطة النشاط");
     }
   });
@@ -114,48 +115,40 @@ export function registerAnalyticsRoutes(app: Express) {
     try {
       const currentUser = req.user!;
       const mosqueId = currentUser.mosqueId;
+      if (!mosqueId) return res.json({ star: null });
+
       const now = new Date();
       const weekStart = new Date(now);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
       weekStart.setHours(0, 0, 0, 0);
 
-      const students = mosqueId
-        ? (await storage.getUsersByMosqueAndRole(mosqueId, "student")).filter(s => s.isActive && !s.pendingApproval)
-        : [];
+      // Single aggregation query replaces 1 + 3N queries
+      const result = await pool.query(
+        `SELECT
+          s.id, s.name, s.level, s.avatar,
+          COALESCE(SUM(p.amount), 0)::int AS week_points,
+          COUNT(DISTINCT CASE WHEN att.status IN ('present','late') THEN att.id END)::int AS attendance_count,
+          COUNT(DISTINCT CASE WHEN a.status = 'done' THEN a.id END)::int AS completed_assignments
+        FROM users s
+        LEFT JOIN points p ON s.id = p.user_id AND p.created_at >= $2
+        LEFT JOIN attendance att ON s.id = att.student_id AND att.date >= $2
+        LEFT JOIN assignments a ON s.id = a.student_id AND a.created_at >= $2 AND a.status = 'done'
+        WHERE s.mosque_id = $1 AND s.role = 'student' AND s.is_active = true AND s.pending_approval = false
+        GROUP BY s.id, s.name, s.level, s.avatar
+        HAVING COALESCE(SUM(p.amount), 0) > 0
+        ORDER BY week_points DESC
+        LIMIT 3`,
+        [mosqueId, weekStart.toISOString()]
+      );
 
-      if (students.length === 0) {
-        return res.json({ star: null });
-      }
-
-      const studentScores: { student: any; score: number; details: any }[] = [];
-
-      for (const student of students) {
-        const points = await storage.getPointsByUser(student.id);
-        const weekPoints = points.filter(p => new Date(p.createdAt) >= weekStart);
-        const weekPointsTotal = weekPoints.reduce((sum, p) => sum + p.amount, 0);
-
-        if (weekPointsTotal <= 0) continue;
-
-        const attendance = await storage.getAttendanceByStudent(student.id);
-        const weekAttendance = attendance.filter(a => new Date(a.date) >= weekStart);
-        const attendanceCount = weekAttendance.filter(a => a.status === "present").length;
-
-        const allAssignments = await storage.getAssignmentsByStudent(student.id);
-        const weekAssignments = allAssignments.filter(a => new Date(a.createdAt) >= weekStart && a.status === "done");
-
-        studentScores.push({
-          student: { id: student.id, name: student.name, level: student.level, avatar: student.avatar },
-          score: weekPointsTotal,
-          details: { points: weekPointsTotal, attendance: attendanceCount, assignments: weekAssignments.length },
-        });
-      }
-
-      studentScores.sort((a, b) => b.score - a.score);
-
-      const top3 = studentScores.slice(0, 3);
+      const top3 = result.rows.map((r: any) => ({
+        student: { id: r.id, name: r.name, level: r.level, avatar: r.avatar },
+        score: r.week_points,
+        details: { points: r.week_points, attendance: r.attendance_count, assignments: r.completed_assignments },
+      }));
 
       res.json({ star: top3[0] || null, topStudents: top3 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب نجم الأسبوع");
     }
   });
@@ -218,7 +211,7 @@ export function registerAnalyticsRoutes(app: Express) {
           prevWeekAssignments,
         }
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب التنبؤات");
     }
   });
@@ -268,7 +261,7 @@ export function registerAnalyticsRoutes(app: Express) {
       const todayReview = needsReview.filter(r => r.needsReview).slice(0, 5);
 
       res.json({ todayReview, weakSpots, allSurahs: needsReview });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب اقتراحات المراجعة");
     }
   });
@@ -277,45 +270,44 @@ export function registerAnalyticsRoutes(app: Express) {
   // ==================== MOSQUE RANKINGS ====================
   app.get("/api/mosque-rankings", requireAuth, async (req, res) => {
     try {
-      const allMosques = await storage.getMosques();
-      const activeMosques = allMosques.filter(m => m.isActive);
+      // Single aggregation query replaces 1 + 2M + 2MN queries
+      const result = await pool.query(
+        `SELECT
+          m.id AS mosque_id, m.name AS mosque_name, m.province,
+          COUNT(DISTINCT CASE WHEN u.role='student' AND u.is_active = true AND u.pending_approval = false THEN u.id END)::int AS students_count,
+          COUNT(DISTINCT CASE WHEN u.role='teacher' AND u.is_active = true THEN u.id END)::int AS teachers_count,
+          COALESCE(SUM(CASE WHEN u.role='student' AND u.is_active = true AND u.pending_approval = false THEN p.amount ELSE 0 END), 0)::int AS total_points,
+          CASE
+            WHEN COUNT(DISTINCT CASE WHEN u.role='student' AND u.is_active = true THEN a.id END) > 0
+            THEN ROUND(100.0 * COUNT(DISTINCT CASE WHEN a.status='done' AND u.role='student' AND u.is_active = true THEN a.id END)
+              / COUNT(DISTINCT CASE WHEN u.role='student' AND u.is_active = true THEN a.id END))::int
+            ELSE 0
+          END AS completion_rate
+        FROM mosques m
+        LEFT JOIN users u ON m.id = u.mosque_id
+        LEFT JOIN points p ON u.id = p.user_id AND u.role = 'student' AND u.is_active = true AND u.pending_approval = false
+        LEFT JOIN assignments a ON u.id = a.student_id AND u.role = 'student' AND u.is_active = true
+        WHERE m.is_active = true
+        GROUP BY m.id, m.name, m.province
+        ORDER BY total_points DESC`
+      );
 
-      const rankings = await Promise.all(activeMosques.map(async (mosque) => {
-        const students = (await storage.getUsersByMosqueAndRole(mosque.id, "student")).filter(s => s.isActive && !s.pendingApproval);
-        const teachers = (await storage.getUsersByMosqueAndRole(mosque.id, "teacher")).filter(t => t.isActive);
-
-        let totalPoints = 0;
-        let totalAssignments = 0;
-        let completedAssignments = 0;
-
-        for (const student of students) {
-          const pts = await storage.getPointsByUser(student.id);
-          totalPoints += pts.reduce((sum, p) => sum + p.amount, 0);
-          const studentAssignments = await storage.getAssignmentsByStudent(student.id);
-          totalAssignments += studentAssignments.length;
-          completedAssignments += studentAssignments.filter(a => a.status === "done").length;
-        }
-
-        const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
-
-        return {
-          mosqueId: mosque.id,
-          mosqueName: mosque.name,
-          province: mosque.province,
-          studentsCount: students.length,
-          teachersCount: teachers.length,
-          totalPoints,
-          completionRate,
-          score: totalPoints + (completionRate * 10) + (students.length * 5),
-        };
+      const rankings = result.rows.map((r: any) => ({
+        mosqueId: r.mosque_id,
+        mosqueName: r.mosque_name,
+        province: r.province,
+        studentsCount: r.students_count,
+        teachersCount: r.teachers_count,
+        totalPoints: r.total_points,
+        completionRate: r.completion_rate,
+        score: r.total_points + (r.completion_rate * 10) + (r.students_count * 5),
       }));
 
-      rankings.sort((a, b) => b.score - a.score);
-
-      const ranked = rankings.map((r, i) => ({ ...r, rank: i + 1 }));
+      rankings.sort((a: any, b: any) => b.score - a.score);
+      const ranked = rankings.map((r: any, i: number) => ({ ...r, rank: i + 1 }));
 
       res.json(ranked);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب ترتيب المساجد");
     }
   });
@@ -458,7 +450,7 @@ export function registerAnalyticsRoutes(app: Express) {
         ungradedCount: ungradedAssignments.length,
         overdueCount: overdueAssignments.length,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الملخص اليومي");
     }
   });
@@ -511,7 +503,7 @@ export function registerAnalyticsRoutes(app: Express) {
       const score = Math.round(attendanceRate * 0.4 + completionRate * 0.3 + activeRatio * 0.3);
 
       res.json({ score, attendance: attendanceRate, completion: completionRate, activeRatio });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب صحة المسجد");
     }
   });
@@ -597,7 +589,7 @@ export function registerAnalyticsRoutes(app: Express) {
       }
 
       res.json({ surahName: null, reason: "لا توجد اقتراحات حالياً", type: null });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "اقتراح واجب ذكي");
     }
   });
@@ -653,7 +645,7 @@ export function registerAnalyticsRoutes(app: Express) {
         lateDays,
         absentDays,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب أنماط الحضور");
     }
   });
@@ -696,7 +688,7 @@ export function registerAnalyticsRoutes(app: Express) {
         .slice(0, 10);
 
       res.json(weakSurahs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب نقاط الضعف الجماعية");
     }
   });
@@ -752,7 +744,7 @@ export function registerAnalyticsRoutes(app: Express) {
         avgGradingDays,
         weeklyAssignmentRate,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب أداء المعلم");
     }
   });
@@ -791,7 +783,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       comparison.sort((a, b) => b.avgGrade - a.avgGrade);
       res.json(comparison);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "مقارنة المعلمين");
     }
   });
@@ -864,7 +856,7 @@ export function registerAnalyticsRoutes(app: Express) {
       });
 
       res.json(recommendations);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب توصيات التدريس");
     }
   });
@@ -935,7 +927,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       res.json(timeline.slice(0, 50));
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الجدول الزمني للطالب");
     }
   });
@@ -975,7 +967,7 @@ export function registerAnalyticsRoutes(app: Express) {
       if (surahs.size >= 30) titles.push({ title: "المثابر", icon: "mountain", color: "indigo" });
 
       res.json(titles);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب ألقاب الطالب");
     }
   });
@@ -999,7 +991,7 @@ export function registerAnalyticsRoutes(app: Express) {
       ];
 
       res.json(challenges);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب تحديات الطالب");
     }
   });

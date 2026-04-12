@@ -109,7 +109,7 @@ export function registerNotificationsRoutes(app: Express) {
 
       await logActivity(currentUser, `إرسال إشعار: ${title}`, "notifications", `${count} مستخدم`);
       res.json({ message: `تم إرسال الإشعار إلى ${count} مستخدم` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إرسال الإشعار");
     }
   });
@@ -118,7 +118,7 @@ export function registerNotificationsRoutes(app: Express) {
     try {
       const notifs = await storage.getNotifications(req.user!.id);
       res.json(notifs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الإشعارات");
     }
   });
@@ -136,7 +136,7 @@ export function registerNotificationsRoutes(app: Express) {
         }
       }
       res.json({ message: "تم" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديد إشعارات كمقروءة");
     }
   });
@@ -148,7 +148,7 @@ export function registerNotificationsRoutes(app: Express) {
         await storage.deleteNotification(notif.id);
       }
       res.json({ message: "تم حذف جميع الإشعارات" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف جميع الإشعارات");
     }
   });
@@ -162,7 +162,7 @@ export function registerNotificationsRoutes(app: Express) {
       }
       await storage.markNotificationRead(req.params.id);
       res.json({ message: "تم التحديث" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث حالة الإشعار");
     }
   });
@@ -171,7 +171,7 @@ export function registerNotificationsRoutes(app: Express) {
     try {
       await storage.markAllNotificationsRead(req.user!.id);
       res.json({ message: "تم تحديد الكل كمقروء" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديد الكل كمقروء");
     }
   });
@@ -185,7 +185,7 @@ export function registerNotificationsRoutes(app: Express) {
       }
       await storage.deleteNotification(req.params.id);
       res.json({ message: "تم حذف الإشعار" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف إشعار");
     }
   });
@@ -200,7 +200,7 @@ export function registerNotificationsRoutes(app: Express) {
       if (!ids.every((id: any) => typeof id === "string")) return res.status(400).json({ message: "معرفات غير صالحة" });
       await storage.deleteNotifications(ids, req.user!.id);
       res.json({ message: "تم حذف الإشعارات المحددة" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف إشعارات محددة");
     }
   });
@@ -218,7 +218,7 @@ export function registerNotificationsRoutes(app: Express) {
         announcements = await storage.getAnnouncementsBySender(currentUser.id);
       }
       res.json(announcements);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الإعلانات");
     }
   });

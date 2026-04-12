@@ -1,6 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -11,6 +11,7 @@ import { pool } from "./db";
 import { sessionTracker } from "./session-tracker";
 
 import { sendError } from "./error-handler";
+import { toSafeUser } from "./services/user-service";
 
 declare global {
   namespace Express {
@@ -44,44 +45,35 @@ const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   return fallback;
 })();
 
-const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+import { getRedisClient } from "./lib/redis";
+
 const LOGIN_MAX_ATTEMPTS = 5;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_WINDOW_SECONDS = 15 * 60; // 15 minutes
 
-setInterval(() => {
-  const now = Date.now();
-  const keys = Array.from(loginAttempts.keys());
-  for (const key of keys) {
-    const entry = loginAttempts.get(key);
-    if (entry && now - entry.lastAttempt > LOGIN_WINDOW_MS) {
-      loginAttempts.delete(key);
-    }
+async function checkLoginRateLimit(key: string): Promise<boolean> {
+  try {
+    const redis = await getRedisClient();
+    const val = await redis.get(`login:${key}`);
+    if (!val) return true;
+    return parseInt(val, 10) < LOGIN_MAX_ATTEMPTS;
+  } catch {
+    return true; // fail-open: allow login if Redis unavailable
   }
-}, 5 * 60 * 1000);
-
-function checkLoginRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = loginAttempts.get(key);
-  if (!entry) return true;
-  if (now - entry.lastAttempt > LOGIN_WINDOW_MS) {
-    loginAttempts.delete(key);
-    return true;
-  }
-  return entry.count < LOGIN_MAX_ATTEMPTS;
 }
 
-function recordLoginAttempt(key: string, success: boolean): void {
-  if (success) {
-    loginAttempts.delete(key);
-    return;
-  }
-  const now = Date.now();
-  const entry = loginAttempts.get(key);
-  if (!entry || now - entry.lastAttempt > LOGIN_WINDOW_MS) {
-    loginAttempts.set(key, { count: 1, lastAttempt: now });
-  } else {
-    entry.count++;
-    entry.lastAttempt = now;
+async function recordLoginAttempt(key: string, success: boolean): Promise<void> {
+  try {
+    const redis = await getRedisClient();
+    const redisKey = `login:${key}`;
+    if (success) {
+      await redis.del(redisKey);
+      return;
+    }
+    const current = await redis.get(redisKey);
+    const count = current ? parseInt(current, 10) + 1 : 1;
+    await redis.set(redisKey, String(count), { EX: LOGIN_WINDOW_SECONDS });
+  } catch {
+    // fail-open: continue even if Redis unavailable
   }
 }
 
@@ -147,7 +139,7 @@ export function setupAuth(app: Express) {
     const username = req.body.username || "";
     const rateLimitKey = `${clientIp}:${username}`;
 
-    if (!checkLoginRateLimit(rateLimitKey)) {
+    if (!(await checkLoginRateLimit(rateLimitKey))) {
       return res.status(429).json({ message: "تم تجاوز عدد محاولات تسجيل الدخول. يرجى المحاولة لاحقاً" });
     }
 
@@ -160,27 +152,22 @@ export function setupAuth(app: Express) {
     passport.authenticate("local", async (err: any, user: SelectUser | false, info: any) => {
       if (err) return next(err);
       if (!user) {
-        recordLoginAttempt(rateLimitKey, false);
-        const entry = loginAttempts.get(rateLimitKey);
-        if (entry && entry.count >= 3) {
-          console.warn(`Security: ${entry.count} failed login attempts for "${username}" from IP ${clientIp}`);
-        }
+        await recordLoginAttempt(rateLimitKey, false);
         return res.status(401).json({ message: info?.message || "فشل تسجيل الدخول" });
       }
-      recordLoginAttempt(rateLimitKey, true);
+      await recordLoginAttempt(rateLimitKey, true);
 
       req.session.regenerate((regenerateErr) => {
         if (regenerateErr) return next(regenerateErr);
         req.login(user, async (err) => {
           if (err) return next(err);
           sessionTracker.updateSession(req.sessionID, user, req);
-          const { password, ...safeUser } = user;
           let mosqueName = null;
           if (user.mosqueId) {
             const mosque = await storage.getMosque(user.mosqueId);
             mosqueName = mosque?.name || null;
           }
-          return res.json({ ...safeUser, mosqueName });
+          return res.json({ ...toSafeUser(user), mosqueName });
         });
       });
     })(req, res, next);
@@ -205,7 +192,7 @@ export function setupAuth(app: Express) {
         if (err) return res.status(500).json({ message: "خطأ في حفظ الجلسة" });
         res.json({ previewRole: role, message: `تم تفعيل معاينة دور ${role === "student" ? "الطالب" : role === "teacher" ? "المعلم" : "المشرف"}` });
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تفعيل معاينة الدور");
     }
   });
@@ -222,7 +209,7 @@ export function setupAuth(app: Express) {
         if (err) return res.status(500).json({ message: "خطأ في حفظ الجلسة" });
         res.json({ previewRole: null, message: "تم إيقاف المعاينة" });
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إيقاف معاينة الدور");
     }
   });
@@ -244,7 +231,6 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "غير مسجل الدخول" });
     }
-    const { password, ...safeUser } = req.user!;
     let mosqueName = null;
     if (req.user!.mosqueId) {
       const mosque = await storage.getMosque(req.user!.mosqueId);
@@ -252,19 +238,19 @@ export function setupAuth(app: Express) {
     }
     const previewRole = (req.session as any).previewRole || null;
     const originalRole = (req.session as any).originalRole || null;
-    res.json({ ...safeUser, mosqueName, previewRole, originalRole });
+    res.json({ ...toSafeUser(req.user!), mosqueName, previewRole, originalRole });
   });
 
 }
 
-export function requireAuth(req: any, res: any, next: any) {
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
   }
   next();
 }
 
-export function requirePrivacyPolicy(req: any, res: any, next: any) {
+export function requirePrivacyPolicy(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
   }
@@ -281,7 +267,7 @@ export function requirePrivacyPolicy(req: any, res: any, next: any) {
 }
 
 export function requireRole(...roles: string[]) {
-  return (req: any, res: any, next: any) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
     }

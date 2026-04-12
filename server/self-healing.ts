@@ -28,7 +28,7 @@ async function checkDatabaseHealth(): Promise<boolean> {
     const result = await client.query("SELECT 1 as ok");
     client.release();
     return result.rows[0]?.ok === 1;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Self-Healing] Database health check failed:", err.message);
     return false;
   }
@@ -43,7 +43,7 @@ async function attemptDatabaseRecovery(): Promise<boolean> {
     autoRecoveryCount++;
     console.log("[Self-Healing] Database recovery successful");
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Self-Healing] Database recovery failed:", err.message);
     return false;
   }
@@ -110,7 +110,7 @@ async function optimizeDatabase(): Promise<void> {
     }
 
     console.log("[Cron] Database optimization complete");
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Cron] Database optimization error:", err.message);
   } finally {
     client.release();
@@ -127,7 +127,7 @@ async function cleanupExpiredSessions(): Promise<void> {
     if (result.rowCount && result.rowCount > 0) {
       console.log(`[Cron] Session cleanup: removed ${result.rowCount} expired sessions`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Cron] Session cleanup error:", err.message);
   }
 }
@@ -144,7 +144,7 @@ async function cleanupTempData(): Promise<void> {
     }
 
     client.release();
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Cron] Temp data cleanup error:", err.message);
   }
 }
@@ -214,7 +214,7 @@ async function checkRepeatedAbsences(): Promise<void> {
         );
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Cron] Absence check error:", err.message);
   }
 }

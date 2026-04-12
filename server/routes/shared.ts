@@ -1,6 +1,9 @@
 import { storage } from "../storage";
+import type { User, Assignment } from "@shared/schema";
 
-export async function logActivity(user: any, action: string, module: string, details?: string) {
+type UserContext = Pick<User, "id" | "name" | "role" | "mosqueId">;
+
+export async function logActivity(user: UserContext, action: string, module: string, details?: string) {
   await storage.createActivityLog({
     userId: user.id,
     userName: user.name,
@@ -13,19 +16,19 @@ export async function logActivity(user: any, action: string, module: string, det
   });
 }
 
-export function getTeacherLevelsArray(teacher: any): number[] {
+export function getTeacherLevelsArray(teacher: Pick<User, "teacherLevels">): number[] {
   if (!teacher.teacherLevels) return [1, 2, 3, 4, 5, 6, 7];
   return teacher.teacherLevels.split(",").map(Number).filter((n: number) => n >= 1 && n <= 7);
 }
 
-export function canTeacherAccessStudent(teacher: any, student: any): boolean {
+export function canTeacherAccessStudent(teacher: Pick<User, "mosqueId" | "teacherLevels">, student: Pick<User, "mosqueId" | "level">): boolean {
   if (!teacher.mosqueId || teacher.mosqueId !== student.mosqueId) return false;
   const teacherLevels = getTeacherLevelsArray(teacher);
   const studentLevel = student.level || 1;
   return teacherLevels.includes(studentLevel);
 }
 
-export function canTeacherAccessAssignment(teacher: any, assignment: any, student: any): boolean {
+export function canTeacherAccessAssignment(teacher: Pick<User, "mosqueId" | "teacherLevels">, assignment: Pick<Assignment, "mosqueId">, student: Pick<User, "mosqueId" | "level">): boolean {
   if (assignment.mosqueId !== teacher.mosqueId) return false;
   return canTeacherAccessStudent(teacher, student);
 }

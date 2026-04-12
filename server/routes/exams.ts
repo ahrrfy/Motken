@@ -7,6 +7,7 @@ import {
 import { validateFields, validateDate } from "@shared/security-utils";
 import { logActivity, canTeacherAccessStudent, getTeacherLevelsArray, calculateStudentLevel, LEVEL_NAMES } from "./shared";
 import { sendError } from "../error-handler";
+import { ensureSameMosque } from "../lib/mosque-guard";
 
 export function registerExamsRoutes(app: Express) {
   // ==================== EXAMS ====================
@@ -37,7 +38,7 @@ export function registerExamsRoutes(app: Express) {
         return res.json(examsList);
       }
       res.json([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الامتحانات");
     }
   });
@@ -66,7 +67,7 @@ export function registerExamsRoutes(app: Express) {
 
       const students = await storage.getExamStudents(req.params.id);
       res.json({ ...exam, students });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الامتحانات");
     }
   });
@@ -147,7 +148,7 @@ export function registerExamsRoutes(app: Express) {
 
       await logActivity(currentUser, `إنشاء امتحان: ${title}`, "exams", `${surahName} (${fromVerse}-${toVerse}) - ${targetStudents.length} طالب`);
       res.status(201).json(exam);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء امتحان");
     }
   });
@@ -163,6 +164,8 @@ export function registerExamsRoutes(app: Express) {
     if (!isOwner && !isSameMosqueTeacher && !isMosqueSupervisor) {
       return res.status(403).json({ message: "غير مصرح بتعديل درجات هذا الامتحان" });
     }
+
+    await ensureSameMosque(currentUser, req.params.studentId);
 
     const students = await storage.getExamStudents(req.params.examId);
     const entry = students.find(s => s.studentId === req.params.studentId);
@@ -242,7 +245,7 @@ export function registerExamsRoutes(app: Express) {
         await logActivity(currentUser, `تعديل مستوى الطالب ${student.name}`, "levels", `من ${LEVEL_NAMES[oldLevel]?.ar} إلى ${LEVEL_NAMES[newLevel]?.ar}`);
       }
       res.json({ studentId, oldLevel, newLevel, levelName: LEVEL_NAMES[newLevel] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "عملية الامتحان");
     }
   });
@@ -268,7 +271,7 @@ export function registerExamsRoutes(app: Express) {
       await storage.updateUser(req.params.teacherId, { teacherLevels });
       await logActivity(currentUser, `تعيين مستويات الأستاذ ${teacher.name}`, "levels", `المستويات: ${validLevels.map((l: number) => LEVEL_NAMES[l]?.ar).join(', ')}`);
       res.json({ teacherId: req.params.teacherId, teacherLevels, levelNames: validLevels.map((l: number) => LEVEL_NAMES[l]) });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "عملية الامتحان");
     }
   });
@@ -303,7 +306,7 @@ export function registerExamsRoutes(app: Express) {
         await logActivity(currentUser, `تعديل مستوى الطالب ${student.name}`, "levels", `من ${LEVEL_NAMES[oldLevel]?.ar} إلى ${LEVEL_NAMES[level]?.ar}`);
       }
       res.json({ studentId: req.params.studentId, oldLevel, newLevel: level, levelName: LEVEL_NAMES[level] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "عملية الامتحان");
     }
   });
@@ -333,7 +336,7 @@ export function registerExamsRoutes(app: Express) {
         }
       }
       res.json({ levels: levelStats, levelNames: LEVEL_NAMES });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "عملية الامتحان");
     }
   });

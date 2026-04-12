@@ -5,7 +5,7 @@ import { pool } from "../db";
 export function registerLibraryRoutes(app: Express) {
 
   // GET all sections for the mosque (with branches count and books count)
-  app.get("/api/library/sections", requireAuth, async (req: any, res) => {
+  app.get("/api/library/sections", requireAuth, async (req, res) => {
     try {
       const mosqueId = req.user.mosqueId;
       const result = await pool.query(
@@ -34,7 +34,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // GET branches for a section
-  app.get("/api/library/branches/:sectionId", requireAuth, async (req: any, res) => {
+  app.get("/api/library/branches/:sectionId", requireAuth, async (req, res) => {
     try {
       const mosqueId = req.user.mosqueId;
       const { sectionId } = req.params;
@@ -58,7 +58,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // GET books with optional filters
-  app.get("/api/library/books", requireAuth, async (req: any, res) => {
+  app.get("/api/library/books", requireAuth, async (req, res) => {
     try {
       const mosqueId = req.user.mosqueId;
       const { sectionId, branchId, search } = req.query;
@@ -91,7 +91,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // POST create section (admin/supervisor only)
-  app.post("/api/library/sections", requireAuth, async (req: any, res) => {
+  app.post("/api/library/sections", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -114,7 +114,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // PUT update section (admin/supervisor only)
-  app.put("/api/library/sections/:id", requireAuth, async (req: any, res) => {
+  app.put("/api/library/sections/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -152,7 +152,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // DELETE section (admin/supervisor only, only if no books)
-  app.delete("/api/library/sections/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/library/sections/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -186,7 +186,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // POST create branch (admin/supervisor only)
-  app.post("/api/library/branches", requireAuth, async (req: any, res) => {
+  app.post("/api/library/branches", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -209,7 +209,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // PUT update branch (admin/supervisor only)
-  app.put("/api/library/branches/:id", requireAuth, async (req: any, res) => {
+  app.put("/api/library/branches/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -247,7 +247,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // DELETE branch (admin/supervisor only, only if no books)
-  app.delete("/api/library/branches/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/library/branches/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -275,7 +275,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // POST create book (admin/supervisor only)
-  app.post("/api/library/books", requireAuth, async (req: any, res) => {
+  app.post("/api/library/books", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -303,7 +303,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // PUT update book (admin/supervisor only)
-  app.put("/api/library/books/:id", requireAuth, async (req: any, res) => {
+  app.put("/api/library/books/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {
@@ -349,7 +349,7 @@ export function registerLibraryRoutes(app: Express) {
   });
 
   // DELETE book (admin/supervisor only)
-  app.delete("/api/library/books/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/library/books/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor"].includes(user.role)) {

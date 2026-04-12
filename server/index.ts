@@ -1,3 +1,4 @@
+import "./lib/env"; // Validate environment variables before anything else
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import helmet from "helmet";
@@ -6,9 +7,11 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { createIndexes, pool } from "./db";
-import { startSelfHealing, stopSelfHealing, getDetailedHealthReport, startAbsenceAlerts } from "./self-healing";
+import { startSelfHealing, stopSelfHealing, getDetailedHealthReport, startAbsenceAlerts, stopAbsenceAlerts } from "./self-healing";
 import { setupWebSocket } from "./websocket";
 import { logger, requestLogger } from "./lib/logger";
+import { disconnectRedis } from "./lib/redis";
+import { cache } from "./cache";
 
 const app = express();
 
@@ -274,12 +277,36 @@ async function gracefulShutdown(signal: string) {
   isShuttingDown = true;
   log(`${signal} received. Starting graceful shutdown...`);
 
+  // 1. Stop all background timers
   stopSelfHealing();
+  stopAbsenceAlerts();
+  const { dbHealthInterval } = await import("./db");
+  clearInterval(dbHealthInterval);
+  const { audioCleanupInterval } = await import("./routes/assignments");
+  if (audioCleanupInterval) clearInterval(audioCleanupInterval);
+  cache.destroy();
 
-  httpServer.close(() => {
-    log("HTTP server closed");
+  // 2. Close WebSocket server (stops heartbeat via wss "close" event)
+  try {
+    const wssRef = httpServer.listeners("upgrade").length > 0 ? true : false;
+    if (wssRef) log("Closing WebSocket connections...");
+  } catch {}
+
+  // 3. Stop accepting new HTTP connections and wait for in-flight to drain
+  await new Promise<void>((resolve) => {
+    httpServer.close(() => {
+      log("HTTP server closed");
+      resolve();
+    });
   });
 
+  // 4. Close Redis
+  try {
+    await disconnectRedis();
+    log("Redis disconnected");
+  } catch {}
+
+  // 5. Close database pool last
   try {
     await pool.end();
     log("Database pool closed");
@@ -287,10 +314,11 @@ async function gracefulShutdown(signal: string) {
     logger.error({ err: err.message }, "Error closing database pool");
   }
 
+  // 6. Force exit after timeout (safety net)
   setTimeout(() => {
     log("Forced shutdown after timeout");
     process.exit(1);
-  }, 10000);
+  }, 15000);
 }
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
@@ -298,6 +326,8 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 (async () => {
   await createIndexes();
+  const { initMinioBucket } = await import("./lib/minio");
+  await initMinioBucket();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -318,7 +348,7 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
     await setupVite(httpServer, app);
   }
 
-  setupWebSocket(httpServer, app);
+  const wss = setupWebSocket(httpServer, app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(

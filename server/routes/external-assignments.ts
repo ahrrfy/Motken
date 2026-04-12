@@ -1,11 +1,12 @@
 import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { pool } from "../db";
+import { ensureSameMosque, ensureAllSameMosque } from "../lib/mosque-guard";
 
 export function registerExternalAssignmentsRoutes(app: Express) {
 
   // GET all external assignments for the mosque (with student info)
-  app.get("/api/external-assignments", requireAuth, async (req: any, res) => {
+  app.get("/api/external-assignments", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -29,7 +30,7 @@ export function registerExternalAssignmentsRoutes(app: Express) {
   });
 
   // POST create external assignment (supports bulk via studentIds[])
-  app.post("/api/external-assignments", requireAuth, async (req: any, res) => {
+  app.post("/api/external-assignments", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -42,6 +43,7 @@ export function registerExternalAssignmentsRoutes(app: Express) {
 
       // Bulk creation
       if (studentIds && Array.isArray(studentIds) && studentIds.length > 0) {
+        await ensureAllSameMosque(user, studentIds);
         const created = [];
         for (const sid of studentIds) {
           const result = await pool.query(
@@ -59,7 +61,10 @@ export function registerExternalAssignmentsRoutes(app: Express) {
         return res.status(201).json(created);
       }
 
-      // Single creation
+      // Single creation — validate student mosque if linked
+      if (studentId) {
+        await ensureSameMosque(user, studentId);
+      }
       const result = await pool.query(
         `INSERT INTO external_assignments
           (mosque_id, created_by, student_id, student_name, book_name, pages_from, pages_to, assigned_date, due_date, notes)
@@ -78,7 +83,7 @@ export function registerExternalAssignmentsRoutes(app: Express) {
   });
 
   // PATCH update (mark complete, edit, archive, etc.)
-  app.patch("/api/external-assignments/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/external-assignments/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -123,7 +128,7 @@ export function registerExternalAssignmentsRoutes(app: Express) {
   });
 
   // PATCH archive/unarchive
-  app.patch("/api/external-assignments/:id/archive", requireAuth, async (req: any, res) => {
+  app.patch("/api/external-assignments/:id/archive", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {
@@ -143,7 +148,7 @@ export function registerExternalAssignmentsRoutes(app: Express) {
   });
 
   // DELETE
-  app.delete("/api/external-assignments/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/external-assignments/:id", requireAuth, async (req, res) => {
     try {
       const user = req.user;
       if (!["admin", "supervisor", "teacher"].includes(user.role)) {

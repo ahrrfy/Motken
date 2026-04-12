@@ -28,7 +28,9 @@ import {
   type Announcement, type InsertAnnouncement,
 } from "@shared/schema";
 
-export interface IStorage {
+// ==================== DOMAIN INTERFACES ====================
+
+export interface IUserStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -41,13 +43,17 @@ export interface IStorage {
   getLinkedAccounts(phone: string, excludeId?: string): Promise<User[]>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
+}
 
+export interface IMosqueStorage {
   getMosque(id: string): Promise<Mosque | undefined>;
   getMosques(): Promise<Mosque[]>;
   createMosque(mosque: InsertMosque): Promise<Mosque>;
   updateMosque(id: string, data: Partial<InsertMosque>): Promise<Mosque | undefined>;
   deleteMosque(id: string): Promise<void>;
+}
 
+export interface IAssignmentStorage {
   getAssignment(id: string): Promise<Assignment | undefined>;
   getAssignments(): Promise<Assignment[]>;
   getAssignmentsByMosque(mosqueId: string): Promise<Assignment[]>;
@@ -57,34 +63,19 @@ export interface IStorage {
   updateAssignment(id: string, data: Partial<InsertAssignment>): Promise<Assignment | undefined>;
   updateAssignments(studentId: string, oldTeacherId: string | null, newTeacherId: string): Promise<void>;
   deleteAssignment(id: string): Promise<void>;
+}
 
+export interface IEducationStorage {
   getExam(id: string): Promise<Exam | undefined>;
   getExamsByTeacher(teacherId: string): Promise<Exam[]>;
   getExamsByMosque(mosqueId: string): Promise<Exam[]>;
   createExam(e: InsertExam): Promise<Exam>;
   updateExam(id: string, data: Partial<InsertExam>): Promise<Exam | undefined>;
   deleteExam(id: string): Promise<void>;
-
   getExamStudents(examId: string): Promise<ExamStudent[]>;
   createExamStudent(es: InsertExamStudent): Promise<ExamStudent>;
   updateExamStudent(id: string, data: Partial<InsertExamStudent>): Promise<ExamStudent | undefined>;
   getExamsByStudent(studentId: string): Promise<ExamStudent[]>;
-
-  getActivityLogs(): Promise<ActivityLog[]>;
-  getActivityLogsByMosque(mosqueId: string): Promise<ActivityLog[]>;
-  getActivityLogsByUser(userId: string): Promise<ActivityLog[]>;
-  getActivityLogsByMosqueAndRole(mosqueId: string, role: string): Promise<ActivityLog[]>;
-  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
-
-  getNotification(id: string): Promise<Notification | undefined>;
-  getNotifications(userId: string): Promise<Notification[]>;
-  createNotification(n: InsertNotification): Promise<Notification>;
-  updateNotification(id: string, data: Partial<InsertNotification>): Promise<Notification | undefined>;
-  markNotificationRead(id: string): Promise<void>;
-  markAllNotificationsRead(userId: string): Promise<void>;
-  deleteNotification(id: string): Promise<void>;
-  deleteNotifications(ids: string[], userId: string): Promise<void>;
-
   getCourse(id: string): Promise<Course | undefined>;
   getCourses(): Promise<Course[]>;
   getCoursesByMosque(mosqueId: string): Promise<Course[]>;
@@ -108,19 +99,9 @@ export interface IStorage {
   getCertificateByNumber(certNumber: string): Promise<Certificate | undefined>;
   getCoursesByStudent(studentId: string): Promise<CourseStudent[]>;
   getCoursesByTeacher(teacherId: string): Promise<CourseTeacher[]>;
+}
 
-  getBannedDevices(): Promise<BannedDevice[]>;
-  createBannedDevice(bd: InsertBannedDevice): Promise<BannedDevice>;
-  deleteBannedDevice(id: string): Promise<void>;
-  isBannedIP(ip: string): Promise<boolean>;
-  isBannedFingerprint(fingerprint: string): Promise<boolean>;
-
-  getFeatureFlags(): Promise<FeatureFlag[]>;
-  getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined>;
-  createFeatureFlag(ff: InsertFeatureFlag): Promise<FeatureFlag>;
-  updateFeatureFlag(id: string, data: Partial<InsertFeatureFlag>): Promise<FeatureFlag | undefined>;
-  isFeatureEnabled(featureKey: string): Promise<boolean>;
-
+export interface ITrackingStorage {
   getAttendance(id: string): Promise<Attendance | undefined>;
   getAttendanceByStudent(studentId: string): Promise<Attendance[]>;
   getAttendanceByTeacher(teacherId: string): Promise<Attendance[]>;
@@ -129,7 +110,22 @@ export interface IStorage {
   createAttendance(a: InsertAttendance): Promise<Attendance>;
   updateAttendance(id: string, data: Partial<InsertAttendance>): Promise<Attendance | undefined>;
   deleteAttendance(id: string): Promise<void>;
+  getActivityLogs(): Promise<ActivityLog[]>;
+  getActivityLogsByMosque(mosqueId: string): Promise<ActivityLog[]>;
+  getActivityLogsByUser(userId: string): Promise<ActivityLog[]>;
+  getActivityLogsByMosqueAndRole(mosqueId: string, role: string): Promise<ActivityLog[]>;
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+}
 
+export interface ICommunicationStorage {
+  getNotification(id: string): Promise<Notification | undefined>;
+  getNotifications(userId: string): Promise<Notification[]>;
+  createNotification(n: InsertNotification): Promise<Notification>;
+  updateNotification(id: string, data: Partial<InsertNotification>): Promise<Notification | undefined>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  deleteNotification(id: string): Promise<void>;
+  deleteNotifications(ids: string[], userId: string): Promise<void>;
   getMessage(id: string): Promise<Message | undefined>;
   getMessagesByUser(userId: string): Promise<Message[]>;
   getConversation(userId1: string, userId2: string): Promise<Message[]>;
@@ -138,62 +134,58 @@ export interface IStorage {
   markAllMessagesRead(senderId: string, receiverId: string): Promise<void>;
   deleteMessage(id: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
-
   createAnnouncement(a: InsertAnnouncement): Promise<Announcement>;
   getAnnouncements(): Promise<Announcement[]>;
   getAnnouncementsBySender(senderId: string): Promise<Announcement[]>;
   getAnnouncementsByMosque(mosqueId: string): Promise<Announcement[]>;
+}
 
+export interface IGamificationStorage {
   getPointsByUser(userId: string): Promise<Point[]>;
   getPointsByMosque(mosqueId: string): Promise<Point[]>;
   getTotalPoints(userId: string): Promise<number>;
   createPoint(p: InsertPoint): Promise<Point>;
   getLeaderboard(mosqueId?: string): Promise<{id: string, name: string, username: string, avatar: string | null, totalPoints: number}[]>;
-
   getBadgesByUser(userId: string): Promise<Badge[]>;
   getBadgesByMosque(mosqueId: string): Promise<Badge[]>;
   createBadge(b: InsertBadge): Promise<Badge>;
   deleteBadge(id: string): Promise<void>;
+}
 
+export interface IManagementStorage {
   getParentReport(id: string): Promise<ParentReport | undefined>;
   getParentReportByToken(token: string): Promise<ParentReport | undefined>;
   getParentReportsByStudent(studentId: string): Promise<ParentReport[]>;
   createParentReport(pr: InsertParentReport): Promise<ParentReport>;
   deleteParentReport(id: string): Promise<void>;
-
   getEmergencySubstitution(id: string): Promise<EmergencySubstitution | undefined>;
   getEmergencySubstitutionsByMosque(mosqueId: string): Promise<EmergencySubstitution[]>;
   createEmergencySubstitution(data: InsertEmergencySubstitution): Promise<EmergencySubstitution>;
   updateEmergencySubstitution(id: string, data: Partial<InsertEmergencySubstitution>): Promise<EmergencySubstitution | undefined>;
   deleteEmergencySubstitution(id: string): Promise<void>;
-
   getIncidentRecord(id: string): Promise<IncidentRecord | undefined>;
   getIncidentRecordsByMosque(mosqueId: string): Promise<IncidentRecord[]>;
   createIncidentRecord(data: InsertIncidentRecord): Promise<IncidentRecord>;
   updateIncidentRecord(id: string, data: Partial<InsertIncidentRecord>): Promise<IncidentRecord | undefined>;
   deleteIncidentRecord(id: string): Promise<void>;
-
   getGraduate(id: string): Promise<Graduate | undefined>;
   getGraduatesByMosque(mosqueId: string): Promise<Graduate[]>;
   getGraduatesByStudent(studentId: string): Promise<Graduate[]>;
   createGraduate(data: InsertGraduate): Promise<Graduate>;
   updateGraduate(id: string, data: Partial<InsertGraduate>): Promise<Graduate | undefined>;
   deleteGraduate(id: string): Promise<void>;
-
   getGraduateFollowup(id: string): Promise<GraduateFollowup | undefined>;
   getGraduateFollowupsByMosque(mosqueId: string): Promise<GraduateFollowup[]>;
   getGraduateFollowupsByGraduate(graduateId: string): Promise<GraduateFollowup[]>;
   createGraduateFollowup(data: InsertGraduateFollowup): Promise<GraduateFollowup>;
   updateGraduateFollowup(id: string, data: Partial<InsertGraduateFollowup>): Promise<GraduateFollowup | undefined>;
   deleteGraduateFollowup(id: string): Promise<void>;
-
   getStudentTransfer(id: string): Promise<StudentTransfer | undefined>;
   getStudentTransfersByMosque(mosqueId: string): Promise<StudentTransfer[]>;
   getStudentTransfersByStudent(studentId: string): Promise<StudentTransfer[]>;
   createStudentTransfer(data: InsertStudentTransfer): Promise<StudentTransfer>;
   updateStudentTransfer(id: string, data: Partial<InsertStudentTransfer>): Promise<StudentTransfer | undefined>;
   deleteStudentTransfer(id: string): Promise<void>;
-
   getFamilyLink(id: string): Promise<FamilyLink | undefined>;
   getFamilyLinksByMosque(mosqueId: string): Promise<FamilyLink[]>;
   getFamilyLinksByParentPhone(parentPhone: string): Promise<FamilyLink[]>;
@@ -201,7 +193,6 @@ export interface IStorage {
   createFamilyLink(data: InsertFamilyLink): Promise<FamilyLink>;
   updateFamilyLink(id: string, data: Partial<InsertFamilyLink>): Promise<FamilyLink | undefined>;
   deleteFamilyLink(id: string): Promise<void>;
-
   getFeedback(id: string): Promise<Feedback | undefined>;
   getFeedbackByMosque(mosqueId: string): Promise<Feedback[]>;
   getFeedbackByUser(userId: string): Promise<Feedback[]>;
@@ -209,9 +200,33 @@ export interface IStorage {
   createFeedback(data: InsertFeedback): Promise<Feedback>;
   updateFeedback(id: string, data: Partial<InsertFeedback>): Promise<Feedback | undefined>;
   deleteFeedback(id: string): Promise<void>;
+}
 
+export interface ISystemStorage {
+  getBannedDevices(): Promise<BannedDevice[]>;
+  createBannedDevice(bd: InsertBannedDevice): Promise<BannedDevice>;
+  deleteBannedDevice(id: string): Promise<void>;
+  isBannedIP(ip: string): Promise<boolean>;
+  isBannedFingerprint(fingerprint: string): Promise<boolean>;
+  getFeatureFlags(): Promise<FeatureFlag[]>;
+  getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined>;
+  createFeatureFlag(ff: InsertFeatureFlag): Promise<FeatureFlag>;
+  updateFeatureFlag(id: string, data: Partial<InsertFeatureFlag>): Promise<FeatureFlag | undefined>;
+  isFeatureEnabled(featureKey: string): Promise<boolean>;
   resetSystemData(): Promise<void>;
   getQuranProgress(userId: string, surahNumber?: number): Promise<QuranProgress | undefined>;
   getQuranProgressByUser(userId: string): Promise<QuranProgress[]>;
   upsertQuranProgress(data: { userId: string; mosqueId?: string; surahNumber: number; verseStatuses: string; notes?: string; reviewedToday?: boolean; reviewStreak?: number; lastReviewDate?: string; easeFactor?: string; reviewInterval?: number; nextReviewDate?: string }): Promise<QuranProgress>;
 }
+
+// ==================== COMPOSITE (backward compatible) ====================
+export type IStorage =
+  IUserStorage &
+  IMosqueStorage &
+  IAssignmentStorage &
+  IEducationStorage &
+  ITrackingStorage &
+  ICommunicationStorage &
+  IGamificationStorage &
+  IManagementStorage &
+  ISystemStorage;

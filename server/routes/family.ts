@@ -39,7 +39,7 @@ export function registerFamilyRoutes(app: Express) {
         return res.json(links);
       }
       res.json([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب روابط الأسر");
     }
   });
@@ -65,7 +65,7 @@ export function registerFamilyRoutes(app: Express) {
         parentPhone, studentId, mosqueId, relationship: relationship || "parent",
       });
       res.status(201).json(link);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء رابط أسري");
     }
   });
@@ -83,7 +83,7 @@ export function registerFamilyRoutes(app: Express) {
       }
       await storage.deleteFamilyLink(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف رابط أسري");
     }
   });
@@ -159,7 +159,7 @@ export function registerFamilyRoutes(app: Express) {
         };
       }));
       res.json({ children });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب لوحة الأسر");
     }
   });
@@ -235,7 +235,7 @@ export function registerFamilyRoutes(app: Express) {
       }
 
       res.json(suggestions);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "اكتشاف تلقائي للعائلات");
     }
   });
@@ -278,7 +278,7 @@ export function registerFamilyRoutes(app: Express) {
       }));
 
       res.json(matched);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "بحث طلاب برقم ولي الأمر");
     }
   });
@@ -359,7 +359,7 @@ export function registerFamilyRoutes(app: Express) {
         parentId: parent.id,
         linkedStudents: studentIds.length,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء حساب ولي أمر");
     }
   });
@@ -465,7 +465,7 @@ export function registerFamilyRoutes(app: Express) {
       }
 
       res.json(children);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب بيانات الأبناء");
     }
   });
@@ -493,7 +493,7 @@ export function registerFamilyRoutes(app: Express) {
       }).returning();
 
       res.status(201).json({ message: "شكراً لتقييمك! سيظهر بعد موافقة الإدارة.", testimonial: created });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إرسال تقييم ولي الأمر");
     }
   });
@@ -509,7 +509,7 @@ export function registerFamilyRoutes(app: Express) {
       const all = await db.select().from(testimonials).where(eq(testimonials.name, currentUser.name));
       const myTestimonial = all.find(t => t.role === "ولي أمر");
       res.json({ submitted: !!myTestimonial, testimonial: myTestimonial || null });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب تقييم ولي الأمر");
     }
   });
@@ -528,7 +528,7 @@ export function registerFamilyRoutes(app: Express) {
       }
       const fb = await storage.getFeedbackByUser(currentUser.id);
       res.json(fb);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الملاحظات");
     }
   });
@@ -549,7 +549,7 @@ export function registerFamilyRoutes(app: Express) {
       });
       await logActivity(currentUser, `إرسال ملاحظة: ${title}`, "feedback");
       res.status(201).json(fb);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إرسال ملاحظة");
     }
   });
@@ -566,7 +566,7 @@ export function registerFamilyRoutes(app: Express) {
         return res.status(403).json({ message: "غير مصرح بالوصول لهذا السجل" });
       }
       const allowedFields = ["status", "response", "priority"];
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       for (const key of allowedFields) {
         if (req.body[key] !== undefined) {
           updateData[key] = req.body[key];
@@ -578,7 +578,7 @@ export function registerFamilyRoutes(app: Express) {
       const updated = await storage.updateFeedback(req.params.id, updateData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث ملاحظة");
     }
   });
@@ -591,7 +591,7 @@ export function registerFamilyRoutes(app: Express) {
       }
       await storage.deleteFeedback(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف ملاحظة");
     }
   });

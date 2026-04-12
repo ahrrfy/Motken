@@ -6,10 +6,12 @@ import {
   points,
   badges,
   pointRedemptions,
+  users,
 } from "@shared/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, sum } from "drizzle-orm";
 import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
+import { ensureSameMosque } from "../lib/mosque-guard";
 
 export function registerPointsRoutes(app: Express) {
   // ==================== POINTS & BADGES ====================
@@ -18,6 +20,7 @@ export function registerPointsRoutes(app: Express) {
       const currentUser = req.user!;
       const userId = req.query.userId as string | undefined;
       if (userId) {
+        await ensureSameMosque(currentUser, userId);
         const pts = await storage.getPointsByUser(userId);
         return res.json(pts);
       }
@@ -31,16 +34,18 @@ export function registerPointsRoutes(app: Express) {
       }
       const pts = await storage.getPointsByUser(currentUser.id);
       res.json(pts);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب النقاط");
     }
   });
 
   app.get("/api/points/total/:userId", requireAuth, async (req, res) => {
     try {
+      const currentUser = req.user!;
+      await ensureSameMosque(currentUser, req.params.userId);
       const total = await storage.getTotalPoints(req.params.userId);
       res.json({ total });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب مجموع النقاط");
     }
   });
@@ -54,7 +59,7 @@ export function registerPointsRoutes(app: Express) {
       }
       const leaderboard = await storage.getLeaderboard(mosqueId);
       res.json(leaderboard);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب لوحة المتصدرين");
     }
   });
@@ -90,7 +95,7 @@ export function registerPointsRoutes(app: Express) {
       });
       await logActivity(currentUser, `منح ${amount} نقطة`, "points");
       res.status(201).json(point);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "منح النقاط");
     }
   });
@@ -100,6 +105,7 @@ export function registerPointsRoutes(app: Express) {
       const currentUser = req.user!;
       const userId = req.query.userId as string | undefined;
       if (userId) {
+        await ensureSameMosque(currentUser, userId);
         const userBadges = await storage.getBadgesByUser(userId);
         return res.json(userBadges);
       }
@@ -113,7 +119,7 @@ export function registerPointsRoutes(app: Express) {
       }
       const userBadges = await storage.getBadgesByUser(currentUser.id);
       res.json(userBadges);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الأوسمة");
     }
   });
@@ -142,7 +148,7 @@ export function registerPointsRoutes(app: Express) {
       });
       await logActivity(currentUser, `منح وسام: ${badgeName}`, "badges");
       res.status(201).json(badge);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "منح الوسام");
     }
   });
@@ -152,7 +158,7 @@ export function registerPointsRoutes(app: Express) {
       await storage.deleteBadge(req.params.id);
       await logActivity(req.user!, "حذف وسام", "badges");
       res.json({ message: "تم حذف الوسام" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف الوسام");
     }
   });
@@ -179,7 +185,7 @@ export function registerPointsRoutes(app: Express) {
         return { ...r, studentName: student?.name || r.studentId, redeemedByName: redeemer?.name || "" };
       }));
       res.json(enriched);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب سجل التصريف");
     }
   });
@@ -203,27 +209,45 @@ export function registerPointsRoutes(app: Express) {
       if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const totalPoints = await storage.getTotalPoints(studentId);
-      if (totalPoints < numAmount) {
-        return res.status(400).json({ message: `رصيد الطالب غير كافٍ (${totalPoints} نقطة فقط)` });
-      }
-      await storage.createPoint({
-        userId: studentId,
-        mosqueId: currentUser.mosqueId,
-        amount: -numAmount,
-        reason: `تصريف: ${rewardName}`,
-        category: "redemption",
+      // Transaction with row lock to prevent double-spend race condition
+      const [redemption] = await db.transaction(async (tx) => {
+        // Lock user row to serialize concurrent point operations
+        await tx.execute(sql`SELECT id FROM users WHERE id = ${studentId} FOR UPDATE`);
+
+        // Compute balance inside transaction (consistent read after lock)
+        const [result] = await tx.select({ total: sum(points.amount) })
+          .from(points).where(eq(points.userId, studentId));
+        const totalPoints = Number(result?.total ?? 0);
+
+        if (totalPoints < numAmount) {
+          throw Object.assign(
+            new Error(`رصيد الطالب غير كافٍ (${totalPoints} نقطة فقط)`),
+            { status: 400 }
+          );
+        }
+
+        // Deduct points
+        await tx.insert(points).values({
+          userId: studentId,
+          mosqueId: currentUser.mosqueId,
+          amount: -numAmount,
+          reason: `تصريف: ${rewardName}`,
+          category: "redemption",
+        });
+
+        // Record redemption
+        return tx.insert(pointRedemptions).values({
+          studentId,
+          mosqueId: currentUser.mosqueId,
+          amount: numAmount,
+          rewardName,
+          redeemedBy: currentUser.id,
+        }).returning();
       });
-      const [redemption] = await db.insert(pointRedemptions).values({
-        studentId,
-        mosqueId: currentUser.mosqueId,
-        amount: numAmount,
-        rewardName,
-        redeemedBy: currentUser.id,
-      }).returning();
+
       await logActivity(currentUser, `تصريف ${numAmount} نقطة للطالب ${student.name}: ${rewardName}`, "points");
       res.status(201).json(redemption);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تصريف النقاط");
     }
   });
@@ -241,19 +265,29 @@ export function registerPointsRoutes(app: Express) {
       if (currentUser.role !== "admin" && student.mosqueId !== currentUser.mosqueId) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const totalPoints = await storage.getTotalPoints(studentId);
-      if (totalPoints > 0) {
-        await storage.createPoint({
-          userId: studentId,
-          mosqueId: currentUser.mosqueId,
-          amount: -totalPoints,
-          reason: "تصفير النقاط",
-          category: "reset",
-        });
-      }
+      // Transaction with row lock to prevent double-reset race condition
+      const totalPoints = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT id FROM users WHERE id = ${studentId} FOR UPDATE`);
+
+        const [result] = await tx.select({ total: sum(points.amount) })
+          .from(points).where(eq(points.userId, studentId));
+        const total = Number(result?.total ?? 0);
+
+        if (total > 0) {
+          await tx.insert(points).values({
+            userId: studentId,
+            mosqueId: currentUser.mosqueId,
+            amount: -total,
+            reason: "تصفير النقاط",
+            category: "reset",
+          });
+        }
+        return total;
+      });
+
       await logActivity(currentUser, `تصفير نقاط الطالب ${student.name} (${totalPoints} نقطة)`, "points");
       res.json({ message: `تم تصفير ${totalPoints} نقطة`, previousTotal: totalPoints });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تصفير النقاط");
     }
   });
@@ -283,7 +317,7 @@ export function registerPointsRoutes(app: Express) {
       }
       await logActivity(currentUser, `تصفير جماعي لنقاط ${totalReset} طالب`, "points");
       res.json({ message: `تم تصفير نقاط ${totalReset} طالب` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تصفير جماعي للنقاط");
     }
   });
@@ -291,7 +325,7 @@ export function registerPointsRoutes(app: Express) {
   // ==================== BULK IMPORT FROM EXCEL ====================
   // POST /api/points/bulk-import
   // Accepts { rows: [{اسم الطالب, النقاط, السبب, التصنيف}] }
-  app.post("/api/points/bulk-import", requireAuth, async (req: any, res) => {
+  app.post("/api/points/bulk-import", requireAuth, async (req, res) => {
     try {
       const currentUser = req.user;
       if (!["admin", "supervisor", "teacher"].includes(currentUser.role)) {
@@ -330,7 +364,7 @@ export function registerPointsRoutes(app: Express) {
         } catch { failed++; }
       }
       res.json({ success, failed, total: rows.length });
-    } catch (err: any) { sendError(res, err, "استيراد النقاط"); }
+    } catch (err: unknown) { sendError(res, err, "استيراد النقاط"); }
   });
 
 }

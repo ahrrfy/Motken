@@ -110,7 +110,7 @@ export function registerAlertsRoutes(app: Express) {
         upcomingExams,
         lowGrades,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحليل التنبيهات الذكية");
     }
   });
@@ -137,7 +137,7 @@ export function registerAlertsRoutes(app: Express) {
         return res.json(subs);
       }
       res.json([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الإنابات الطارئة");
     }
   });
@@ -166,7 +166,7 @@ export function registerAlertsRoutes(app: Express) {
       });
       await logActivity(currentUser, "إنشاء إنابة طارئة", "emergency_substitutions");
       res.status(201).json(sub);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "إنشاء إنابة طارئة");
     }
   });
@@ -190,7 +190,7 @@ export function registerAlertsRoutes(app: Express) {
       const updated = await storage.updateEmergencySubstitution(req.params.id, safeData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث الإنابة الطارئة");
     }
   });
@@ -208,7 +208,7 @@ export function registerAlertsRoutes(app: Express) {
       }
       await storage.deleteEmergencySubstitution(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف الإنابة الطارئة");
     }
   });
@@ -264,7 +264,7 @@ export function registerAlertsRoutes(app: Express) {
       }
       await logActivity(currentUser, `توزيع تلقائي لطلاب ${absentTeacher.name}`, "emergency_substitutions");
       res.status(201).json({ created, totalStudents: activeStudents.length, totalTeachers: availableTeachers.length });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "التوزيع التلقائي للإنابة");
     }
   });
@@ -291,7 +291,7 @@ export function registerAlertsRoutes(app: Express) {
         return res.json(records);
       }
       res.json([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "جلب الحوادث");
     }
   });
@@ -313,7 +313,7 @@ export function registerAlertsRoutes(app: Express) {
       });
       await logActivity(currentUser, `تسجيل حادثة: ${title}`, "incidents");
       res.status(201).json(record);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تسجيل حادثة");
     }
   });
@@ -337,7 +337,7 @@ export function registerAlertsRoutes(app: Express) {
       const updated = await storage.updateIncidentRecord(req.params.id, safeIncidentData);
       if (!updated) return res.status(404).json({ message: "السجل غير موجود" });
       res.json(updated);
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "تحديث حادثة");
     }
   });
@@ -355,7 +355,7 @@ export function registerAlertsRoutes(app: Express) {
       }
       await storage.deleteIncidentRecord(req.params.id);
       res.json({ message: "تم الحذف بنجاح" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       sendError(res, err, "حذف حادثة");
     }
   });
