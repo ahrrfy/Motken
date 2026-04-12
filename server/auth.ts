@@ -214,6 +214,27 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Emergency rate limit reset — no auth required (uses secret key)
+  app.post("/api/auth/reset-rate-limit", async (req, res) => {
+    const { secret, username } = req.body;
+    if (secret !== process.env.SESSION_SECRET) {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
+    try {
+      const redis = await getRedisClient();
+      const keys = await redis.keys("login:*");
+      if (username) {
+        const matchingKeys = keys.filter(k => k.includes(username));
+        for (const k of matchingKeys) await redis.del(k);
+        return res.json({ message: `تم مسح ${matchingKeys.length} مفتاح rate limit للمستخدم ${username}` });
+      }
+      for (const k of keys) await redis.del(k);
+      res.json({ message: `تم مسح ${keys.length} مفتاح rate limit` });
+    } catch {
+      res.status(500).json({ message: "خطأ في مسح rate limit" });
+    }
+  });
+
   app.post("/api/auth/logout", (req, res, next) => {
     const sid = req.sessionID;
     req.logout((err) => {
