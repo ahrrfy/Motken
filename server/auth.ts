@@ -214,6 +214,28 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Emergency password reset — no auth required (uses secret key)
+  app.post("/api/auth/emergency-reset-password", async (req, res) => {
+    const { secret, username, newPassword } = req.body;
+    if (secret !== process.env.SESSION_SECRET) {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
+    if (!username || !newPassword) {
+      return res.status(400).json({ message: "username و newPassword مطلوبين" });
+    }
+    try {
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ message: `المستخدم ${username} غير موجود` });
+      }
+      const hashed = await hashPassword(newPassword);
+      await storage.updateUser(user.id, { password: hashed });
+      res.json({ message: `تم تغيير كلمة مرور ${username} بنجاح`, role: user.role });
+    } catch {
+      res.status(500).json({ message: "خطأ في تغيير كلمة المرور" });
+    }
+  });
+
   // Emergency rate limit reset — no auth required (uses secret key)
   app.post("/api/auth/reset-rate-limit", async (req, res) => {
     const { secret, username } = req.body;
