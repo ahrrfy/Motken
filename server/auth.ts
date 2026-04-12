@@ -214,6 +214,20 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Emergency: list admin usernames (uses secret key)
+  app.post("/api/auth/emergency-list-admins", async (req, res) => {
+    const { secret } = req.body;
+    if (secret !== process.env.SESSION_SECRET) {
+      return res.status(403).json({ message: "غير مصرح" });
+    }
+    try {
+      const users = await storage.getUsersByRole("admin");
+      res.json(users.map(u => ({ id: u.id, username: u.username, name: u.name, isActive: u.isActive })));
+    } catch {
+      res.status(500).json({ message: "خطأ" });
+    }
+  });
+
   // Emergency password reset — no auth required (uses secret key)
   app.post("/api/auth/emergency-reset-password", async (req, res) => {
     const { secret, username, newPassword } = req.body;
