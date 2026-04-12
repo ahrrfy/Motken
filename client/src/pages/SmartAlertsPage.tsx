@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { LEVEL_NAMES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -293,7 +294,7 @@ export default function SmartAlertsPage() {
           id: `levelup-${student.id}`,
           severity: "positive",
           title: `قريب من الترقية: ${student.name}`,
-          description: `يحتاج ${remaining} صفحة فقط للانتقال إلى المستوى ${level + 1} 📈`,
+          description: `يحتاج ${remaining} صفحة فقط للانتقال إلى ${LEVEL_NAMES[level + 1] || `المستوى ${level + 1}`} 📈`,
           studentId: String(student.id),
           studentName: student.name,
           actionType: "link",

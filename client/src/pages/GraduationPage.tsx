@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { LEVEL_NAMES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -656,7 +657,7 @@ export default function GraduationPage({ embedded }: { embedded?: boolean }) {
                     return (
                       <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm space-y-1" data-testid="student-auto-info">
                         <div className="font-medium text-blue-800">معلومات الطالب</div>
-                        {s.level && <div className="text-blue-700">المستوى: <strong>المستوى {s.level <= 6 ? ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس"][s.level - 1] : "حافظ"}</strong></div>}
+                        {s.level && <div className="text-blue-700">المستوى: <strong>{LEVEL_NAMES[s.level] || `المستوى ${s.level}`}</strong></div>}
                         {s.mosqueName && <div className="text-blue-700">المسجد: <strong>{s.mosqueName}</strong></div>}
                         {s.teacherName && <div className="text-blue-700">المعلم: <strong>{s.teacherName}</strong></div>}
                       </div>

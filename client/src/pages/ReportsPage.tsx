@@ -613,7 +613,7 @@ export default function ReportsPage() {
         i + 1,
         u.name || "",
         roleLabels[u.role] || u.role || "",
-        u.level || "—",
+        LEVEL_NAMES[u.level] || "—",
         u.isActive ? "نشط" : "غير نشط",
       ]),
     }] : [];
@@ -674,7 +674,7 @@ export default function ReportsPage() {
         mosqueName: userMosqueData.name || "المركز",
         stats: [
           { label: "اسم الطالب", value: studentData.name },
-          { label: "المستوى", value: studentData.level || "—" },
+          { label: "المستوى", value: LEVEL_NAMES[studentData.level] || "—" },
           { label: "المعدل العام", value: `${avgGrade}%` },
           { label: "عدد التسميعات", value: gradedAssignments.length },
         ],

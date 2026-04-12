@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { Link } from "wouter";
+import { LEVEL_NAMES } from "@/lib/constants";
 import { authenticHadiths } from "@shared/hadiths";
 import { formatDateAr } from "@/lib/utils";
 import {
@@ -1085,7 +1086,7 @@ function StarOfWeekCard({ isEn }: { isEn: boolean }) {
                 <p className="font-semibold text-sm truncate" data-testid="text-star-name">{data.star.student.name}</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">
-                    {isEn ? `Level ${data.star.student.level}` : `المستوى ${data.star.student.level}`}
+                    {isEn ? `Level ${data.star.student.level}` : (LEVEL_NAMES[data.star.student.level] || `المستوى ${data.star.student.level}`)}
                   </Badge>
                   <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">{data.star.score} {isEn ? "pts" : "نقطة"}</span>
                 </div>

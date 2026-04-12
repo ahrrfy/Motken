@@ -695,8 +695,8 @@ export default function AttendancePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">كل المستويات</SelectItem>
-                      {[1,2,3,4,5].map(l => (
-                        <SelectItem key={l} value={String(l)}>المستوى {l}</SelectItem>
+                      {LEVEL_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
