@@ -76,7 +76,7 @@ export default function WelcomeWizard({ role, userName, onComplete }: WelcomeWiz
                 {roleNames[role] || role}
               </Badge>
               <p className="text-muted-foreground leading-relaxed">
-                مرحباً بك في نظام <strong>مُتْقِن</strong> لإدارة حلقات تحفيظ القرآن الكريم.
+                مرحباً بك في نظام <strong>سِرَاجُ الْقُرْآنِ</strong> لإدارة حلقات تحفيظ القرآن الكريم.
                 دعنا نعرّفك على أهم الخطوات للبدء.
               </p>
             </div>

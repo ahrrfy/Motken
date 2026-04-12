@@ -37,8 +37,8 @@ export const translations: Record<string, Record<string, string>> = {
     profile: "الملف الشخصي",
     general: "عام",
     appearance: "المظهر واللغة",
-    systemName: "مُتْقِن",
-    systemDescription: "نظام إدارة حلقات التحفيظ",
+    systemName: "سِرَاجُ الْقُرْآنِ",
+    systemDescription: "نظام حفظ وتعليم القرآن الكريم",
   },
   en: {
     dashboard: "Dashboard",
@@ -78,8 +78,8 @@ export const translations: Record<string, Record<string, string>> = {
     profile: "Profile",
     general: "General",
     appearance: "Appearance & Language",
-    systemName: "Mutqin",
-    systemDescription: "Quran Memorization Management System",
+    systemName: "Siraj Al-Quran",
+    systemDescription: "Quran Memorization & Teaching System",
   },
 };
 

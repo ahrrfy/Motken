@@ -181,7 +181,7 @@ export default function DateTimePrayerBar() {
       if (diff >= 0 && diff <= 60000 && !alertedPrayers.has(prayer.key)) {
         setPrayerAlert(prayer.name);
         playPrayerSound();
-        showLocalNotification("مُتْقِن - حان وقت الصلاة", `حان الآن موعد صلاة ${prayer.name}\nحيّ على الصلاة.. حيّ على الفلاح`, `prayer-${prayer.key}`);
+        showLocalNotification("سِرَاجُ الْقُرْآنِ - حان وقت الصلاة", `حان الآن موعد صلاة ${prayer.name}\nحيّ على الصلاة.. حيّ على الفلاح`, `prayer-${prayer.key}`);
         setAlertedPrayers(prev => new Set(prev).add(prayer.key));
         setTimeout(() => { stopPrayerSound(); setPrayerAlert(null); }, 30000);
         break;

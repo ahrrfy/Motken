@@ -135,13 +135,13 @@ export default function RegisterMosquePage() {
           <p className="text-lg text-muted-foreground font-serif">﷽</p>
           <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 mb-2 relative">
             <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse"></div>
-            <img src="/logo.png" alt="مُتْقِن" className="w-full h-full rounded-2xl shadow-lg relative z-10" />
+            <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-full h-full rounded-2xl shadow-lg relative z-10" />
           </div>
           <CardTitle className="text-2xl sm:text-3xl font-bold text-primary font-serif">
             {isEn ? "Mosque Registration" : "تسجيل مسجد / مركز جديد"}
           </CardTitle>
           <CardDescription>
-            {isEn ? "Join Mutqin system to manage your Quran circles" : "انضم لنظام مُتْقِن لإدارة حلقات التحفيظ في مسجدك/مركزك"}
+            {isEn ? "Join Siraj Al-Quran to manage your Quran circles" : "انضم لنظام سِرَاجُ الْقُرْآنِ لإدارة حلقات التحفيظ في مسجدك/مركزك"}
           </CardDescription>
         </CardHeader>
         

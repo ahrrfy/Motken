@@ -651,7 +651,7 @@ export default function ParentDashboardPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Star className="w-4 h-4 text-amber-500" />
-            قيّم نظام مُتْقِن
+            قيّم نظام سِرَاجُ الْقُرْآنِ
           </CardTitle>
         </CardHeader>
         <CardContent>

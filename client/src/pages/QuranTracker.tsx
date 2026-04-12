@@ -235,25 +235,48 @@ export default function QuranTracker() {
           </div>
         )}
 
-        {/* صورة صفحة المصحف */}
+        {/* صورة صفحة المصحف مع الإطار الزخرفي */}
         <div className="flex justify-center mt-4" style={{ direction: "ltr" }}>
-          <img
-            ref={imgRef}
-            key={currentPage}
-            src={getPageImageUrl(currentPage)}
-            alt={`صفحة ${currentPage} من مصحف المدينة المنورة`}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-            className="select-none rounded shadow-lg border border-amber-200/60 dark:border-amber-900/40"
+          <div
+            className="mushaf-outer-frame"
             style={{
               width: `${zoom}%`,
               maxWidth: "100%",
-              height: "auto",
               display: error ? "none" : "block",
-              touchAction: "pinch-zoom",
             }}
-            draggable={false}
-          />
+          >
+            {/* الإطار الخارجي */}
+            <div className="mushaf-frame-border">
+              {/* الإطار الداخلي */}
+              <div className="mushaf-inner-border">
+                {/* الزوايا الزخرفية */}
+                <div className="mushaf-corner mushaf-corner-tr" />
+                <div className="mushaf-corner mushaf-corner-tl" />
+                <div className="mushaf-corner mushaf-corner-br" />
+                <div className="mushaf-corner mushaf-corner-bl" />
+                {/* الزخرفة العلوية */}
+                <div className="mushaf-ornament-top">
+                  <span className="mushaf-ornament-diamond" />
+                </div>
+                {/* صورة المصحف */}
+                <img
+                  ref={imgRef}
+                  key={currentPage}
+                  src={getPageImageUrl(currentPage)}
+                  alt={`صفحة ${currentPage} من مصحف المدينة المنورة`}
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                  className="select-none w-full h-auto"
+                  style={{ touchAction: "pinch-zoom" }}
+                  draggable={false}
+                />
+                {/* الزخرفة السفلية */}
+                <div className="mushaf-ornament-bottom">
+                  <span className="mushaf-ornament-diamond" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* رقم الصفحة في الأسفل */}

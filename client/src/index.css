@@ -458,3 +458,179 @@
     scroll-snap-align: start;
   }
 }
+
+/* ─── إطار المصحف الزخرفي ─────────────────────────────────────────────────── */
+
+.mushaf-outer-frame {
+  --frame-gold: #c8a959;
+  --frame-gold-light: #d4b96a;
+  --frame-gold-dark: #8b6914;
+  --frame-bg: #fef9ed;
+}
+
+.dark .mushaf-outer-frame {
+  --frame-gold: #9a8446;
+  --frame-gold-light: #7a6a38;
+  --frame-gold-dark: #5c4e24;
+  --frame-bg: #1e1a0f;
+}
+
+.mushaf-frame-border {
+  background: var(--frame-bg);
+  border: 3px solid var(--frame-gold);
+  border-radius: 4px;
+  padding: 6px;
+  box-shadow:
+    0 0 0 1px var(--frame-gold-dark),
+    0 4px 20px rgba(139, 105, 20, 0.15),
+    inset 0 0 0 1px var(--frame-gold-light);
+}
+
+.dark .mushaf-frame-border {
+  box-shadow:
+    0 0 0 1px var(--frame-gold-dark),
+    0 4px 20px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px var(--frame-gold-light);
+}
+
+.mushaf-inner-border {
+  position: relative;
+  border: 1.5px solid var(--frame-gold-light);
+  border-radius: 2px;
+  padding: 8px;
+  background: var(--frame-bg);
+}
+
+/* ─── الزوايا الزخرفية ── */
+.mushaf-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.mushaf-corner::before,
+.mushaf-corner::after {
+  content: "";
+  position: absolute;
+  background: var(--frame-gold);
+}
+
+/* الزاوية العليا اليمنى */
+.mushaf-corner-tr {
+  top: -1px;
+  right: -1px;
+}
+.mushaf-corner-tr::before {
+  top: 0; right: 0;
+  width: 28px; height: 2.5px;
+  border-radius: 0 0 0 2px;
+}
+.mushaf-corner-tr::after {
+  top: 0; right: 0;
+  width: 2.5px; height: 28px;
+  border-radius: 0 0 2px 0;
+}
+
+/* الزاوية العليا اليسرى */
+.mushaf-corner-tl {
+  top: -1px;
+  left: -1px;
+}
+.mushaf-corner-tl::before {
+  top: 0; left: 0;
+  width: 28px; height: 2.5px;
+  border-radius: 0 0 2px 0;
+}
+.mushaf-corner-tl::after {
+  top: 0; left: 0;
+  width: 2.5px; height: 28px;
+  border-radius: 0 0 0 2px;
+}
+
+/* الزاوية السفلى اليمنى */
+.mushaf-corner-br {
+  bottom: -1px;
+  right: -1px;
+}
+.mushaf-corner-br::before {
+  bottom: 0; right: 0;
+  width: 28px; height: 2.5px;
+  border-radius: 2px 0 0 0;
+}
+.mushaf-corner-br::after {
+  bottom: 0; right: 0;
+  width: 2.5px; height: 28px;
+  border-radius: 2px 0 0 0;
+}
+
+/* الزاوية السفلى اليسرى */
+.mushaf-corner-bl {
+  bottom: -1px;
+  left: -1px;
+}
+.mushaf-corner-bl::before {
+  bottom: 0; left: 0;
+  width: 28px; height: 2.5px;
+  border-radius: 0 2px 0 0;
+}
+.mushaf-corner-bl::after {
+  bottom: 0; left: 0;
+  width: 2.5px; height: 28px;
+  border-radius: 0 2px 0 0;
+}
+
+/* ─── الزخرفة العلوية والسفلية ── */
+.mushaf-ornament-top,
+.mushaf-ornament-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 20px;
+  gap: 0;
+}
+
+.mushaf-ornament-top::before,
+.mushaf-ornament-top::after,
+.mushaf-ornament-bottom::before,
+.mushaf-ornament-bottom::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to var(--dir, right),
+    transparent,
+    var(--frame-gold-light) 20%,
+    var(--frame-gold) 50%,
+    var(--frame-gold-light) 80%,
+    transparent
+  );
+}
+
+.mushaf-ornament-top::before,
+.mushaf-ornament-bottom::before {
+  --dir: right;
+}
+.mushaf-ornament-top::after,
+.mushaf-ornament-bottom::after {
+  --dir: left;
+}
+
+.mushaf-ornament-diamond {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--frame-gold);
+  transform: rotate(45deg);
+  margin: 0 8px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.mushaf-ornament-top {
+  margin-bottom: 4px;
+}
+.mushaf-ornament-bottom {
+  margin-top: 4px;
+}

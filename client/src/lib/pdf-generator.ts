@@ -70,7 +70,7 @@ tr:hover{background:#f0f4f8}
 .ft .dv{font-size:11px;color:#888;margin-top:3px}
 </style></head><body>
 <div class="hd">
-  <div class="lg">${esc(config.mosqueName || "مُتْقِن")}</div>
+  <div class="lg">${esc(config.mosqueName || "سِرَاجُ الْقُرْآنِ")}</div>
   <div class="sub">نظام إدارة حلقات القرآن الكريم</div>
   <div class="tt">${esc(config.title)}</div>
   <div class="dt">${dateStr}</div>
@@ -124,7 +124,7 @@ ${config.certificateNumber ? `<div class="cn">رقم: ${esc(config.certificateNu
 <div class="bsm">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
 <div class="ct">شهادة إتمام</div>
 <div class="gl"></div>
-<div class="mn">${esc(config.mosqueName || "مُتْقِن")}</div>
+<div class="mn">${esc(config.mosqueName || "سِرَاجُ الْقُرْآنِ")}</div>
 <div class="pre">يشهد بأن</div>
 <div class="sn">${esc(config.studentName)}</div>
 <div class="cd">قد أتمّ بنجاح متطلبات الدورة التعليمية</div>

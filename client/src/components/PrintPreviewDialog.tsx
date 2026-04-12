@@ -165,7 +165,7 @@ export function PrintPreviewDialog() {
   const [iframeMounted, setIframeMounted] = useState(false);
 
   // اسم المسجد + اسم المستخدم
-  const mosqueName = options?.mosqueName || user?.mosqueName || "مُتْقِن";
+  const mosqueName = options?.mosqueName || user?.mosqueName || "سِرَاجُ الْقُرْآنِ";
   const issuedBy = user?.name || user?.username || "—";
 
   useEffect(() => {

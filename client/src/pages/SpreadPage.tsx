@@ -27,7 +27,7 @@ export default function SpreadPage() {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const generalUrl = `${origin}/welcome`;
-  const generalWhatsappText = `السلام عليكم 🕌\n\nنظام *مُتْقِن* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع حضور الطلاب\n✅ متابعة الحفظ آية بآية\n✅ تقارير لأولياء الأمور بضغطة واحدة\n✅ يعمل على الجوال مباشرة بدون تطبيق\n\n🔗 اكتشف النظام وسجّل مسجدك/مركزك:\n${generalUrl}\n\nنظام وقفي مجاني لخدمة كتاب الله 📖`;
+  const generalWhatsappText = `السلام عليكم 🕌\n\nنظام *سِرَاجُ الْقُرْآنِ* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع حضور الطلاب\n✅ متابعة الحفظ آية بآية\n✅ تقارير لأولياء الأمور بضغطة واحدة\n✅ يعمل على الجوال مباشرة بدون تطبيق\n\n🔗 اكتشف النظام وسجّل مسجدك/مركزك:\n${generalUrl}\n\nنظام وقفي مجاني لخدمة كتاب الله 📖`;
 
   useEffect(() => {
     fetch("/api/my-invite-code", { credentials: "include" })
@@ -44,7 +44,7 @@ export default function SpreadPage() {
           setData({
             ...d,
             inviteUrl: `${origin}/welcome?ref=${d.inviteCode}`,
-            whatsappText: `السلام عليكم 🕌\n\nنحن في *${d.mosqueName}* نستخدم نظام *مُتْقِن* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع حضور الطلاب\n✅ متابعة الحفظ آية بآية\n✅ تقارير لأولياء الأمور بضغطة واحدة\n✅ يعمل على الجوال مباشرة بدون تطبيق\n\n🔗 اكتشف النظام وسجّل مسجدك/مركزك:\n${origin}/welcome?ref=${d.inviteCode}\n\nنظام وقفي مجاني لخدمة كتاب الله 📖`,
+            whatsappText: `السلام عليكم 🕌\n\nنحن في *${d.mosqueName}* نستخدم نظام *سِرَاجُ الْقُرْآنِ* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع حضور الطلاب\n✅ متابعة الحفظ آية بآية\n✅ تقارير لأولياء الأمور بضغطة واحدة\n✅ يعمل على الجوال مباشرة بدون تطبيق\n\n🔗 اكتشف النظام وسجّل مسجدك/مركزك:\n${origin}/welcome?ref=${d.inviteCode}\n\nنظام وقفي مجاني لخدمة كتاب الله 📖`,
           });
         }
       })
@@ -74,7 +74,7 @@ export default function SpreadPage() {
   const handleNativeShare = async () => {
     if (!navigator.share) return;
     try {
-      await navigator.share({ title: "نظام مُتْقِن", text: shareText, url: shareUrl });
+      await navigator.share({ title: "سِرَاجُ الْقُرْآنِ", text: shareText, url: shareUrl });
     } catch {}
   };
 

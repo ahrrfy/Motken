@@ -1045,7 +1045,7 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
                 ${mosqueData.image ? `<div class="cert-logo"><img src="${mosqueData.image}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>` : ""}
                 <div class="cert-logo"><img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" /></div>
               </div>
-              <div class="cert-system-name">${mosqueData.name || "مُتْقِن"}</div>
+              <div class="cert-system-name">${mosqueData.name || "سِرَاجُ الْقُرْآنِ"}</div>
               <div class="cert-subtitle">نظام إدارة حلقات القرآن الكريم</div>
             </div>
             <div class="cert-title">

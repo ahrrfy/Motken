@@ -6,11 +6,11 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "مُتْقِن API",
+      title: "سِرَاجُ الْقُرْآنِ API",
       version: "1.0.0",
-      description: "API نظام إدارة حلقات تحفيظ القرآن الكريم",
+      description: "API نظام حفظ وتعليم القرآن الكريم",
       contact: {
-        name: "فريق مُتْقِن",
+        name: "فريق سِرَاجُ الْقُرْآنِ",
       },
     },
     servers: [
@@ -87,7 +87,7 @@ export function setupSwagger(app: Express) {
       .swagger-ui .topbar { display: none }
       .swagger-ui .info { margin-bottom: 20px }
     `,
-    customSiteTitle: "مُتْقِن API Documentation",
+    customSiteTitle: "سِرَاجُ الْقُرْآنِ API Documentation",
   }));
 
   // Raw spec endpoint

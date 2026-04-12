@@ -869,7 +869,7 @@ export default function DashboardPage() {
           <Card className="shadow-sm border bg-gradient-to-l from-accent/5 to-transparent">
             <CardContent className="p-6 md:p-8 text-center">
               <BookOpen className="w-14 h-14 mx-auto mb-4 text-accent/40" />
-              <p className="text-xl font-semibold">{isEn ? "Welcome to Mutqin" : "مرحباً بك في نظام مُتْقِن"}</p>
+              <p className="text-xl font-semibold">{isEn ? "Welcome to Siraj Al-Quran" : "مرحباً بك في سِرَاجُ الْقُرْآنِ"}</p>
               <p className="text-sm mt-2 text-muted-foreground">{isEn ? "Track your assignments and progress from the sidebar" : "تابع واجباتك وتقدمك من القائمة الجانبية"}</p>
             </CardContent>
           </Card>
@@ -932,7 +932,7 @@ export default function DashboardPage() {
         <Card className="shadow-sm border bg-gradient-to-l from-accent/5 to-transparent">
           <CardContent className="p-6 md:p-8 text-center">
             <BookOpen className="w-14 h-14 mx-auto mb-4 text-accent/40" />
-            <p className="text-xl font-semibold">{isEn ? "Welcome to Mutqin" : "مرحباً بك في نظام مُتْقِن"}</p>
+            <p className="text-xl font-semibold">{isEn ? "Welcome to Siraj Al-Quran" : "مرحباً بك في سِرَاجُ الْقُرْآنِ"}</p>
             <p className="text-sm mt-2 text-muted-foreground">{isEn ? "Track your assignments and progress from the sidebar" : "تابع واجباتك وتقدمك من القائمة الجانبية"}</p>
           </CardContent>
         </Card>

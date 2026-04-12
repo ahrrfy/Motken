@@ -76,7 +76,7 @@ function commonStyles(): string {
 }
 
 function wrapInPage(content: string, extraStyles: string = ""): string {
-  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - مُتْقِن</title><style>${commonStyles()}${extraStyles}</style></head><body>${content}</body></html>`;
+  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - سِرَاجُ الْقُرْآنِ</title><style>${commonStyles()}${extraStyles}</style></head><body>${content}</body></html>`;
 }
 
 function formatDates(issuedAt: string): { gregorian: string; hijri: string } {

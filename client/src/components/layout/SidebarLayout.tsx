@@ -358,7 +358,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       setNotificationsEnabled(true);
       startNotificationPolling();
       setPushEnabled(true);
-      showLocalNotification("مُتْقِن", "تم تفعيل الإشعارات الخارجية بنجاح", "mutqin-enabled");
+      showLocalNotification("سِرَاجُ الْقُرْآنِ", "تم تفعيل الإشعارات الخارجية بنجاح", "siraj-enabled");
     }
   }, [pushEnabled]);
 
@@ -374,9 +374,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const SidebarHeader = () => (
     <div className="p-4 border-b border-sidebar-border/30 shrink-0">
       <div className="flex items-center gap-3">
-        <img src="/logo.png" alt="مُتْقِن" className="w-10 h-10 rounded-xl shrink-0" />
+        <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="min-w-0 flex-1">
-          <h1 className="font-bold text-xl leading-none tracking-tight">مُتْقِن</h1>
+          <h1 className="font-bold text-xl leading-none tracking-tight">سِرَاجُ الْقُرْآنِ</h1>
           <p className="text-[10px] text-sidebar-foreground/50 mt-0.5">{isEn ? "Quran Memorization System" : "نظام إدارة حلقات التحفيظ"}</p>
         </div>
       </div>
@@ -538,8 +538,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans" dir={dir}>
       <div className="md:hidden fixed top-0 right-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex items-center justify-between px-4 py-3 shadow-lg">
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="مُتْقِن" className="w-8 h-8 rounded-lg" />
-          <span className="font-bold text-lg">مُتْقِن</span>
+          <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-8 h-8 rounded-lg" />
+          <span className="font-bold text-lg">سِرَاجُ الْقُرْآنِ</span>
         </div>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

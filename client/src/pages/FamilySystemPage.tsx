@@ -853,7 +853,7 @@ export default function FamilySystemPage() {
                   {createdAccountInfo && (() => {
                     const info = createdAccountInfo;
                     const loginUrl = window.location.origin;
-                    const messageText = `مرحباً ${info.name}\nتم إنشاء حسابك في نظام مُتْقِن\n\nاسم المستخدم: ${info.username}\nكلمة المرور: ${info.password}\nرابط الدخول: ${loginUrl}\n\nالطلاب المرتبطين: ${info.studentNames.join("، ")}`;
+                    const messageText = `مرحباً ${info.name}\nتم إنشاء حسابك في سِرَاجُ الْقُرْآنِ\n\nاسم المستخدم: ${info.username}\nكلمة المرور: ${info.password}\nرابط الدخول: ${loginUrl}\n\nالطلاب المرتبطين: ${info.studentNames.join("، ")}`;
                     return (
                       <div className="space-y-3 mt-2">
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2 text-sm">

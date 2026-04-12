@@ -166,7 +166,7 @@ export function generateCertificateHtml(cert: any, studentName: string, courseNa
       <div style="font-size:22px;color:#c9a84c;letter-spacing:3px;margin-bottom:16px;">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
       <h1 style="font-size:44px;color:#16213e;margin-bottom:8px;font-family:'Scheherazade New','Amiri',serif;">شهادة إتمام</h1>
       <div style="width:160px;height:3px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);margin:0 auto 14px;"></div>
-      <h2 style="font-size:20px;color:#888;margin-bottom:24px;font-weight:400;">${escapeHtml(mosqueName || "مُتْقِن")}</h2>
+      <h2 style="font-size:20px;color:#888;margin-bottom:24px;font-weight:400;">${escapeHtml(mosqueName || "سِرَاجُ الْقُرْآنِ")}</h2>
 
       <p style="font-size:20px;color:#666;margin-bottom:10px;">يشهد بأن</p>
       <h3 style="font-size:46px;color:#16213e;margin-bottom:16px;border-bottom:3px solid #c9a84c;padding-bottom:10px;display:inline-block;min-width:300px;font-family:'Scheherazade New','Amiri',serif;">${escapeHtml(studentName || "")}</h3>
@@ -312,7 +312,7 @@ body{font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;direction:rtl;background
     </div>
     <div style="width:58px;text-align:center;">
       <div style="font-family:'Amiri',serif;font-size:30px;color:#d4af37;line-height:1;">☾</div>
-      <div style="font-size:8px;color:rgba(255,255,255,0.6);margin-top:2px;">مُتْقِن</div>
+      <div style="font-size:8px;color:rgba(255,255,255,0.6);margin-top:2px;">سِرَاجُ الْقُرْآنِ</div>
     </div>
   </div>
   <div class="body">
@@ -347,7 +347,7 @@ body{font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;direction:rtl;background
   <div class="footer">
     <div style="text-align:center;min-width:70px;"><div style="width:60px;border-bottom:1.5px solid rgba(212,175,55,0.6);margin:0 auto 3px;"></div><div style="font-size:8px;color:rgba(255,255,255,0.6);">توقيع المسؤول</div></div>
     <div style="flex:1;margin:0 16px;"><div style="font-size:7.5px;color:rgba(255,255,255,0.65);margin-bottom:2px;">التقدم الكلي — ${data.totalCompletionPercent}%</div><div style="height:5px;background:rgba(255,255,255,0.2);border-radius:3px;overflow:hidden;"><div style="height:100%;background:linear-gradient(90deg,#d4af37,#f9d856);border-radius:3px;width:${data.totalCompletionPercent}%;"></div></div></div>
-    <div style="width:44px;height:44px;border:2px solid #d4af37;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;"><div style="font-size:6.5px;color:#d4af37;font-weight:700;text-align:center;line-height:1.2;">ختم<br/>مُتْقِن</div></div>
+    <div style="width:44px;height:44px;border:2px solid #d4af37;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;"><div style="font-size:6.5px;color:#d4af37;font-weight:700;text-align:center;line-height:1.2;">ختم<br/>سِرَاجُ الْقُرْآنِ</div></div>
     <div style="text-align:center;margin-right:8px;"><div style="font-size:8.5px;color:#d4af37;font-weight:700;">${hijriDate}</div><div style="font-size:7.5px;color:rgba(255,255,255,0.6);margin-top:1px;">${gregorianDate}</div></div>
   </div>
 </div>

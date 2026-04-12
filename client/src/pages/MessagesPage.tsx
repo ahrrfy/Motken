@@ -775,7 +775,7 @@ export default function MessagesPage() {
               <div className="w-24 h-24 rounded-full bg-white/80 dark:bg-slate-700 shadow-lg flex items-center justify-center mx-auto mb-6">
                 <MessageCircle className="w-12 h-12 text-[#075e54] opacity-60" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-600 dark:text-slate-300 mb-2">مُتْقِن للرسائل</h3>
+              <h3 className="text-xl font-semibold text-slate-600 dark:text-slate-300 mb-2">سِرَاجُ الْقُرْآنِ للرسائل</h3>
               <p className="text-sm text-slate-400 dark:text-slate-500 mb-4">اختر محادثة للبدء أو ابدأ محادثة جديدة</p>
               <button
                 onClick={openNewConvoDialog}

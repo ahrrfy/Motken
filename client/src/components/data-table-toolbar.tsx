@@ -141,7 +141,7 @@ export function DataTableToolbar({
       <h2>${printTitle || entityName}</h2>
       <p class="sub">${printSubtitle || `الإجمالي: ${displayCount} ${entityName} — ${new Date().toLocaleDateString("ar-SA")}`}</p>
       <table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>
-      <div class="footer">نظام مُتقِن — ${new Date().toLocaleDateString("ar-SA")}</div>
+      <div class="footer">سِرَاجُ الْقُرْآنِ — ${new Date().toLocaleDateString("ar-SA")}</div>
       <script>window.onload=()=>{window.print();window.close();}<\/script>
     </body></html>`);
     win.document.close();

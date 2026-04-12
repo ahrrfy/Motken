@@ -146,8 +146,8 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="متقن" className="w-7 h-7 rounded-lg shadow-sm" />
-          <span className="font-bold text-base tracking-wide text-white">متقن</span>
+          <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-7 h-7 rounded-lg shadow-sm" />
+          <span className="font-bold text-base tracking-wide text-white">سِرَاجُ الْقُرْآنِ</span>
         </div>
         <button
           onClick={() => { hapticLight(); setSearchOpen(true); }}

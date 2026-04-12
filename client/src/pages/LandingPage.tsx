@@ -37,7 +37,7 @@ const featureColorMap: Record<string, { bg: string; text: string }> = {
 
 const faqs = [
   { q: "هل النظام مجاني؟", a: "نعم، النظام وقف لله تعالى ومجاني بالكامل بدون أي رسوم أو اشتراكات — الآن ودائماً بإذن الله." },
-  { q: "هل أحتاج خبرة تقنية؟", a: "لا أبداً، النظام مصمم ليكون سهل الاستخدام لأي شخص. إذا تستخدم واتساب، تقدر تستخدم مُتْقِن." },
+  { q: "هل أحتاج خبرة تقنية؟", a: "لا أبداً، النظام مصمم ليكون سهل الاستخدام لأي شخص. إذا تستخدم واتساب، تقدر تستخدم سِرَاجُ الْقُرْآنِ." },
   { q: "كيف أسجّل مسجدي/مركزي؟", a: "اضغط على 'سجّل مسجدك/مركزك' واملأ النموذج البسيط وسيتم تفعيل حسابك خلال دقائق." },
   { q: "هل يعمل على الجوال؟", a: "نعم، يعمل على أي جهاز — جوال، تابلت، أو كمبيوتر — بدون تحميل أي تطبيق." },
   { q: "هل بيانات مسجدنا آمنة؟", a: "بالتأكيد. بيانات كل مسجد معزولة تماماً ومشفرة. لا يمكن لأي مسجد آخر الاطلاع عليها." },
@@ -56,7 +56,7 @@ const defaultTestimonials = [
   { name: "أبو عبدالرحمن", role: "مشرف حلقات — الأنبار", text: "النظام وفّر علينا ساعات من العمل اليدوي. أصبحنا نتابع ٦ حلقات و٩٠ طالباً من مكان واحد.", rating: 5 },
   { name: "الشيخ ياسين", role: "معلم قرآن — الموصل", text: "ميزة التسميع الصوتي ممتازة — الطالب يسجّل من البيت وأنا أقيّم في وقتي. سهّلت العمل كثيراً.", rating: 5 },
   { name: "أم أحمد", role: "ولية أمر — الفلوجة", text: "أتابع تقدم ابني في الحفظ أولاً بأول. التقارير واضحة وتصلني عبر واتساب. جزاكم الله خيراً.", rating: 5 },
-  { name: "أبو مصطفى", role: "مدير مركز تحفيظ — سامراء", text: "جرّبنا عدة أنظمة قبلها كلها معقدة أو مدفوعة. مُتْقِن سهل ومجاني والدعم سريع.", rating: 5 },
+  { name: "أبو مصطفى", role: "مدير مركز تحفيظ — سامراء", text: "جرّبنا عدة أنظمة قبلها كلها معقدة أو مدفوعة. سِرَاجُ الْقُرْآنِ سهل ومجاني والدعم سريع.", rating: 5 },
 ];
 
 const whyUs = [
@@ -132,8 +132,8 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="مُتْقِن" className="w-8 h-8 rounded-lg" />
-            <span className="font-bold text-lg text-[#16213e] font-serif">مُتْقِن</span>
+            <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-8 h-8 rounded-lg" />
+            <span className="font-bold text-lg text-[#16213e] font-serif">سِرَاجُ الْقُرْآنِ</span>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
             <a href="#features" className="hidden sm:inline text-sm text-gray-600 hover:text-emerald-700 px-3 py-1.5" data-testid="link-nav-features">المميزات</a>
@@ -168,7 +168,7 @@ export default function LandingPage() {
             <span className="bg-gradient-to-l from-emerald-300 to-emerald-500 bg-clip-text text-transparent">بسهولة واحترافية</span>
           </h1>
           <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-            نظام مُتْقِن — الحل الشامل لإدارة حلقات تحفيظ القرآن الكريم
+            سِرَاجُ الْقُرْآنِ — الحل الشامل لإدارة حلقات تحفيظ القرآن الكريم
             <br className="hidden sm:block" />
             للمساجد والمراكز حول العالم — يعمل على الجوال مباشرة
           </p>
@@ -304,7 +304,7 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20 bg-[#0f3460]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white font-serif">لماذا مُتْقِن؟</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white font-serif">لماذا سِرَاجُ الْقُرْآنِ؟</h2>
             <p className="text-gray-400 mt-3 text-lg">ما يميّزنا عن غيرنا</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -394,9 +394,9 @@ export default function LandingPage() {
           </svg>
         </div>
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center relative z-10">
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4" data-testid="text-register-title">ابدأ رحلتك مع مُتْقِن اليوم</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4" data-testid="text-register-title">ابدأ رحلتك مع سِرَاجُ الْقُرْآنِ اليوم</h2>
           <p className="text-gray-300 mb-8 text-lg leading-relaxed">
-            انضم لمئات المساجد والمراكز التي تستخدم مُتْقِن
+            انضم لمئات المساجد والمراكز التي تستخدم سِرَاجُ الْقُرْآنِ
             <br />
             مجاني بالكامل — سجّل خلال دقيقة واحدة
           </p>
@@ -419,7 +419,7 @@ export default function LandingPage() {
             <button
               onClick={() => {
                 const url = `${window.location.origin}/welcome`;
-                const text = `السلام عليكم 🕌\n\nاكتشفت نظام *مُتْقِن* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع الحفظ آية بآية\n✅ تسميع صوتي عن بُعد\n✅ شهادات تخرج احترافية\n✅ تقارير لأولياء الأمور\n✅ يعمل على الجوال\n\n🔗 ${url}`;
+                const text = `السلام عليكم 🕌\n\nاكتشفت نظام *سِرَاجُ الْقُرْآنِ* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع الحفظ آية بآية\n✅ تسميع صوتي عن بُعد\n✅ شهادات تخرج احترافية\n✅ تقارير لأولياء الأمور\n✅ يعمل على الجوال\n\n🔗 ${url}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
               }}
               className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors"
@@ -446,8 +446,8 @@ export default function LandingPage() {
       <footer className="py-8 bg-[#16213e]">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <img src="/logo.png" alt="مُتْقِن" className="w-7 h-7 rounded" />
-            <span className="text-white font-serif font-bold text-lg">مُتْقِن</span>
+            <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-7 h-7 rounded" />
+            <span className="text-white font-serif font-bold text-lg">سِرَاجُ الْقُرْآنِ</span>
           </div>
           <p className="text-gray-400 text-sm mb-1">وقف لله تعالى — لإدارة حلقات القرآن الكريم</p>
           <p className="text-gray-500 text-xs">© {new Date().getFullYear()} جميع الحقوق محفوظة</p>

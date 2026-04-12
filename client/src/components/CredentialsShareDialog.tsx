@@ -40,7 +40,7 @@ export default function CredentialsShareDialog({
 
   const getMessage = () => {
     let msg = `بسم الله الرحمن الرحيم\n\n`;
-    msg += `نظام مُتْقِن لإدارة حلقات القرآن الكريم\n`;
+    msg += `سِرَاجُ الْقُرْآنِ لإدارة حلقات القرآن الكريم\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
     msg += `الاسم: ${name}\n`;
     msg += `الصفة: ${roleLabels[role] || role}\n`;

@@ -1,4 +1,4 @@
-const CACHE_NAME = "mutqin-cache-v3";
+const CACHE_NAME = "siraj-cache-v1";
 const STATIC_ASSETS = [
   "/logo.png",
   "/icon-192.png",

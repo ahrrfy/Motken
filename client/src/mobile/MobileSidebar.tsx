@@ -184,9 +184,9 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
       >
         <div className={cn("sticky top-0 z-10 flex items-center justify-between p-3 border-b border-white/10 bg-gradient-to-l shadow-lg", roleStyles.headerGradient)} style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="متقن" className="w-9 h-9 rounded-xl shadow-sm" />
+            <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-9 h-9 rounded-xl shadow-sm" />
             <div>
-              <p className="font-bold text-sm text-white">نظام متقن</p>
+              <p className="font-bold text-sm text-white">سِرَاجُ الْقُرْآنِ</p>
               <p className="text-xs text-white/60">إدارة حلقات التحفيظ</p>
             </div>
           </div>

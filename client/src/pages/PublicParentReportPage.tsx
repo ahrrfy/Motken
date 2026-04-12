@@ -67,7 +67,7 @@ export default function PublicParentReportPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary/5 to-background" dir="rtl">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 mx-auto">
-            <img src="/logo.png" alt="مُتْقِن" className="w-full h-full rounded-lg" />
+            <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-full h-full rounded-lg" />
           </div>
           <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" data-testid="loading-spinner" />
           <p className="text-muted-foreground text-sm">جاري تحميل التقرير...</p>
@@ -81,7 +81,7 @@ export default function PublicParentReportPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary/5 to-background" dir="rtl">
         <div className="text-center space-y-4 max-w-md px-4">
           <div className="w-16 h-16 mx-auto">
-            <img src="/logo.png" alt="مُتْقِن" className="w-full h-full rounded-lg" />
+            <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-full h-full rounded-lg" />
           </div>
           <div className="bg-destructive/10 rounded-full w-14 h-14 flex items-center justify-center mx-auto">
             <AlertTriangle className="w-7 h-7 text-destructive" />
@@ -89,7 +89,7 @@ export default function PublicParentReportPage() {
           <h2 className="text-xl font-bold text-foreground font-serif" data-testid="text-error-title">تعذّر عرض التقرير</h2>
           <p className="text-muted-foreground" data-testid="text-error-message">{error}</p>
           <div className="pt-2">
-            <p className="text-xs text-muted-foreground">نظام مُتقِن - إدارة حلقات تحفيظ القرآن الكريم</p>
+            <p className="text-xs text-muted-foreground">سِرَاجُ الْقُرْآنِ - إدارة حلقات تحفيظ القرآن الكريم</p>
           </div>
         </div>
       </div>
@@ -120,9 +120,9 @@ export default function PublicParentReportPage() {
     <div className="bg-gradient-to-b from-primary/5 to-background pb-8" dir="rtl" style={{ minHeight: "100%", display: "block" }}>
       <div className="bg-primary text-primary-foreground py-4 px-6 print:bg-white print:text-black">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <img src="/logo.png" alt="متقن" className="w-10 h-10 rounded-lg" />
+          <img src="/logo.png" alt="سِرَاجُ الْقُرْآنِ" className="w-10 h-10 rounded-lg" />
           <div>
-            <h1 className="text-xl font-bold font-serif" data-testid="text-brand-title">نظام مُتقِن</h1>
+            <h1 className="text-xl font-bold font-serif" data-testid="text-brand-title">سِرَاجُ الْقُرْآنِ</h1>
             <p className="text-sm opacity-80">نظام إدارة حلقات تحفيظ القرآن الكريم</p>
           </div>
         </div>
@@ -252,9 +252,9 @@ export default function PublicParentReportPage() {
         </div>
 
         <div className="text-center space-y-1 py-4 print:hidden">
-          <p className="text-xs text-muted-foreground font-medium">نظام مُتقِن - إدارة حلقات تحفيظ القرآن الكريم</p>
+          <p className="text-xs text-muted-foreground font-medium">سِرَاجُ الْقُرْآنِ - إدارة حلقات تحفيظ القرآن الكريم</p>
           <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground/60">
-            <span>تم الإنشاء بواسطة نظام مُتقِن الذكي</span>
+            <span>تم الإنشاء بواسطة سِرَاجُ الْقُرْآنِ الذكي</span>
             <div className="w-1 h-1 rounded-full bg-primary/40" />
             <a href="#" className="hover:text-primary">سياسة الخصوصية</a>
           </div>

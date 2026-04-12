@@ -130,7 +130,7 @@ function generateIDCardHtml(user: UserData, mosqueName: string, qrDataUrl: strin
         <div style="display:flex;align-items:center;gap:8px;z-index:1;">
           ${mosqueLogoHtml ? `<div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(255,255,255,0.2);">${mosqueLogoHtml}</div>` : ""}
           <div style="color:white;">
-            <div style="font-size:11px;font-weight:700;line-height:1.3;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeMosqueName || "مُتْقِن"}</div>
+            <div style="font-size:11px;font-weight:700;line-height:1.3;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeMosqueName || "سِرَاجُ الْقُرْآنِ"}</div>
             <div style="font-size:7px;opacity:0.7;">لإدارة حلقات القرآن الكريم</div>
           </div>
         </div>
@@ -220,7 +220,7 @@ function IDCard({ user, mosqueName, mosqueImage }: { user: UserData; mosqueName:
             </div>
           ) : null}
           <div className="text-white">
-            <div className="text-[11px] font-bold leading-tight truncate max-w-[180px]">{mosqueName || "مُتْقِن"}</div>
+            <div className="text-[11px] font-bold leading-tight truncate max-w-[180px]">{mosqueName || "سِرَاجُ الْقُرْآنِ"}</div>
             <div className="text-[7px] opacity-70">لإدارة حلقات القرآن الكريم</div>
           </div>
         </div>
@@ -348,7 +348,7 @@ export default function IDCardsPage() {
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: "بطاقات الهوية - مُتْقِن",
+    documentTitle: "بطاقات الهوية - سِرَاجُ الْقُرْآنِ",
   });
 
   const mosqueMap = new Map(mosques.map((m) => [m.id, m]));
