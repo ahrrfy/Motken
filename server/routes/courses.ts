@@ -206,15 +206,16 @@ export function registerCoursesRoutes(app: Express) {
     }
   });
 
-  app.post("/api/courses/:id/students", requireRole("teacher", "supervisor"), async (req, res) => {
+  app.post("/api/courses/:id/students", requireRole("admin", "teacher", "supervisor"), async (req, res) => {
     try {
       const currentUser = req.user!;
       const course = await storage.getCourse(req.params.id);
       if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
 
+      const isAdmin = currentUser.role === "admin";
       const isOwner = course.createdBy === currentUser.id;
       const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
-      if (!isOwner && !isSameMosqueSupervisor) {
+      if (!isAdmin && !isOwner && !isSameMosqueSupervisor) {
         return res.status(403).json({ message: "غير مصرح بتعديل هذه الدورة" });
       }
 
@@ -250,15 +251,16 @@ export function registerCoursesRoutes(app: Express) {
     }
   });
 
-  app.post("/api/courses/:id/graduate", requireRole("teacher", "supervisor"), async (req, res) => {
+  app.post("/api/courses/:id/graduate", requireRole("admin", "teacher", "supervisor"), async (req, res) => {
     try {
       const currentUser = req.user!;
       const course = await storage.getCourse(req.params.id);
       if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
 
+      const isAdmin = currentUser.role === "admin";
       const isOwner = course.createdBy === currentUser.id;
       const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
-      if (!isOwner && !isSameMosqueSupervisor) {
+      if (!isAdmin && !isOwner && !isSameMosqueSupervisor) {
         return res.status(403).json({ message: "غير مصرح بتخريج طلاب هذه الدورة" });
       }
 
@@ -431,15 +433,16 @@ export function registerCoursesRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/courses/:id/students/:studentId", requireRole("teacher", "supervisor"), async (req, res) => {
+  app.delete("/api/courses/:id/students/:studentId", requireRole("admin", "teacher", "supervisor"), async (req, res) => {
     try {
       const currentUser = req.user!;
       const course = await storage.getCourse(req.params.id);
       if (!course) return res.status(404).json({ message: "الدورة غير موجودة" });
 
+      const isAdmin = currentUser.role === "admin";
       const isOwner = course.createdBy === currentUser.id;
       const isSameMosqueSupervisor = currentUser.role === "supervisor" && course.mosqueId === currentUser.mosqueId;
-      if (!isOwner && !isSameMosqueSupervisor) {
+      if (!isAdmin && !isOwner && !isSameMosqueSupervisor) {
         return res.status(403).json({ message: "غير مصرح بتعديل هذه الدورة" });
       }
 

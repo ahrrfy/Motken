@@ -248,9 +248,11 @@ export default function AssignmentsExamsPage() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
 
+  const isAdmin = user?.role === "admin";
   const isTeacher = user?.role === "teacher";
   const isStudent = user?.role === "student";
   const isSupervisor = user?.role === "supervisor";
+  const canManage = isAdmin || isTeacher || isSupervisor;
 
   const examCurrentSurah = surahs.find(s => s.number.toString() === examSelectedSurah);
 
@@ -1469,10 +1471,10 @@ export default function AssignmentsExamsPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <p
-                                className={cn("font-bold text-sm", (isTeacher || isSupervisor) && "cursor-pointer hover:text-primary")}
+                                className={cn("font-bold text-sm", canManage && "cursor-pointer hover:text-primary")}
                                 data-testid={`text-assignment-student-${task.id}`}
                                 onClick={(e) => {
-                                  if (isTeacher || isSupervisor) {
+                                  if (canManage) {
                                     e.stopPropagation();
                                     setStudentStatsDialog(task.studentId);
                                   }
@@ -1480,7 +1482,7 @@ export default function AssignmentsExamsPage() {
                               >
                                 {getAssignStudentName(task.studentId)}
                               </p>
-                              {(isTeacher || isSupervisor) && studentRate && (
+                              {canManage && studentRate && (
                                 <div className="flex items-center gap-1" data-testid={`progress-student-${task.studentId}`}>
                                   <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                     <div
@@ -1644,7 +1646,7 @@ export default function AssignmentsExamsPage() {
                           </div>
                         )}
 
-                        {(isTeacher || isSupervisor) && (
+                        {canManage && (
                           <div className="mt-2 flex items-start gap-2" onClick={e => e.stopPropagation()}>
                             {editingNotes === task.id ? (
                               <div className="flex-1 flex items-center gap-2" data-testid={`notes-edit-section-${task.id}`}>
@@ -1730,7 +1732,7 @@ export default function AssignmentsExamsPage() {
                           />
                         )}
 
-                        {(isTeacher || isSupervisor) && task.hasAudio && task.status === "pending" && (
+                        {canManage && task.hasAudio && task.status === "pending" && (
                           <AudioPlayer
                             assignmentId={task.id}
                             surahName={task.surahName}
@@ -1740,7 +1742,7 @@ export default function AssignmentsExamsPage() {
                           />
                         )}
 
-                        {(isTeacher || isSupervisor) && (
+                        {canManage && (
                           <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
                             {task.status === "pending" && !task.isArchived && (
                               <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleCancelAssignment(task.id)} data-testid={`button-cancel-${task.id}`}>
@@ -2237,7 +2239,7 @@ export default function AssignmentsExamsPage() {
                                     <span className="text-sm truncate" data-testid={`text-student-name-${es.studentId}`}>
                                       {getExamStudentName(es.studentId)}
                                     </span>
-                                    {(isTeacher || isSupervisor) && (() => {
+                                    {canManage && (() => {
                                       const student = students.find(s => s.id === es.studentId);
                                       return student ? (
                                         <div className="flex items-center gap-0.5">

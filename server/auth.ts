@@ -214,7 +214,66 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Emergency endpoints removed — used once for initial setup, no longer needed
+  // ==================== IMPERSONATE USER (Admin Only) ====================
+  app.post("/api/auth/impersonate", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "فقط المدير يمكنه انتحال هوية مستخدم" });
+      }
+      const { targetUserId } = req.body;
+      if (!targetUserId) return res.status(400).json({ message: "يرجى تحديد المستخدم" });
+
+      const target = await storage.getUser(targetUserId);
+      if (!target) return res.status(404).json({ message: "المستخدم غير موجود" });
+      if (target.role === "admin") {
+        return res.status(403).json({ message: "لا يمكن انتحال هوية مدير آخر" });
+      }
+
+      // Store original admin info in session
+      (req.session as any).impersonating = true;
+      (req.session as any).originalAdminId = currentUser.id;
+      (req.session as any).impersonatedUserId = target.id;
+
+      // Log the action
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userRole: "admin",
+        mosqueId: currentUser.mosqueId,
+        action: `انتحال هوية: ${target.name} (${target.role})`,
+        module: "security",
+        status: "success",
+      });
+
+      const { password: _, ...safeTarget } = target;
+      req.session.save((err) => {
+        if (err) return res.status(500).json({ message: "خطأ في حفظ الجلسة" });
+        res.json({ message: `تم تفعيل انتحال هوية ${target.name}`, user: safeTarget });
+      });
+    } catch (err: unknown) {
+      sendError(res, err, "انتحال الهوية");
+    }
+  });
+
+  app.post("/api/auth/stop-impersonate", requireAuth, async (req, res) => {
+    try {
+      if (!(req.session as any).impersonating) {
+        return res.json({ message: "لا يوجد انتحال نشط" });
+      }
+      const adminId = (req.session as any).originalAdminId;
+      delete (req.session as any).impersonating;
+      delete (req.session as any).originalAdminId;
+      delete (req.session as any).impersonatedUserId;
+
+      req.session.save((err) => {
+        if (err) return res.status(500).json({ message: "خطأ في حفظ الجلسة" });
+        res.json({ message: "تم إيقاف انتحال الهوية", adminId });
+      });
+    } catch (err: unknown) {
+      sendError(res, err, "إيقاف انتحال الهوية");
+    }
+  });
 
   app.post("/api/auth/logout", (req, res, next) => {
     const sid = req.sessionID;

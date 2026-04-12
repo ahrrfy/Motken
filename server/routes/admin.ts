@@ -639,4 +639,275 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  // ==================== AUDIT LOG (Admin Only) ====================
+  app.get("/api/admin/audit-log", requireRole("admin"), async (req, res) => {
+    try {
+      const { userId, action, module, from, to } = req.query;
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+      const offset = (page - 1) * limit;
+
+      let conditions = [];
+      let params: (string | Date)[] = [];
+      let paramIdx = 1;
+
+      if (userId) { conditions.push(`user_id = $${paramIdx++}`); params.push(userId as string); }
+      if (action) { conditions.push(`action ILIKE $${paramIdx++}`); params.push(`%${action}%`); }
+      if (module) { conditions.push(`module = $${paramIdx++}`); params.push(module as string); }
+      if (from) { conditions.push(`created_at >= $${paramIdx++}`); params.push(new Date(from as string)); }
+      if (to) { conditions.push(`created_at <= $${paramIdx++}`); params.push(new Date(to as string)); }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+      const { pool: dbPool } = await import("../db");
+      const [countResult, dataResult] = await Promise.all([
+        dbPool.query(`SELECT COUNT(*)::int AS total FROM activity_logs ${whereClause}`, params),
+        dbPool.query(
+          `SELECT * FROM activity_logs ${whereClause} ORDER BY created_at DESC LIMIT $${paramIdx++} OFFSET $${paramIdx}`,
+          [...params, limit, offset]
+        ),
+      ]);
+
+      res.json({
+        logs: dataResult.rows,
+        pagination: {
+          page, limit,
+          total: countResult.rows[0]?.total || 0,
+          totalPages: Math.ceil((countResult.rows[0]?.total || 0) / limit),
+        },
+      });
+    } catch (err: unknown) {
+      sendError(res, err, "جلب سجل التدقيق");
+    }
+  });
+
+  // ==================== SYSTEM OVERVIEW (Admin Only) ====================
+  app.get("/api/admin/system-overview", requireRole("admin"), async (req, res) => {
+    try {
+      const { pool: dbPool } = await import("../db");
+
+      const [userStats, mosqueStats, assignmentStats, recentActivity, topTeachers, topStudents, dbSize] = await Promise.all([
+        dbPool.query(`
+          SELECT role, COUNT(*)::int AS count, COUNT(CASE WHEN is_active THEN 1 END)::int AS active
+          FROM users GROUP BY role ORDER BY count DESC
+        `),
+        dbPool.query(`
+          SELECT COUNT(*)::int AS total,
+            COUNT(CASE WHEN is_active THEN 1 END)::int AS active
+          FROM mosques
+        `),
+        dbPool.query(`
+          SELECT COUNT(*)::int AS total,
+            COUNT(CASE WHEN status='done' THEN 1 END)::int AS completed,
+            COUNT(CASE WHEN status='pending' THEN 1 END)::int AS pending
+          FROM assignments
+        `),
+        dbPool.query(`
+          SELECT user_name, action, module, created_at
+          FROM activity_logs ORDER BY created_at DESC LIMIT 10
+        `),
+        dbPool.query(`
+          SELECT u.id, u.name, u.username, COUNT(DISTINCT a.id)::int AS assignment_count
+          FROM users u
+          LEFT JOIN assignments a ON u.id = a.teacher_id AND a.created_at >= NOW() - INTERVAL '30 days'
+          WHERE u.role = 'teacher' AND u.is_active = true
+          GROUP BY u.id, u.name, u.username
+          ORDER BY assignment_count DESC LIMIT 10
+        `),
+        dbPool.query(`
+          SELECT u.id, u.name, u.username, COALESCE(SUM(p.amount), 0)::int AS total_points
+          FROM users u
+          LEFT JOIN points p ON u.id = p.user_id
+          WHERE u.role = 'student' AND u.is_active = true
+          GROUP BY u.id, u.name, u.username
+          ORDER BY total_points DESC LIMIT 10
+        `),
+        dbPool.query(`SELECT pg_database_size(current_database()) AS size`),
+      ]);
+
+      const memUsage = process.memoryUsage();
+      res.json({
+        users: {
+          byRole: userStats.rows,
+          total: userStats.rows.reduce((s: number, r: { count: number }) => s + r.count, 0),
+        },
+        mosques: mosqueStats.rows[0],
+        assignments: assignmentStats.rows[0],
+        recentActivity: recentActivity.rows,
+        topTeachers: topTeachers.rows,
+        topStudents: topStudents.rows,
+        system: {
+          dbSizeMB: Math.round(Number(dbSize.rows[0]?.size || 0) / 1024 / 1024),
+          memoryMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+          uptime: Math.round(process.uptime()),
+          nodeVersion: process.version,
+        },
+      });
+    } catch (err: unknown) {
+      sendError(res, err, "جلب نظرة عامة على النظام");
+    }
+  });
+
+  // ==================== BULK OPERATIONS (Admin Only) ====================
+  app.post("/api/admin/bulk-transfer-students", requireRole("admin"), async (req, res) => {
+    try {
+      const { studentIds, newTeacherId } = req.body;
+      if (!studentIds?.length || !newTeacherId) {
+        return res.status(400).json({ message: "يرجى تحديد الطلاب والأستاذ الجديد" });
+      }
+      const teacher = await storage.getUser(newTeacherId);
+      if (!teacher || teacher.role !== "teacher") {
+        return res.status(404).json({ message: "الأستاذ غير موجود" });
+      }
+      let transferred = 0;
+      for (const sid of studentIds) {
+        const student = await storage.getUser(sid);
+        if (student && student.role === "student") {
+          const oldTeacherId = student.teacherId;
+          await storage.updateUser(sid, { teacherId: newTeacherId });
+          await storage.updateAssignments(sid, oldTeacherId, newTeacherId);
+          transferred++;
+        }
+      }
+      await logActivity(req.user!, `نقل جماعي: ${transferred} طالب إلى ${teacher.name}`, "admin");
+      res.json({ message: `تم نقل ${transferred} طالب`, transferred });
+    } catch (err: unknown) {
+      sendError(res, err, "نقل جماعي للطلاب");
+    }
+  });
+
+  app.post("/api/admin/bulk-reset-passwords", requireRole("admin"), async (req, res) => {
+    try {
+      const { userIds } = req.body;
+      if (!userIds?.length) return res.status(400).json({ message: "يرجى تحديد المستخدمين" });
+      const { hashPassword: hash } = await import("../auth");
+      const defaultPass = await hash("Mutqin@2024");
+      let reset = 0;
+      for (const uid of userIds) {
+        const user = await storage.getUser(uid);
+        if (user && user.role !== "admin") {
+          await storage.updateUser(uid, { password: defaultPass });
+          reset++;
+        }
+      }
+      await logActivity(req.user!, `إعادة تعيين كلمات مرور ${reset} مستخدم`, "admin");
+      res.json({ message: `تم إعادة تعيين ${reset} كلمة مرور إلى Mutqin@2024`, reset });
+    } catch (err: unknown) {
+      sendError(res, err, "إعادة تعيين كلمات المرور");
+    }
+  });
+
+  app.post("/api/admin/bulk-toggle-active", requireRole("admin"), async (req, res) => {
+    try {
+      const { userIds, isActive } = req.body;
+      if (!userIds?.length || isActive === undefined) {
+        return res.status(400).json({ message: "يرجى تحديد المستخدمين والحالة" });
+      }
+      let updated = 0;
+      for (const uid of userIds) {
+        const user = await storage.getUser(uid);
+        if (user && user.role !== "admin") {
+          await storage.updateUser(uid, { isActive });
+          updated++;
+        }
+      }
+      await logActivity(req.user!, `${isActive ? "تفعيل" : "تعطيل"} جماعي: ${updated} مستخدم`, "admin");
+      res.json({ message: `تم ${isActive ? "تفعيل" : "تعطيل"} ${updated} مستخدم`, updated });
+    } catch (err: unknown) {
+      sendError(res, err, "تفعيل/تعطيل جماعي");
+    }
+  });
+
+  app.post("/api/admin/bulk-move-mosque", requireRole("admin"), async (req, res) => {
+    try {
+      const { userIds, newMosqueId } = req.body;
+      if (!userIds?.length || !newMosqueId) {
+        return res.status(400).json({ message: "يرجى تحديد المستخدمين والمسجد الجديد" });
+      }
+      const mosque = await storage.getMosque(newMosqueId);
+      if (!mosque) return res.status(404).json({ message: "المسجد غير موجود" });
+      let moved = 0;
+      for (const uid of userIds) {
+        const user = await storage.getUser(uid);
+        if (user && user.role !== "admin") {
+          await storage.updateUser(uid, { mosqueId: newMosqueId, teacherId: null });
+          moved++;
+        }
+      }
+      await logActivity(req.user!, `نقل جماعي: ${moved} مستخدم إلى ${mosque.name}`, "admin");
+      res.json({ message: `تم نقل ${moved} مستخدم إلى ${mosque.name}`, moved });
+    } catch (err: unknown) {
+      sendError(res, err, "نقل جماعي للمسجد");
+    }
+  });
+
+  app.post("/api/admin/bulk-delete-users", requireRole("admin"), async (req, res) => {
+    try {
+      const { userIds, password } = req.body;
+      if (!userIds?.length || !password) {
+        return res.status(400).json({ message: "يرجى تحديد المستخدمين وإدخال كلمة المرور" });
+      }
+      const { comparePasswords: verify } = await import("../auth");
+      const admin = await storage.getUser(req.user!.id);
+      if (!admin || !(await verify(password, admin.password))) {
+        return res.status(403).json({ message: "كلمة المرور غير صحيحة" });
+      }
+      let deleted = 0;
+      for (const uid of userIds) {
+        const user = await storage.getUser(uid);
+        if (user && user.role !== "admin") {
+          await storage.deleteUser(uid);
+          deleted++;
+        }
+      }
+      await logActivity(req.user!, `حذف جماعي: ${deleted} مستخدم`, "admin");
+      res.json({ message: `تم حذف ${deleted} مستخدم`, deleted });
+    } catch (err: unknown) {
+      sendError(res, err, "حذف جماعي للمستخدمين");
+    }
+  });
+
+  // ==================== MOSQUE HEALTH (Admin Only) ====================
+  app.get("/api/admin/mosque-health", requireRole("admin"), async (req, res) => {
+    try {
+      const { pool: dbPool } = await import("../db");
+      const result = await dbPool.query(`
+        SELECT
+          m.id, m.name, m.is_active,
+          COUNT(DISTINCT CASE WHEN u.role='student' AND u.is_active THEN u.id END)::int AS active_students,
+          COUNT(DISTINCT CASE WHEN u.role='teacher' AND u.is_active THEN u.id END)::int AS active_teachers,
+          COUNT(DISTINCT CASE WHEN u.role='supervisor' AND u.is_active THEN u.id END)::int AS supervisors,
+          COUNT(DISTINCT CASE WHEN u.role='student' AND u.is_active AND u.teacher_id IS NULL THEN u.id END)::int AS students_without_teacher,
+          COUNT(DISTINCT CASE WHEN u.role='teacher' AND u.is_active AND NOT EXISTS (
+            SELECT 1 FROM users s WHERE s.teacher_id = u.id AND s.role='student' AND s.is_active
+          ) THEN u.id END)::int AS teachers_without_students,
+          COUNT(DISTINCT CASE WHEN a.created_at >= NOW() - INTERVAL '7 days' THEN a.id END)::int AS weekly_assignments,
+          COUNT(DISTINCT CASE WHEN att.date >= CURRENT_DATE - 7 THEN att.id END)::int AS weekly_attendance
+        FROM mosques m
+        LEFT JOIN users u ON m.id = u.mosque_id
+        LEFT JOIN assignments a ON m.id = a.mosque_id
+        LEFT JOIN attendance att ON m.id = att.mosque_id
+        WHERE m.is_active = true
+        GROUP BY m.id, m.name, m.is_active
+        ORDER BY active_students DESC
+      `);
+
+      const health = result.rows.map((m: Record<string, unknown>) => ({
+        ...m,
+        healthScore: Math.min(100, (
+          (Number(m.active_teachers) > 0 ? 25 : 0) +
+          (Number(m.supervisors) > 0 ? 15 : 0) +
+          (Number(m.students_without_teacher) === 0 ? 20 : 0) +
+          (Number(m.teachers_without_students) === 0 ? 10 : 0) +
+          (Number(m.weekly_assignments) > 0 ? 15 : 0) +
+          (Number(m.weekly_attendance) > 0 ? 15 : 0)
+        )),
+      }));
+
+      res.json(health);
+    } catch (err: unknown) {
+      sendError(res, err, "جلب صحة المساجد");
+    }
+  });
+
 }

@@ -722,7 +722,7 @@ export function registerUsersRoutes(app: Express) {
 
 
   // ==================== TRANSFER STUDENT ====================
-  app.post("/api/users/:id/transfer", requireRole("supervisor"), async (req, res) => {
+  app.post("/api/users/:id/transfer", requireRole("admin", "supervisor"), async (req, res) => {
     const currentUser = req.user!;
     const { newTeacherId } = req.body;
 

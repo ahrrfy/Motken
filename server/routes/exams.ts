@@ -72,7 +72,7 @@ export function registerExamsRoutes(app: Express) {
     }
   });
 
-  app.post("/api/exams", requireRole("teacher", "supervisor"), async (req, res) => {
+  app.post("/api/exams", requireRole("admin", "teacher", "supervisor"), async (req, res) => {
     try {
       const currentUser = req.user!;
       const { title, surahName, fromVerse, toVerse, examDate, examTime, description, isForAll, studentIds } = req.body;
@@ -107,7 +107,7 @@ export function registerExamsRoutes(app: Express) {
       });
 
       let myStudents: any[];
-      if (currentUser.role === "supervisor" && currentUser.mosqueId) {
+      if ((currentUser.role === "admin" || currentUser.role === "supervisor") && currentUser.mosqueId) {
         const mosqueUsers = await storage.getUsersByMosque(currentUser.mosqueId);
         myStudents = mosqueUsers.filter(u => u.role === "student" && !u.pendingApproval);
       } else if (currentUser.mosqueId) {
@@ -153,15 +153,16 @@ export function registerExamsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/exams/:examId/students/:studentId", requireRole("teacher", "supervisor"), async (req, res) => {
+  app.patch("/api/exams/:examId/students/:studentId", requireRole("admin", "teacher", "supervisor"), async (req, res) => {
     const currentUser = req.user!;
     const exam = await storage.getExam(req.params.examId);
     if (!exam) return res.status(404).json({ message: "الامتحان غير موجود" });
 
+    const isAdmin = currentUser.role === "admin";
     const isOwner = exam.teacherId === currentUser.id;
     const isSameMosqueTeacher = currentUser.role === "teacher" && exam.mosqueId === currentUser.mosqueId;
     const isMosqueSupervisor = currentUser.role === "supervisor" && exam.mosqueId === currentUser.mosqueId;
-    if (!isOwner && !isSameMosqueTeacher && !isMosqueSupervisor) {
+    if (!isAdmin && !isOwner && !isSameMosqueTeacher && !isMosqueSupervisor) {
       return res.status(403).json({ message: "غير مصرح بتعديل درجات هذا الامتحان" });
     }
 
