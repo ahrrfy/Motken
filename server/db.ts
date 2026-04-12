@@ -209,6 +209,9 @@ export async function createIndexes() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_permissions JSONB DEFAULT '{}'`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_assistant_admin BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS assistant_permissions JSONB DEFAULT '{}'`,
+    // v3.2 — أرشفة الواجبات الخارجية
+    `ALTER TABLE external_assignments ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT false`,
+    `CREATE INDEX IF NOT EXISTS idx_ext_assignments_archived ON external_assignments(is_archived)`,
   ];
 
   let created = 0;

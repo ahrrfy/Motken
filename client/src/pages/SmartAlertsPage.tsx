@@ -80,6 +80,7 @@ export default function SmartAlertsPage() {
   const [studentsData, setStudentsData] = useState<any[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
 
@@ -317,6 +318,7 @@ export default function SmartAlertsPage() {
     let list = alerts.filter((alert) => {
       if (dismissedIds.has(alert.id)) return false;
       if (severityFilter !== "all" && alert.severity !== severityFilter) return false;
+      if (typeFilter !== "all" && alert.type !== typeFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
         const matchName = alert.studentName?.toLowerCase().includes(q);
@@ -327,11 +329,11 @@ export default function SmartAlertsPage() {
       return true;
     });
 
-    if (!showAll && severityFilter === "all" && !searchQuery.trim()) {
+    if (!showAll && severityFilter === "all" && typeFilter === "all" && !searchQuery.trim()) {
       return list.slice(0, 3);
     }
     return list;
-  }, [alerts, dismissedIds, severityFilter, searchQuery, showAll]);
+  }, [alerts, dismissedIds, severityFilter, typeFilter, searchQuery, showAll]);
 
   const weeklySummary = useMemo(() => {
     const last7Days = alerts.filter(a => {
@@ -492,6 +494,27 @@ export default function SmartAlertsPage() {
                       {opt.value === "critical" ? stats.critical : opt.value === "warning" ? stats.warning : opt.value === "info" ? stats.info : stats.positive}
                     </Badge>
                   )}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                { value: "all", label: "كل الأنواع" },
+                { value: "absence", label: "غياب" },
+                { value: "low-grade", label: "درجات" },
+                { value: "overdue", label: "تأخر" },
+                { value: "streak", label: "انقطاع" },
+                { value: "levelup", label: "ترقية" },
+              ].map((opt) => (
+                <Button
+                  key={opt.value}
+                  variant={typeFilter === opt.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setTypeFilter(opt.value); setShowAll(true); }}
+                  data-testid={`button-type-filter-${opt.value}`}
+                  className="text-xs"
+                >
+                  {opt.label}
                 </Button>
               ))}
             </div>

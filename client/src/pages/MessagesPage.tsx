@@ -110,6 +110,8 @@ export default function MessagesPage() {
   const [deletingMessage, setDeletingMessage] = useState(false);
 
   const [convoSearch, setConvoSearch] = useState("");
+  const [convoFilterRole, setConvoFilterRole] = useState("all");
+  const [convoFilterUnread, setConvoFilterUnread] = useState(false);
 
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [newTemplateCategory, setNewTemplateCategory] = useState("general");
@@ -371,9 +373,12 @@ export default function MessagesPage() {
     return groups;
   }, {});
 
-  const filteredConversations = convoSearch
-    ? conversations.filter(c => c.userName.includes(convoSearch) || (roleLabels[c.userRole] || "").includes(convoSearch))
-    : conversations;
+  const filteredConversations = conversations.filter(c => {
+    if (convoSearch && !c.userName.includes(convoSearch) && !(roleLabels[c.userRole] || "").includes(convoSearch)) return false;
+    if (convoFilterRole !== "all" && c.userRole !== convoFilterRole) return false;
+    if (convoFilterUnread && c.unreadCount === 0) return false;
+    return true;
+  });
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden" dir="rtl" data-testid="messages-page">
@@ -441,8 +446,29 @@ export default function MessagesPage() {
           </div>
         </div>
 
+        {/* Filter chips */}
+        <div className="px-3 py-1.5 bg-[#f0f2f5] dark:bg-slate-800/50 flex items-center gap-1.5 flex-wrap border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => setConvoFilterUnread(!convoFilterUnread)}
+            className={`text-[11px] px-2.5 py-1 rounded-full transition-colors ${convoFilterUnread ? "bg-emerald-600 text-white" : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"}`}
+            data-testid="filter-unread"
+          >
+            غير مقروء
+          </button>
+          {["all", "admin", "supervisor", "teacher", "student"].map(r => (
+            <button
+              key={r}
+              onClick={() => setConvoFilterRole(r)}
+              className={`text-[11px] px-2.5 py-1 rounded-full transition-colors ${convoFilterRole === r ? "bg-[#075e54] text-white" : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"}`}
+              data-testid={`filter-role-${r}`}
+            >
+              {r === "all" ? "الكل" : roleLabels[r] || r}
+            </button>
+          ))}
+        </div>
+
         {/* Unread badge */}
-        {totalUnread > 0 && (
+        {totalUnread > 0 && !convoFilterUnread && (
           <div className="px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100">
             <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium" data-testid="badge-total-unread">
               {totalUnread} رسالة غير مقروءة

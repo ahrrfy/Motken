@@ -2202,6 +2202,8 @@ interface ExtAssignment {
   id: string;
   student_id?: string;
   student_name?: string;
+  linked_student_name?: string;
+  student_avatar?: string;
   book_name: string;
   pages_from?: number;
   pages_to?: number;
@@ -2211,20 +2213,33 @@ interface ExtAssignment {
   status: string;
   notes?: string;
   creator_name?: string;
+  is_archived?: boolean;
 }
 
 function ExternalAssignmentsTab() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [items, setItems] = useState<ExtAssignment[]>([]);
+  const [extStudents, setExtStudents] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editItem, setEditItem] = useState<ExtAssignment | null>(null);
   const [form, setForm] = useState({
-    studentName: "", bookName: "", pagesFrom: "", pagesTo: "",
+    studentId: "", studentName: "", bookName: "", pagesFrom: "", pagesTo: "",
     assignedDate: "", dueDate: "", notes: "",
   });
+
+  // Filters
+  const [extSearchTerm, setExtSearchTerm] = useState("");
+  const [extFilterStatus, setExtFilterStatus] = useState("all");
+  const [extFilterDateFrom, setExtFilterDateFrom] = useState("");
+  const [extFilterDateTo, setExtFilterDateTo] = useState("");
+  const [extShowArchive, setExtShowArchive] = useState(false);
+
+  // Bulk mode
+  const [extBulkMode, setExtBulkMode] = useState(false);
+  const [extBulkSelectedStudents, setExtBulkSelectedStudents] = useState<string[]>([]);
 
   const canEdit = user?.role === "admin" || user?.role === "supervisor" || user?.role === "teacher";
 
@@ -2238,17 +2253,61 @@ function ExternalAssignmentsTab() {
     }
   };
 
-  useEffect(() => { fetchItems(); }, []);
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch("/api/users?role=student", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setExtStudents(data.map((s: any) => ({ id: s.id, name: s.name })));
+      }
+    } catch {}
+  };
+
+  useEffect(() => { fetchItems(); fetchStudents(); }, []);
+
+  // Computed stats
+  const totalExt = items.filter(i => !i.is_archived).length;
+  const pendingExt = items.filter(i => i.status !== "done" && !i.is_archived).length;
+  const completedExt = items.filter(i => i.status === "done" && !i.is_archived).length;
+  const archivedExtCount = items.filter(i => i.is_archived).length;
+
+  // Filtered items
+  const filteredExtItems = useMemo(() => {
+    return items.filter(item => {
+      if ((item.is_archived || false) !== extShowArchive) return false;
+      if (extSearchTerm) {
+        const name = item.student_name || item.linked_student_name || "";
+        if (!name.includes(extSearchTerm) && !item.book_name.includes(extSearchTerm)) return false;
+      }
+      if (extFilterStatus !== "all" && item.status !== extFilterStatus) return false;
+      const itemDate = item.assigned_date?.split("T")[0] || "";
+      if (extFilterDateFrom && itemDate < extFilterDateFrom) return false;
+      if (extFilterDateTo && itemDate > extFilterDateTo) return false;
+      return true;
+    });
+  }, [items, extShowArchive, extSearchTerm, extFilterStatus, extFilterDateFrom, extFilterDateTo]);
+
+  const extHasActiveFilters = extSearchTerm || extFilterStatus !== "all" || extFilterDateFrom || extFilterDateTo;
+
+  const clearExtFilters = () => {
+    setExtSearchTerm("");
+    setExtFilterStatus("all");
+    setExtFilterDateFrom("");
+    setExtFilterDateTo("");
+  };
 
   const openNew = () => {
     setEditItem(null);
-    setForm({ studentName: "", bookName: "", pagesFrom: "", pagesTo: "", assignedDate: "", dueDate: "", notes: "" });
+    setForm({ studentId: "", studentName: "", bookName: "", pagesFrom: "", pagesTo: "", assignedDate: "", dueDate: "", notes: "" });
+    setExtBulkMode(false);
+    setExtBulkSelectedStudents([]);
     setDialogOpen(true);
   };
 
   const openEdit = (item: ExtAssignment) => {
     setEditItem(item);
     setForm({
+      studentId: item.student_id || "",
       studentName: item.student_name || "",
       bookName: item.book_name,
       pagesFrom: item.pages_from?.toString() || "",
@@ -2257,6 +2316,7 @@ function ExternalAssignmentsTab() {
       dueDate: item.due_date?.split("T")[0] || "",
       notes: item.notes || "",
     });
+    setExtBulkMode(false);
     setDialogOpen(true);
   };
 
@@ -2267,8 +2327,7 @@ function ExternalAssignmentsTab() {
     }
     setSubmitting(true);
     try {
-      const body = {
-        studentName: form.studentName || null,
+      const baseBody: any = {
         bookName: form.bookName,
         pagesFrom: form.pagesFrom ? parseInt(form.pagesFrom) : null,
         pagesTo: form.pagesTo ? parseInt(form.pagesTo) : null,
@@ -2276,20 +2335,57 @@ function ExternalAssignmentsTab() {
         dueDate: form.dueDate || null,
         notes: form.notes || null,
       };
-      const url = editItem ? `/api/external-assignments/${editItem.id}` : "/api/external-assignments";
-      const method = editItem ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method, credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        toast({ title: "تم بنجاح", description: editItem ? "تم تحديث الواجب" : "تمت إضافة الواجب", className: "bg-green-50 border-green-200 text-green-800" });
-        setDialogOpen(false);
-        fetchItems();
+
+      if (editItem) {
+        // Edit mode
+        baseBody.studentId = form.studentId || null;
+        baseBody.studentName = form.studentName || null;
+        const res = await fetch(`/api/external-assignments/${editItem.id}`, {
+          method: "PATCH", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(baseBody),
+        });
+        if (res.ok) {
+          toast({ title: "تم بنجاح", description: "تم تحديث الواجب", className: "bg-green-50 border-green-200 text-green-800" });
+          setDialogOpen(false);
+          fetchItems();
+        } else {
+          const err = await res.json();
+          toast({ title: "خطأ", description: err.message, variant: "destructive" });
+        }
+      } else if (extBulkMode && extBulkSelectedStudents.length > 0) {
+        // Bulk create
+        baseBody.studentIds = extBulkSelectedStudents;
+        const res = await fetch("/api/external-assignments", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(baseBody),
+        });
+        if (res.ok) {
+          toast({ title: "تم بنجاح", description: `تمت إضافة ${extBulkSelectedStudents.length} واجب`, className: "bg-green-50 border-green-200 text-green-800" });
+          setDialogOpen(false);
+          fetchItems();
+        } else {
+          const err = await res.json();
+          toast({ title: "خطأ", description: err.message, variant: "destructive" });
+        }
       } else {
-        const err = await res.json();
-        toast({ title: "خطأ", description: err.message, variant: "destructive" });
+        // Single create
+        baseBody.studentId = form.studentId || null;
+        baseBody.studentName = form.studentName || null;
+        const res = await fetch("/api/external-assignments", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(baseBody),
+        });
+        if (res.ok) {
+          toast({ title: "تم بنجاح", description: "تمت إضافة الواجب", className: "bg-green-50 border-green-200 text-green-800" });
+          setDialogOpen(false);
+          fetchItems();
+        } else {
+          const err = await res.json();
+          toast({ title: "خطأ", description: err.message, variant: "destructive" });
+        }
       }
     } catch {
       toast({ title: "خطأ", description: "خطأ في الاتصال", variant: "destructive" });
@@ -2308,93 +2404,264 @@ function ExternalAssignmentsTab() {
     if (res.ok) { toast({ title: "تم", description: "تم تحديد الواجب كمكتمل", className: "bg-green-50 border-green-200 text-green-800" }); fetchItems(); }
   };
 
+  const handleArchive = async (item: ExtAssignment) => {
+    const res = await fetch(`/api/external-assignments/${item.id}/archive`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isArchived: !item.is_archived }),
+    });
+    if (res.ok) {
+      toast({ title: "تم", description: item.is_archived ? "تم استعادة الواجب" : "تم أرشفة الواجب", className: "bg-green-50 border-green-200 text-green-800" });
+      fetchItems();
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("هل أنت متأكد من الحذف؟")) return;
     const res = await fetch(`/api/external-assignments/${id}`, { method: "DELETE", credentials: "include" });
     if (res.ok) { toast({ title: "تم الحذف", className: "bg-red-50 border-red-200 text-red-800" }); fetchItems(); }
   };
 
+  const getExtDeadlineInfo = (dueDate?: string, status?: string) => {
+    if (status === "done") return { label: "مكتمل", className: "bg-green-100 text-green-700" };
+    if (!dueDate) return { label: "معلق", className: "bg-amber-100 text-amber-700" };
+    const now = new Date();
+    const due = new Date(dueDate);
+    if (isBefore(due, now)) return { label: "متأخر", className: "bg-red-100 text-red-700" };
+    const diff = differenceInDays(due, now);
+    if (isSameDay(due, now)) return { label: "اليوم", className: "bg-yellow-100 text-yellow-700" };
+    if (diff <= 3) return { label: `بعد ${diff} ${diff === 1 ? "يوم" : "أيام"}`, className: "bg-yellow-100 text-yellow-700" };
+    return { label: "معلق", className: "bg-amber-100 text-amber-700" };
+  };
+
   return (
     <div className="space-y-4" data-testid="external-assignments-tab">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-bold">الواجبات الخارجية</h3>
-          <p className="text-sm text-muted-foreground">واجبات من الكتب والمراجع خارج القرآن الكريم</p>
-        </div>
-        {canEdit && (
-          <Button onClick={openNew} className="gap-2" data-testid="button-add-external">
-            <Plus className="w-4 h-4" />
-            إضافة واجب
-          </Button>
-        )}
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <Card className="border-t-4 border-t-blue-500">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-full text-blue-600"><BookOpen className="w-5 h-5" /></div>
+            <div>
+              <p className="text-2xl font-bold text-blue-700">{totalExt}</p>
+              <p className="text-xs text-muted-foreground">إجمالي الواجبات</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-t-4 border-t-yellow-500">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 rounded-full text-yellow-600"><Clock className="w-5 h-5" /></div>
+            <div>
+              <p className="text-2xl font-bold text-yellow-700">{pendingExt}</p>
+              <p className="text-xs text-muted-foreground">واجبات معلقة</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-t-4 border-t-green-500">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-full text-green-600"><CheckCircle2 className="w-5 h-5" /></div>
+            <div>
+              <p className="text-2xl font-bold text-green-700">{completedExt}</p>
+              <p className="text-xs text-muted-foreground">واجبات مكتملة</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-      ) : items.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">لا توجد واجبات خارجية بعد</CardContent></Card>
-      ) : (
-        <div className="space-y-3">
-          {items.map(item => (
-            <Card key={item.id} className={`border-r-4 ${item.status === "done" ? "border-r-green-500" : "border-r-amber-400"}`} data-testid={`ext-assignment-${item.id}`}>
-              <CardContent className="py-3 px-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm">{item.book_name}</span>
-                      {(item.pages_from || item.pages_to) && (
-                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                          ص {item.pages_from || "—"} → {item.pages_to || "—"}
-                        </span>
-                      )}
-                      <Badge variant={item.status === "done" ? "default" : "outline"} className={item.status === "done" ? "bg-green-100 text-green-700 border-none text-xs" : "text-amber-700 border-amber-300 text-xs"}>
-                        {item.status === "done" ? "مكتمل" : "معلق"}
-                      </Badge>
-                    </div>
-                    {item.student_name && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <User className="w-3 h-3" /> {item.student_name}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
-                      <span>📅 تاريخ الواجب: {item.assigned_date?.split("T")[0]}</span>
-                      {item.due_date && <span>⏰ الموعد النهائي: {item.due_date?.split("T")[0]}</span>}
-                      {item.completion_date && <span>✅ تم بتاريخ: {item.completion_date?.split("T")[0]}</span>}
-                    </div>
-                    {item.notes && <p className="text-xs text-muted-foreground border-t pt-1 mt-1">{item.notes}</p>}
-                  </div>
-                  {canEdit && (
-                    <div className="flex gap-1 shrink-0">
-                      {item.status !== "done" && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:bg-green-50" onClick={() => markComplete(item)} title="تحديد كمكتمل">
-                          <CheckCircle2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:bg-blue-50" onClick={() => openEdit(item)} title="تعديل">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-50" onClick={() => handleDelete(item.id)} title="حذف">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* Header + Actions */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <CardTitle className="text-lg">الواجبات الخارجية ({filteredExtItems.length})</CardTitle>
+              <CardDescription>واجبات من الكتب والمراجع خارج القرآن الكريم</CardDescription>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {canEdit && (
+                <>
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setExtShowArchive(!extShowArchive)} data-testid="button-ext-toggle-archive">
+                    {extShowArchive ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                    {extShowArchive ? "الواجبات الحالية" : `الأرشيف (${archivedExtCount})`}
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" data-testid="button-export-ext" onClick={() => {
+                    exportJsonToExcel(
+                      items.filter(i => !i.is_archived).map(a => ({
+                        "الطالب": a.linked_student_name || a.student_name || "—",
+                        "الكتاب": a.book_name,
+                        "من صفحة": a.pages_from ?? "",
+                        "إلى صفحة": a.pages_to ?? "",
+                        "تاريخ الواجب": a.assigned_date?.split("T")[0] || "",
+                        "الموعد النهائي": a.due_date?.split("T")[0] || "",
+                        "الحالة": a.status === "done" ? "مكتمل" : "معلق",
+                        "تاريخ الإكمال": a.completion_date?.split("T")[0] || "",
+                        "ملاحظات": a.notes || "",
+                      })),
+                      "ExternalAssignments",
+                      "external_assignments_export.xlsx"
+                    );
+                  }}>
+                    <Download className="w-3.5 h-3.5" />
+                    تصدير
+                  </Button>
+                  <Button onClick={openNew} size="sm" className="gap-1" data-testid="button-add-external">
+                    <Plus className="w-4 h-4" />
+                    إضافة واجب
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
 
+          {/* Filters */}
+          <div className="flex flex-wrap items-end gap-3 mt-3">
+            <div className="relative w-full sm:w-48">
+              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="بحث بالاسم أو الكتاب..." className="pr-8" value={extSearchTerm} onChange={e => setExtSearchTerm(e.target.value)} data-testid="input-ext-search" />
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={extFilterStatus} onValueChange={setExtFilterStatus}>
+                <SelectTrigger data-testid="select-ext-filter-status"><SelectValue placeholder="الحالة" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الحالة - الكل</SelectItem>
+                  <SelectItem value="pending">معلق</SelectItem>
+                  <SelectItem value="done">مكتمل</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-36">
+              <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+              <Input type="date" value={extFilterDateFrom} onChange={e => setExtFilterDateFrom(e.target.value)} data-testid="input-ext-filter-date-from" />
+            </div>
+            <div className="w-full sm:w-36">
+              <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+              <Input type="date" value={extFilterDateTo} onChange={e => setExtFilterDateTo(e.target.value)} data-testid="input-ext-filter-date-to" />
+            </div>
+            {extHasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearExtFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-ext-filters">
+                <X className="w-4 h-4" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-3">
+          {loading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          ) : filteredExtItems.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              {extShowArchive ? "لا توجد واجبات مؤرشفة" : items.length === 0 ? "لا توجد واجبات خارجية بعد" : "لا توجد نتائج مطابقة للفلاتر"}
+            </div>
+          ) : (
+            filteredExtItems.map(item => {
+              const displayName = item.linked_student_name || item.student_name;
+              const deadline = getExtDeadlineInfo(item.due_date, item.status);
+              return (
+                <div key={item.id} className={`p-4 bg-white rounded-lg shadow-sm border border-slate-100 ${item.status === "done" ? "border-r-4 border-r-green-500" : item.due_date && isBefore(new Date(item.due_date), new Date()) && item.status !== "done" ? "border-r-4 border-r-red-400" : "border-r-4 border-r-amber-400"}`} data-testid={`ext-assignment-${item.id}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        {item.student_avatar ? (
+                          <img src={item.student_avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
+                        ) : (
+                          <User className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {displayName && <span className="font-bold text-sm">{displayName}</span>}
+                          <span className={`${displayName ? "text-sm text-muted-foreground" : "font-bold text-sm"}`}>{item.book_name}</span>
+                          {(item.pages_from || item.pages_to) && (
+                            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                              ص {item.pages_from || "—"} → {item.pages_to || "—"}
+                            </span>
+                          )}
+                          <Badge className={`${deadline.className} border-none text-xs`}>
+                            {deadline.label}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> تاريخ الواجب: {item.assigned_date?.split("T")[0]}</span>
+                          {item.due_date && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> الموعد النهائي: {item.due_date?.split("T")[0]}</span>}
+                          {item.completion_date && <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> تم بتاريخ: {item.completion_date?.split("T")[0]}</span>}
+                        </div>
+                        {item.notes && <p className="text-xs text-muted-foreground border-t pt-1 mt-1">{item.notes}</p>}
+                      </div>
+                    </div>
+                    {canEdit && (
+                      <div className="flex gap-1 shrink-0">
+                        {item.status !== "done" && !item.is_archived && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:bg-green-50" onClick={() => markComplete(item)} title="تحديد كمكتمل">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:bg-blue-50" onClick={() => openEdit(item)} title="تعديل">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:bg-muted" onClick={() => handleArchive(item)} title={item.is_archived ? "استعادة" : "أرشفة"}>
+                          {item.is_archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-50" onClick={() => handleDelete(item.id)} title="حذف">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle>{editItem ? "تعديل واجب خارجي" : "إضافة واجب خارجي"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
-            <div className="space-y-1.5">
-              <Label>اسم الطالب (اختياري)</Label>
-              <Input value={form.studentName} onChange={e => setForm(p => ({ ...p, studentName: e.target.value }))} placeholder="اسم الطالب" data-testid="input-ext-student-name" />
-            </div>
+            {/* Bulk mode toggle (only for new) */}
+            {!editItem && (
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <Label className="cursor-pointer flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  واجب جماعي (عدة طلاب)
+                </Label>
+                <Switch checked={extBulkMode} onCheckedChange={v => { setExtBulkMode(v); setExtBulkSelectedStudents([]); setForm(p => ({ ...p, studentId: "" })); }} data-testid="switch-ext-bulk-mode" />
+              </div>
+            )}
+
+            {/* Student selection */}
+            {extBulkMode && !editItem ? (
+              <div className="space-y-1.5">
+                <Label>اختر الطلاب ({extBulkSelectedStudents.length} محدد)</Label>
+                <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                  {extStudents.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                      <Checkbox checked={extBulkSelectedStudents.includes(s.id)} onCheckedChange={c => {
+                        setExtBulkSelectedStudents(prev => c ? [...prev, s.id] : prev.filter(x => x !== s.id));
+                      }} />
+                      {s.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>الطالب (اختياري)</Label>
+                <SearchableSelect
+                  value={form.studentId}
+                  onValueChange={v => setForm(p => ({ ...p, studentId: v, studentName: "" }))}
+                  placeholder="اختر الطالب"
+                  items={extStudents.map(s => ({ value: s.id, label: s.name }))}
+                  data-testid="select-ext-student"
+                />
+                {!form.studentId && (
+                  <Input value={form.studentName} onChange={e => setForm(p => ({ ...p, studentName: e.target.value }))} placeholder="أو اكتب اسم الطالب يدوياً" className="mt-1" data-testid="input-ext-student-name" />
+                )}
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>اسم الكتاب *</Label>
               <Input value={form.bookName} onChange={e => setForm(p => ({ ...p, bookName: e.target.value }))} placeholder="مثال: متن الآجرومية" data-testid="input-ext-book-name" />
@@ -2423,9 +2690,9 @@ function ExternalAssignmentsTab() {
               <Label>ملاحظات</Label>
               <Textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="أي ملاحظات إضافية..." rows={2} data-testid="input-ext-notes" />
             </div>
-            <Button onClick={handleSubmit} disabled={submitting} className="w-full" data-testid="button-submit-external">
+            <Button onClick={handleSubmit} disabled={submitting || (extBulkMode && !editItem && extBulkSelectedStudents.length === 0)} className="w-full" data-testid="button-submit-external">
               {submitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-              {editItem ? "حفظ التعديلات" : "إضافة الواجب"}
+              {editItem ? "حفظ التعديلات" : extBulkMode ? `إضافة واجب لـ ${extBulkSelectedStudents.length} طالب` : "إضافة الواجب"}
             </Button>
           </div>
         </DialogContent>

@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Quote, Loader2, Eye, EyeOff, ArrowUpDown, MessageSquareQuote } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Quote, Loader2, Eye, EyeOff, ArrowUpDown, MessageSquareQuote, Search, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Testimonial {
   id: string;
@@ -106,7 +107,17 @@ export default function TestimonialsManagePage() {
     } catch {}
   };
 
+  const [testSearchTerm, setTestSearchTerm] = useState("");
+  const [testFilterStatus, setTestFilterStatus] = useState("all");
+
   const activeCount = items.filter(i => i.isActive).length;
+
+  const filteredTestimonials = items.filter(t => {
+    if (testSearchTerm && !t.name.includes(testSearchTerm) && !t.text.includes(testSearchTerm) && !t.role.includes(testSearchTerm)) return false;
+    if (testFilterStatus === "active" && !t.isActive) return false;
+    if (testFilterStatus === "hidden" && t.isActive) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -178,20 +189,44 @@ export default function TestimonialsManagePage() {
         <Card><CardContent className="p-4 text-center"><div className="text-2xl font-bold text-amber-500">{items.length > 0 ? (items.reduce((s, i) => s + i.rating, 0) / items.length).toFixed(1) : "0"}</div><p className="text-xs text-muted-foreground">متوسط التقييم</p></CardContent></Card>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="relative w-full sm:w-48">
+          <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="بحث بالاسم أو النص..." className="pr-8" value={testSearchTerm} onChange={e => setTestSearchTerm(e.target.value)} data-testid="input-search-testimonials" />
+        </div>
+        <div className="w-full sm:w-36">
+          <Select value={testFilterStatus} onValueChange={setTestFilterStatus}>
+            <SelectTrigger data-testid="select-filter-testimonial-status"><SelectValue placeholder="الحالة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">الحالة - الكل</SelectItem>
+              <SelectItem value="active">مفعّل</SelectItem>
+              <SelectItem value="hidden">مخفي</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {(testSearchTerm || testFilterStatus !== "all") && (
+          <Button variant="ghost" size="sm" onClick={() => { setTestSearchTerm(""); setTestFilterStatus("all"); }} className="gap-1 text-destructive hover:text-destructive">
+            <X className="w-4 h-4" /> مسح الفلاتر
+          </Button>
+        )}
+        <span className="text-xs text-muted-foreground">عرض {filteredTestimonials.length} من {items.length}</span>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : items.length === 0 ? (
+      ) : filteredTestimonials.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <Quote className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-muted-foreground">لا توجد آراء بعد — أضف أول رأي</p>
+            <p className="text-muted-foreground">{items.length === 0 ? "لا توجد آراء بعد — أضف أول رأي" : "لا توجد نتائج مطابقة"}</p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
-          {items.map(t => (
+          {filteredTestimonials.map(t => (
             <Card key={t.id} className={`relative transition-opacity ${!t.isActive ? "opacity-60" : ""}`} data-testid={`testimonial-card-${t.id}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">

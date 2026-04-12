@@ -2,7 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
-import { BookOpen, GraduationCap, Award, Shield, Globe, CheckCircle, Phone, Loader2 } from "lucide-react";
+import { BookOpen, GraduationCap, Award, Shield, Globe, CheckCircle, Phone, Loader2, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDateAr } from "@/lib/utils";
@@ -30,6 +32,7 @@ function ExternalParticipantsArchive() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [graduationFilter, setGraduationFilter] = useState("all");
 
   const fetchParticipants = () => {
     setLoading(true);
@@ -43,14 +46,16 @@ function ExternalParticipantsArchive() {
   useEffect(() => { fetchParticipants(); }, []);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return participants;
-    const q = search.trim().toLowerCase();
-    return participants.filter(p =>
-      p.name?.toLowerCase().includes(q) ||
-      p.phone?.includes(q) ||
-      p.course_title?.toLowerCase().includes(q)
-    );
-  }, [participants, search]);
+    return participants.filter(p => {
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        if (!p.name?.toLowerCase().includes(q) && !p.phone?.includes(q) && !p.course_title?.toLowerCase().includes(q)) return false;
+      }
+      if (graduationFilter === "graduated" && !p.graduated) return false;
+      if (graduationFilter === "active" && p.graduated) return false;
+      return true;
+    });
+  }, [participants, search, graduationFilter]);
 
   const exportData = filtered.map(p => ({
     ...p,
@@ -100,6 +105,25 @@ function ExternalParticipantsArchive() {
         onSearchChange={setSearch}
         searchPlaceholder="ابحث بالاسم أو الجوال أو الدورة..."
       />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full sm:w-40">
+          <Select value={graduationFilter} onValueChange={setGraduationFilter}>
+            <SelectTrigger data-testid="select-graduation-filter"><SelectValue placeholder="الحالة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">الحالة - الكل</SelectItem>
+              <SelectItem value="active">في الدورة</SelectItem>
+              <SelectItem value="graduated">متخرج</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {graduationFilter !== "all" && (
+          <Button variant="ghost" size="sm" onClick={() => setGraduationFilter("all")} className="gap-1 text-destructive hover:text-destructive">
+            <X className="w-4 h-4" /> مسح
+          </Button>
+        )}
+        <span className="text-xs text-muted-foreground">عرض {filtered.length} من {participants.length}</span>
+      </div>
 
       {filtered.length === 0 ? (
         <div className="text-center py-12">

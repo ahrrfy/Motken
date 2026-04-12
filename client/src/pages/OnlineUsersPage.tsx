@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -42,6 +43,8 @@ import {
   Globe,
   Clock,
   AlertTriangle,
+  Search,
+  X,
 } from "lucide-react";
 import { formatDateAr, formatDateTimeAr } from "@/lib/utils";
 
@@ -310,6 +313,18 @@ export default function OnlineUsersPage() {
     return <div className="p-8 text-center text-muted-foreground">غير مصرح بالوصول</div>;
   }
 
+  const [sessionSearch, setSessionSearch] = useState("");
+  const [sessionFilterRole, setSessionFilterRole] = useState("all");
+  const [sessionFilterStatus, setSessionFilterStatus] = useState("all");
+
+  const filteredSessions = sessions.filter((s) => {
+    if (sessionSearch && !s.name.includes(sessionSearch) && !s.username.includes(sessionSearch)) return false;
+    if (sessionFilterRole !== "all" && s.role !== sessionFilterRole) return false;
+    if (sessionFilterStatus === "online" && !s.isOnline) return false;
+    if (sessionFilterStatus === "offline" && s.isOnline) return false;
+    return true;
+  });
+
   const onlineCount = sessions.filter((s) => s.isOnline).length;
   const offlineCount = sessions.filter((s) => !s.isOnline).length;
 
@@ -379,13 +394,49 @@ export default function OnlineUsersPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sessions" className="mt-4">
+        <TabsContent value="sessions" className="mt-4 space-y-3">
+          {/* Filters */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="relative w-full sm:w-48">
+              <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="بحث بالاسم..." className="pr-8" value={sessionSearch} onChange={e => setSessionSearch(e.target.value)} data-testid="input-session-search" />
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={sessionFilterRole} onValueChange={setSessionFilterRole}>
+                <SelectTrigger data-testid="select-session-role"><SelectValue placeholder="الدور" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الدور - الكل</SelectItem>
+                  <SelectItem value="admin">مدير النظام</SelectItem>
+                  <SelectItem value="supervisor">مشرف</SelectItem>
+                  <SelectItem value="teacher">أستاذ</SelectItem>
+                  <SelectItem value="student">طالب</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-36">
+              <Select value={sessionFilterStatus} onValueChange={setSessionFilterStatus}>
+                <SelectTrigger data-testid="select-session-status"><SelectValue placeholder="الحالة" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الحالة - الكل</SelectItem>
+                  <SelectItem value="online">متصل</SelectItem>
+                  <SelectItem value="offline">غير متصل</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(sessionSearch || sessionFilterRole !== "all" || sessionFilterStatus !== "all") && (
+              <Button variant="ghost" size="sm" onClick={() => { setSessionSearch(""); setSessionFilterRole("all"); setSessionFilterStatus("all"); }} className="gap-1 text-destructive hover:text-destructive">
+                <X className="w-4 h-4" /> مسح الفلاتر
+              </Button>
+            )}
+            <span className="text-xs text-muted-foreground">عرض {filteredSessions.length} من {sessions.length}</span>
+          </div>
+
           <Card>
             <CardContent className="p-0">
               {loading ? (
                 <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>
-              ) : sessions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">لا توجد جلسات نشطة</div>
+              ) : filteredSessions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">{sessions.length === 0 ? "لا توجد جلسات نشطة" : "لا توجد نتائج مطابقة"}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -403,7 +454,7 @@ export default function OnlineUsersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sessions.map((session) => (
+                      {filteredSessions.map((session) => (
                         <tr
                           key={session.sessionId}
                           className="border-b hover:bg-muted/50 transition-colors"
