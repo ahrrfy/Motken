@@ -3,18 +3,38 @@ import { Coordinates, CalculationMethod, PrayerTimes } from "adhan";
 import { Clock, Calendar, Moon, Bell, X } from "lucide-react";
 import { showLocalNotification } from "@/lib/notifications";
 
+let athanAudio: HTMLAudioElement | null = null;
+
 function playPrayerSound() {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 800;
-    gain.gain.value = 0.3;
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
+    // إيقاف أي أذان سابق
+    if (athanAudio) {
+      athanAudio.pause();
+      athanAudio.currentTime = 0;
+    }
+    athanAudio = new Audio("/sounds/athan-madinah.mp3");
+    athanAudio.volume = 0.7;
+    athanAudio.play().catch(() => {
+      // fallback: صوت بسيط إذا لم يتوفر ملف الأذان
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800;
+      gain.gain.value = 0.3;
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    });
   } catch {}
+}
+
+function stopPrayerSound() {
+  if (athanAudio) {
+    athanAudio.pause();
+    athanAudio.currentTime = 0;
+    athanAudio = null;
+  }
 }
 
 const PRAYER_NAMES: Record<string, string> = {
@@ -163,7 +183,7 @@ export default function DateTimePrayerBar() {
         playPrayerSound();
         showLocalNotification("مُتْقِن - حان وقت الصلاة", `حان الآن موعد صلاة ${prayer.name}\nحيّ على الصلاة.. حيّ على الفلاح`, `prayer-${prayer.key}`);
         setAlertedPrayers(prev => new Set(prev).add(prayer.key));
-        setTimeout(() => setPrayerAlert(null), 30000);
+        setTimeout(() => { stopPrayerSound(); setPrayerAlert(null); }, 30000);
         break;
       }
     }
@@ -192,7 +212,7 @@ export default function DateTimePrayerBar() {
             </div>
           </div>
           <button
-            onClick={() => setPrayerAlert(null)}
+            onClick={() => { stopPrayerSound(); setPrayerAlert(null); }}
             className="bg-white/20 hover:bg-white/30 rounded-full p-1.5 transition-colors"
             data-testid="button-dismiss-prayer-alert"
           >

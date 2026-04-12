@@ -19,6 +19,7 @@ import { usePrintPreview } from "@/lib/print-context";
 import { useToast } from "@/hooks/use-toast";
 import { exportJsonToExcel, readExcelFile } from "@/lib/excel-utils";
 import { formatDateAr } from "@/lib/utils";
+import { LEVEL_NAMES, LEVEL_COLORS, LEVEL_RANGES, LEVEL_OPTIONS } from "@/lib/constants";
 import { HijriDatePicker } from "@/components/HijriDatePicker";
 import { ImportWizard } from "@/components/ImportWizard";
 import { ExportDialog } from "@/components/ExportDialog";
@@ -64,17 +65,6 @@ interface ProfileStats {
   badges: { total: number; list: any[] };
 }
 
-const LEVEL_NAMES: Record<number, string> = { 1: "المستوى الأول", 2: "المستوى الثاني", 3: "المستوى الثالث", 4: "المستوى الرابع", 5: "المستوى الخامس", 6: "المستوى السادس", 7: "حافظ" };
-const LEVEL_COLORS: Record<number, string> = {
-  1: "bg-amber-100 text-amber-700",
-  2: "bg-blue-100 text-blue-700",
-  3: "bg-emerald-100 text-emerald-700",
-  4: "bg-purple-100 text-purple-700",
-  5: "bg-orange-100 text-orange-700",
-  6: "bg-yellow-100 text-yellow-800",
-  7: "bg-green-100 text-green-800",
-};
-const LEVEL_RANGES: Record<number, string> = { 1: "الجزء 30-26", 2: "الجزء 25-21", 3: "الجزء 20-16", 4: "الجزء 15-11", 5: "الجزء 10-6", 6: "الجزء 5-1", 7: "حافظ (30 جزء)" };
 
 function getStudentLevel(student: Student): { label: string; color: string; level: number } {
   const lv = student.level || 1;
@@ -1109,13 +1099,9 @@ export default function StudentsPage() {
                         <SelectValue placeholder="اختر مستوى الحفظ" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">المستوى الأول (الجزء 30-26)</SelectItem>
-                        <SelectItem value="2">المستوى الثاني (الجزء 25-21)</SelectItem>
-                        <SelectItem value="3">المستوى الثالث (الجزء 20-16)</SelectItem>
-                        <SelectItem value="4">المستوى الرابع (الجزء 15-11)</SelectItem>
-                        <SelectItem value="5">المستوى الخامس (الجزء 10-6)</SelectItem>
-                        <SelectItem value="6">المستوى السادس (الجزء 5-1)</SelectItem>
-                        <SelectItem value="7">حافظ (30 جزء)</SelectItem>
+                        {LEVEL_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">يحدد المستوى أي الأساتذة يمكنهم التعامل مع هذا الطالب</p>
@@ -1493,13 +1479,9 @@ export default function StudentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">المستوى - الكل</SelectItem>
-                  <SelectItem value="1">المستوى الأول (الجزء 30-26)</SelectItem>
-                  <SelectItem value="2">المستوى الثاني (الجزء 25-21)</SelectItem>
-                  <SelectItem value="3">المستوى الثالث (الجزء 20-16)</SelectItem>
-                  <SelectItem value="4">المستوى الرابع (الجزء 15-11)</SelectItem>
-                  <SelectItem value="5">المستوى الخامس (الجزء 10-6)</SelectItem>
-                  <SelectItem value="6">المستوى السادس (الجزء 5-1)</SelectItem>
-                  <SelectItem value="7">حافظ (30 جزء)</SelectItem>
+                  {LEVEL_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1919,13 +1901,9 @@ export default function StudentsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="1">المستوى الأول</SelectItem>
-                          <SelectItem value="2">المستوى الثاني</SelectItem>
-                          <SelectItem value="3">المستوى الثالث</SelectItem>
-                          <SelectItem value="4">المستوى الرابع</SelectItem>
-                          <SelectItem value="5">المستوى الخامس</SelectItem>
-                          <SelectItem value="6">المستوى السادس</SelectItem>
-                          <SelectItem value="7">حافظ</SelectItem>
+                          {LEVEL_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}

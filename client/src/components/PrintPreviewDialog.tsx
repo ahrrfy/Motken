@@ -204,6 +204,9 @@ export function PrintPreviewDialog() {
     const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
     if (!iframeDoc) return;
 
+    // قراءة الاتجاه والحجم من الحالة الحالية (التي يختارها المستخدم) بدل القيم الأصلية
+    const [currentFormat, currentOrientation] = pageConfigKey.split("-") as ["a4" | "a5", "portrait" | "landscape"];
+
     setSavingPdf(true);
     try {
       const fullHtml = iframeDoc.documentElement.outerHTML;
@@ -211,8 +214,8 @@ export function PrintPreviewDialog() {
       await renderHtmlToPdf(
         `<!DOCTYPE html>${fullHtml}`,
         {
-          orientation: options.orientation || "portrait",
-          format: options.format || "a4",
+          orientation: currentOrientation,
+          format: currentFormat,
           filename: `${options.title.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`,
         },
       );
@@ -222,7 +225,7 @@ export function PrintPreviewDialog() {
     } finally {
       setSavingPdf(false);
     }
-  }, [options]);
+  }, [options, pageConfigKey]);
 
   const handlePageConfigChange = useCallback(
     (value: string) => {

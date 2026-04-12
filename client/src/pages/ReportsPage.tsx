@@ -51,9 +51,9 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { LEVEL_NAMES } from "@/lib/constants";
 
 const COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#6366f1"];
-const LEVEL_NAMES = ["المستوى الأول", "المستوى الثاني", "المستوى الثالث", "المستوى الرابع", "المستوى الخامس", "المستوى السادس", "حافظ"];
 
 interface StatsData {
   totalStudents?: number;
@@ -153,7 +153,7 @@ function QuranPassport({ studentId }: { studentId: string }) {
   const progressPercent = totalVerses > 0 ? Math.min(100, Math.round((memorizedVerses / totalVerses) * 100)) : 0;
 
   const level = student.level || 1;
-  const levelName = LEVEL_NAMES[Math.min(level, LEVEL_NAMES.length) - 1] || LEVEL_NAMES[0];
+  const levelName = LEVEL_NAMES[level] || LEVEL_NAMES[1];
 
   const joinDate = student.createdAt
     ? formatDateAr(student.createdAt)

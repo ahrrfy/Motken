@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { LEVEL_OPTIONS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1048,8 +1049,8 @@ export default function AssignmentsExamsPage() {
         </TabsList>
 
         <TabsContent value="assignments" className="mt-6">
-          <div className={`grid grid-cols-1 ${isTeacher ? 'lg:grid-cols-2' : ''} gap-8`}>
-            {isTeacher && (<Card className="border-t-4 border-t-primary shadow-md">
+          <div className={`grid grid-cols-1 ${(isTeacher || isSupervisor || user?.role === "admin") ? 'lg:grid-cols-2' : ''} gap-8`}>
+            {(isTeacher || isSupervisor || user?.role === "admin") && (<Card className="border-t-4 border-t-primary shadow-md">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-primary" />
@@ -1351,13 +1352,9 @@ export default function AssignmentsExamsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">المستوى - الكل</SelectItem>
-                          <SelectItem value="1">المستوى الأول (الجزء 30-26)</SelectItem>
-                          <SelectItem value="2">المستوى الثاني (الجزء 25-21)</SelectItem>
-                          <SelectItem value="3">المستوى الثالث (الجزء 20-16)</SelectItem>
-                          <SelectItem value="4">المستوى الرابع (الجزء 15-11)</SelectItem>
-                          <SelectItem value="5">المستوى الخامس (الجزء 10-6)</SelectItem>
-                          <SelectItem value="6">المستوى السادس (الجزء 5-1)</SelectItem>
-                          <SelectItem value="7">حافظ (30 جزء)</SelectItem>
+                          {LEVEL_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -2247,7 +2244,12 @@ function ExternalAssignmentsTab() {
     setLoading(true);
     try {
       const res = await fetch("/api/external-assignments", { credentials: "include" });
-      if (res.ok) setItems(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setItems(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silently handle network errors
     } finally {
       setLoading(false);
     }
@@ -2653,7 +2655,7 @@ function ExternalAssignmentsTab() {
                   value={form.studentId}
                   onValueChange={v => setForm(p => ({ ...p, studentId: v, studentName: "" }))}
                   placeholder="اختر الطالب"
-                  items={extStudents.map(s => ({ value: s.id, label: s.name }))}
+                  options={extStudents.map(s => ({ value: s.id, label: s.name }))}
                   data-testid="select-ext-student"
                 />
                 {!form.studentId && (

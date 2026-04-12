@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { LEVEL_OPTIONS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1563,13 +1564,9 @@ export default function CoursesPage({ embedded }: { embedded?: boolean }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">المستوى - الكل</SelectItem>
-                <SelectItem value="1">المستوى الأول (الجزء 30-26)</SelectItem>
-                <SelectItem value="2">المستوى الثاني (الجزء 25-21)</SelectItem>
-                <SelectItem value="3">المستوى الثالث (الجزء 20-16)</SelectItem>
-                <SelectItem value="4">المستوى الرابع (الجزء 15-11)</SelectItem>
-                <SelectItem value="5">المستوى الخامس (الجزء 10-6)</SelectItem>
-                <SelectItem value="6">المستوى السادس (الجزء 5-1)</SelectItem>
-                <SelectItem value="7">حافظ (30 جزء)</SelectItem>
+                {LEVEL_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>

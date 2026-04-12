@@ -17,6 +17,7 @@ import { InternationalPhoneInput } from "@/components/international-phone-input"
 import { useAuth } from "@/lib/auth-context";
 import { usePrintPreview } from "@/lib/print-context";
 import { useToast } from "@/hooks/use-toast";
+import { LEVEL_NAMES, LEVEL_COLORS } from "@/lib/constants";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 
@@ -34,16 +35,7 @@ interface Teacher {
   isActive: boolean;
 }
 
-const LEVEL_NAMES: Record<number, string> = { 1: "المستوى الأول", 2: "المستوى الثاني", 3: "المستوى الثالث", 4: "المستوى الرابع", 5: "المستوى الخامس", 6: "المستوى السادس", 7: "حافظ" };
-const LEVEL_COLORS: Record<number, string> = {
-  1: "bg-amber-100 text-amber-700",
-  2: "bg-blue-100 text-blue-700",
-  3: "bg-emerald-100 text-emerald-700",
-  4: "bg-purple-100 text-purple-700",
-  5: "bg-orange-100 text-orange-700",
-  6: "bg-yellow-100 text-yellow-800",
-  7: "bg-green-100 text-green-800",
-};
+
 function getTeacherLevels(t: Teacher): number[] {
   if (!t.teacherLevels) return [1, 2, 3, 4, 5, 6, 7];
   return t.teacherLevels.split(",").map(Number).filter(n => n >= 1 && n <= 7);

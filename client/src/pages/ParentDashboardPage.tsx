@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
+import { LEVEL_NAMES } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -60,16 +61,6 @@ interface ChildData {
     earnedAt: string;
   }[];
 }
-
-const LEVEL_NAMES: Record<number, string> = {
-  1: "المستوى الأول",
-  2: "المستوى الثاني",
-  3: "المستوى الثالث",
-  4: "المستوى الرابع",
-  5: "المستوى الخامس",
-  6: "المستوى السادس",
-  7: "حافظ",
-};
 
 const SURAH_NAMES: Record<number, string> = {
   1: "الفاتحة", 2: "البقرة", 3: "آل عمران", 4: "النساء", 5: "المائدة", 6: "الأنعام",

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
+import { LEVEL_NAMES, LEVEL_COLORS } from "@/lib/constants";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
 import {
   Loader2, Plus, Users, Trash2, Search, Phone, UserCheck, Baby, MessageCircle, BarChart3,
@@ -115,16 +116,6 @@ const relationshipMap: Record<string, string> = {
   sibling: "أخ/أخت",
 };
 
-const LEVEL_NAMES = ["المستوى الأول", "المستوى الثاني", "المستوى الثالث", "المستوى الرابع", "المستوى الخامس", "المستوى السادس", "حافظ"];
-const LEVEL_COLORS = [
-  "bg-gray-100 text-gray-700 border-gray-300",
-  "bg-blue-100 text-blue-700 border-blue-300",
-  "bg-green-100 text-green-700 border-green-300",
-  "bg-purple-100 text-purple-700 border-purple-300",
-  "bg-amber-100 text-amber-700 border-amber-300",
-  "bg-emerald-100 text-emerald-700 border-emerald-300",
-  "bg-teal-100 text-teal-700 border-teal-300",
-];
 
 // ==================== Component ====================
 
@@ -444,12 +435,12 @@ export default function FamilySystemPage() {
 
   const getLevelName = (level?: number | null) => {
     if (!level || level < 1 || level > 7) return "غير محدد";
-    return LEVEL_NAMES[level - 1];
+    return LEVEL_NAMES[level];
   };
 
   const getLevelColor = (level?: number | null) => {
     if (!level || level < 1 || level > 7) return "bg-gray-100 text-gray-600 border-gray-300";
-    return LEVEL_COLORS[level - 1];
+    return LEVEL_COLORS[level];
   };
 
   const getPointsByCategory = () => {
