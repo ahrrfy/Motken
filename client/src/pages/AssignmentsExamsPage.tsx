@@ -226,6 +226,13 @@ export default function AssignmentsExamsPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [examStudentSearch, setExamStudentSearch] = useState("");
 
+  // Exam filters
+  const [examSearchTerm, setExamSearchTerm] = useState("");
+  const [examStatusFilter, setExamStatusFilter] = useState("all");
+  const [examDateFrom, setExamDateFrom] = useState("");
+  const [examDateTo, setExamDateTo] = useState("");
+  const [examLevelFilter, setExamLevelFilter] = useState("all");
+
   const [assignGradeInput, setAssignGradeInput] = useState<Record<string, string>>({});
   const [markingDone, setMarkingDone] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
@@ -942,6 +949,58 @@ export default function AssignmentsExamsPage() {
   const archivedCount = assignments.filter(a => a.isArchived).length;
 
   const uniqueSurahNames = Array.from(new Set(assignments.map(a => a.surahName)));
+
+  // Exam filtering
+  const examHasActiveFilters = examSearchTerm || examStatusFilter !== "all" || examDateFrom || examDateTo || examLevelFilter !== "all";
+
+  const clearExamFilters = () => {
+    setExamSearchTerm("");
+    setExamStatusFilter("all");
+    setExamDateFrom("");
+    setExamDateTo("");
+    setExamLevelFilter("all");
+  };
+
+  const filteredExams = useMemo(() => {
+    const now = new Date();
+    return exams.filter(exam => {
+      // Search by title
+      if (examSearchTerm && !exam.title.includes(examSearchTerm) && !exam.surahName.includes(examSearchTerm)) return false;
+      // Status filter
+      if (examStatusFilter !== "all") {
+        const examDateObj = new Date(exam.examDate);
+        if (examStatusFilter === "upcoming" && isBefore(examDateObj, startOfDay(now))) return false;
+        if (examStatusFilter === "finished" && !isBefore(examDateObj, startOfDay(now))) return false;
+      }
+      // Date range
+      if (examDateFrom && exam.examDate) {
+        if (new Date(exam.examDate) < new Date(examDateFrom)) return false;
+      }
+      if (examDateTo && exam.examDate) {
+        const toDate = new Date(examDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (new Date(exam.examDate) > toDate) return false;
+      }
+      // Level filter - filter by students assigned to exam
+      if (examLevelFilter !== "all") {
+        if (!exam.isForAll) {
+          const examStudentIds = exam.students?.map(s => s.studentId) || [];
+          const hasMatchingStudent = examStudentIds.some(sid => {
+            const student = students.find(s => s.id === sid);
+            return student && String(student.level || 1) === examLevelFilter;
+          });
+          if (!hasMatchingStudent) return false;
+        }
+      }
+      return true;
+    });
+  }, [exams, examSearchTerm, examStatusFilter, examDateFrom, examDateTo, examLevelFilter, students]);
+
+  const upcomingExamsCount = useMemo(() => {
+    const now = new Date();
+    return exams.filter(e => !isBefore(new Date(e.examDate), startOfDay(now))).length;
+  }, [exams]);
+  const finishedExamsCount = exams.length - upcomingExamsCount;
 
   const formatDate = (dateStr: string) => formatDateAr(dateStr);
 
@@ -1734,6 +1793,43 @@ export default function AssignmentsExamsPage() {
 
         <TabsContent value="exams" className="mt-6">
           <div className="space-y-4 md:space-y-6">
+            {/* Exam Statistics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-testid="exam-stats-cards">
+              <Card className="border-t-4 border-t-purple-500">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-purple-700">{exams.length}</p>
+                    <p className="text-xs text-muted-foreground">إجمالي الامتحانات</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-t-4 border-t-blue-500">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-full text-blue-600">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-blue-700">{upcomingExamsCount}</p>
+                    <p className="text-xs text-muted-foreground">امتحانات قادمة</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-t-4 border-t-green-500">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-full text-green-600">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-green-700">{finishedExamsCount}</p>
+                    <p className="text-xs text-muted-foreground">امتحانات منتهية</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
               <div>
                 <p className="text-muted-foreground">
@@ -1974,19 +2070,87 @@ export default function AssignmentsExamsPage() {
               )}
             </div>
 
+            {/* Exam Filters */}
+            <Card className="bg-muted/30 border-none" dir="rtl">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">الامتحانات ({filteredExams.length})</CardTitle>
+                <div className="flex flex-wrap items-end gap-3 mt-3">
+                  <div className="relative w-full sm:w-48">
+                    <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="بحث بالعنوان أو السورة..."
+                      className="pr-8"
+                      value={examSearchTerm}
+                      onChange={(e) => setExamSearchTerm(e.target.value)}
+                      data-testid="input-search-exams"
+                    />
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <Select value={examStatusFilter} onValueChange={setExamStatusFilter}>
+                      <SelectTrigger data-testid="select-filter-exam-status">
+                        <SelectValue placeholder="الحالة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">الحالة - الكل</SelectItem>
+                        <SelectItem value="upcoming">قادم</SelectItem>
+                        <SelectItem value="finished">منتهي</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <Select value={examLevelFilter} onValueChange={setExamLevelFilter}>
+                      <SelectTrigger data-testid="select-filter-exam-level">
+                        <SelectValue placeholder="المستوى" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">المستوى - الكل</SelectItem>
+                        {LEVEL_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
+                    <Input
+                      type="date"
+                      value={examDateFrom}
+                      onChange={(e) => setExamDateFrom(e.target.value)}
+                      data-testid="input-filter-exam-date-from"
+                    />
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
+                    <Input
+                      type="date"
+                      value={examDateTo}
+                      onChange={(e) => setExamDateTo(e.target.value)}
+                      data-testid="input-filter-exam-date-to"
+                    />
+                  </div>
+                  {examHasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearExamFilters} className="gap-1 text-destructive hover:text-destructive" data-testid="button-clear-exam-filters">
+                      <X className="w-4 h-4" />
+                      مسح الفلاتر
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+            </Card>
+
             {examLoading ? (
               <div className="flex items-center justify-center py-12" data-testid="status-loading-assignments-exams">
                 <Loader2 className="w-6 h-6 animate-spin text-primary ml-2" />
                 <span>جاري التحميل...</span>
               </div>
-            ) : exams.length === 0 ? (
+            ) : filteredExams.length === 0 ? (
               <div className="text-center py-12" data-testid="status-empty">
                 <BookOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-muted-foreground text-lg">لا توجد امتحانات</p>
+                <p className="text-muted-foreground text-lg">{examHasActiveFilters ? "لا توجد امتحانات مطابقة للفلاتر" : "لا توجد امتحانات"}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {exams.map(exam => (
+                {filteredExams.map(exam => (
                   <Card
                     key={exam.id}
                     className={`cursor-pointer transition-shadow hover:shadow-md ${expandedExamId === exam.id ? "ring-2 ring-primary" : ""}`}

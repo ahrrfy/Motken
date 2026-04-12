@@ -10,3 +10,4 @@ export * from "./management";
 
 export * from "./graduates";
 export * from "./system";
+export * from "./library";
