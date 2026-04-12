@@ -214,62 +214,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Emergency: list admin usernames (uses secret key)
-  app.post("/api/auth/emergency-list-admins", async (req, res) => {
-    const { secret } = req.body;
-    if (secret !== process.env.SESSION_SECRET) {
-      return res.status(403).json({ message: "غير مصرح" });
-    }
-    try {
-      const users = await storage.getUsersByRole("admin");
-      res.json(users.map(u => ({ id: u.id, username: u.username, name: u.name, isActive: u.isActive })));
-    } catch {
-      res.status(500).json({ message: "خطأ" });
-    }
-  });
-
-  // Emergency password reset — no auth required (uses secret key)
-  app.post("/api/auth/emergency-reset-password", async (req, res) => {
-    const { secret, username, newPassword } = req.body;
-    if (secret !== process.env.SESSION_SECRET) {
-      return res.status(403).json({ message: "غير مصرح" });
-    }
-    if (!username || !newPassword) {
-      return res.status(400).json({ message: "username و newPassword مطلوبين" });
-    }
-    try {
-      const user = await storage.getUserByUsername(username);
-      if (!user) {
-        return res.status(404).json({ message: `المستخدم ${username} غير موجود` });
-      }
-      const hashed = await hashPassword(newPassword);
-      await storage.updateUser(user.id, { password: hashed });
-      res.json({ message: `تم تغيير كلمة مرور ${username} بنجاح`, role: user.role });
-    } catch {
-      res.status(500).json({ message: "خطأ في تغيير كلمة المرور" });
-    }
-  });
-
-  // Emergency rate limit reset — no auth required (uses secret key)
-  app.post("/api/auth/reset-rate-limit", async (req, res) => {
-    const { secret, username } = req.body;
-    if (secret !== process.env.SESSION_SECRET) {
-      return res.status(403).json({ message: "غير مصرح" });
-    }
-    try {
-      const redis = await getRedisClient();
-      const keys = await redis.keys("login:*");
-      if (username) {
-        const matchingKeys = keys.filter(k => k.includes(username));
-        for (const k of matchingKeys) await redis.del(k);
-        return res.json({ message: `تم مسح ${matchingKeys.length} مفتاح rate limit للمستخدم ${username}` });
-      }
-      for (const k of keys) await redis.del(k);
-      res.json({ message: `تم مسح ${keys.length} مفتاح rate limit` });
-    } catch {
-      res.status(500).json({ message: "خطأ في مسح rate limit" });
-    }
-  });
+  // Emergency endpoints removed — used once for initial setup, no longer needed
 
   app.post("/api/auth/logout", (req, res, next) => {
     const sid = req.sessionID;
