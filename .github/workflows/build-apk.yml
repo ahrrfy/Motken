@@ -56,7 +56,7 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: motken-${{ steps.version.outputs.date }}
+          name: siraj-alquran-${{ steps.version.outputs.date }}
           path: android/app/build/outputs/apk/release/app-release.apk
 
       - name: Create Release
@@ -64,6 +64,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.date }}
-          name: "مُتْقِن - ${{ steps.version.outputs.date }}"
+          name: "سراج القرآن - ${{ steps.version.outputs.date }}"
           files: android/app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true
