@@ -3,7 +3,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.motken.app',
+  appId: 'org.sirajalquran.app',
   appName: 'سِرَاجُ الْقُرْآنِ',
   webDir: 'dist/public',
   server: {
