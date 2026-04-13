@@ -23,10 +23,18 @@ const config: CapacitorConfig = {
       backgroundColor: '#1a5c2e',
       style: 'LIGHT',
     },
+    CapacitorCookies: {
+      enabled: true,
+    },
+    CapacitorHttp: {
+      enabled: true,
+    },
   },
   android: {
     allowMixedContent: false,
     backgroundColor: '#1a5c2e',
+    webContentsDebuggingEnabled: false,
+    overrideUserAgent: 'SirajAlQuran-Android/1.0',
   },
 };
 
