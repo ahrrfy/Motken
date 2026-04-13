@@ -1,5 +1,5 @@
 // إعداد Capacitor — سراج القرآن
-// Server: https://sirajalquran.org
+// Production: https://sirajalquran.org
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {

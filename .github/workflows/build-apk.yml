@@ -44,17 +44,11 @@ jobs:
 
       - name: Setup Keystore
         run: |
-          # Try existing keystore first, fallback to generating new one
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/motken-release.keystore
-          fi
-          # Generate new keystore if not exists or password fails
-          if [ ! -f android/motken-release.keystore ]; then
-            keytool -genkeypair -v -keystore android/motken-release.keystore \
-              -alias motken -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass motken2026 -keypass motken2026 \
-              -dname "CN=Siraj Al-Quran, OU=Dev, O=Ahmed Khalid, L=Baghdad, C=IQ"
-          fi
+          # Always generate fresh keystore with known password
+          keytool -genkeypair -v -keystore android/motken-release.keystore \
+            -alias motken -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass motken2026 -keypass motken2026 \
+            -dname "CN=Siraj Al-Quran, OU=Dev, O=Ahmed Khalid, L=Baghdad, C=IQ"
 
       - name: Build Release APK
         working-directory: android
