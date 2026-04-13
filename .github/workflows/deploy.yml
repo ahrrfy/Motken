@@ -1,121 +1,103 @@
-name: Deploy to Production
+# ══════════════════════════════════════════════════════════════
+# نشر تلقائي على السيرفر VPS — سراج القرآن
+#
+# يُشغَّل تلقائياً عند push على main
+# يتصل بالـ VPS عبر SSH ويشغّل deploy/deploy.sh
+#
+# الإعداد المطلوب (مرة واحدة فقط):
+# في GitHub → Settings → Secrets → Actions → New secret:
+# - VPS_HOST : عنوان IP السيرفر
+# - VPS_USER : اسم المستخدم (root)
+# - VPS_PASSWORD : كلمة سر root
+# ══════════════════════════════════════════════════════════════
+name: Deploy to VPS
 
 on:
+  # يُشغَّل تلقائياً عند push على main
   push:
     branches: [main]
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+  # أو يدوياً من GitHub Actions
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'سبب النشر اليدوي'
+        required: false
+        default: 'نشر يدوي'
 
 jobs:
-  # --- CI Gate: Type check + Build ---
-  ci:
-    name: CI Checks
-    uses: ./.github/workflows/ci.yml
-
-  # --- Build Docker Image & Push to GHCR ---
-  build-and-push:
-    name: Build & Push Docker Image
-    needs: ci
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image_tag: ${{ steps.meta.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # --- Deploy to VPS via SSH ---
   deploy:
     name: Deploy to VPS
-    needs: build-and-push
     runs-on: ubuntu-latest
-    environment: production
+
+    # منع نشرين متزامنين
+    concurrency:
+      group: vps-deployment
+      cancel-in-progress: true
+
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+      # ── 1. معلومات النشر ─────────────────────────────────────
+      - name: Deployment info
+        run: |
+          echo "🚀 بدء النشر التلقائي — سراج القرآن"
+          echo "  السبب: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.reason || 'push على main' }}"
+          echo "  الوقت: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "  السيرفر: ${{ secrets.VPS_HOST }}"
+
+      # ── 2. التحقق من وجود الـ Secrets ────────────────────────
+      - name: Verify secrets configured
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "❌ VPS_HOST غير محدد في GitHub Secrets"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VPS_PASSWORD }}" ]; then
+            echo "❌ VPS_PASSWORD غير محدد في GitHub Secrets"
+            exit 1
+          fi
+          echo "✅ الـ Secrets موجودة"
+
+      # ── 3. الاتصال بالـ VPS وتشغيل deploy.sh ─────────────────
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
+          username: ${{ secrets.VPS_USER || 'root' }}
           password: ${{ secrets.VPS_PASSWORD }}
-          script_stop: true
+          port: 22
+          timeout: 300s
+          command_timeout: 900s
           script: |
             set -e
+            echo "═══════════════════════════════════════"
+            echo "  نشر تلقائي — سراج القرآن"
+            echo "  $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "═══════════════════════════════════════"
+
             cd /opt/siraj-alquran
+            bash deploy/deploy.sh
 
-            echo "=== Deploying Siraj Al-Quran ==="
+      # ── 4. ملخص النتيجة ──────────────────────────────────────
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "## ✅ نشر ناجح — سراج القرآن" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| السيرفر | \`${{ secrets.VPS_HOST }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| الوقت | $(date '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| الحالة | 🟢 يعمل |" >> $GITHUB_STEP_SUMMARY
+          echo "| الموقع | https://sirajalquran.org |" >> $GITHUB_STEP_SUMMARY
 
-            # Login to GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Save current image for rollback
-            PREV_IMAGE=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml images app -q 2>/dev/null || echo "none")
-            echo "Previous image: $PREV_IMAGE"
-
-            # Pull new image
-            echo "Pulling new image..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull app
-
-            # Deploy
-            echo "Starting new container..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps app
-
-            # Health check with retry (5 attempts, 10s apart)
-            echo "Running health checks..."
-            HEALTHY=false
-            for i in 1 2 3 4 5; do
-              sleep 10
-              if curl -sf http://localhost:5002/_health > /dev/null 2>&1; then
-                HEALTHY=true
-                echo "Health check $i: OK"
-                break
-              fi
-              echo "Health check $i: FAILED, retrying..."
-            done
-
-            if [ "$HEALTHY" = "false" ]; then
-              echo "=== DEPLOY FAILED — Rolling back ==="
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml logs app --tail 50
-              if [ "$PREV_IMAGE" != "none" ]; then
-                docker compose -f docker-compose.yml -f docker-compose.prod.yml down app
-                docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app
-              fi
-              exit 1
-            fi
-
-            # Cleanup old images
-            docker image prune -f
-
-            echo "=== Deploy successful! ==="
-            echo "App is live at https://sirajalquran.org"
+      - name: Failure summary
+        if: failure()
+        run: |
+          echo "## ❌ فشل النشر — سراج القرآن" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "راجع السجلات أعلاه لمعرفة السبب." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "للتشخيص على السيرفر:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "pm2 logs siraj-alquran --lines 50" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

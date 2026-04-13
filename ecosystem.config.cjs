@@ -1,26 +1,24 @@
-// إعداد PM2 لتشغيل نظام مُتْقِن على السيرفر
+// إعداد PM2 لتشغيل نظام سراج القرآن على السيرفر
 // استخدام: pm2 start ecosystem.config.cjs
 
 module.exports = {
   apps: [
     {
-      name: "mutqin",
+      name: "siraj-alquran",
       script: "dist/index.cjs",
-      cwd: "/home/mutqin/app",  // غيّر حسب مسار التطبيق على السيرفر
+      cwd: "/opt/siraj-alquran",
       env: {
         NODE_ENV: "production",
         PORT: 5002,
-        // ضع متغيرات البيئة في .env على السيرفر
       },
       instances: 1,
       exec_mode: "fork",
       watch: false,
       max_memory_restart: "500M",
       log_date_format: "YYYY-MM-DD HH:mm:ss",
-      error_file: "/home/mutqin/logs/error.log",
-      out_file: "/home/mutqin/logs/output.log",
+      error_file: "/opt/siraj-alquran/logs/error.log",
+      out_file: "/opt/siraj-alquran/logs/output.log",
       merge_logs: true,
-      // إعادة تشغيل تلقائي عند التعطل
       autorestart: true,
       max_restarts: 10,
       restart_delay: 5000,

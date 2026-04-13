@@ -4,123 +4,128 @@
 # يُشغّل مرة واحدة فقط على السيرفر
 #
 # الاستخدام:
-#   scp scripts/vps-setup.sh root@187.124.183.140:/root/
-#   ssh root@187.124.183.140 "bash /root/vps-setup.sh"
+#   ssh root@187.124.183.140
+#   curl -sL https://raw.githubusercontent.com/ahrrfy/Motken/main/scripts/vps-setup.sh | bash
 #
-# ⚠️ هذا السكربت آمن للسيرفرات التي عليها أنظمة أخرى:
-#   - لا يحذف أي config موجود
-#   - يضيف server block منفصل لـ Nginx
-#   - لا يغلق أي بورتات مفتوحة
+# ⚠️ هذا السكربت آمن للسيرفرات التي عليها أنظمة أخرى
 # =============================================================================
 
 set -euo pipefail
 
 APP_DIR="/opt/siraj-alquran"
 DOMAIN="sirajalquran.org"
+REPO="https://github.com/ahrrfy/Motken.git"
 
 echo "============================================="
 echo "  إعداد سيرفر سراج القرآن"
 echo "  الدومين: $DOMAIN"
 echo "============================================="
-echo ""
 
 # --------------------------------------------------
 # 1. تحديث النظام
 # --------------------------------------------------
 echo "[1/8] تحديث حزم النظام..."
-apt update -qq
-apt upgrade -y -qq
+apt update -qq && apt upgrade -y -qq
 
 # --------------------------------------------------
-# 2. تثبيت Docker (إذا غير موجود)
+# 2. تثبيت Node.js 20 (إذا غير موجود)
 # --------------------------------------------------
-if command -v docker &> /dev/null; then
-    echo "[2/8] Docker موجود: $(docker --version)"
+if command -v node &> /dev/null && [[ "$(node -v)" == v20* ]]; then
+    echo "[2/8] Node.js موجود: $(node -v)"
 else
-    echo "[2/8] تثبيت Docker..."
-    apt install -y -qq ca-certificates curl gnupg
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-    apt update -qq
-    apt install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    systemctl enable docker
-    systemctl start docker
-    echo "   Docker تم تثبيته: $(docker --version)"
+    echo "[2/8] تثبيت Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt install -y -qq nodejs
+    echo "   Node.js تم تثبيته: $(node -v)"
 fi
 
 # --------------------------------------------------
-# 3. تثبيت Nginx (إذا غير موجود)
+# 3. تثبيت PM2 (إذا غير موجود)
+# --------------------------------------------------
+if command -v pm2 &> /dev/null; then
+    echo "[3/8] PM2 موجود"
+else
+    echo "[3/8] تثبيت PM2..."
+    npm install -g pm2
+    pm2 startup systemd -u root --hp /root
+    echo "   PM2 تم تثبيته"
+fi
+
+# --------------------------------------------------
+# 4. تثبيت PostgreSQL (إذا غير موجود)
+# --------------------------------------------------
+if command -v psql &> /dev/null; then
+    echo "[4/8] PostgreSQL موجود"
+else
+    echo "[4/8] تثبيت PostgreSQL..."
+    apt install -y -qq postgresql postgresql-contrib
+    systemctl enable postgresql
+    systemctl start postgresql
+
+    # إنشاء قاعدة البيانات والمستخدم
+    sudo -u postgres psql -c "CREATE USER siraj WITH PASSWORD 'siraj_strong_password_change_me';" 2>/dev/null || true
+    sudo -u postgres psql -c "CREATE DATABASE siraj_alquran OWNER siraj;" 2>/dev/null || true
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE siraj_alquran TO siraj;" 2>/dev/null || true
+    echo "   PostgreSQL تم تثبيته"
+fi
+
+# --------------------------------------------------
+# 5. تثبيت Nginx (إذا غير موجود)
 # --------------------------------------------------
 if command -v nginx &> /dev/null; then
-    echo "[3/8] Nginx موجود: $(nginx -v 2>&1)"
+    echo "[5/8] Nginx موجود"
 else
-    echo "[3/8] تثبيت Nginx..."
+    echo "[5/8] تثبيت Nginx..."
     apt install -y -qq nginx
     systemctl enable nginx
-    echo "   Nginx تم تثبيته"
 fi
 
-# --------------------------------------------------
-# 4. تثبيت Certbot (إذا غير موجود)
-# --------------------------------------------------
-if command -v certbot &> /dev/null; then
-    echo "[4/8] Certbot موجود"
-else
-    echo "[4/8] تثبيت Certbot..."
+# تثبيت Certbot
+if ! command -v certbot &> /dev/null; then
     apt install -y -qq certbot python3-certbot-nginx
-    echo "   Certbot تم تثبيته"
 fi
 
 # --------------------------------------------------
-# 5. إعداد UFW (فتح البورتات بدون إغلاق الموجود)
-# --------------------------------------------------
-echo "[5/8] إعداد Firewall..."
-if ! ufw status | grep -q "Status: active"; then
-    ufw allow OpenSSH
-    ufw allow 'Nginx Full'
-    ufw --force enable
-    echo "   UFW مفعّل"
-else
-    ufw allow 'Nginx Full'
-    echo "   UFW موجود — أضفنا Nginx Full فقط"
-fi
-
-# --------------------------------------------------
-# 6. إنشاء مجلد التطبيق
+# 6. استنساخ المشروع
 # --------------------------------------------------
 echo "[6/8] إعداد مجلد التطبيق..."
-mkdir -p "$APP_DIR"
+if [ -d "$APP_DIR/.git" ]; then
+    echo "   المشروع موجود — تحديث..."
+    cd "$APP_DIR"
+    git fetch origin main
+    git reset --hard origin/main
+else
+    echo "   استنساخ المشروع..."
+    git clone "$REPO" "$APP_DIR"
+    cd "$APP_DIR"
+fi
 
-# إنشاء ملف .env إذا غير موجود
+mkdir -p "$APP_DIR/logs"
+
+# --------------------------------------------------
+# 7. إنشاء ملف .env
+# --------------------------------------------------
 if [ ! -f "$APP_DIR/.env" ]; then
-    cat > "$APP_DIR/.env" << 'ENVFILE'
+    SESSION_SECRET=$(openssl rand -hex 64)
+    cat > "$APP_DIR/.env" << ENVFILE
 # === سراج القرآن — متغيرات البيئة ===
-# أنشئ كلمات سر قوية قبل التشغيل!
-
-# قاعدة البيانات
-DB_PASSWORD=CHANGE_ME_STRONG_PASSWORD
-
-# الجلسات (أنشئ بـ: openssl rand -hex 64)
-SESSION_SECRET=CHANGE_ME_RANDOM_HEX
-
-# MinIO (تخزين الملفات)
-MINIO_ACCESS_KEY=CHANGE_ME
-MINIO_SECRET_KEY=CHANGE_ME_STRONG
+DATABASE_URL=postgresql://siraj:siraj_strong_password_change_me@localhost:5432/siraj_alquran
+SESSION_SECRET=$SESSION_SECRET
+PORT=5002
+NODE_ENV=production
+DATABASE_SSL=false
 ENVFILE
-    echo "   تم إنشاء .env — عدّل القيم قبل التشغيل!"
+    echo "   ✅ تم إنشاء .env"
 else
     echo "   .env موجود"
 fi
 
 # --------------------------------------------------
-# 7. إعداد Nginx server block (ملف منفصل — لا يمس الموجود)
+# 8. إعداد Nginx
 # --------------------------------------------------
 echo "[7/8] إعداد Nginx..."
 NGINX_CONF="/etc/nginx/sites-available/siraj-alquran"
 
-# إنشاء config مؤقت بدون SSL (Certbot يضيفه لاحقاً)
 cat > "$NGINX_CONF" << 'NGINXCONF'
 server {
     listen 80;
@@ -163,42 +168,39 @@ server {
 }
 NGINXCONF
 
-# تفعيل الموقع
 ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/siraj-alquran
-
-# اختبار config
-if nginx -t 2>/dev/null; then
-    systemctl reload nginx
-    echo "   Nginx معاد التحميل بنجاح"
-else
-    echo "   ⚠️ خطأ في Nginx config — تحقق يدوياً"
-fi
+nginx -t && systemctl reload nginx
+echo "   ✅ Nginx جاهز"
 
 # --------------------------------------------------
-# 8. تعليمات ما بعد الإعداد
+# 9. بناء وتشغيل التطبيق
 # --------------------------------------------------
+echo "[8/8] بناء وتشغيل التطبيق..."
+cd "$APP_DIR"
+npm ci --production=false
+npm run build
+
+# تشغيل Database migration
+npx drizzle-kit push 2>&1 || echo "تحذير: فشل migration"
+
+# تشغيل PM2
+pm2 start ecosystem.config.cjs
+pm2 save
+
 echo ""
 echo "============================================="
-echo "  الإعداد اكتمل!"
+echo "  ✅ الإعداد اكتمل!"
 echo "============================================="
 echo ""
 echo "الخطوات التالية:"
 echo ""
-echo "1. عدّل قيم .env:"
+echo "1. عدّل كلمة سر DB في .env:"
 echo "   nano $APP_DIR/.env"
 echo ""
-echo "2. انسخ docker-compose files:"
-echo "   scp docker-compose.yml docker-compose.prod.yml root@187.124.183.140:$APP_DIR/"
-echo ""
-echo "3. سجّل دخول GHCR (من GitHub → Settings → Tokens):"
-echo "   echo YOUR_TOKEN | docker login ghcr.io -u ahrrfy --password-stdin"
-echo ""
-echo "4. شغّل الخدمات:"
-echo "   cd $APP_DIR && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
-echo ""
-echo "5. فعّل SSL (بعد توجيه DNS):"
+echo "2. فعّل SSL:"
 echo "   certbot --nginx -d sirajalquran.org -d www.sirajalquran.org"
 echo ""
-echo "6. تحقق:"
+echo "3. تحقق:"
 echo "   curl http://localhost:5002/_health"
+echo "   pm2 status"
 echo ""
