@@ -7,6 +7,7 @@ module.exports = {
       name: "siraj-alquran",
       script: "dist/index.cjs",
       cwd: "/opt/siraj-alquran",
+      node_args: "--env-file=.env",
       env: {
         NODE_ENV: "production",
         PORT: 5002,
