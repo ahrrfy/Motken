@@ -74,7 +74,14 @@ jobs:
             echo "  $(date '+%Y-%m-%d %H:%M:%S')"
             echo "═══════════════════════════════════════"
 
+            # إصلاح كلمة سر DB إذا فيها @ (تكسر URL)
             cd /opt/siraj-alquran
+            if grep -q 'SirajQuran2026@Secure' .env 2>/dev/null; then
+              sudo -u postgres psql -c "ALTER USER siraj WITH PASSWORD 'SirajQuran2026Secure';" 2>/dev/null || true
+              sed -i 's/SirajQuran2026@Secure/SirajQuran2026Secure/' .env
+              echo "✅ تم إصلاح كلمة سر DB"
+            fi
+
             bash deploy/deploy.sh
 
       # ── 4. ملخص النتيجة ──────────────────────────────────────
