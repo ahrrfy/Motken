@@ -42,14 +42,25 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/motken-release.keystore
+      - name: Setup Keystore
+        run: |
+          # Try existing keystore first, fallback to generating new one
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/motken-release.keystore
+          fi
+          # Generate new keystore if not exists or password fails
+          if [ ! -f android/motken-release.keystore ]; then
+            keytool -genkeypair -v -keystore android/motken-release.keystore \
+              -alias motken -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass motken2026 -keypass motken2026 \
+              -dname "CN=Siraj Al-Quran, OU=Dev, O=Ahmed Khalid, L=Baghdad, C=IQ"
+          fi
 
       - name: Build Release APK
         working-directory: android
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: motken2026
+          KEY_PASSWORD: motken2026
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease
