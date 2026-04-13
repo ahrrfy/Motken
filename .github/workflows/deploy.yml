@@ -1,23 +1,12 @@
 # ══════════════════════════════════════════════════════════════
-# نشر تلقائي على السيرفر VPS — سراج القرآن
-#
-# يُشغَّل تلقائياً عند push على main
-# يتصل بالـ VPS عبر SSH ويشغّل deploy/deploy.sh
-#
-# الإعداد المطلوب (مرة واحدة فقط):
-# في GitHub → Settings → Secrets → Actions → New secret:
-# - VPS_HOST : عنوان IP السيرفر
-# - VPS_USER : اسم المستخدم (root)
-# - VPS_PASSWORD : كلمة سر root
+# نشر تلقائي — سراج القرآن
+# يتصل بالسيرفر عبر SSH ويشغّل deploy.sh
 # ══════════════════════════════════════════════════════════════
 name: Deploy to VPS
 
 on:
-  # يُشغَّل تلقائياً عند push على main
   push:
     branches: [main]
-
-  # أو يدوياً من GitHub Actions
   workflow_dispatch:
     inputs:
       reason:
@@ -30,34 +19,27 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
 
-    # منع نشرين متزامنين
     concurrency:
       group: vps-deployment
       cancel-in-progress: true
 
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch'
+
     steps:
-      # ── 1. معلومات النشر ─────────────────────────────────────
       - name: Deployment info
         run: |
-          echo "🚀 بدء النشر التلقائي — سراج القرآن"
+          echo "🚀 بدء النشر — سراج القرآن"
           echo "  السبب: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.reason || 'push على main' }}"
           echo "  الوقت: $(date '+%Y-%m-%d %H:%M:%S UTC')"
-          echo "  السيرفر: ${{ secrets.VPS_HOST }}"
 
-      # ── 2. التحقق من وجود الـ Secrets ────────────────────────
-      - name: Verify secrets configured
+      - name: Verify secrets
         run: |
-          if [ -z "${{ secrets.VPS_HOST }}" ]; then
-            echo "❌ VPS_HOST غير محدد في GitHub Secrets"
-            exit 1
-          fi
-          if [ -z "${{ secrets.VPS_PASSWORD }}" ]; then
-            echo "❌ VPS_PASSWORD غير محدد في GitHub Secrets"
-            exit 1
-          fi
-          echo "✅ الـ Secrets موجودة"
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "❌ VPS_HOST missing"; exit 1; fi
+          if [ -z "${{ secrets.VPS_PASSWORD }}" ]; then echo "❌ VPS_PASSWORD missing"; exit 1; fi
+          echo "✅ Secrets configured"
 
-      # ── 3. الاتصال بالـ VPS وتشغيل deploy.sh ─────────────────
       - name: SSH Deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -68,43 +50,24 @@ jobs:
           timeout: 300s
           command_timeout: 900s
           script: |
-            set -e
-            echo "═══════════════════════════════════════"
-            echo "  نشر تلقائي — سراج القرآن"
-            echo "  $(date '+%Y-%m-%d %H:%M:%S')"
-            echo "═══════════════════════════════════════"
-
-            # إصلاح كلمة سر DB إذا فيها @ (تكسر URL)
             cd /opt/siraj-alquran
-            if grep -q 'SirajQuran2026@Secure' .env 2>/dev/null; then
-              sudo -u postgres psql -c "ALTER USER siraj WITH PASSWORD 'SirajQuran2026Secure';" 2>/dev/null || true
-              sed -i 's/SirajQuran2026@Secure/SirajQuran2026Secure/' .env
-              echo "✅ تم إصلاح كلمة سر DB"
-            fi
-
             bash deploy/deploy.sh
 
-      # ── 4. ملخص النتيجة ──────────────────────────────────────
-      - name: Deployment summary
+      - name: Success summary
         if: success()
         run: |
           echo "## ✅ نشر ناجح — سراج القرآن" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| | |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| السيرفر | \`${{ secrets.VPS_HOST }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| الوقت | $(date '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
-          echo "| الحالة | 🟢 يعمل |" >> $GITHUB_STEP_SUMMARY
           echo "| الموقع | https://sirajalquran.org |" >> $GITHUB_STEP_SUMMARY
 
       - name: Failure summary
         if: failure()
         run: |
           echo "## ❌ فشل النشر — سراج القرآن" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "راجع السجلات أعلاه لمعرفة السبب." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "للتشخيص على السيرفر:" >> $GITHUB_STEP_SUMMARY
+          echo "راجع السجلات أعلاه." >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "pm2 logs siraj-alquran --lines 50" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
