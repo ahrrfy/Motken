@@ -4,9 +4,10 @@ services:
   app:
     build: .
     ports:
-      - "5001:5001"
+      - "5002:5002"
     environment:
       - NODE_ENV=production
+      - PORT=5002
       - DATABASE_URL=postgresql://mutqin:${DB_PASSWORD:?DB_PASSWORD required}@db:5432/mutqin
       - SESSION_SECRET=${SESSION_SECRET}
       - REDIS_URL=redis://redis:6379

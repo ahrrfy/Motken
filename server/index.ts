@@ -1,4 +1,4 @@
-import "./lib/env"; // Validate environment variables before anything else
+import { env } from "./lib/env"; // Validate environment variables before anything else
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import helmet from "helmet";
@@ -350,7 +350,7 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
   const wss = setupWebSocket(httpServer, app);
 
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = env.PORT;
   httpServer.listen(
     {
       port,

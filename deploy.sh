@@ -45,8 +45,8 @@ pm2 save
 
 echo ""
 echo "=== تم النشر بنجاح ==="
-echo "التطبيق يعمل على: http://localhost:5000"
-echo "Nginx reverse proxy: https://your-domain.com"
+echo "التطبيق يعمل على: http://localhost:5002"
+echo "Nginx reverse proxy: https://sirajalquran.org"
 echo ""
 echo "أوامر مفيدة:"
 echo "  pm2 status          — حالة التطبيق"

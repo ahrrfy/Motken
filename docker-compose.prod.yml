@@ -1,0 +1,11 @@
+# Production override — يُستخدم على السيرفر فقط
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  app:
+    image: ghcr.io/ahrrfy/motken:latest
+    build: !reset null
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002

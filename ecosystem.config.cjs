@@ -9,7 +9,7 @@ module.exports = {
       cwd: "/home/mutqin/app",  // غيّر حسب مسار التطبيق على السيرفر
       env: {
         NODE_ENV: "production",
-        PORT: 5000,
+        PORT: 5002,
         // ضع متغيرات البيئة في .env على السيرفر
       },
       instances: 1,
