@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { formatDateAr } from "@/lib/utils";
 import { LEVEL_NAMES, LEVEL_COLORS } from "@/lib/constants";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
+import { apiFetch } from "@/lib/api";
 import {
   Loader2, Plus, Users, Trash2, Search, Phone, UserCheck, Baby, MessageCircle, BarChart3,
   UserPlus, Eye, EyeOff, CheckCircle2,
@@ -384,10 +385,15 @@ export default function FamilySystemPage() {
   const fetchReports = async (studentId: string) => {
     setReportsLoading(true);
     try {
-      const res = await fetch(`/api/parent-reports?studentId=${studentId}`, { credentials: "include" });
-      if (res.ok) setReports(await res.json());
-    } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل التقارير", variant: "destructive" });
+      const res = await apiFetch(`/api/parent-reports?studentId=${studentId}`);
+      if (res.ok) {
+        setReports(await res.json());
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "خطأ", description: (err as any).message || "فشل في تحميل التقارير", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message || "فشل في تحميل التقارير", variant: "destructive" });
     } finally {
       setReportsLoading(false);
     }
@@ -1069,11 +1075,14 @@ export default function FamilySystemPage() {
                         </Badge>
                         <span className="text-xs text-muted-foreground">{family.matchValue}</span>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {family.members.map(m => (
-                          <span key={m.id} className="text-sm font-medium">
-                            {m.name}
-                            {m.role === "teacher" && <Badge variant="outline" className="text-xs mr-1">أستاذ</Badge>}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {family.members.map((m, i) => (
+                          <span key={m.id} className="inline-flex items-center gap-1">
+                            {i > 0 && <span className="text-muted-foreground mx-0.5">·</span>}
+                            <span className="text-sm font-bold bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                              {m.name}
+                            </span>
+                            {m.role === "teacher" && <Badge variant="outline" className="text-xs">أستاذ</Badge>}
                           </span>
                         ))}
                       </div>

@@ -154,6 +154,28 @@ export default function SettingsPage() {
     setFontSize(DEFAULT_FONT_SIZE);
   }, []);
 
+  const compressImage = (base64: string, maxWidth = 256, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas not supported"));
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("فشل في قراءة الصورة"));
+      img.src = base64;
+    });
+  };
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -163,9 +185,12 @@ export default function SettingsPage() {
     }
     const reader = new FileReader();
     reader.onload = async (evt) => {
-      const base64 = evt.target?.result as string;
-      if (base64.length > 500000) {
-        toast({ title: "خطأ", description: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)", variant: "destructive" });
+      const rawBase64 = evt.target?.result as string;
+      let base64: string;
+      try {
+        base64 = await compressImage(rawBase64);
+      } catch {
+        toast({ title: "خطأ", description: "فشل في معالجة الصورة", variant: "destructive" });
         return;
       }
       setAvatarPreview(base64);

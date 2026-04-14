@@ -1475,9 +1475,9 @@ export default function AssignmentsExamsPage() {
                             <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", task.isArchived ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary")}>
                               <User className="w-4 h-4" />
                             </div>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 overflow-hidden">
                               <p
-                                className={cn("font-bold text-sm truncate", canManage && "cursor-pointer hover:text-primary")}
+                                className={cn("font-bold text-sm truncate block max-w-[180px] sm:max-w-none", canManage && "cursor-pointer hover:text-primary")}
                                 data-testid={`text-assignment-student-${task.id}`}
                                 onClick={(e) => { if (canManage) { e.stopPropagation(); setStudentStatsDialog(task.studentId); } }}
                               >

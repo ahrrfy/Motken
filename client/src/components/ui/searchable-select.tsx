@@ -8,6 +8,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+/** تطبيع النص العربي — إزالة التشكيل وتوحيد أشكال الحروف */
+function normalizeArabic(text: string): string {
+  return text
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, "")
+    .replace(/[إأآا]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي");
+}
+
 export interface SearchableSelectOption {
   value: string;
   label: string;
@@ -49,8 +58,11 @@ export function SearchableSelect({
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return options;
-    const term = search.trim().toLowerCase();
-    return options.filter((o) => o.label.toLowerCase().includes(term));
+    const words = search.trim().split(/\s+/);
+    return options.filter((o) => {
+      const normalizedLabel = normalizeArabic(o.label.toLowerCase());
+      return words.every(word => normalizedLabel.includes(normalizeArabic(word.toLowerCase())));
+    });
   }, [options, search]);
 
   React.useEffect(() => {

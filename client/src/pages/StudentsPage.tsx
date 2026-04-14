@@ -26,6 +26,7 @@ import { ExportDialog } from "@/components/ExportDialog";
 import { DataTableToolbar } from "@/components/data-table-toolbar";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
+import { apiFetch } from "@/lib/api";
 
 interface Student {
   id: string;
@@ -286,13 +287,18 @@ export default function StudentsPage() {
   const fetchData = async () => {
     try {
       const [studentsRes, teachersRes] = await Promise.all([
-        fetch("/api/users?role=student", { credentials: "include" }),
-        (isSupervisor || user?.role === "admin") ? fetch("/api/users?role=teacher", { credentials: "include" }) : Promise.resolve(null),
+        apiFetch("/api/users?role=student"),
+        (isSupervisor || user?.role === "admin") ? apiFetch("/api/users?role=teacher") : Promise.resolve(null),
       ]);
-      if (studentsRes.ok) setStudents(await studentsRes.json());
+      if (studentsRes.ok) {
+        setStudents(await studentsRes.json());
+      } else {
+        const err = await studentsRes.json().catch(() => ({}));
+        toast({ title: "خطأ", description: (err as any).message || "فشل في تحميل البيانات", variant: "destructive" });
+      }
       if (teachersRes?.ok) setTeachers(await teachersRes.json());
-    } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل البيانات", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message || "فشل في تحميل البيانات", variant: "destructive" });
     } finally {
       setLoading(false);
     }

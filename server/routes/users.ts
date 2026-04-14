@@ -706,8 +706,8 @@ export function registerUsersRoutes(app: Express) {
         return res.status(400).json({ message: "صيغة الصورة غير صحيحة" });
       }
 
-      if (avatar.length > 500000) {
-        return res.status(400).json({ message: "حجم الصورة كبير جداً (الحد الأقصى ~375KB)" });
+      if (avatar.length > 2666000) {
+        return res.status(400).json({ message: "حجم الصورة كبير جداً (الحد الأقصى ~2MB)" });
       }
 
       const updated = await storage.updateUser(targetId, { avatar });
