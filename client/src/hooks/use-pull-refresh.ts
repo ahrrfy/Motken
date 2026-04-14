@@ -26,7 +26,8 @@ export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120 }: Use
     currentY.current = e.touches[0].clientY;
     const diff = Math.max(0, currentY.current - startY.current);
     const dampened = Math.min(maxPull, diff * 0.5);
-    if (dampened > 5) {
+    // عتبة أعلى لتجنب تعطيل التمرير الطبيعي في WebView
+    if (dampened > 20) {
       e.preventDefault();
       setPullDistance(dampened);
     }
