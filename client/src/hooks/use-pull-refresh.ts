@@ -16,24 +16,22 @@ export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120, enabl
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (!enabled) return;
     const el = containerRef.current;
     if (!el || el.scrollTop > 0) return;
     startY.current = e.touches[0].clientY;
     setPulling(true);
-  }, [enabled]);
+  }, []);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!enabled || !pulling || refreshing) return;
+    if (!pulling || refreshing) return;
     currentY.current = e.touches[0].clientY;
     const diff = Math.max(0, currentY.current - startY.current);
     const dampened = Math.min(maxPull, diff * 0.5);
-    // عتبة أعلى لتجنب تعطيل التمرير الطبيعي
     if (dampened > 20) {
       e.preventDefault();
       setPullDistance(dampened);
     }
-  }, [enabled, pulling, refreshing, maxPull]);
+  }, [pulling, refreshing, maxPull]);
 
   const handleTouchEnd = useCallback(async () => {
     if (!pulling) return;
@@ -54,7 +52,8 @@ export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120, enabl
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el || !enabled) return; // لا نربط أي listener إذا معطّل
+
     el.addEventListener("touchstart", handleTouchStart, { passive: true });
     el.addEventListener("touchmove", handleTouchMove, { passive: false });
     el.addEventListener("touchend", handleTouchEnd, { passive: true });
@@ -63,7 +62,7 @@ export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120, enabl
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, enabled]);
 
   return { containerRef, pullDistance: enabled ? pullDistance : 0, refreshing, isTriggered: enabled && pullDistance >= threshold };
 }

@@ -187,7 +187,7 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
         </div>
       )}
 
-      <main ref={containerRef} className="flex-1 overflow-y-auto pb-20" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "none" }}>{children}</main>
+      <main ref={containerRef} className="flex-1 min-h-0 overflow-y-auto pb-20 -webkit-overflow-scrolling-touch">{children}</main>
 
       <nav className={cn(
         "fixed bottom-0 left-0 right-0 z-40 bg-card/98 border-t border-border/40",
