@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { WS_BASE } from "@/lib/capacitor";
 
 type WSMessage = {
   type: "notification" | "message" | "attendance" | "assignment" | "points";
@@ -17,8 +18,8 @@ export function useWebSocket() {
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    // استخدام WS_BASE للاتصال بالسيرفر مباشرة في التطبيق الأصلي
+    const ws = new WebSocket(`${WS_BASE}/ws`);
 
     ws.onopen = () => {
       setIsConnected(true);

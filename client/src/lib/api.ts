@@ -1,3 +1,5 @@
+import { API_BASE } from "./capacitor";
+
 const MAX_RETRIES = 3;
 const BASE_DELAY = 1000;
 const TIMEOUT = 15000;
@@ -22,11 +24,14 @@ export async function apiFetch(url: string, options: FetchOptions = {}): Promise
   const { retries = MAX_RETRIES, timeout = TIMEOUT, ...fetchOpts } = options;
   fetchOpts.credentials = fetchOpts.credentials || "include";
 
+  // تحويل URL النسبي إلى مطلق في التطبيق الأصلي
+  const fullUrl = url.startsWith("http") ? url : API_BASE + url;
+
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const response = await fetchWithTimeout(url, fetchOpts, timeout);
+      const response = await fetchWithTimeout(fullUrl, fetchOpts, timeout);
       return response;
     } catch (error: any) {
       lastError = error;

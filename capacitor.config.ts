@@ -1,5 +1,5 @@
 // إعداد Capacitor — سراج القرآن
-// Production: https://sirajalquran.org
+// التطبيق يحمّل الواجهة محلياً والبيانات من السيرفر مباشرة
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -7,9 +7,9 @@ const config: CapacitorConfig = {
   appName: 'سِرَاجُ الْقُرْآنِ',
   webDir: 'dist/public',
   server: {
-    url: 'https://sirajalquran.org',
-    cleartext: false,
+    // لا server.url — الواجهة تُحمّل محلياً من assets الجهاز
     androidScheme: 'https',
+    hostname: 'sirajalquran.org', // مهم: يجعل origin = https://sirajalquran.org لتعمل cookies
   },
   plugins: {
     SplashScreen: {

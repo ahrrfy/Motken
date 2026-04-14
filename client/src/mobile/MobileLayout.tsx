@@ -184,7 +184,7 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
         </div>
       )}
 
-      <main ref={containerRef} className="flex-1 overflow-y-auto pb-20">{children}</main>
+      <main ref={containerRef} className="flex-1 overflow-y-auto pb-20" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "none" }}>{children}</main>
 
       <nav className={cn(
         "fixed bottom-0 left-0 right-0 z-40 bg-card/98 border-t border-border/40",
@@ -199,7 +199,7 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
                 <button
                   onClick={() => hapticLight()}
                   className={cn(
-                    "relative flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl min-w-[52px] min-h-[48px] transition-all duration-300",
+                    "relative flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl min-w-[52px] min-h-[48px] transition-colors duration-150",
                     isActive ? `${roleTheme.activeBg} ${roleTheme.color} scale-105` : "text-muted-foreground hover:text-foreground"
                   )}
                 >

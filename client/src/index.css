@@ -146,6 +146,14 @@
     min-height: 100vh;
     overflow-y: auto;
   }
+
+  /* تحسينات أداء WebView للتطبيق */
+  [data-fixed], nav[class*="fixed"], header[class*="sticky"] {
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
 }
 
 /* Custom Islamic Pattern Background Utility */

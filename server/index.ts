@@ -112,6 +112,10 @@ function csrfProtection(req: Request, res: Response, next: NextFunction) {
   const publicPaths = ["/api/register-mosque", "/api/auth/login"];
   if (publicPaths.some(p => req.path === p)) return next();
 
+  // السماح بطلبات تطبيق سراج القرآن (CapacitorHttp يرسل User-Agent مخصص)
+  const ua = req.get("user-agent") || "";
+  if (ua.includes("SirajAlQuran-Android")) return next();
+
   const origin = req.get("origin") || req.get("referer");
   if (!origin) {
     return res.status(403).json({ message: "طلب غير مصرح" });

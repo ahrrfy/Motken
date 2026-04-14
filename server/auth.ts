@@ -95,7 +95,7 @@ export function setupAuth(app: Express) {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: isProduction && process.env.HTTPS_ENABLED !== "false",
-      sameSite: "lax",
+      sameSite: "none",
     },
   };
 
