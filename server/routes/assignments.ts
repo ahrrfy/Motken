@@ -17,6 +17,7 @@ import { uploadAudio as uploadToMinio, getAudioStream, deleteAudio as deleteFrom
 import multer from "multer";
 
 export let audioCleanupInterval: ReturnType<typeof setInterval> | null = null;
+export let autoArchiveInterval: ReturnType<typeof setInterval> | null = null;
 
 export function registerAssignmentsRoutes(app: Express) {
   // ==================== ASSIGNMENTS ====================
@@ -484,6 +485,21 @@ export function registerAssignmentsRoutes(app: Express) {
       console.error("خطأ في تنظيف الملفات الصوتية:", err);
     }
   }, 60 * 1000);
+
+  // أرشفة تلقائية — الواجبات المكتملة/الملغاة الأقدم من 7 أيام
+  const runAutoArchive = async () => {
+    try {
+      const count = await storage.autoArchiveOldAssignments();
+      if (count > 0) {
+        console.log(`[أرشفة تلقائية] تمت أرشفة ${count} واجب/امتحان`);
+      }
+    } catch (err) {
+      console.error("خطأ في الأرشفة التلقائية:", err);
+    }
+  };
+  // تشغيل فوري عند بدء السيرفر + كل ساعة
+  runAutoArchive();
+  autoArchiveInterval = setInterval(runAutoArchive, 60 * 60 * 1000);
 
   app.delete("/api/assignments/:id", requireAuth, async (req, res) => {
     try {

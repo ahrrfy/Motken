@@ -286,8 +286,9 @@ async function gracefulShutdown(signal: string) {
   stopAbsenceAlerts();
   const { dbHealthInterval } = await import("./db");
   clearInterval(dbHealthInterval);
-  const { audioCleanupInterval } = await import("./routes/assignments");
+  const { audioCleanupInterval, autoArchiveInterval } = await import("./routes/assignments");
   if (audioCleanupInterval) clearInterval(audioCleanupInterval);
+  if (autoArchiveInterval) clearInterval(autoArchiveInterval);
   cache.destroy();
 
   // 2. Close WebSocket server (stops heartbeat via wss "close" event)

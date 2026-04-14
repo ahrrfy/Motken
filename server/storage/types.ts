@@ -63,6 +63,7 @@ export interface IAssignmentStorage {
   updateAssignment(id: string, data: Partial<InsertAssignment>): Promise<Assignment | undefined>;
   updateAssignments(studentId: string, oldTeacherId: string | null, newTeacherId: string): Promise<void>;
   deleteAssignment(id: string): Promise<void>;
+  autoArchiveOldAssignments(): Promise<number>;
 }
 
 export interface IEducationStorage {

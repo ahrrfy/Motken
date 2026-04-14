@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, lt, sql } from "drizzle-orm";
 import {
   type Assignment, type InsertAssignment,
   assignments,
@@ -46,5 +46,21 @@ export const assignmentMethods = {
 
   async deleteAssignment(id: string): Promise<void> {
     await db.delete(assignments).where(eq(assignments.id, id));
+  },
+
+  /** أرشفة تلقائية — الواجبات المكتملة/الملغاة الأقدم من 7 أيام */
+  async autoArchiveOldAssignments(): Promise<number> {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const result = await db.update(assignments)
+      .set({ isArchived: true })
+      .where(
+        and(
+          eq(assignments.isArchived, false),
+          sql`${assignments.status} IN ('done', 'cancelled', 'missed')`,
+          lt(assignments.scheduledDate, sevenDaysAgo)
+        )
+      )
+      .returning({ id: assignments.id });
+    return result.length;
   },
 };

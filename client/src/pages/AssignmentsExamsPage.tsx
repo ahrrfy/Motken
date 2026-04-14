@@ -1462,10 +1462,22 @@ export default function AssignmentsExamsPage() {
                       const studentRate = studentCompletionRates[task.studentId];
 
                       return (
-                      <div key={task.id} className={`p-4 bg-white rounded-lg shadow-sm border border-slate-100 ${isStudent ? 'cursor-pointer hover:border-primary/30 transition-colors' : ''}`} data-testid={`card-assignment-${task.id}`} onClick={() => isStudent && fetchQuranVerses(task.id, task.surahName, task.fromVerse, task.toVerse)}>
+                      <div key={task.id} className={cn(
+                        "p-4 rounded-lg shadow-sm border transition-colors",
+                        task.isArchived
+                          ? "bg-amber-50/60 border-amber-200/60 dark:bg-amber-950/20 dark:border-amber-800/30"
+                          : "bg-white border-slate-100 dark:bg-card dark:border-border",
+                        isStudent && "cursor-pointer hover:border-primary/30"
+                      )} data-testid={`card-assignment-${task.id}`} onClick={() => isStudent && fetchQuranVerses(task.id, task.surahName, task.fromVerse, task.toVerse)}>
+                        {task.isArchived && (
+                          <div className="flex items-center gap-1 mb-2 text-[10px] text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 rounded-full px-2 py-0.5 w-fit">
+                            <Archive className="w-3 h-3" />
+                            <span>مؤرشف</span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", task.isArchived ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary")}>
                             <User className="w-5 h-5" />
                           </div>
                           <div>
