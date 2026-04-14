@@ -1469,143 +1469,114 @@ export default function AssignmentsExamsPage() {
                           : "bg-white border-slate-100 dark:bg-card dark:border-border",
                         isStudent && "cursor-pointer hover:border-primary/30"
                       )} data-testid={`card-assignment-${task.id}`} onClick={() => isStudent && fetchQuranVerses(task.id, task.surahName, task.fromVerse, task.toVerse)}>
-                        {task.isArchived && (
-                          <div className="flex items-center gap-1 mb-2 text-[10px] text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 rounded-full px-2 py-0.5 w-fit">
-                            <Archive className="w-3 h-3" />
-                            <span>مؤرشف</span>
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", task.isArchived ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary")}>
-                            <User className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
+                        {/* === صف 1: اسم الطالب + الوقت + الحالة === */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", task.isArchived ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary")}>
+                              <User className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
                               <p
-                                className={cn("font-bold text-sm", canManage && "cursor-pointer hover:text-primary")}
+                                className={cn("font-bold text-sm truncate", canManage && "cursor-pointer hover:text-primary")}
                                 data-testid={`text-assignment-student-${task.id}`}
-                                onClick={(e) => {
-                                  if (canManage) {
-                                    e.stopPropagation();
-                                    setStudentStatsDialog(task.studentId);
-                                  }
-                                }}
+                                onClick={(e) => { if (canManage) { e.stopPropagation(); setStudentStatsDialog(task.studentId); } }}
                               >
                                 {getAssignStudentName(task.studentId)}
                               </p>
-                              {canManage && studentRate && (
-                                <div className="flex items-center gap-1" data-testid={`progress-student-${task.studentId}`}>
-                                  <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-primary rounded-full transition-all"
-                                      style={{ width: `${studentRate.total > 0 ? (studentRate.done / studentRate.total) * 100 : 0}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {studentRate.total > 0 ? Math.round((studentRate.done / studentRate.total) * 100) : 0}%
-                                  </span>
-                                </div>
-                              )}
                             </div>
-                            {getTeacherName(task.teacherId) && (
-                              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground" data-testid={`text-teacher-${task.id}`}>
-                                <UserCircle className="w-3 h-3" />
-                                <span>الأستاذ: {getTeacherName(task.teacherId)}</span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <p className="text-xs text-muted-foreground">{task.surahName} ({task.fromVerse}-{task.toVerse})</p>
-                              <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", typeBadge.className)} data-testid={`badge-type-${task.id}`}>
-                                {typeBadge.label}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground" data-testid={`date-assignment-${task.id}`}>
-                              <CalendarIcon className="w-3 h-3" />
-                              {formatDateAr(task.scheduledDate)}
-                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-xs font-bold text-primary flex items-center gap-0.5">
+                              <Clock className="w-3 h-3" />
+                              {task.scheduledDate ? format(new Date(task.scheduledDate), "hh:mm a", { locale: ar }) : "—"}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {!isStudent && (() => {
-                            const student = students.find(s => s.id === task.studentId);
-                            return (
-                              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={cn("h-7 w-7", student?.phone ? "text-green-600 hover:text-green-700 hover:bg-green-50" : "text-gray-300 cursor-not-allowed")}
-                                  onClick={() => student?.phone && window.open(getWhatsAppUrl(student.phone), "_blank")}
-                                  disabled={!student?.phone}
-                                  title={student?.phone ? "واتساب الطالب" : "لا يوجد رقم هاتف"}
-                                  data-testid={`button-whatsapp-student-${task.id}`}
-                                >
-                                  <MessageCircle className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={cn("h-7 w-7", student?.parentPhone ? "text-blue-600 hover:text-blue-700 hover:bg-blue-50" : "text-gray-300 cursor-not-allowed")}
-                                  onClick={() => student?.parentPhone && window.open(getWhatsAppUrl(student.parentPhone), "_blank")}
-                                  disabled={!student?.parentPhone}
-                                  title={student?.parentPhone ? "واتساب ولي الأمر" : "لا يوجد رقم ولي أمر"}
-                                  data-testid={`button-whatsapp-parent-${task.id}`}
-                                >
-                                  <PhoneCall className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            );
-                          })()}
-                        <div className="text-left space-y-1">
-                          <div className="flex items-center gap-1 text-sm font-bold text-primary">
-                            <Clock className="w-3 h-3" />
-                            {task.scheduledDate ? format(new Date(task.scheduledDate), "hh:mm a", { locale: ar }) : "—"}
-                          </div>
-                          <div className="flex items-center gap-1 flex-wrap justify-end">
-                            <span className={cn(
-                              "text-[10px] px-2 py-0.5 rounded-full",
-                              task.status === "done" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                            )} data-testid={`status-assignment-${task.id}`}>
-                              {task.status === "done" ? "تم التسميع" : "انتظار"}
+
+                        {/* === صف 2: شريط التقدم === */}
+                        {canManage && studentRate && (
+                          <div className="flex items-center gap-2 mt-1.5" data-testid={`progress-student-${task.studentId}`}>
+                            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${studentRate.total > 0 ? (studentRate.done / studentRate.total) * 100 : 0}%` }} />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {studentRate.total > 0 ? Math.round((studentRate.done / studentRate.total) * 100) : 0}%
                             </span>
-                            {task.status === "done" && task.grade != null && (
-                              <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", getGradeColor(task.grade))} data-testid={`grade-badge-${task.id}`}>
-                                {task.grade}/100
-                              </span>
-                            )}
-                            {task.hasAudio && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 flex items-center gap-0.5" data-testid={`audio-badge-${task.id}`}>
-                                <Mic className="w-2.5 h-2.5" />
-                                تسميع صوتي
-                              </span>
-                            )}
                           </div>
+                        )}
+
+                        {/* === صف 3: السورة + النوع + الأستاذ === */}
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs text-muted-foreground">{task.surahName} ({task.fromVerse}-{task.toVerse})</p>
+                            <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", typeBadge.className)} data-testid={`badge-type-${task.id}`}>
+                              {typeBadge.label}
+                            </Badge>
+                          </div>
+                          {getTeacherName(task.teacherId) && (
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`text-teacher-${task.id}`}>
+                              <UserCircle className="w-3 h-3" />
+                              <span>الأستاذ: {getTeacherName(task.teacherId)}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`date-assignment-${task.id}`}>
+                            <CalendarIcon className="w-3 h-3" />
+                            {formatDateAr(task.scheduledDate)}
+                          </div>
+                        </div>
+
+                        {/* === صف 4: badges الحالة + الدرجة + المؤرشف === */}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                          <span className={cn(
+                            "text-[10px] px-2 py-0.5 rounded-full",
+                            task.status === "done" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                          )} data-testid={`status-assignment-${task.id}`}>
+                            {task.status === "done" ? "تم التسميع" : "انتظار"}
+                          </span>
+                          {task.status === "done" && task.grade != null && (
+                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", getGradeColor(task.grade))} data-testid={`grade-badge-${task.id}`}>
+                              {task.grade}/100
+                            </span>
+                          )}
+                          {task.hasAudio && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 flex items-center gap-0.5" data-testid={`audio-badge-${task.id}`}>
+                              <Mic className="w-2.5 h-2.5" /> صوتي
+                            </span>
+                          )}
+                          {task.isArchived && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-0.5">
+                              <Archive className="w-2.5 h-2.5" /> مؤرشف
+                            </span>
+                          )}
                           {task.status === "pending" && (
-                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full block text-center", deadline.badgeVariant)} data-testid={`deadline-badge-${task.id}`}>
+                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full", deadline.badgeVariant)} data-testid={`deadline-badge-${task.id}`}>
                               {deadline.label}
                             </span>
                           )}
                           {!isStudent && (
-                          <div className="flex items-center gap-1" data-testid={`seen-status-${task.id}`}>
-                            {task.seenByStudent ? (
-                              <span className="flex items-center gap-1 text-[10px] text-blue-600">
-                                <CheckCircle2 className="w-3 h-3" />
-                                <CheckCircle2 className="w-3 h-3 -mr-1.5" />
-                                تمت الرؤية
-                                {task.seenAt && <span className="text-[9px] text-muted-foreground">({format(new Date(task.seenAt), "hh:mm a", { locale: ar })})</span>}
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-[10px] text-gray-400">
-                                <CheckCircle2 className="w-3 h-3" />
-                                <CheckCircle2 className="w-3 h-3 -mr-1.5" />
-                                لم يُرَ بعد
-                              </span>
-                            )}
-                          </div>
+                            <span className={cn("flex items-center gap-0.5 text-[10px]", task.seenByStudent ? "text-blue-600" : "text-gray-400")} data-testid={`seen-status-${task.id}`}>
+                              <CheckCircle2 className="w-3 h-3" />
+                              <CheckCircle2 className="w-3 h-3 -mr-1.5" />
+                              {task.seenByStudent ? "تمت الرؤية" : "لم يُرَ"}
+                              {task.seenByStudent && task.seenAt && <span className="text-[9px] text-muted-foreground">({format(new Date(task.seenAt), "hh:mm a", { locale: ar })})</span>}
+                            </span>
                           )}
                         </div>
-                        </div>
-                        </div>
+
+                        {/* === صف 5: واتساب === */}
+                        {!isStudent && (() => {
+                          const student = students.find(s => s.id === task.studentId);
+                          return (
+                            <div className="flex items-center gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className={cn("h-7 w-7", student?.phone ? "text-green-600 hover:bg-green-50" : "text-gray-300 cursor-not-allowed")} onClick={() => student?.phone && window.open(getWhatsAppUrl(student.phone), "_blank")} disabled={!student?.phone} data-testid={`button-whatsapp-student-${task.id}`}>
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className={cn("h-7 w-7", student?.parentPhone ? "text-blue-600 hover:bg-blue-50" : "text-gray-300 cursor-not-allowed")} onClick={() => student?.parentPhone && window.open(getWhatsAppUrl(student.parentPhone), "_blank")} disabled={!student?.parentPhone} data-testid={`button-whatsapp-parent-${task.id}`}>
+                                <PhoneCall className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          );
+                        })()}
 
                         {isTeacher && task.status === "pending" && (
                           <div className="mt-3 p-3 bg-blue-50/50 rounded-lg border border-blue-100" onClick={e => e.stopPropagation()} data-testid={`grading-section-${task.id}`}>
