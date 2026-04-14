@@ -15,6 +15,9 @@ concurrency:
   group: android-build
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
