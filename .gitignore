@@ -36,3 +36,4 @@ MAINTENANCE_LOG*
 update_report*
 README_ARCH**.keystore
 .claude/settings.local.json
+.claude/worktrees/
