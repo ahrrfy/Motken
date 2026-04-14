@@ -30,9 +30,12 @@ export default function MobileLayout({ children, onMenuOpen }: MobileLayoutProps
     await new Promise(r => setTimeout(r, 400));
   }, [queryClient]);
 
+  // السحب للتحديث فقط في الصفحة الرئيسية ولوحة التحكم
+  const isHomePage = location === "/" || location === "/dashboard" || location === "/daily";
   const { containerRef, pullDistance, refreshing, isTriggered } = usePullRefresh({
     onRefresh,
     threshold: 70,
+    enabled: isHomePage,
   });
 
   const { data: unreadData } = useQuery<{ count: number }>({

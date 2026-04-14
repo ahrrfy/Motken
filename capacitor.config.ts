@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
   server: {
     // لا server.url — الواجهة تُحمّل محلياً من assets الجهاز
     androidScheme: 'https',
-    hostname: 'sirajalquran.org', // مهم: يجعل origin = https://sirajalquran.org لتعمل cookies
+    // hostname يبقى localhost (الافتراضي) حتى لا يعترض Capacitor طلبات API
   },
   plugins: {
     SplashScreen: {
@@ -33,7 +33,7 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
     backgroundColor: '#1a5c2e',
-    webContentsDebuggingEnabled: false,
+    webContentsDebuggingEnabled: true, // مؤقت — للتصحيح
     overrideUserAgent: 'SirajAlQuran-Android/1.0',
   },
 };

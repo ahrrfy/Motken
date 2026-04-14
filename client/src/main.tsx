@@ -1,3 +1,6 @@
+// اعتراض fetch للتطبيق الأصلي — يجب أن يكون أول استيراد
+import "./lib/capacitor";
+
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";

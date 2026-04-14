@@ -4,9 +4,10 @@ interface UsePullRefreshOptions {
   onRefresh: () => Promise<void>;
   threshold?: number;
   maxPull?: number;
+  enabled?: boolean;
 }
 
-export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120 }: UsePullRefreshOptions) {
+export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120, enabled = true }: UsePullRefreshOptions) {
   const [pulling, setPulling] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -15,23 +16,24 @@ export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120 }: Use
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (!enabled) return;
     const el = containerRef.current;
     if (!el || el.scrollTop > 0) return;
     startY.current = e.touches[0].clientY;
     setPulling(true);
-  }, []);
+  }, [enabled]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!pulling || refreshing) return;
+    if (!enabled || !pulling || refreshing) return;
     currentY.current = e.touches[0].clientY;
     const diff = Math.max(0, currentY.current - startY.current);
     const dampened = Math.min(maxPull, diff * 0.5);
-    // عتبة أعلى لتجنب تعطيل التمرير الطبيعي في WebView
+    // عتبة أعلى لتجنب تعطيل التمرير الطبيعي
     if (dampened > 20) {
       e.preventDefault();
       setPullDistance(dampened);
     }
-  }, [pulling, refreshing, maxPull]);
+  }, [enabled, pulling, refreshing, maxPull]);
 
   const handleTouchEnd = useCallback(async () => {
     if (!pulling) return;
@@ -63,5 +65,5 @@ export function usePullRefresh({ onRefresh, threshold = 80, maxPull = 120 }: Use
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
-  return { containerRef, pullDistance, refreshing, isTriggered: pullDistance >= threshold };
+  return { containerRef, pullDistance: enabled ? pullDistance : 0, refreshing, isTriggered: enabled && pullDistance >= threshold };
 }

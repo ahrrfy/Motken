@@ -6,6 +6,7 @@ import MobileSidebar from "./MobileSidebar";
 import MobileFAB from "./MobileFAB";
 import MobileOfflineBanner from "./MobileOfflineBanner";
 import WelcomeWizard from "@/components/WelcomeWizard";
+import { PrintPreviewProvider } from "@/lib/print-context";
 import { DashboardSkeleton, ListSkeleton, CardsSkeleton, GenericSkeleton } from "./MobileSkeleton";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
@@ -65,7 +66,7 @@ export default function MobileApp() {
   }, [user]);
 
   return (
-    <>
+    <PrintPreviewProvider>
       {showWelcome && user && (
         <WelcomeWizard
           role={(user as any).actualRole || user.role}
@@ -133,6 +134,6 @@ export default function MobileApp() {
             </Suspense>
       </MobileLayout>
       <MobileFAB />
-    </>
+    </PrintPreviewProvider>
   );
 }

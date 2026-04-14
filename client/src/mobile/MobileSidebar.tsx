@@ -170,14 +170,30 @@ export default function MobileSidebar({ open, onClose }: MobileSidebarProps) {
     group: g, label: groupLabels[g], items: visibleItems.filter(i => i.group === g),
   })).filter(g => g.items.length > 0);
 
+  // قفل تمرير الخلفية عند فتح السايد بار
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex" dir="rtl">
+    <div className="fixed inset-0 z-50 flex" dir="rtl" style={{ touchAction: "auto" }}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div
         ref={sidebarRef}
         className="relative w-72 max-w-[85vw] bg-card border-l border-border/50 shadow-2xl overflow-y-auto flex flex-col"
+        style={{ touchAction: "pan-y", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

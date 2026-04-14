@@ -34,4 +34,5 @@ attached_assets/
 .claude/scripts/
 MAINTENANCE_LOG*
 update_report*
-README_ARCH*
+README_ARCH**.keystore
+.claude/settings.local.json
