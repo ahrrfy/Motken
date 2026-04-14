@@ -5,9 +5,15 @@ on:
     branches: [main]
     paths:
       - 'android/**'
+      - 'client/**'
+      - 'shared/**'
       - 'capacitor.config.ts'
 
   workflow_dispatch:
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
 
 jobs:
   build-apk:
@@ -23,13 +29,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build frontend
-        run: npx vite build --mode production
-        working-directory: .
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -39,41 +38,112 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build frontend
+        run: npx vite build --mode production
+
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Setup Keystore
+      - name: Decode Keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          # Always generate fresh keystore with known password
-          keytool -genkeypair -v -keystore android/motken-release.keystore \
-            -alias motken -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass motken2026 -keypass motken2026 \
-            -dname "CN=Siraj Al-Quran, OU=Dev, O=Ahmed Khalid, L=Baghdad, C=IQ"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/siraj-release.keystore
+          echo "Keystore decoded successfully"
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION_NAME="$(date +'%Y.%m.%d').${{ github.run_number }}"
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION_NAME (code: ${{ github.run_number }})"
 
       - name: Build Release APK
         working-directory: android
         env:
-          KEYSTORE_PASSWORD: motken2026
-          KEY_PASSWORD: motken2026
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Get version
-        id: version
-        run: echo "date=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+      - name: Rename APK
+        run: |
+          APK_SRC="android/app/build/outputs/apk/release/app-release.apk"
+          APK_DST="android/app/build/outputs/apk/release/siraj-alquran-${{ steps.version.outputs.tag }}.apk"
+          cp "$APK_SRC" "$APK_DST"
+          echo "APK_PATH=$APK_DST" >> $GITHUB_ENV
+          echo "APK size: $(du -h "$APK_SRC" | cut -f1)"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: siraj-alquran-${{ steps.version.outputs.date }}
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: siraj-alquran-${{ steps.version.outputs.tag }}
+          path: android/app/build/outputs/apk/release/siraj-alquran-*.apk
+          retention-days: 90
 
-      - name: Create Release
+      - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.date }}
-          name: "سراج القرآن - ${{ steps.version.outputs.date }}"
-          files: android/app/build/outputs/apk/release/app-release.apk
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "سِرَاجُ الْقُرْآنِ — ${{ steps.version.outputs.version_name }}"
+          body: |
+            ## سِرَاجُ الْقُرْآنِ — تطبيق أندرويد
+
+            **الإصدار**: `${{ steps.version.outputs.version_name }}`
+
+            ### التثبيت:
+            1. حمّل ملف APK أدناه
+            2. افتح الملف على هاتفك
+            3. اسمح بالتثبيت من مصادر غير معروفة إذا طُلب
+            4. افتح التطبيق واستمتع!
+
+            ### ملاحظات:
+            - التطبيق يتصل بـ https://sirajalquran.org
+            - التحديثات تتم تلقائياً بدون الحاجة لتحميل APK جديد
+            - يتطلب اتصال بالإنترنت
+
+          files: android/app/build/outputs/apk/release/siraj-alquran-*.apk
           generate_release_notes: true
+
+      - name: Cleanup Keystore
+        if: always()
+        run: rm -f android/siraj-release.keystore
+
+      - name: Build Summary
+        if: always()
+        run: |
+          APK_FILE="android/app/build/outputs/apk/release/app-release.apk"
+          if [ -f "$APK_FILE" ]; then
+            APK_SIZE=$(du -h "$APK_FILE" | cut -f1)
+            echo "## ✅ بناء APK ناجح" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| المعلومة | القيمة |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+            echo "| الإصدار | \`${{ steps.version.outputs.version_name }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| رمز الإصدار | \`${{ steps.version.outputs.version_code }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| حجم APK | $APK_SIZE |" >> $GITHUB_STEP_SUMMARY
+            echo "| التاغ | \`${{ steps.version.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ فشل بناء APK" >> $GITHUB_STEP_SUMMARY
+          fi
