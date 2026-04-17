@@ -118,10 +118,49 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
+interface MosqueOption {
+  id: string;
+  name: string;
+}
+
+const ADMIN_MOSQUE_KEY = "library_admin_mosque_id";
+
 export default function LibraryPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isAdmin = user?.role === "admin" || user?.role === "supervisor";
+
+  // المدير بلا مسجد يختار مسجداً يعمل عليه (يظل محفوظاً بين الجلسات)
+  const needsMosquePicker = !user?.mosqueId && user?.role === "admin";
+  const [selectedMosqueId, setSelectedMosqueId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(ADMIN_MOSQUE_KEY);
+  });
+  const [mosqueOptions, setMosqueOptions] = useState<MosqueOption[]>([]);
+
+  // mosqueId الفعّال: مسجد المستخدم أو المختار يدوياً من المدير
+  const effectiveMosqueId = user?.mosqueId || selectedMosqueId;
+  const mosqueQS = needsMosquePicker && selectedMosqueId
+    ? `?mosqueId=${encodeURIComponent(selectedMosqueId)}`
+    : "";
+
+  const addMosqueToQS = (url: string) => {
+    if (!mosqueQS) return url;
+    return url.includes("?") ? `${url}&mosqueId=${encodeURIComponent(selectedMosqueId!)}` : `${url}${mosqueQS}`;
+  };
+
+  useEffect(() => {
+    if (!needsMosquePicker) return;
+    fetch("/api/mosques", { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((list: any[]) => setMosqueOptions((list || []).map(m => ({ id: m.id, name: m.name }))))
+      .catch(() => {});
+  }, [needsMosquePicker]);
+
+  useEffect(() => {
+    if (selectedMosqueId) localStorage.setItem(ADMIN_MOSQUE_KEY, selectedMosqueId);
+    else localStorage.removeItem(ADMIN_MOSQUE_KEY);
+  }, [selectedMosqueId]);
 
   // Navigation state
   const [currentSection, setCurrentSection] = useState<Section | null>(null);
@@ -192,29 +231,37 @@ export default function LibraryPage() {
   // ─── Data fetching ──────────────────────────────────────────────────────
 
   const fetchSections = useCallback(async () => {
+    if (needsMosquePicker && !selectedMosqueId) {
+      setSections([]);
+      return;
+    }
     try {
-      const data = await apiFetch<Section[]>("/api/library/sections");
+      const data = await apiFetch<Section[]>(addMosqueToQS("/api/library/sections"));
       setSections(data);
     } catch {
       toast({ title: "خطأ", description: "فشل في تحميل الأقسام", variant: "destructive" });
     }
-  }, [toast]);
+  }, [toast, needsMosquePicker, selectedMosqueId]);
 
   const fetchFeaturedBooks = useCallback(async () => {
+    if (needsMosquePicker && !selectedMosqueId) {
+      setFeaturedBooks([]);
+      return;
+    }
     try {
-      const data = await apiFetch<BookItem[]>("/api/library/books");
+      const data = await apiFetch<BookItem[]>(addMosqueToQS("/api/library/books"));
       setFeaturedBooks(data.filter((b) => b.featured));
     } catch {
       // silent
     }
-  }, []);
+  }, [needsMosquePicker, selectedMosqueId]);
 
   const fetchBranches = useCallback(async (sectionId: number) => {
     setBooksLoading(true);
     try {
       const [branchData, bookData] = await Promise.all([
-        apiFetch<Branch[]>(`/api/library/branches/${sectionId}`),
-        apiFetch<BookItem[]>(`/api/library/books?sectionId=${sectionId}`),
+        apiFetch<Branch[]>(addMosqueToQS(`/api/library/branches/${sectionId}`)),
+        apiFetch<BookItem[]>(addMosqueToQS(`/api/library/books?sectionId=${sectionId}`)),
       ]);
       setBranches(branchData);
       setBooks(bookData);
@@ -223,21 +270,21 @@ export default function LibraryPage() {
     } finally {
       setBooksLoading(false);
     }
-  }, [toast]);
+  }, [toast, selectedMosqueId]);
 
   const fetchBranchBooks = useCallback(async (branchId: number) => {
     setBooksLoading(true);
     try {
-      const data = await apiFetch<BookItem[]>(`/api/library/books?branchId=${branchId}`);
+      const data = await apiFetch<BookItem[]>(addMosqueToQS(`/api/library/books?branchId=${branchId}`));
       setBooks(data);
     } catch {
       toast({ title: "خطأ", description: "فشل في تحميل الكتب", variant: "destructive" });
     } finally {
       setBooksLoading(false);
     }
-  }, [toast]);
+  }, [toast, selectedMosqueId]);
 
-  // Initial load
+  // Initial load (يُعاد التحميل عند تغيير المسجد المختار)
   useEffect(() => {
     setLoading(true);
     Promise.all([fetchSections(), fetchFeaturedBooks()]).finally(() => setLoading(false));
@@ -331,18 +378,24 @@ export default function LibraryPage() {
       toast({ title: "خطأ", description: "اسم القسم مطلوب", variant: "destructive" });
       return;
     }
+    if (needsMosquePicker && !selectedMosqueId) {
+      toast({ title: "خطأ", description: "يجب اختيار المسجد أولاً من الأعلى", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
+      const payload: any = { name: formName, description: formDescription || null, icon: formIcon };
+      if (needsMosquePicker && selectedMosqueId) payload.mosqueId = selectedMosqueId;
       if (editingSection) {
-        await apiFetch(`/api/library/sections/${editingSection.id}`, {
+        await apiFetch(addMosqueToQS(`/api/library/sections/${editingSection.id}`), {
           method: "PUT",
-          body: JSON.stringify({ name: formName, description: formDescription || null, icon: formIcon }),
+          body: JSON.stringify(payload),
         });
         toast({ title: "تم التحديث", description: "تم تحديث القسم بنجاح" });
       } else {
-        await apiFetch("/api/library/sections", {
+        await apiFetch(addMosqueToQS("/api/library/sections"), {
           method: "POST",
-          body: JSON.stringify({ name: formName, description: formDescription || null, icon: formIcon }),
+          body: JSON.stringify(payload),
         });
         toast({ title: "تمت الإضافة", description: "تم إنشاء القسم بنجاح" });
       }
@@ -382,18 +435,24 @@ export default function LibraryPage() {
       toast({ title: "خطأ", description: "يجب تحديد القسم", variant: "destructive" });
       return;
     }
+    if (needsMosquePicker && !selectedMosqueId) {
+      toast({ title: "خطأ", description: "يجب اختيار المسجد أولاً من الأعلى", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
+      const basePayload: any = { name: formName, description: formDescription || null };
+      if (needsMosquePicker && selectedMosqueId) basePayload.mosqueId = selectedMosqueId;
       if (editingBranch) {
-        await apiFetch(`/api/library/branches/${editingBranch.id}`, {
+        await apiFetch(addMosqueToQS(`/api/library/branches/${editingBranch.id}`), {
           method: "PUT",
-          body: JSON.stringify({ name: formName, description: formDescription || null }),
+          body: JSON.stringify(basePayload),
         });
         toast({ title: "تم التحديث", description: "تم تحديث الفرع بنجاح" });
       } else {
-        await apiFetch("/api/library/branches", {
+        await apiFetch(addMosqueToQS("/api/library/branches"), {
           method: "POST",
-          body: JSON.stringify({ sectionId, name: formName, description: formDescription || null }),
+          body: JSON.stringify({ ...basePayload, sectionId }),
         });
         toast({ title: "تمت الإضافة", description: "تم إنشاء الفرع بنجاح" });
       }
@@ -460,7 +519,8 @@ export default function LibraryPage() {
       const fd = new FormData();
       fd.append("file", file);
       const xhr = new XMLHttpRequest();
-      const url = (await import("@/lib/capacitor")).API_BASE + "/api/library/books/upload-file";
+      const qs = needsMosquePicker && selectedMosqueId ? `?mosqueId=${encodeURIComponent(selectedMosqueId)}` : "";
+      const url = (await import("@/lib/capacitor")).API_BASE + "/api/library/books/upload-file" + qs;
       const result: any = await new Promise((resolve, reject) => {
         xhr.open("POST", url);
         xhr.withCredentials = true;
@@ -501,9 +561,13 @@ export default function LibraryPage() {
       toast({ title: "خطأ", description: "يجب تحديد القسم", variant: "destructive" });
       return;
     }
+    if (needsMosquePicker && !selectedMosqueId) {
+      toast({ title: "خطأ", description: "يجب اختيار المسجد أولاً من الأعلى", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         sectionId: secId,
         branchId: bookBranchId || null,
         title: bookTitle,
@@ -517,14 +581,15 @@ export default function LibraryPage() {
         fileMime: bookFileMime,
         fileName: bookFileName,
       };
+      if (needsMosquePicker && selectedMosqueId) payload.mosqueId = selectedMosqueId;
       if (editingBook) {
-        await apiFetch(`/api/library/books/${editingBook.id}`, {
+        await apiFetch(addMosqueToQS(`/api/library/books/${editingBook.id}`), {
           method: "PUT",
           body: JSON.stringify(payload),
         });
         toast({ title: "تم التحديث", description: "تم تحديث الكتاب بنجاح" });
       } else {
-        await apiFetch("/api/library/books", {
+        await apiFetch(addMosqueToQS("/api/library/books"), {
           method: "POST",
           body: JSON.stringify(payload),
         });
@@ -551,7 +616,7 @@ export default function LibraryPage() {
     if (!deleteDialog) return;
     setSaving(true);
     try {
-      await apiFetch(`/api/library/${deleteDialog.type === "section" ? "sections" : deleteDialog.type === "branch" ? "branches" : "books"}/${deleteDialog.id}`, {
+      await apiFetch(addMosqueToQS(`/api/library/${deleteDialog.type === "section" ? "sections" : deleteDialog.type === "branch" ? "branches" : "books"}/${deleteDialog.id}`), {
         method: "DELETE",
       });
       toast({ title: "تم الحذف", description: `تم حذف ${deleteDialog.name} بنجاح` });
@@ -597,19 +662,21 @@ export default function LibraryPage() {
       return;
     }
     try {
-      await apiFetch("/api/library/books", {
+      const uploadPayload: any = {
+        sectionId: secId,
+        branchId: currentBranch?.id || null,
+        title: uploadData.title,
+        author: uploadData.author || null,
+        description: uploadData.description || null,
+        pages: uploadData.pdfPageCount || null,
+        isPdf: uploadData.isPdf || false,
+        pdfStorageKey: uploadData.pdfStorageKey || null,
+        featured: false,
+      };
+      if (needsMosquePicker && selectedMosqueId) uploadPayload.mosqueId = selectedMosqueId;
+      await apiFetch(addMosqueToQS("/api/library/books"), {
         method: "POST",
-        body: JSON.stringify({
-          sectionId: secId,
-          branchId: currentBranch?.id || null,
-          title: uploadData.title,
-          author: uploadData.author || null,
-          description: uploadData.description || null,
-          pages: uploadData.pdfPageCount || null,
-          isPdf: uploadData.isPdf || false,
-          pdfStorageKey: uploadData.pdfStorageKey || null,
-          featured: false,
-        }),
+        body: JSON.stringify(uploadPayload),
       });
       toast({ title: "تمت الإضافة", description: "تم رفع الكتاب بنجاح" });
       setUploadDialog(false);
@@ -633,13 +700,13 @@ export default function LibraryPage() {
 
   useEffect(() => {
     if (bookDialog && bookSectionId) {
-      apiFetch<Branch[]>(`/api/library/branches/${bookSectionId}`)
+      apiFetch<Branch[]>(addMosqueToQS(`/api/library/branches/${bookSectionId}`))
         .then(setAvailableBranches)
         .catch(() => setAvailableBranches([]));
     } else {
       setAvailableBranches([]);
     }
-  }, [bookDialog, bookSectionId]);
+  }, [bookDialog, bookSectionId, selectedMosqueId]);
 
   // ─── Get section names for upload dialog categories ─────────────────────
 
@@ -704,6 +771,40 @@ export default function LibraryPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background p-4 md:p-6 max-w-7xl mx-auto">
+      {/* Mosque picker للمدير — يظهر فقط عندما لا يكون للمدير مسجد مرتبط */}
+      {needsMosquePicker && (
+        <div className="mb-4 p-3 rounded-lg border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
+            <Library className="w-4 h-4 text-primary" />
+            <span className="font-medium text-sm">إدارة مكتبة مسجد:</span>
+          </div>
+          <Select
+            value={selectedMosqueId || ""}
+            onValueChange={(v) => {
+              setSelectedMosqueId(v || null);
+              setCurrentSection(null);
+              setCurrentBranch(null);
+            }}
+          >
+            <SelectTrigger className="flex-1 min-w-[200px] bg-white">
+              <SelectValue placeholder="اختر المسجد لعرض وإدارة مكتبته" />
+            </SelectTrigger>
+            <SelectContent>
+              {mosqueOptions.length === 0 ? (
+                <SelectItem value="__none__" disabled>لا توجد مساجد متاحة</SelectItem>
+              ) : mosqueOptions.map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!selectedMosqueId && (
+            <span className="text-xs text-muted-foreground">
+              يجب اختيار المسجد قبل إضافة الأقسام والكتب
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
@@ -1445,7 +1546,9 @@ function BookCard({
                 className="h-7 text-xs"
                 onClick={async () => {
                   const { API_BASE } = await import("@/lib/capacitor");
-                  window.open(`${API_BASE}/api/library/books/${book.id}/file`, "_blank");
+                  const adminMosque = localStorage.getItem("library_admin_mosque_id");
+                  const qs = adminMosque ? `?mosqueId=${encodeURIComponent(adminMosque)}` : "";
+                  window.open(`${API_BASE}/api/library/books/${book.id}/file${qs}`, "_blank");
                 }}
               >
                 <FileText className="h-3.5 w-3.5 ml-1" />
