@@ -50,7 +50,7 @@ export function registerLibraryRoutes(app: Express) {
   // GET all sections for the mosque (with branches count and books count)
   app.get("/api/library/sections", requireAuth, async (req, res) => {
     try {
-      const mosqueId = await resolveMosqueId(req.user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.json([]);
       const result = await pool.query(
         `SELECT ls.*,
@@ -80,7 +80,7 @@ export function registerLibraryRoutes(app: Express) {
   // GET branches for a section
   app.get("/api/library/branches/:sectionId", requireAuth, async (req, res) => {
     try {
-      const mosqueId = await resolveMosqueId(req.user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.json([]);
       const { sectionId } = req.params;
       const result = await pool.query(
@@ -105,7 +105,7 @@ export function registerLibraryRoutes(app: Express) {
   // GET books with optional filters
   app.get("/api/library/books", requireAuth, async (req, res) => {
     try {
-      const mosqueId = await resolveMosqueId(req.user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.json([]);
       const { sectionId, branchId, search } = req.query;
 
@@ -143,7 +143,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) {
         return res.status(400).json({ message: "لا يوجد مسجد مرتبط بحسابك ولا يمكن إنشاء قسم. يرجى إضافة مسجد أولاً." });
       }
@@ -170,7 +170,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.status(404).json({ message: "القسم غير موجود" });
       const { id } = req.params;
       const { name, description, icon, sortOrder } = req.body;
@@ -210,7 +210,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.status(404).json({ message: "القسم غير موجود" });
       const { id } = req.params;
 
@@ -246,7 +246,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) {
         return res.status(400).json({ message: "لا يوجد مسجد مرتبط بحسابك" });
       }
@@ -273,7 +273,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.status(404).json({ message: "الفرع غير موجود" });
       const { id } = req.params;
       const { name, description, sortOrder, sectionId } = req.body;
@@ -313,7 +313,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.status(404).json({ message: "الفرع غير موجود" });
       const { id } = req.params;
 
@@ -360,7 +360,7 @@ export function registerLibraryRoutes(app: Express) {
         if (!req.file) {
           return res.status(400).json({ message: "لم يُرفق ملف" });
         }
-        const mosqueId = await resolveMosqueId(user);
+        const mosqueId = await resolveMosqueId(req);
         const originalName = req.file.originalname || "file";
         const ext = (originalName.match(ALLOWED_LIBRARY_EXTS) || ["", ""])[0].toLowerCase() || ".bin";
         const key = `books/${mosqueId || "shared"}/${Date.now()}-${randomBytes(6).toString("hex")}${ext}`;
@@ -384,7 +384,7 @@ export function registerLibraryRoutes(app: Express) {
   app.get("/api/library/books/:id/file", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.status(404).json({ message: "الكتاب غير موجود" });
       const { id } = req.params;
       const result = await pool.query(
@@ -418,7 +418,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) {
         return res.status(400).json({ message: "لا يوجد مسجد مرتبط بحسابك" });
       }
@@ -452,7 +452,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.status(404).json({ message: "الكتاب غير موجود" });
       const { id } = req.params;
 
@@ -510,7 +510,7 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const mosqueId = await resolveMosqueId(user);
+      const mosqueId = await resolveMosqueId(req);
       if (!mosqueId) return res.status(404).json({ message: "الكتاب غير موجود" });
       const { id } = req.params;
       const result = await pool.query(
