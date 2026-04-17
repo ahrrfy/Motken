@@ -4,6 +4,7 @@ import compression from "compression";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
+import { forceUpgradeMiddleware } from "./routes/app-version";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { createIndexes, pool } from "./db";
@@ -109,7 +110,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 function csrfProtection(req: Request, res: Response, next: NextFunction) {
   if (SAFE_METHODS.has(req.method)) return next();
 
-  const publicPaths = ["/api/register-mosque", "/api/auth/login"];
+  const publicPaths = ["/api/register-mosque", "/api/auth/login", "/api/ota/latest", "/api/ota/stats"];
   if (publicPaths.some(p => req.path === p)) return next();
 
   // السماح بطلبات تطبيق سراج القرآن (CapacitorHttp يرسل User-Agent مخصص)
@@ -217,6 +218,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Force Update Middleware (Kill Switch) — يحظر APK القديم عبر User-Agent أو X-App-Version
+app.use(forceUpgradeMiddleware);
 
 const BUILD_VERSION = Date.now().toString();
 
@@ -331,8 +335,10 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 (async () => {
   await createIndexes();
-  const { initMinioBucket } = await import("./lib/minio");
+  const { initMinioBucket, initLibraryBucket, initOtaBucket } = await import("./lib/minio");
   await initMinioBucket();
+  await initLibraryBucket();
+  await initOtaBucket();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

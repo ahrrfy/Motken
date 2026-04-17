@@ -15,6 +15,7 @@ import { formatDateAr } from "@/lib/utils";
 import { LEVEL_NAMES, LEVEL_COLORS } from "@/lib/constants";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
 import { apiFetch } from "@/lib/api";
+import { usePublicConfig } from "@/lib/public-config";
 import {
   Loader2, Plus, Users, Trash2, Search, Phone, UserCheck, Baby, MessageCircle, BarChart3,
   UserPlus, Eye, EyeOff, CheckCircle2,
@@ -123,6 +124,7 @@ const relationshipMap: Record<string, string> = {
 export default function FamilySystemPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { appUrl: publicAppUrl } = usePublicConfig();
 
   // -------- Shared state --------
   const [students, setStudents] = useState<Student[]>([]);
@@ -598,7 +600,7 @@ export default function FamilySystemPage() {
     }
   };
 
-  const getReportLink = (token: string) => `${window.location.origin}/parent-report/${token}`;
+  const getReportLink = (token: string) => `${publicAppUrl}/parent-report/${token}`;
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -858,7 +860,7 @@ export default function FamilySystemPage() {
                   </DialogHeader>
                   {createdAccountInfo && (() => {
                     const info = createdAccountInfo;
-                    const loginUrl = window.location.origin;
+                    const loginUrl = publicAppUrl;
                     const messageText = `مرحباً ${info.name}\nتم إنشاء حسابك في سِرَاجُ الْقُرْآنِ\n\nاسم المستخدم: ${info.username}\nكلمة المرور: ${info.password}\nرابط الدخول: ${loginUrl}\n\nالطلاب المرتبطين: ${info.studentNames.join("، ")}`;
                     return (
                       <div className="space-y-3 mt-2">

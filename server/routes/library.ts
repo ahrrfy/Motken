@@ -1,6 +1,36 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
+import multer from "multer";
+import { randomBytes } from "crypto";
 import { requireAuth } from "../auth";
 import { pool } from "../db";
+import {
+  uploadLibraryFile,
+  getLibraryFileStream,
+  deleteLibraryFile,
+} from "../lib/minio";
+
+const ALLOWED_LIBRARY_MIMES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+]);
+
+const ALLOWED_LIBRARY_EXTS = /\.(pdf|docx?|txt)$/i;
+
+const libraryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
+  fileFilter: (_req, file, cb) => {
+    const mimeOk = ALLOWED_LIBRARY_MIMES.has(file.mimetype);
+    const extOk = ALLOWED_LIBRARY_EXTS.test(file.originalname || "");
+    if (mimeOk || extOk) {
+      cb(null, true);
+    } else {
+      cb(new Error("نوع الملف غير مدعوم. الأنواع المسموحة: PDF, DOCX, DOC, TXT"));
+    }
+  },
+});
 
 export function registerLibraryRoutes(app: Express) {
 
@@ -274,6 +304,78 @@ export function registerLibraryRoutes(app: Express) {
     }
   });
 
+  // POST upload file to MinIO (returns fileKey for book creation)
+  app.post(
+    "/api/library/books/upload-file",
+    requireAuth,
+    (req: Request, res: Response, next) => {
+      libraryUpload.single("file")(req, res, (err: any) => {
+        if (err) {
+          const msg = err.code === "LIMIT_FILE_SIZE"
+            ? "حجم الملف يتجاوز الحد الأقصى (100 MB)"
+            : err.message || "فشل رفع الملف";
+          return res.status(400).json({ message: msg });
+        }
+        next();
+      });
+    },
+    async (req: Request, res: Response) => {
+      try {
+        const user = (req as any).user;
+        if (!["admin", "supervisor"].includes(user.role)) {
+          return res.status(403).json({ message: "غير مصرح" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ message: "لم يُرفق ملف" });
+        }
+        const originalName = req.file.originalname || "file";
+        const ext = (originalName.match(ALLOWED_LIBRARY_EXTS) || ["", ""])[0].toLowerCase() || ".bin";
+        const key = `books/${user.mosqueId}/${Date.now()}-${randomBytes(6).toString("hex")}${ext}`;
+        const saved = await uploadLibraryFile(key, req.file.buffer, req.file.mimetype);
+        if (!saved) {
+          return res.status(503).json({ message: "خدمة تخزين الملفات غير متاحة. تأكد من إعدادات MinIO." });
+        }
+        res.json({
+          fileKey: saved,
+          fileSize: req.file.size,
+          fileMime: req.file.mimetype,
+          fileName: originalName,
+        });
+      } catch (err: any) {
+        res.status(500).json({ message: err?.message || "فشل رفع الملف" });
+      }
+    }
+  );
+
+  // GET stream file from MinIO
+  app.get("/api/library/books/:id/file", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { id } = req.params;
+      const result = await pool.query(
+        `SELECT file_key, file_mime, file_name, title FROM library_books WHERE id = $1 AND mosque_id = $2`,
+        [id, user.mosqueId]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "الكتاب غير موجود" });
+      }
+      const row = result.rows[0];
+      if (!row.file_key) {
+        return res.status(404).json({ message: "لا يوجد ملف مرفوع لهذا الكتاب" });
+      }
+      const stream = await getLibraryFileStream(row.file_key);
+      if (!stream) {
+        return res.status(503).json({ message: "خدمة تخزين الملفات غير متاحة" });
+      }
+      const safeName = encodeURIComponent(row.file_name || row.title || "file");
+      res.setHeader("Content-Type", row.file_mime || "application/octet-stream");
+      res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${safeName}`);
+      stream.pipe(res);
+    } catch (err: any) {
+      res.status(500).json({ message: "خطأ في تحميل الملف" });
+    }
+  });
+
   // POST create book (admin/supervisor only)
   app.post("/api/library/books", requireAuth, async (req, res) => {
     try {
@@ -281,19 +383,21 @@ export function registerLibraryRoutes(app: Express) {
       if (!["admin", "supervisor"].includes(user.role)) {
         return res.status(403).json({ message: "غير مصرح" });
       }
-      const { sectionId, branchId, title, author, description, pages, url, pdfStorageKey, isPdf, featured, coverImage } = req.body;
+      const { sectionId, branchId, title, author, description, pages, url, pdfStorageKey, isPdf, featured, coverImage, fileKey, fileSize, fileMime, fileName } = req.body;
       if (!sectionId || !title) {
         return res.status(400).json({ message: "القسم وعنوان الكتاب مطلوبان" });
       }
       const result = await pool.query(
         `INSERT INTO library_books
-          (section_id, branch_id, mosque_id, title, author, description, pages, url, pdf_storage_key, is_pdf, featured, cover_image, created_by, added_by_role)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          (section_id, branch_id, mosque_id, title, author, description, pages, url, pdf_storage_key, is_pdf, featured, cover_image, file_key, file_size, file_mime, file_name, created_by, added_by_role)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
          RETURNING *`,
         [
           sectionId, branchId || null, user.mosqueId, title, author || null,
           description || null, pages || null, url || null, pdfStorageKey || null,
-          isPdf || false, featured || false, coverImage || null, user.id, user.role,
+          isPdf || false, featured || false, coverImage || null,
+          fileKey || null, fileSize || null, fileMime || null, fileName || null,
+          user.id, user.role,
         ]
       );
       res.status(201).json(result.rows[0]);
@@ -317,11 +421,17 @@ export function registerLibraryRoutes(app: Express) {
       );
       if (check.rows.length === 0) return res.status(404).json({ message: "الكتاب غير موجود" });
 
-      const { sectionId, branchId, title, author, description, pages, url, pdfStorageKey, isPdf, featured, coverImage } = req.body;
+      const { sectionId, branchId, title, author, description, pages, url, pdfStorageKey, isPdf, featured, coverImage, fileKey, fileSize, fileMime, fileName } = req.body;
 
       const fields: string[] = [];
       const values: any[] = [];
       let idx = 1;
+
+      // لو تغيّر fileKey (أو حُذف)، احذف القديم من MinIO
+      const oldFileKey = check.rows[0].file_key as string | null;
+      if (fileKey !== undefined && oldFileKey && oldFileKey !== fileKey) {
+        try { await deleteLibraryFile(oldFileKey); } catch {}
+      }
 
       if (sectionId !== undefined)      { fields.push(`section_id = $${idx++}`);      values.push(sectionId); }
       if (branchId !== undefined)       { fields.push(`branch_id = $${idx++}`);       values.push(branchId || null); }
@@ -334,6 +444,10 @@ export function registerLibraryRoutes(app: Express) {
       if (isPdf !== undefined)          { fields.push(`is_pdf = $${idx++}`);          values.push(isPdf); }
       if (featured !== undefined)       { fields.push(`featured = $${idx++}`);        values.push(featured); }
       if (coverImage !== undefined)     { fields.push(`cover_image = $${idx++}`);     values.push(coverImage); }
+      if (fileKey !== undefined)        { fields.push(`file_key = $${idx++}`);        values.push(fileKey || null); }
+      if (fileSize !== undefined)       { fields.push(`file_size = $${idx++}`);       values.push(fileSize || null); }
+      if (fileMime !== undefined)       { fields.push(`file_mime = $${idx++}`);       values.push(fileMime || null); }
+      if (fileName !== undefined)       { fields.push(`file_name = $${idx++}`);       values.push(fileName || null); }
 
       if (fields.length === 0) return res.status(400).json({ message: "لا توجد حقول للتحديث" });
 
@@ -357,10 +471,14 @@ export function registerLibraryRoutes(app: Express) {
       }
       const { id } = req.params;
       const result = await pool.query(
-        `DELETE FROM library_books WHERE id = $1 AND mosque_id = $2 RETURNING id`,
+        `DELETE FROM library_books WHERE id = $1 AND mosque_id = $2 RETURNING id, file_key`,
         [id, user.mosqueId]
       );
       if (result.rows.length === 0) return res.status(404).json({ message: "الكتاب غير موجود" });
+      const fileKey = result.rows[0].file_key as string | null;
+      if (fileKey) {
+        try { await deleteLibraryFile(fileKey); } catch {}
+      }
       res.json({ success: true });
     } catch (e) {
       res.status(500).json({ message: "خطأ في حذف الكتاب" });

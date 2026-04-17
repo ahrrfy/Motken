@@ -3,6 +3,9 @@ import { useEffect, useState, lazy, Suspense, ComponentType } from "react";
 import { Route, Switch } from "wouter";
 import { registerServiceWorker, startNotificationPolling, stopNotificationPolling, isNotificationsEnabled } from "@/lib/notifications";
 import { startUpdateChecker, stopUpdateChecker, onUpdateAvailable, applyUpdate } from "@/lib/update-checker";
+import { checkForceUpdate, type VersionCheckResponse } from "@/lib/force-update";
+import { isNative } from "@/lib/capacitor";
+import ForceUpdateModal from "@/components/ForceUpdateModal";
 import SidebarLayout from "@/components/layout/SidebarLayout";
 import WelcomeWizard from "@/components/WelcomeWizard";
 import { Toaster } from "@/components/ui/toaster";
@@ -60,6 +63,9 @@ const SpreadPage = lazy(() => import("@/pages/SpreadPage"));
 const ParentDashboardPage = lazy(() => import("@/pages/ParentDashboardPage"));
 const MobileApp = lazy(() => import("@/mobile/MobileApp"));
 const AdminControlPage = lazy(() => import("@/pages/AdminControlPage"));
+const DownloadPage = lazy(() => import("@/pages/DownloadPage"));
+const OtaUpdatesPage = lazy(() => import("@/pages/admin/OtaUpdatesPage"));
+const AppVersionPage = lazy(() => import("@/pages/admin/AppVersionPage"));
 
 function PageSkeleton() {
   return (
@@ -126,6 +132,7 @@ function App() {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [forceUpdateInfo, setForceUpdateInfo] = useState<VersionCheckResponse | null>(null);
 
   // WebSocket for real-time notifications
   useWebSocket();
@@ -134,6 +141,48 @@ function App() {
     registerServiceWorker();
     startUpdateChecker();
     return () => stopUpdateChecker();
+  }, []);
+
+  // Check for force update on startup + notify Capacitor Updater app is ready
+  useEffect(() => {
+    (async () => {
+      if (isNative) {
+        try {
+          const { CapacitorUpdater } = await import("@capgo/capacitor-updater");
+          await CapacitorUpdater.notifyAppReady();
+        } catch (err) {
+          console.warn("[CapacitorUpdater] notifyAppReady failed", err);
+        }
+      }
+      const info = await checkForceUpdate();
+      if (info?.forceUpdate) setForceUpdateInfo(info);
+    })();
+
+    // Intercept 426 responses globally
+    const origFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const res = await origFetch(...args);
+      if (res.status === 426) {
+        try {
+          const cloned = res.clone();
+          const data = await cloned.json();
+          if (data?.code === "UPGRADE_REQUIRED") {
+            setForceUpdateInfo({
+              latestVersion: data.minVersion || "",
+              minimumVersion: data.minVersion || "",
+              updateAvailable: true,
+              forceUpdate: true,
+              downloadUrl: data.downloadUrl,
+              message: data.message,
+            });
+          }
+        } catch {}
+      }
+      return res;
+    };
+    return () => {
+      window.fetch = origFetch;
+    };
   }, []);
 
   useEffect(() => {
@@ -150,6 +199,31 @@ function App() {
       stopNotificationPolling();
     };
   }, [user]);
+
+  // Force Update Modal — يحجب كل شيء إذا كان التطبيق ملزماً بالترقية
+  if (forceUpdateInfo?.forceUpdate) {
+    return (
+      <ForceUpdateModal
+        message={forceUpdateInfo.message || "يوجد تحديث إلزامي للتطبيق"}
+        downloadUrl={forceUpdateInfo.downloadUrl}
+        minVersion={forceUpdateInfo.minimumVersion}
+      />
+    );
+  }
+
+  // صفحة التنزيل العامة — متاحة بدون مصادقة
+  if (window.location.pathname.startsWith("/download")) {
+    return (
+      <>
+        <Suspense fallback={<PageSkeleton />}>
+          <Switch>
+            <Route path="/download" component={DownloadPage} />
+          </Switch>
+        </Suspense>
+        <Toaster />
+      </>
+    );
+  }
 
   if (window.location.pathname.startsWith("/parent-report/")) {
     return (
@@ -280,6 +354,8 @@ function App() {
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/users">{() => <RoleGuard roles={["admin"]} Component={AllUsersPage} />}</Route>
         <Route path="/admin-control">{() => <RoleGuard roles={["admin"]} Component={AdminControlPage} />}</Route>
+        <Route path="/admin/ota">{() => <RoleGuard roles={["admin"]} Component={OtaUpdatesPage} />}</Route>
+        <Route path="/admin/app-version">{() => <RoleGuard roles={["admin"]} Component={AppVersionPage} />}</Route>
         <Route path="/monitoring">{() => <RoleGuard roles={["admin"]} Component={MonitoringPage} />}</Route>
         <Route path="/online-users" component={OnlineUsersPage} />
         <Route path="/attendance" component={AttendancePage} />

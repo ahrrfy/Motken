@@ -2,6 +2,8 @@ import { Client } from "minio";
 import { logger } from "./logger";
 
 const BUCKET_NAME = "audio-recordings";
+const LIBRARY_BUCKET = "library-files";
+const OTA_BUCKET = "ota-bundles";
 
 let minioClient: Client | null = null;
 
@@ -112,4 +114,126 @@ export async function deleteAudio(key: string): Promise<boolean> {
  */
 export function isMinioAvailable(): boolean {
   return getMinioClient() !== null;
+}
+
+// ==================== LIBRARY BUCKET ====================
+
+export async function initLibraryBucket(): Promise<boolean> {
+  const client = getMinioClient();
+  if (!client) return false;
+  try {
+    const exists = await client.bucketExists(LIBRARY_BUCKET);
+    if (!exists) {
+      await client.makeBucket(LIBRARY_BUCKET);
+      logger.info(`MinIO bucket '${LIBRARY_BUCKET}' created`);
+    }
+    return true;
+  } catch (err: unknown) {
+    logger.error({ err }, "Library bucket init failed");
+    return false;
+  }
+}
+
+export async function uploadLibraryFile(
+  bookKey: string,
+  buffer: Buffer,
+  mimeType: string
+): Promise<string | null> {
+  const client = getMinioClient();
+  if (!client) return null;
+  try {
+    await client.putObject(LIBRARY_BUCKET, bookKey, buffer, buffer.length, {
+      "Content-Type": mimeType,
+    });
+    return bookKey;
+  } catch (err: unknown) {
+    logger.error({ err, bookKey }, "Library upload failed");
+    return null;
+  }
+}
+
+export async function getLibraryFileStream(
+  key: string
+): Promise<NodeJS.ReadableStream | null> {
+  const client = getMinioClient();
+  if (!client) return null;
+  try {
+    return await client.getObject(LIBRARY_BUCKET, key);
+  } catch (err: unknown) {
+    logger.error({ err, key }, "Library download failed");
+    return null;
+  }
+}
+
+export async function deleteLibraryFile(key: string): Promise<boolean> {
+  const client = getMinioClient();
+  if (!client) return false;
+  try {
+    await client.removeObject(LIBRARY_BUCKET, key);
+    return true;
+  } catch (err: unknown) {
+    logger.error({ err, key }, "Library delete failed");
+    return false;
+  }
+}
+
+// ==================== OTA BUCKET ====================
+
+export async function initOtaBucket(): Promise<boolean> {
+  const client = getMinioClient();
+  if (!client) return false;
+  try {
+    const exists = await client.bucketExists(OTA_BUCKET);
+    if (!exists) {
+      await client.makeBucket(OTA_BUCKET);
+      logger.info(`MinIO bucket '${OTA_BUCKET}' created`);
+    }
+    return true;
+  } catch (err: unknown) {
+    logger.error({ err }, "OTA bucket init failed");
+    return false;
+  }
+}
+
+export async function uploadOtaBundle(
+  key: string,
+  buffer: Buffer,
+  mimeType = "application/zip"
+): Promise<string | null> {
+  const client = getMinioClient();
+  if (!client) return null;
+  try {
+    await client.putObject(OTA_BUCKET, key, buffer, buffer.length, {
+      "Content-Type": mimeType,
+    });
+    return key;
+  } catch (err: unknown) {
+    logger.error({ err, key }, "OTA upload failed");
+    return null;
+  }
+}
+
+export async function getOtaBundleStream(
+  key: string
+): Promise<NodeJS.ReadableStream | null> {
+  const client = getMinioClient();
+  if (!client) return null;
+  try {
+    return await client.getObject(OTA_BUCKET, key);
+  } catch (err: unknown) {
+    logger.error({ err, key }, "OTA download failed");
+    return null;
+  }
+}
+
+export async function deleteOtaBundle(key: string): Promise<boolean> {
+  const client = getMinioClient();
+  if (!client) return false;
+  try {
+    await client.removeObject(OTA_BUCKET, key);
+    return true;
+  } catch (err: unknown) {
+    logger.error({ err, key }, "OTA delete failed");
+    return false;
+  }
 }

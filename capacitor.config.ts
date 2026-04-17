@@ -29,12 +29,24 @@ const config: CapacitorConfig = {
     CapacitorHttp: {
       enabled: true,
     },
+    CapacitorUpdater: {
+      autoUpdate: true,
+      updateUrl: 'https://sirajalquran.org/api/ota/latest',
+      statsUrl: 'https://sirajalquran.org/api/ota/stats',
+      channelUrl: 'https://sirajalquran.org/api/ota/channel',
+      appReadyTimeout: 10000,
+      responseTimeout: 20000,
+      autoDeleteFailed: true,
+      autoDeletePrevious: true,
+      directUpdate: false,
+      keepUrlPathAfterReload: true,
+    },
   },
   android: {
     allowMixedContent: false,
     backgroundColor: '#1a5c2e',
-    webContentsDebuggingEnabled: true, // مؤقت — للتصحيح
-    overrideUserAgent: 'SirajAlQuran-Android/1.0',
+    webContentsDebuggingEnabled: false,
+    overrideUserAgent: 'SirajAlQuran-Android/1.1.0',
   },
 };
 

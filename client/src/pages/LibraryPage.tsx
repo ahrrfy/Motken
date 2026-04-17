@@ -63,6 +63,10 @@ interface BookItem {
   is_pdf: boolean;
   featured: boolean;
   cover_image: string | null;
+  file_key: string | null;
+  file_size: number | null;
+  file_mime: string | null;
+  file_name: string | null;
   created_by: string;
   added_by_role: string | null;
   created_at: string;
@@ -167,6 +171,12 @@ export default function LibraryPage() {
   const [bookFeatured, setBookFeatured] = useState(false);
   const [bookSectionId, setBookSectionId] = useState<number | null>(null);
   const [bookBranchId, setBookBranchId] = useState<number | null>(null);
+  const [bookFileKey, setBookFileKey] = useState<string | null>(null);
+  const [bookFileName, setBookFileName] = useState<string | null>(null);
+  const [bookFileSize, setBookFileSize] = useState<number | null>(null);
+  const [bookFileMime, setBookFileMime] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // PDF viewer
   const [pdfViewer, setPdfViewer] = useState<{
@@ -409,6 +419,10 @@ export default function LibraryPage() {
       setBookFeatured(book.featured);
       setBookSectionId(book.section_id);
       setBookBranchId(book.branch_id);
+      setBookFileKey(book.file_key || null);
+      setBookFileName(book.file_name || null);
+      setBookFileSize(book.file_size || null);
+      setBookFileMime(book.file_mime || null);
     } else {
       setEditingBook(null);
       setBookTitle("");
@@ -419,8 +433,62 @@ export default function LibraryPage() {
       setBookFeatured(false);
       setBookSectionId(currentSection?.id || null);
       setBookBranchId(currentBranch?.id || null);
+      setBookFileKey(null);
+      setBookFileName(null);
+      setBookFileSize(null);
+      setBookFileMime(null);
     }
+    setUploadProgress(0);
+    setUploadingFile(false);
     setBookDialog(true);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    const MAX_SIZE = 100 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast({ title: "الملف كبير جداً", description: "الحد الأقصى هو 100 ميجابايت", variant: "destructive" });
+      return;
+    }
+    const extOk = /\.(pdf|docx?|txt)$/i.test(file.name);
+    if (!extOk) {
+      toast({ title: "نوع غير مدعوم", description: "الأنواع المسموحة: PDF, DOCX, DOC, TXT", variant: "destructive" });
+      return;
+    }
+    setUploadingFile(true);
+    setUploadProgress(0);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      const url = (await import("@/lib/capacitor")).API_BASE + "/api/library/books/upload-file";
+      const result: any = await new Promise((resolve, reject) => {
+        xhr.open("POST", url);
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+            else reject(new Error(data.message || "فشل الرفع"));
+          } catch {
+            reject(new Error("استجابة غير صالحة من الخادم"));
+          }
+        };
+        xhr.onerror = () => reject(new Error("فشل الاتصال بالخادم"));
+        xhr.send(fd);
+      });
+      setBookFileKey(result.fileKey);
+      setBookFileName(result.fileName);
+      setBookFileSize(result.fileSize);
+      setBookFileMime(result.fileMime);
+      toast({ title: "تم الرفع", description: `${result.fileName} (${Math.round(result.fileSize / 1024)} KB)` });
+    } catch (e: any) {
+      toast({ title: "فشل الرفع", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
   const saveBook = async () => {
@@ -444,6 +512,10 @@ export default function LibraryPage() {
         pages: bookPages ? Number(bookPages) : null,
         url: bookUrl || null,
         featured: bookFeatured,
+        fileKey: bookFileKey,
+        fileSize: bookFileSize,
+        fileMime: bookFileMime,
+        fileName: bookFileName,
       };
       if (editingBook) {
         await apiFetch(`/api/library/books/${editingBook.id}`, {
@@ -1157,9 +1229,61 @@ export default function LibraryPage() {
                 <Input type="number" value={bookPages} onChange={(e) => setBookPages(e.target.value)} placeholder="0" />
               </div>
               <div>
-                <Label>رابط الكتاب</Label>
+                <Label>رابط خارجي (اختياري)</Label>
                 <Input value={bookUrl} onChange={(e) => setBookUrl(e.target.value)} placeholder="https://..." dir="ltr" />
               </div>
+            </div>
+            <div className="rounded-lg border border-dashed p-3 space-y-2 bg-muted/30">
+              <Label className="text-sm">رفع ملف (PDF, DOCX, DOC, TXT — حتى 100 MB)</Label>
+              {bookFileKey ? (
+                <div className="flex items-center justify-between gap-2 bg-green-50 border border-green-200 rounded p-2 text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="h-4 w-4 text-green-700 shrink-0" />
+                    <div className="truncate">
+                      <div className="font-medium truncate">{bookFileName || "ملف مرفوع"}</div>
+                      {bookFileSize && (
+                        <div className="text-xs text-muted-foreground">
+                          {bookFileSize > 1024 * 1024
+                            ? `${(bookFileSize / 1024 / 1024).toFixed(2)} MB`
+                            : `${Math.round(bookFileSize / 1024)} KB`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setBookFileKey(null);
+                      setBookFileName(null);
+                      setBookFileSize(null);
+                      setBookFileMime(null);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                    disabled={uploadingFile}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  {uploadingFile && (
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      جارٍ الرفع... {uploadProgress}%
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div>
               <Label>القسم *</Label>
@@ -1314,10 +1438,24 @@ function BookCard({
                 قراءة
               </Button>
             )}
+            {book.file_key && (
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 text-xs"
+                onClick={async () => {
+                  const { API_BASE } = await import("@/lib/capacitor");
+                  window.open(`${API_BASE}/api/library/books/${book.id}/file`, "_blank");
+                }}
+              >
+                <FileText className="h-3.5 w-3.5 ml-1" />
+                تحميل
+              </Button>
+            )}
             {book.url && (
               <Button
                 size="sm"
-                variant={book.is_pdf ? "outline" : "default"}
+                variant={book.is_pdf || book.file_key ? "outline" : "default"}
                 className="h-7 text-xs"
                 onClick={() => window.open(book.url!, "_blank")}
               >

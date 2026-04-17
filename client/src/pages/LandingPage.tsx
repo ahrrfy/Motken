@@ -4,6 +4,7 @@ import {
   Smartphone, CheckCircle2, Globe, Heart, ArrowLeft, Mic, Award, BookMarked,
   Trophy, Bell, Calendar, Zap, XCircle, Sparkles, Quote
 } from "lucide-react";
+import { usePublicConfig } from "@/lib/public-config";
 
 const features = [
   { icon: BookOpen, title: "تتبع الحفظ آية بآية", desc: "تابع تقدم كل طالب في حفظ القرآن الكريم بدقة عالية مع شجرة حفظ مرئية", color: "emerald" },
@@ -115,6 +116,7 @@ export default function LandingPage() {
   const [stats, setStats] = useState({ mosques: 0, students: 0, teachers: 0, completedAssignments: 0 });
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [testimonials, setTestimonials] = useState(defaultTestimonials);
+  const { appUrl: publicAppUrl } = usePublicConfig();
 
   const refParam = new URLSearchParams(window.location.search).get("ref");
 
@@ -418,7 +420,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={() => {
-                const url = `${window.location.origin}/welcome`;
+                const url = `${publicAppUrl}/welcome`;
                 const text = `السلام عليكم 🕌\n\nاكتشفت نظام *سِرَاجُ الْقُرْآنِ* لإدارة حلقات القرآن الكريم — مجاني تماماً ووقف لله تعالى.\n\n✅ تتبع الحفظ آية بآية\n✅ تسميع صوتي عن بُعد\n✅ شهادات تخرج احترافية\n✅ تقارير لأولياء الأمور\n✅ يعمل على الجوال\n\n🔗 ${url}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
               }}
@@ -430,7 +432,7 @@ export default function LandingPage() {
             </button>
             <button
               onClick={() => {
-                const url = `${window.location.origin}/welcome`;
+                const url = `${publicAppUrl}/welcome`;
                 navigator.clipboard?.writeText(url);
               }}
               className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors"
