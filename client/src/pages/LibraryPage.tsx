@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Book, Search, BookOpen, ArrowRight, Plus, Pencil, Trash2,
   FolderOpen, ChevronLeft, Star, ExternalLink, FileText,
-  Library, Layers, BookCopy, Loader2,
+  Library, Layers, BookCopy, Loader2, Building2, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -99,6 +99,16 @@ const ICON_OPTIONS = [
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
+export class ApiError extends Error {
+  code?: string;
+  status: number;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     credentials: "include",
@@ -107,9 +117,22 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || "حدث خطأ");
+    throw new ApiError(data.message || "حدث خطأ", res.status, data.code);
   }
   return res.json();
+}
+
+// Append mosqueId query param if provided (admins only — servers for non-admins ignore it)
+function withMosque(url: string, mosqueId: string | null | undefined): string {
+  if (!mosqueId) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}mosqueId=${encodeURIComponent(mosqueId)}`;
+}
+
+interface MosqueOption {
+  id: string;
+  name: string;
+  isActive?: boolean;
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -118,10 +141,16 @@ export default function LibraryPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isAdmin = user?.role === "admin" || user?.role === "supervisor";
+  const isSuperAdmin = user?.role === "admin";
 
   // Navigation state
   const [currentSection, setCurrentSection] = useState<Section | null>(null);
   const [currentBranch, setCurrentBranch] = useState<Branch | null>(null);
+
+  // Mosque selection (admins can switch; others use their own)
+  const [mosques, setMosques] = useState<MosqueOption[]>([]);
+  const [selectedMosqueId, setSelectedMosqueId] = useState<string>(user?.mosqueId || "");
+  const [mosquesLoading, setMosquesLoading] = useState(true);
 
   // Data state
   const [sections, setSections] = useState<Section[]>([]);
@@ -181,57 +210,127 @@ export default function LibraryPage() {
 
   // ─── Data fetching ──────────────────────────────────────────────────────
 
-  const fetchSections = useCallback(async () => {
+  const fetchMosques = useCallback(async () => {
+    setMosquesLoading(true);
     try {
-      const data = await apiFetch<Section[]>("/api/library/sections");
-      setSections(data);
+      const res = await fetch("/api/mosques", { credentials: "include" });
+      if (!res.ok) throw new Error("failed");
+      const data = await res.json();
+      const arr: MosqueOption[] = Array.isArray(data) ? data : [data];
+      const active = arr.filter((m) => m && m.id && m.isActive !== false);
+      setMosques(active);
+
+      // Auto-select:
+      // - admin with one mosque → pick it
+      // - admin with multiple → require explicit choice
+      // - non-admin → always their own mosqueId (server enforces)
+      if (isSuperAdmin) {
+        if (active.length === 1) {
+          setSelectedMosqueId(active[0].id);
+        } else if (active.length > 1 && !selectedMosqueId) {
+          // stay empty until user picks
+        }
+      } else if (user?.mosqueId) {
+        setSelectedMosqueId(user.mosqueId);
+      }
     } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل الأقسام", variant: "destructive" });
+      setMosques([]);
+    } finally {
+      setMosquesLoading(false);
     }
-  }, [toast]);
+  }, [isSuperAdmin, user?.mosqueId, selectedMosqueId]);
+
+  const fetchSections = useCallback(async () => {
+    if (!selectedMosqueId && !isSuperAdmin && !user?.mosqueId) {
+      setSections([]);
+      return;
+    }
+    if (isSuperAdmin && !selectedMosqueId) {
+      setSections([]);
+      return;
+    }
+    try {
+      const data = await apiFetch<Section[]>(withMosque("/api/library/sections", selectedMosqueId));
+      setSections(data);
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.code === "MISSING_MOSQUE_ASSOCIATION") {
+        setSections([]);
+        return;
+      }
+      toast({ title: "خطأ", description: err.message || "فشل في تحميل الأقسام", variant: "destructive" });
+    }
+  }, [toast, selectedMosqueId, isSuperAdmin, user?.mosqueId]);
 
   const fetchFeaturedBooks = useCallback(async () => {
+    if (isSuperAdmin && !selectedMosqueId) {
+      setFeaturedBooks([]);
+      return;
+    }
+    if (!selectedMosqueId && !user?.mosqueId) {
+      setFeaturedBooks([]);
+      return;
+    }
     try {
-      const data = await apiFetch<BookItem[]>("/api/library/books");
+      const data = await apiFetch<BookItem[]>(withMosque("/api/library/books", selectedMosqueId));
       setFeaturedBooks(data.filter((b) => b.featured));
     } catch {
       // silent
     }
-  }, []);
+  }, [selectedMosqueId, isSuperAdmin, user?.mosqueId]);
 
   const fetchBranches = useCallback(async (sectionId: number) => {
     setBooksLoading(true);
     try {
       const [branchData, bookData] = await Promise.all([
-        apiFetch<Branch[]>(`/api/library/branches/${sectionId}`),
-        apiFetch<BookItem[]>(`/api/library/books?sectionId=${sectionId}`),
+        apiFetch<Branch[]>(withMosque(`/api/library/branches/${sectionId}`, selectedMosqueId)),
+        apiFetch<BookItem[]>(withMosque(`/api/library/books?sectionId=${sectionId}`, selectedMosqueId)),
       ]);
       setBranches(branchData);
       setBooks(bookData);
-    } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل البيانات", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "خطأ", description: (e as Error).message || "فشل في تحميل البيانات", variant: "destructive" });
     } finally {
       setBooksLoading(false);
     }
-  }, [toast]);
+  }, [toast, selectedMosqueId]);
 
   const fetchBranchBooks = useCallback(async (branchId: number) => {
     setBooksLoading(true);
     try {
-      const data = await apiFetch<BookItem[]>(`/api/library/books?branchId=${branchId}`);
+      const data = await apiFetch<BookItem[]>(withMosque(`/api/library/books?branchId=${branchId}`, selectedMosqueId));
       setBooks(data);
-    } catch {
-      toast({ title: "خطأ", description: "فشل في تحميل الكتب", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "خطأ", description: (e as Error).message || "فشل في تحميل الكتب", variant: "destructive" });
     } finally {
       setBooksLoading(false);
     }
-  }, [toast]);
+  }, [toast, selectedMosqueId]);
 
-  // Initial load
+  // Initial mosque load
   useEffect(() => {
+    fetchMosques();
+  }, [fetchMosques]);
+
+  // Load library content whenever the selected mosque changes
+  useEffect(() => {
+    const hasMosque = isSuperAdmin ? !!selectedMosqueId : !!(selectedMosqueId || user?.mosqueId);
+    if (!hasMosque) {
+      setLoading(false);
+      setSections([]);
+      setFeaturedBooks([]);
+      return;
+    }
     setLoading(true);
+    // Reset navigation when switching mosque
+    setCurrentSection(null);
+    setCurrentBranch(null);
+    setBranches([]);
+    setBooks([]);
+    setSearchResults(null);
     Promise.all([fetchSections(), fetchFeaturedBooks()]).finally(() => setLoading(false));
-  }, [fetchSections, fetchFeaturedBooks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMosqueId]);
 
   // ─── Navigation ─────────────────────────────────────────────────────────
 
@@ -282,14 +381,16 @@ export default function LibraryPage() {
     }
     setSearching(true);
     try {
-      const data = await apiFetch<BookItem[]>(`/api/library/books?search=${encodeURIComponent(q)}`);
+      const data = await apiFetch<BookItem[]>(
+        withMosque(`/api/library/books?search=${encodeURIComponent(q)}`, selectedMosqueId),
+      );
       setSearchResults(data);
     } catch {
       toast({ title: "خطأ", description: "فشل في البحث", variant: "destructive" });
     } finally {
       setSearching(false);
     }
-  }, [searchQuery, toast]);
+  }, [searchQuery, toast, selectedMosqueId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -316,9 +417,31 @@ export default function LibraryPage() {
     setSectionDialog(true);
   };
 
+  const effectiveMosqueId = selectedMosqueId || user?.mosqueId || "";
+
+  const handleMosqueAssociationError = (err: ApiError): boolean => {
+    if (err.code !== "MISSING_MOSQUE_ASSOCIATION") return false;
+    toast({
+      title: isSuperAdmin ? "اختر مسجداً" : "حساب غير مرتبط بمسجد",
+      description: err.message,
+      variant: "destructive",
+    });
+    return true;
+  };
+
   const saveSection = async () => {
     if (!formName.trim()) {
       toast({ title: "خطأ", description: "اسم القسم مطلوب", variant: "destructive" });
+      return;
+    }
+    if (!effectiveMosqueId) {
+      toast({
+        title: isSuperAdmin ? "اختر مسجداً" : "حساب غير مرتبط بمسجد",
+        description: isSuperAdmin
+          ? "يرجى اختيار مسجد أولاً من أعلى الصفحة."
+          : "لا يوجد مسجد مرتبط بحسابك. يرجى التواصل مع إدارة النظام.",
+        variant: "destructive",
+      });
       return;
     }
     setSaving(true);
@@ -326,20 +449,32 @@ export default function LibraryPage() {
       if (editingSection) {
         await apiFetch(`/api/library/sections/${editingSection.id}`, {
           method: "PUT",
-          body: JSON.stringify({ name: formName, description: formDescription || null, icon: formIcon }),
+          body: JSON.stringify({
+            name: formName,
+            description: formDescription || null,
+            icon: formIcon,
+            mosqueId: effectiveMosqueId,
+          }),
         });
         toast({ title: "تم التحديث", description: "تم تحديث القسم بنجاح" });
       } else {
         await apiFetch("/api/library/sections", {
           method: "POST",
-          body: JSON.stringify({ name: formName, description: formDescription || null, icon: formIcon }),
+          body: JSON.stringify({
+            name: formName,
+            description: formDescription || null,
+            icon: formIcon,
+            mosqueId: effectiveMosqueId,
+          }),
         });
         toast({ title: "تمت الإضافة", description: "تم إنشاء القسم بنجاح" });
       }
       setSectionDialog(false);
       await fetchSections();
-    } catch (e: any) {
-      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } catch (e) {
+      const err = e as ApiError;
+      if (handleMosqueAssociationError(err)) return;
+      toast({ title: "خطأ", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -372,25 +507,46 @@ export default function LibraryPage() {
       toast({ title: "خطأ", description: "يجب تحديد القسم", variant: "destructive" });
       return;
     }
+    if (!effectiveMosqueId) {
+      toast({
+        title: isSuperAdmin ? "اختر مسجداً" : "حساب غير مرتبط بمسجد",
+        description: isSuperAdmin
+          ? "يرجى اختيار مسجد أولاً من أعلى الصفحة."
+          : "لا يوجد مسجد مرتبط بحسابك.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       if (editingBranch) {
         await apiFetch(`/api/library/branches/${editingBranch.id}`, {
           method: "PUT",
-          body: JSON.stringify({ name: formName, description: formDescription || null }),
+          body: JSON.stringify({
+            name: formName,
+            description: formDescription || null,
+            mosqueId: effectiveMosqueId,
+          }),
         });
         toast({ title: "تم التحديث", description: "تم تحديث الفرع بنجاح" });
       } else {
         await apiFetch("/api/library/branches", {
           method: "POST",
-          body: JSON.stringify({ sectionId, name: formName, description: formDescription || null }),
+          body: JSON.stringify({
+            sectionId,
+            name: formName,
+            description: formDescription || null,
+            mosqueId: effectiveMosqueId,
+          }),
         });
         toast({ title: "تمت الإضافة", description: "تم إنشاء الفرع بنجاح" });
       }
       setBranchDialog(false);
       if (currentSection) await fetchBranches(currentSection.id);
-    } catch (e: any) {
-      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } catch (e) {
+      const err = e as ApiError;
+      if (handleMosqueAssociationError(err)) return;
+      toast({ title: "خطأ", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -433,6 +589,16 @@ export default function LibraryPage() {
       toast({ title: "خطأ", description: "يجب تحديد القسم", variant: "destructive" });
       return;
     }
+    if (!effectiveMosqueId) {
+      toast({
+        title: isSuperAdmin ? "اختر مسجداً" : "حساب غير مرتبط بمسجد",
+        description: isSuperAdmin
+          ? "يرجى اختيار مسجد أولاً من أعلى الصفحة."
+          : "لا يوجد مسجد مرتبط بحسابك.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -444,6 +610,7 @@ export default function LibraryPage() {
         pages: bookPages ? Number(bookPages) : null,
         url: bookUrl || null,
         featured: bookFeatured,
+        mosqueId: effectiveMosqueId,
       };
       if (editingBook) {
         await apiFetch(`/api/library/books/${editingBook.id}`, {
@@ -466,8 +633,10 @@ export default function LibraryPage() {
         await fetchBranches(currentSection.id);
       }
       await fetchFeaturedBooks();
-    } catch (e: any) {
-      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } catch (e) {
+      const err = e as ApiError;
+      if (handleMosqueAssociationError(err)) return;
+      toast({ title: "خطأ", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -479,9 +648,11 @@ export default function LibraryPage() {
     if (!deleteDialog) return;
     setSaving(true);
     try {
-      await apiFetch(`/api/library/${deleteDialog.type === "section" ? "sections" : deleteDialog.type === "branch" ? "branches" : "books"}/${deleteDialog.id}`, {
-        method: "DELETE",
-      });
+      const pathSegment = deleteDialog.type === "section" ? "sections" : deleteDialog.type === "branch" ? "branches" : "books";
+      await apiFetch(
+        withMosque(`/api/library/${pathSegment}/${deleteDialog.id}`, selectedMosqueId),
+        { method: "DELETE" },
+      );
       toast({ title: "تم الحذف", description: `تم حذف ${deleteDialog.name} بنجاح` });
       setDeleteDialog(null);
 
@@ -499,8 +670,10 @@ export default function LibraryPage() {
         else if (currentSection) await fetchBranches(currentSection.id);
         await fetchFeaturedBooks();
       }
-    } catch (e: any) {
-      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } catch (e) {
+      const err = e as ApiError;
+      if (handleMosqueAssociationError(err)) return;
+      toast({ title: "خطأ", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -524,6 +697,16 @@ export default function LibraryPage() {
       toast({ title: "خطأ", description: "لا يوجد قسم لإضافة الكتاب إليه. أنشئ قسماً أولاً.", variant: "destructive" });
       return;
     }
+    if (!effectiveMosqueId) {
+      toast({
+        title: isSuperAdmin ? "اختر مسجداً" : "حساب غير مرتبط بمسجد",
+        description: isSuperAdmin
+          ? "يرجى اختيار مسجد أولاً من أعلى الصفحة."
+          : "لا يوجد مسجد مرتبط بحسابك.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       await apiFetch("/api/library/books", {
         method: "POST",
@@ -537,6 +720,7 @@ export default function LibraryPage() {
           isPdf: uploadData.isPdf || false,
           pdfStorageKey: uploadData.pdfStorageKey || null,
           featured: false,
+          mosqueId: effectiveMosqueId,
         }),
       });
       toast({ title: "تمت الإضافة", description: "تم رفع الكتاب بنجاح" });
@@ -544,8 +728,10 @@ export default function LibraryPage() {
       if (currentBranch) await fetchBranchBooks(currentBranch.id);
       else if (currentSection) await fetchBranches(currentSection.id);
       await fetchFeaturedBooks();
-    } catch (e: any) {
-      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } catch (e) {
+      const err = e as ApiError;
+      if (handleMosqueAssociationError(err)) return;
+      toast({ title: "خطأ", description: err.message, variant: "destructive" });
     }
   };
 
@@ -561,13 +747,13 @@ export default function LibraryPage() {
 
   useEffect(() => {
     if (bookDialog && bookSectionId) {
-      apiFetch<Branch[]>(`/api/library/branches/${bookSectionId}`)
+      apiFetch<Branch[]>(withMosque(`/api/library/branches/${bookSectionId}`, selectedMosqueId))
         .then(setAvailableBranches)
         .catch(() => setAvailableBranches([]));
     } else {
       setAvailableBranches([]);
     }
-  }, [bookDialog, bookSectionId]);
+  }, [bookDialog, bookSectionId, selectedMosqueId]);
 
   // ─── Get section names for upload dialog categories ─────────────────────
 
@@ -630,8 +816,41 @@ export default function LibraryPage() {
     );
   }
 
+  const noMosqueForNonAdmin = !isSuperAdmin && !user?.mosqueId && !mosquesLoading;
+  const adminNeedsMosquePick = isSuperAdmin && !selectedMosqueId && !mosquesLoading;
+  const canManage = isAdmin && !!effectiveMosqueId;
+  const manageDisabledReason = isSuperAdmin
+    ? "اختر مسجداً أولاً من أعلى الصفحة"
+    : "لا يوجد مسجد مرتبط بحسابك";
+
   return (
     <div dir="rtl" className="min-h-screen bg-background p-4 md:p-6 max-w-7xl mx-auto">
+      {/* Mosque selector (admins only) */}
+      {isSuperAdmin && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 bg-card rounded-lg border p-3" data-testid="library-mosque-selector">
+          <Label className="font-semibold flex items-center gap-2 shrink-0">
+            <Building2 className="h-4 w-4 text-primary" />
+            إدارة مكتبة مسجد:
+          </Label>
+          {mosquesLoading ? (
+            <Skeleton className="h-10 w-full sm:max-w-md" />
+          ) : mosques.length === 0 ? (
+            <span className="text-sm text-muted-foreground">لا توجد مساجد نشطة</span>
+          ) : (
+            <Select value={selectedMosqueId} onValueChange={setSelectedMosqueId}>
+              <SelectTrigger className="sm:max-w-md" data-testid="select-mosque">
+                <SelectValue placeholder="اختر مسجداً لإدارة مكتبته..." />
+              </SelectTrigger>
+              <SelectContent>
+                {mosques.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
@@ -654,24 +873,47 @@ export default function LibraryPage() {
         {isAdmin && (
           <div className="flex items-center gap-2 flex-wrap">
             {!currentSection && (
-              <Button size="sm" onClick={() => openSectionDialog()}>
+              <Button
+                size="sm"
+                onClick={() => openSectionDialog()}
+                disabled={!canManage}
+                title={!canManage ? manageDisabledReason : undefined}
+                data-testid="btn-new-section"
+              >
                 <Plus className="h-4 w-4 ml-1" />
                 قسم جديد
               </Button>
             )}
             {currentSection && !currentBranch && (
-              <Button size="sm" variant="outline" onClick={() => openBranchDialog()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openBranchDialog()}
+                disabled={!canManage}
+                title={!canManage ? manageDisabledReason : undefined}
+              >
                 <Plus className="h-4 w-4 ml-1" />
                 فرع جديد
               </Button>
             )}
             {currentSection && (
               <>
-                <Button size="sm" onClick={() => openBookDialog()}>
+                <Button
+                  size="sm"
+                  onClick={() => openBookDialog()}
+                  disabled={!canManage}
+                  title={!canManage ? manageDisabledReason : undefined}
+                >
                   <Plus className="h-4 w-4 ml-1" />
                   كتاب جديد
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => setUploadDialog(true)}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setUploadDialog(true)}
+                  disabled={!canManage}
+                  title={!canManage ? manageDisabledReason : undefined}
+                >
                   <FileText className="h-4 w-4 ml-1" />
                   رفع PDF
                 </Button>
@@ -681,9 +923,31 @@ export default function LibraryPage() {
         )}
       </div>
 
-      <Breadcrumb />
+      {/* Empty states (blocking) */}
+      {noMosqueForNonAdmin && (
+        <Card className="p-8 text-center" data-testid="library-no-mosque-empty">
+          <AlertCircle className="h-14 w-14 mx-auto mb-4 text-destructive opacity-70" />
+          <h2 className="text-lg font-bold mb-2">حسابك غير مرتبط بمسجد</h2>
+          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+            لا يمكن عرض مكتبة أو إنشاء محتوى قبل ربط حسابك بمسجد. يرجى التواصل مع إدارة النظام لإكمال ربط حسابك.
+          </p>
+        </Card>
+      )}
+
+      {adminNeedsMosquePick && (
+        <Card className="p-8 text-center" data-testid="library-admin-pick-mosque">
+          <Building2 className="h-14 w-14 mx-auto mb-4 text-primary opacity-70" />
+          <h2 className="text-lg font-bold mb-2">اختر مسجداً لإدارة مكتبته</h2>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            يرجى اختيار مسجد من القائمة أعلى الصفحة لعرض أقسامه وكتبه وإدارتها.
+          </p>
+        </Card>
+      )}
+
+      {!noMosqueForNonAdmin && !adminNeedsMosquePick && <Breadcrumb />}
 
       {/* Search bar */}
+      {!noMosqueForNonAdmin && !adminNeedsMosquePick && (
       <div className="relative mb-6 max-w-lg">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -694,6 +958,11 @@ export default function LibraryPage() {
         />
         {searching && <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
       </div>
+      )}
+
+      {/* Everything below only shows when we have a working mosque context */}
+      {!noMosqueForNonAdmin && !adminNeedsMosquePick && (
+      <>
 
       {/* Search results */}
       {searchResults !== null && (
@@ -1051,6 +1320,9 @@ export default function LibraryPage() {
             </div>
           )}
         </>
+      )}
+
+      </>
       )}
 
       {/* ─── Section Dialog ─────────────────────────────────────────────── */}
