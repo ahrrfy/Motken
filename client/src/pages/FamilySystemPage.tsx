@@ -133,12 +133,7 @@ export default function FamilySystemPage() {
   // -------- Family Links state --------
   const [links, setLinks] = useState<FamilyLink[]>([]);
   const [linksLoading, setLinksLoading] = useState(true);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const [parentPhone, setParentPhone] = useState("");
-  const [linkStudentId, setLinkStudentId] = useState("");
-  const [relationship, setRelationship] = useState("parent");
 
   const [searchPhone, setSearchPhone] = useState("");
   const [searching, setSearching] = useState(false);
@@ -246,6 +241,55 @@ export default function FamilySystemPage() {
     }
   };
 
+  // ─── اكتشاف تلقائي: ملء بيانات حساب ولي الأمر من عائلة مقترحة ────────────
+  const autoFillAndOpenParentDialog = (
+    family: { groupKey: string; matchType: string; matchValue: string; members: Array<{ id: string; name: string; gender?: string; role: string }> },
+    studentMembers: Array<{ id: string; name: string; gender?: string; role: string }>,
+    _teacherMember?: { id: string; name: string; role: string },
+  ) => {
+    // الهاتف: matchValue إذا كان "رقم هاتف مشترك"
+    const phone = family.matchType === "shared_phone" ? family.matchValue : "";
+
+    // اسم مقترح: من الأب (اسم عائلة الطلاب) — آخر كلمة من اسم أول طالب
+    const firstStudentName = studentMembers[0]?.name || "";
+    const nameTokens = firstStudentName.trim().split(/\s+/).filter(Boolean);
+    const familyName = nameTokens.length >= 2 ? nameTokens.slice(-2).join(" ") : firstStudentName;
+    const suggestedName = familyName ? `ولي أمر ${familyName}` : "ولي الأمر";
+
+    // اسم مستخدم مقترح: parent_<آخر 6 أرقام من الهاتف>
+    const phoneDigits = phone.replace(/[^\d]/g, "");
+    const suggestedUsername = phoneDigits ? `parent_${phoneDigits.slice(-6)}` : "";
+
+    // كلمة مرور عشوائية 6 أرقام
+    const suggestedPassword = String(Math.floor(100000 + Math.random() * 900000));
+
+    // طلاب محددون تلقائياً من أعضاء العائلة
+    const studentIds = studentMembers.map(s => s.id);
+
+    // ملء كل الحقول + فتح النافذة
+    setParentFormPhone(phone);
+    setParentName(suggestedName);
+    setParentUsername(suggestedUsername);
+    setParentPassword(suggestedPassword);
+    setParentGender("male");
+    setSelectedStudentIds(studentIds);
+    // إضافة الطلاب إلى detectedStudents ليظهروا في القائمة
+    setDetectedStudents(studentMembers.map(s => ({
+      id: s.id,
+      name: s.name,
+      gender: s.gender || null,
+      level: null,
+      parentPhone: phone || null,
+    })));
+    setParentDialogOpen(true);
+
+    toast({
+      title: "تم ملء البيانات تلقائياً",
+      description: `تحقق من البيانات ثم اضغط "إنشاء حساب ولي الأمر"`,
+      className: "bg-amber-50 border-amber-200 text-amber-900",
+    });
+  };
+
   const handleCreateParentAccount = async () => {
     if (!parentName || !parentUsername || !parentPassword || !parentAccountPhone) {
       toast({ title: "خطأ", description: "جميع الحقول مطلوبة", variant: "destructive" });
@@ -308,37 +352,6 @@ export default function FamilySystemPage() {
       toast({ title: "خطأ", description: "فشل في تحميل الروابط العائلية", variant: "destructive" });
     } finally {
       setLinksLoading(false);
-    }
-  };
-
-  const handleCreate = async () => {
-    if (!parentPhone || !linkStudentId) {
-      toast({ title: "خطأ", description: "رقم الهاتف واختيار الطالب مطلوبان", variant: "destructive" });
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/family-links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ parentPhone, studentId: linkStudentId, relationship }),
-      });
-      if (res.ok) {
-        toast({ title: "تم بنجاح", description: "تم إنشاء الرابط العائلي", className: "bg-green-50 border-green-200 text-green-800" });
-        setLinkDialogOpen(false);
-        setParentPhone("");
-        setLinkStudentId("");
-        setRelationship("parent");
-        fetchLinks();
-      } else {
-        const err = await res.json();
-        toast({ title: "خطأ", description: err.message || "فشل في إنشاء الرابط", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "خطأ", description: "خطأ في الاتصال بالخادم", variant: "destructive" });
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -861,7 +874,32 @@ export default function FamilySystemPage() {
                   {createdAccountInfo && (() => {
                     const info = createdAccountInfo;
                     const loginUrl = publicAppUrl;
-                    const messageText = `مرحباً ${info.name}\nتم إنشاء حسابك في سِرَاجُ الْقُرْآنِ\n\nاسم المستخدم: ${info.username}\nكلمة المرور: ${info.password}\nرابط الدخول: ${loginUrl}\n\nالطلاب المرتبطين: ${info.studentNames.join("، ")}`;
+                    const messageText = [
+                      `السلام عليكم ورحمة الله وبركاته`,
+                      ``,
+                      `أهلاً بكم ${info.name} في منظومة *سِرَاجُ الْقُرْآنِ* 🌙`,
+                      `تم إنشاء حسابكم لمتابعة أبنائكم في حلقات حفظ وتعليم القرآن.`,
+                      ``,
+                      `👤 *بيانات الدخول:*`,
+                      `• اسم المستخدم: ${info.username}`,
+                      `• كلمة المرور: ${info.password}`,
+                      ``,
+                      `🔗 *رابط الدخول:*`,
+                      loginUrl,
+                      ``,
+                      `👨‍👩‍👦 *أبناؤكم المرتبطون بالحساب:*`,
+                      ...info.studentNames.map((n) => `• ${n}`),
+                      ``,
+                      `📱 *إرشادات سريعة:*`,
+                      `1. افتح الرابط أعلاه في المتصفح.`,
+                      `2. اضغط "تسجيل الدخول" وأدخل بيانات حسابك.`,
+                      `3. من الصفحة الرئيسية تستطيع متابعة الحضور، الواجبات، التقارير، والتقييم.`,
+                      `4. ستصلك إشعارات فورية عند أي مستجد يخص أبناءك.`,
+                      ``,
+                      `🔒 *ملاحظة أمان:* احتفظ بكلمة المرور في مكان آمن ولا تُشاركها مع أحد.`,
+                      ``,
+                      `نشكركم على ثقتكم، ونسأل الله أن يبارك في أبنائكم.`,
+                    ].join("\n");
                     return (
                       <div className="space-y-3 mt-2">
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2 text-sm">
@@ -886,7 +924,11 @@ export default function FamilySystemPage() {
                           <Button
                             className="gap-2 bg-green-600 hover:bg-green-700"
                             onClick={() => {
-                              const waUrl = `https://wa.me/${info.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(messageText)}`;
+                              const waUrl = getWhatsAppUrl(info.phone, messageText);
+                              if (!waUrl) {
+                                toast({ title: "خطأ", description: "رقم الهاتف غير صالح", variant: "destructive" });
+                                return;
+                              }
                               window.open(waUrl, "_blank");
                             }}
                           >
@@ -900,52 +942,6 @@ export default function FamilySystemPage() {
                 </DialogContent>
               </Dialog>
 
-              <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" data-testid="button-create-family-link">
-                    <Plus className="w-4 h-4 ml-1" />
-                    إنشاء رابط عائلي
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg" dir="rtl">
-                  <DialogHeader>
-                    <DialogTitle>إنشاء رابط عائلي جديد</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>هاتف ولي الأمر *</Label>
-                      <Input value={parentPhone} onChange={e => setParentPhone(e.target.value)} placeholder="07xxxxxxxxx" data-testid="input-parent-phone" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>اختر الطالب *</Label>
-                      <SearchableSelect
-                        options={students.map(s => ({ value: s.id, label: s.name }))}
-                        value={linkStudentId}
-                        onValueChange={setLinkStudentId}
-                        placeholder="اختر الطالب"
-                        searchPlaceholder="ابحث عن طالب..."
-                        emptyText="لا يوجد طالب بهذا الاسم"
-                        data-testid="select-student"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>صلة القرابة</Label>
-                      <Select value={relationship} onValueChange={setRelationship}>
-                        <SelectTrigger data-testid="select-relationship"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="parent">ولي أمر</SelectItem>
-                          <SelectItem value="guardian">وصي</SelectItem>
-                          <SelectItem value="sibling">أخ/أخت</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleCreate} disabled={!parentPhone || !linkStudentId || submitting} className="w-full" data-testid="button-confirm-create-link">
-                      {submitting && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-                      إنشاء الرابط
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
             </div>
           )}
 
@@ -1015,7 +1011,13 @@ export default function FamilySystemPage() {
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-primary" />
                   لوحة العائلة - {searchPhone}
-                  <a href={`https://wa.me/964${searchPhone}`} target="_blank" rel="noopener noreferrer" className="mr-auto" data-testid="link-whatsapp-dashboard">
+                  <a
+                    href={getWhatsAppUrl(searchPhone, `السلام عليكم\nنود إطلاعكم على متابعة أبنائكم في حلقات سِرَاجُ الْقُرْآنِ.\nيمكنكم زيارة لوحة العائلة عبر: ${publicAppUrl}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mr-auto"
+                    data-testid="link-whatsapp-dashboard"
+                  >
                     <Button size="sm" variant="outline" className="text-green-600 border-green-300">
                       <MessageCircle className="w-4 h-4 ml-1" />
                       واتساب
@@ -1068,29 +1070,45 @@ export default function FamilySystemPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {suggestedFamilies.map(family => (
-                  <div key={family.groupKey} className="flex items-center justify-between p-3 bg-white dark:bg-stone-900 rounded-lg border">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant={family.matchType === "teacher_parent" ? "default" : "secondary"} className="text-xs">
-                          {family.matchType === "teacher_parent" ? "أستاذ = ولي أمر" : "رقم هاتف مشترك"}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">{family.matchValue}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {family.members.map((m, i) => (
-                          <span key={m.id} className="inline-flex items-center gap-1">
-                            {i > 0 && <span className="text-muted-foreground mx-0.5">·</span>}
-                            <span className="text-sm font-bold bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                              {m.name}
+                {suggestedFamilies.map(family => {
+                  const students = family.members.filter(m => m.role === "student");
+                  const teacherMember = family.members.find(m => m.role === "teacher");
+                  const canAutoCreate = students.length > 0 && family.matchType === "shared_phone";
+                  return (
+                    <div key={family.groupKey} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white dark:bg-stone-900 rounded-lg border">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant={family.matchType === "teacher_parent" ? "default" : "secondary"} className="text-xs">
+                            {family.matchType === "teacher_parent" ? "أستاذ = ولي أمر" : "رقم هاتف مشترك"}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground font-mono" dir="ltr">{family.matchValue}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {family.members.map((m, i) => (
+                            <span key={m.id} className="inline-flex items-center gap-1">
+                              {i > 0 && <span className="text-muted-foreground mx-0.5">·</span>}
+                              <span className="text-sm font-bold bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                                {m.name}
+                              </span>
+                              {m.role === "teacher" && <Badge variant="outline" className="text-xs">أستاذ</Badge>}
                             </span>
-                            {m.role === "teacher" && <Badge variant="outline" className="text-xs">أستاذ</Badge>}
-                          </span>
-                        ))}
+                          ))}
+                        </div>
                       </div>
+                      {canAutoCreate && (
+                        <Button
+                          size="sm"
+                          className="gap-1.5 shrink-0 bg-amber-600 hover:bg-amber-700 text-white"
+                          onClick={() => autoFillAndOpenParentDialog(family, students, teacherMember)}
+                          data-testid={`button-auto-create-parent-${family.groupKey}`}
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          إنشاء حساب وملء تلقائي
+                        </Button>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
@@ -1144,7 +1162,15 @@ export default function FamilySystemPage() {
                           <TableCell data-testid={`text-date-${link.id}`}>{formatDateAr(link.createdAt)}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              <a href={`https://wa.me/964${link.parentPhone}`} target="_blank" rel="noopener noreferrer" data-testid={`link-whatsapp-${link.id}`}>
+                              <a
+                                href={getWhatsAppUrl(
+                                  link.parentPhone,
+                                  `السلام عليكم\nنود التواصل معكم بخصوص ${getStudentName(link.studentId, link.studentName)}.\nيمكنكم متابعة تقدّمه عبر: ${publicAppUrl}`,
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                data-testid={`link-whatsapp-${link.id}`}
+                              >
                                 <Button size="sm" variant="ghost" className="text-green-600">
                                   <MessageCircle className="w-4 h-4" />
                                 </Button>

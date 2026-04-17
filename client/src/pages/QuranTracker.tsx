@@ -105,7 +105,16 @@ export default function QuranTracker() {
   // ─── الواجهة ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#fdf6e3] dark:bg-[#1a1209]" dir="rtl">
+    <div
+      className="bg-[#fdf6e3] dark:bg-[#1a1209]"
+      dir="rtl"
+      style={{
+        // استخدم dvh (dynamic viewport height) ليتناسب مع Android (حيث شريط المتصفح يتغير)
+        minHeight: "100dvh",
+        // السماح بالتمرير العادي بإصبع واحد + pinch-zoom
+        touchAction: "pan-y pinch-zoom",
+      }}
+    >
 
       {/* ── شريط التنقل الثابت ── */}
       <div className="sticky top-0 z-10 bg-[#fdf6e3]/95 dark:bg-[#1a1209]/95 backdrop-blur border-b border-amber-200/60 dark:border-amber-900/40 shadow-sm">
@@ -209,7 +218,11 @@ export default function QuranTracker() {
       </div>
 
       {/* ── صفحة المصحف ── */}
-      <div ref={containerRef} className="max-w-3xl mx-auto px-2 pb-12 overflow-auto">
+      <div
+        ref={containerRef}
+        className="max-w-3xl mx-auto px-2 pb-20"
+        style={{ touchAction: "pan-y pinch-zoom" }}
+      >
 
         {/* حالة التحميل */}
         {loading && (
@@ -267,7 +280,8 @@ export default function QuranTracker() {
                   onLoad={handleImageLoad}
                   onError={handleImageError}
                   className="select-none w-full h-auto"
-                  style={{ touchAction: "pinch-zoom" }}
+                  // pan-y يسمح بالتمرير العادي بإصبع واحد، pinch-zoom يسمح بالتكبير باصبعين
+                  style={{ touchAction: "pan-y pinch-zoom" }}
                   draggable={false}
                 />
                 {/* الزخرفة السفلية */}
