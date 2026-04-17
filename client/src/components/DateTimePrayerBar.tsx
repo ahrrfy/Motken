@@ -4,18 +4,35 @@ import { Clock, Calendar, Moon, Bell, X } from "lucide-react";
 import { showLocalNotification } from "@/lib/notifications";
 
 let athanAudio: HTMLAudioElement | null = null;
+let athanEndedHandler: (() => void) | null = null;
 
-function playPrayerSound() {
+function playPrayerSound(onEnded?: () => void) {
   try {
     // إيقاف أي أذان سابق
     if (athanAudio) {
+      if (athanEndedHandler) {
+        athanAudio.removeEventListener("ended", athanEndedHandler);
+      }
       athanAudio.pause();
       athanAudio.currentTime = 0;
     }
     athanAudio = new Audio("/sounds/athan-madinah.mp3");
-    athanAudio.volume = 0.7;
+    athanAudio.volume = 1.0; // الصوت كامل
+    athanAudio.preload = "auto";
+
+    // الاستماع لانتهاء التشغيل الطبيعي
+    athanEndedHandler = () => {
+      if (athanAudio) {
+        athanAudio.removeEventListener("ended", athanEndedHandler!);
+        athanAudio = null;
+      }
+      athanEndedHandler = null;
+      if (onEnded) onEnded();
+    };
+    athanAudio.addEventListener("ended", athanEndedHandler);
+
     athanAudio.play().catch(() => {
-      // fallback: صوت بسيط إذا لم يتوفر ملف الأذان
+      // fallback: صوت بسيط إذا لم يتوفر ملف الأذان أو فشل التشغيل
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -25,12 +42,19 @@ function playPrayerSound() {
       gain.gain.value = 0.3;
       osc.start();
       osc.stop(ctx.currentTime + 0.5);
+      if (onEnded) setTimeout(onEnded, 600);
     });
-  } catch {}
+  } catch {
+    if (onEnded) onEnded();
+  }
 }
 
 function stopPrayerSound() {
   if (athanAudio) {
+    if (athanEndedHandler) {
+      athanAudio.removeEventListener("ended", athanEndedHandler);
+      athanEndedHandler = null;
+    }
     athanAudio.pause();
     athanAudio.currentTime = 0;
     athanAudio = null;
@@ -180,10 +204,19 @@ export default function DateTimePrayerBar() {
       const diff = prayer.time.getTime() - now.getTime();
       if (diff >= 0 && diff <= 60000 && !alertedPrayers.has(prayer.key)) {
         setPrayerAlert(prayer.name);
-        playPrayerSound();
-        showLocalNotification("سِرَاجُ الْقُرْآنِ - حان وقت الصلاة", `حان الآن موعد صلاة ${prayer.name}\nحيّ على الصلاة.. حيّ على الفلاح`, `prayer-${prayer.key}`);
+        // يشغّل الأذان كاملاً ويخفي التنبيه تلقائياً عند انتهائه
+        playPrayerSound(() => setPrayerAlert(null));
+        showLocalNotification(
+          "سِرَاجُ الْقُرْآنِ - حان وقت الصلاة",
+          `حان الآن موعد صلاة ${prayer.name}\nحيّ على الصلاة.. حيّ على الفلاح`,
+          `prayer-${prayer.key}`,
+        );
         setAlertedPrayers(prev => new Set(prev).add(prayer.key));
-        setTimeout(() => { stopPrayerSound(); setPrayerAlert(null); }, 30000);
+        // شبكة أمان: أقصى مدة للعرض 10 دقائق (حتى لو فشل حدث ended)
+        setTimeout(() => {
+          stopPrayerSound();
+          setPrayerAlert((curr) => (curr === prayer.name ? null : curr));
+        }, 10 * 60 * 1000);
         break;
       }
     }

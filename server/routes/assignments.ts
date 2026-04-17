@@ -234,6 +234,36 @@ export function registerAssignmentsRoutes(app: Express) {
     if (req.body.status === "done" && assignment.hasAudio) {
       updateData.audioGradedAt = new Date();
     }
+
+    // ⚡ حذف فوري للتسميع الصوتي عند إعطاء الدرجة (من السيرفر + MinIO)
+    const gradingRecording =
+      req.body.grade !== undefined && assignment.hasAudio && assignment.grade === null;
+    if (gradingRecording) {
+      const assignmentIdStr = String(req.params.id);
+      try {
+        // 1) اجلب audioKey من الـ DB قبل الحذف (لإزالته من MinIO)
+        const [audioRow] = await db
+          .select()
+          .from(assignmentAudio)
+          .where(eq(assignmentAudio.assignmentId, assignmentIdStr));
+        // 2) احذف من MinIO أولاً (إذا كان مخزَّناً هناك)
+        if (audioRow?.audioKey) {
+          try { await deleteFromMinio(audioRow.audioKey); } catch {}
+        }
+        // 3) احذف السجل من DB (يحذف أيضاً أي base64 fallback)
+        await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, assignmentIdStr));
+        // 4) صفّر أعلام التسميع على الواجب
+        updateData.hasAudio = false;
+        updateData.audioFileName = null;
+        updateData.audioUploadedAt = null;
+        updateData.audioGradedAt = null;
+        console.log(`[تسميع] حُذف فوراً بعد التقييم — الواجب ${assignmentIdStr}`);
+      } catch (cleanErr) {
+        console.error(`[تسميع] فشل الحذف الفوري — الواجب ${assignmentIdStr}:`, cleanErr);
+        // نكمل تحديث الدرجة حتى لو فشل حذف الصوت (يلتقطه cleanup interval لاحقاً)
+      }
+    }
+
     const updated = await storage.updateAssignment(req.params.id, updateData);
     if (!updated) return res.status(404).json({ message: "الواجب غير موجود" });
     // نقاط تلقائية عند إتمام الواجب
@@ -458,25 +488,37 @@ export function registerAssignmentsRoutes(app: Express) {
     }
   });
 
+  // شبكة أمان: يلتقط أي تسميع لم يُحذف فوراً (بسبب خطأ في الحذف الفوري مثلاً)
+  // - الحذف الفوري يتم في PATCH أعلاه بمجرد إعطاء الدرجة
+  // - هذه الشبكة تحذف أي تسميع مُقيَّم منذ أكثر من دقيقة لم يُنظَّف
   audioCleanupInterval = setInterval(async () => {
     try {
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const oneMinAgo = new Date(Date.now() - 60 * 1000);
       const gradedAssignments = await db
         .select({ id: assignments.id })
         .from(assignments)
         .where(
           and(
             eq(assignments.hasAudio, true),
-            dsql`${assignments.audioGradedAt} IS NOT NULL AND ${assignments.audioGradedAt} < ${fiveMinAgo.toISOString()}`
-          )
+            dsql`${assignments.audioGradedAt} IS NOT NULL AND ${assignments.audioGradedAt} < ${oneMinAgo.toISOString()}`,
+          ),
         );
       for (const a of gradedAssignments) {
         try {
+          // جلب audioKey ثم حذف من MinIO أولاً
+          const [audioRow] = await db
+            .select()
+            .from(assignmentAudio)
+            .where(eq(assignmentAudio.assignmentId, a.id));
+          if (audioRow?.audioKey) {
+            try { await deleteFromMinio(audioRow.audioKey); } catch {}
+          }
           await db.delete(assignmentAudio).where(eq(assignmentAudio.assignmentId, a.id));
           await db
             .update(assignments)
-            .set({ hasAudio: false, audioFileName: null })
+            .set({ hasAudio: false, audioFileName: null, audioGradedAt: null })
             .where(eq(assignments.id, a.id));
+          console.log(`[تسميع] حُذف بواسطة شبكة الأمان — الواجب ${a.id}`);
         } catch (cleanErr) {
           console.error(`خطأ في تنظيف صوتي ${a.id}:`, cleanErr);
         }
