@@ -9,7 +9,8 @@ import {
   uploadLibraryFile,
   getLibraryFileStream,
   deleteLibraryFile,
-} from "../lib/minio";
+  describeLibraryStorage,
+} from "../lib/library-storage";
 
 type MosqueErrorCode =
   | "MISSING_MOSQUE_ASSOCIATION"
@@ -508,14 +509,19 @@ export function registerLibraryRoutes(app: Express) {
         const key = `books/${mosqueScope}/${Date.now()}-${randomBytes(6).toString("hex")}${ext}`;
         const saved = await uploadLibraryFile(key, req.file.buffer, req.file.mimetype);
         if (!saved) {
-          return res.status(503).json({
-            message: "خدمة تخزين الملفات غير متاحة. تأكد من إعدادات MinIO.",
-            code: "STORAGE_UNAVAILABLE",
+          const storage = describeLibraryStorage();
+          logger.error({ userId: user.id, storage }, "library.upload.all_backends_failed");
+          return res.status(500).json({
+            message: "تعذّر حفظ الملف على الخادم. يرجى المحاولة لاحقاً أو التواصل مع الدعم.",
+            code: "STORAGE_FAILED",
             source: "server",
           });
         }
 
-        logger.info({ userId: user.id, key: saved, size: req.file.size }, "library.file.uploaded");
+        logger.info(
+          { userId: user.id, key: saved, size: req.file.size, backend: saved.split(":")[0] },
+          "library.file.uploaded",
+        );
         res.json({
           fileKey: saved,
           fileSize: req.file.size,
@@ -550,9 +556,9 @@ export function registerLibraryRoutes(app: Express) {
       }
       const stream = await getLibraryFileStream(row.file_key);
       if (!stream) {
-        return res.status(503).json({
-          message: "خدمة تخزين الملفات غير متاحة",
-          code: "STORAGE_UNAVAILABLE",
+        return res.status(404).json({
+          message: "الملف غير متاح حالياً. قد يكون قد حُذف أو نُقل.",
+          code: "FILE_UNAVAILABLE",
           source: "server",
         });
       }

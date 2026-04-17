@@ -5,6 +5,9 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
+# Library uploads (filesystem fallback when MinIO not available)
+uploads/
+
 # Environment & secrets
 .env
 .env.*

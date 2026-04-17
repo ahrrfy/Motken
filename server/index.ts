@@ -339,6 +339,15 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
   await initMinioBucket();
   await initLibraryBucket();
   await initOtaBucket();
+
+  // سجّل مصدر تخزين المكتبة النشِط (MinIO أو القرص المحلي) — مفيد للتشخيص
+  const { describeLibraryStorage } = await import("./lib/library-storage");
+  const libStorage = describeLibraryStorage();
+  logger.info(
+    { primary: libStorage.primary, diskPath: libStorage.diskPath, minioAvailable: libStorage.minioAvailable },
+    `Library storage: ${libStorage.primary === "minio" ? "MinIO" : `قرص محلي (${libStorage.diskPath})`}`,
+  );
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
