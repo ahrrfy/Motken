@@ -27,6 +27,7 @@ import { DataTableToolbar } from "@/components/data-table-toolbar";
 import UsernameInput from "@/components/UsernameInput";
 import CredentialsShareDialog from "@/components/CredentialsShareDialog";
 import { apiFetch } from "@/lib/api";
+import { usePublicConfig } from "@/lib/public-config";
 
 interface Student {
   id: string;
@@ -76,6 +77,7 @@ export default function StudentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { openPrintPreview } = usePrintPreview();
+  const { appUrl: publicAppUrl } = usePublicConfig();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGender, setFilterGender] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -2386,8 +2388,7 @@ export default function StudentsPage() {
                     </div>
                   </div>
                   <Button onClick={() => {
-                    const appUrl = window.location.origin;
-                    const msg = `بسم الله الرحمن الرحيم\n\nسِرَاجُ الْقُرْآنِ لإدارة حلقات القرآن الكريم\n━━━━━━━━━━━━━━━━━━━━\n\n📘 بيانات الطالب:\nالاسم: ${credentialsDialog.name}\nاسم المستخدم: ${credentialsDialog.username}\nكلمة المرور: ${credentialsDialog.password}\n\n👤 بيانات ولي الأمر:\nالاسم: ${credentialsDialog.parentCredentials!.name}\nاسم المستخدم: ${credentialsDialog.parentCredentials!.username}\nكلمة المرور: ${credentialsDialog.parentCredentials!.password}\n\nرابط الدخول: ${appUrl}\n━━━━━━━━━━━━━━━━━━━━\nيرجى الاحتفاظ ببيانات الدخول`;
+                    const msg = `بسم الله الرحمن الرحيم\n\nسِرَاجُ الْقُرْآنِ لإدارة حلقات القرآن الكريم\n━━━━━━━━━━━━━━━━━━━━\n\n📘 بيانات الطالب:\nالاسم: ${credentialsDialog.name}\nاسم المستخدم: ${credentialsDialog.username}\nكلمة المرور: ${credentialsDialog.password}\n\n👤 بيانات ولي الأمر:\nالاسم: ${credentialsDialog.parentCredentials!.name}\nاسم المستخدم: ${credentialsDialog.parentCredentials!.username}\nكلمة المرور: ${credentialsDialog.parentCredentials!.password}\n\nرابط الدخول: ${publicAppUrl}\n━━━━━━━━━━━━━━━━━━━━\nيرجى الاحتفاظ ببيانات الدخول`;
                     navigator.clipboard.writeText(msg).then(() => {
                       toast({ title: "تم النسخ", description: "تم نسخ جميع بيانات الدخول", className: "bg-green-50 border-green-200 text-green-800" });
                     });

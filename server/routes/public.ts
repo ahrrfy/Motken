@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { requireRole } from "../auth";
+import { requireAuth, requireRole } from "../auth";
 import { db } from "../db";
 import { eq, asc, desc, count } from "drizzle-orm";
 import {
@@ -7,8 +7,95 @@ import {
 } from "@shared/schema";
 import { logActivity } from "./shared";
 import { sendError } from "../error-handler";
+import { getAppUrl } from "../lib/app-url";
+
+type CredentialsVariant = "simple" | "with-parent" | "parent-linked";
+
+function buildCredentialsMessage(body: any): string {
+  const appUrl = getAppUrl();
+  const variant: CredentialsVariant = body.variant || "simple";
+  const name = String(body.name || "").trim();
+  const username = String(body.username || "").trim();
+  const password = String(body.password || "").trim();
+  const role = String(body.role || "").trim();
+  const mosqueName = body.mosqueName ? String(body.mosqueName) : "";
+  const parent = body.parent && typeof body.parent === "object" ? body.parent : null;
+  const studentNames = Array.isArray(body.studentNames)
+    ? body.studentNames.map(String).filter(Boolean)
+    : [];
+
+  const roleLabel = role === "admin" ? "مدير"
+    : role === "teacher" ? "معلم"
+    : role === "supervisor" ? "مشرف"
+    : role === "parent" ? "ولي أمر"
+    : role === "student" ? "طالب"
+    : role;
+
+  if (variant === "with-parent" && parent) {
+    return [
+      "بسم الله الرحمن الرحيم",
+      "",
+      "📘 بيانات الطالب:",
+      `الاسم: ${name}`,
+      `اسم المستخدم: ${username}`,
+      `كلمة المرور: ${password}`,
+      mosqueName ? `المسجد: ${mosqueName}` : "",
+      "",
+      "👤 بيانات ولي الأمر:",
+      `الاسم: ${parent.name || ""}`,
+      `اسم المستخدم: ${parent.username || ""}`,
+      `كلمة المرور: ${parent.password || ""}`,
+      "",
+      `🔗 رابط الدخول: ${appUrl}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  if (variant === "parent-linked") {
+    return [
+      `السلام عليكم ورحمة الله وبركاته، ${name}`,
+      "",
+      "تم إنشاء حساب ولي أمر لك في نظام سِرَاجُ الْقُرْآنِ.",
+      "",
+      `اسم المستخدم: ${username}`,
+      `كلمة المرور: ${password}`,
+      studentNames.length ? `الطلاب المرتبطون بحسابك: ${studentNames.join("، ")}` : "",
+      "",
+      `🔗 رابط الدخول: ${appUrl}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  // simple
+  return [
+    "بسم الله الرحمن الرحيم",
+    "",
+    `السلام عليكم ${name}`,
+    "",
+    `الدور: ${roleLabel}`,
+    `اسم المستخدم: ${username}`,
+    `كلمة المرور: ${password}`,
+    mosqueName ? `المسجد: ${mosqueName}` : "",
+    "",
+    `🔗 رابط الدخول للنظام:`,
+    appUrl,
+  ].filter(Boolean).join("\n");
+}
 
 export function registerPublicRoutes(app: Express) {
+  // إعدادات عامة لأي متصفح/تطبيق (بلا مصادقة) — ينتج appUrl الرسمي
+  app.get("/api/public-config", (_req, res) => {
+    res.json({ appUrl: getAppUrl() });
+  });
+
+  // توليد رسالة بيانات الدخول من السيرفر — مصدر الحقيقة الوحيد للرابط
+  app.post("/api/credentials-message", requireAuth, (req, res) => {
+    try {
+      const message = buildCredentialsMessage(req.body || {});
+      res.json({ message, appUrl: getAppUrl() });
+    } catch (err: unknown) {
+      sendError(res, err, "توليد رسالة بيانات الدخول");
+    }
+  });
+
   app.get("/api/public-testimonials", async (_req, res) => {
     try {
       const all = await db.select().from(testimonials).where(eq(testimonials.isActive, true)).orderBy(asc(testimonials.sortOrder));

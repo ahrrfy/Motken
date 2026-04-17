@@ -63,6 +63,10 @@ interface BookItem {
   is_pdf: boolean;
   featured: boolean;
   cover_image: string | null;
+  file_key: string | null;
+  file_size: number | null;
+  file_mime: string | null;
+  file_name: string | null;
   created_by: string;
   added_by_role: string | null;
   created_at: string;

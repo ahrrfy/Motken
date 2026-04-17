@@ -31,6 +31,8 @@ import { registerPublicRoutes } from "./routes/public";
 import { registerSearchRoutes } from "./routes/search";
 import { registerExternalAssignmentsRoutes } from "./routes/external-assignments";
 import { registerLibraryRoutes } from "./routes/library";
+import { registerOtaRoutes } from "./routes/ota";
+import { registerAppVersionRoutes, seedAppVersionConfig } from "./routes/app-version";
 import { setupSwagger } from "./lib/swagger";
 
 export async function registerRoutes(
@@ -102,6 +104,10 @@ export async function registerRoutes(
     "/api/register-mosque",
     "/api/public-testimonials",
     "/api/public-stats",
+    "/api/public-config",
+    "/api/ota/",
+    "/api/app/version-check",
+    "/api/app/download",
   ];
   app.use((req: any, res: any, next: any) => {
     if (!req.path.startsWith("/api/")) return next();
@@ -136,6 +142,11 @@ export async function registerRoutes(
   registerSearchRoutes(app);
   registerExternalAssignmentsRoutes(app);
   registerLibraryRoutes(app);
+  registerOtaRoutes(app);
+  registerAppVersionRoutes(app);
+
+  // Seed إعدادات الإصدار (مرة واحدة عند أول تشغيل)
+  seedAppVersionConfig().catch(() => {});
 
   return httpServer;
 }

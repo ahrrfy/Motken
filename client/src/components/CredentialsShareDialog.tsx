@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, Check, MessageCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getWhatsAppUrl } from "@/lib/phone-utils";
+import { usePublicConfig } from "@/lib/public-config";
 
 interface CredentialsShareDialogProps {
   open: boolean;
@@ -35,8 +36,7 @@ export default function CredentialsShareDialog({
 }: CredentialsShareDialogProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
-
-  const appUrl = window.location.origin;
+  const { appUrl } = usePublicConfig();
 
   const getMessage = () => {
     let msg = `بسم الله الرحمن الرحيم\n\n`;

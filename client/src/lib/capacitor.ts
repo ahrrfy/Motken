@@ -7,6 +7,9 @@ import { Capacitor } from '@capacitor/core';
 /** هل التطبيق يعمل كتطبيق أصلي (Android/iOS)؟ */
 export const isNative = Capacitor.isNativePlatform();
 
+/** إصدار APK الحالي — يُرسل مع كل طلب ويُحدَّث مع كل إصدار native */
+export const APP_VERSION = '1.1.0';
+
 /** عنوان API الأساسي */
 export const API_BASE = isNative ? 'https://sirajalquran.org' : '';
 
@@ -17,28 +20,51 @@ export const WS_BASE = isNative
 
 /**
  * اعتراض عام لـ fetch — يحوّل كل URL نسبي (/api/*, /sw.js, etc.)
- * إلى عنوان مطلق يشير للسيرفر عندما يعمل كتطبيق أصلي.
- * هذا يغطي كل fetch في المشروع بدون تعديل أي ملف آخر.
+ * إلى عنوان مطلق يشير للسيرفر عندما يعمل كتطبيق أصلي،
+ * ويضيف X-App-Version لكل طلب إلى /api/* (لفحص Force Update من السيرفر).
  */
-if (isNative) {
-  const originalFetch = window.fetch.bind(window);
+const originalFetch = window.fetch.bind(window);
 
-  window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    if (typeof input === 'string') {
-      // تحويل URLs النسبية التي تبدأ بـ /api/ إلى مطلقة
-      if (input.startsWith('/api/') || input.startsWith('/api?')) {
-        input = API_BASE + input;
+window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  let finalInput: RequestInfo | URL = input;
+  let finalInit: RequestInit | undefined = init;
+
+  // تحويل URLs النسبية في التطبيق الأصلي
+  if (isNative) {
+    if (typeof finalInput === 'string') {
+      if (finalInput.startsWith('/api/') || finalInput.startsWith('/api?')) {
+        finalInput = API_BASE + finalInput;
       }
-    } else if (input instanceof Request) {
-      const url = input.url;
-      // فحص إذا كان URL نسبي تم تحويله من المتصفح إلى localhost
+    } else if (finalInput instanceof Request) {
+      const url = finalInput.url;
       if (url.includes('localhost/api/') || url.includes('localhost/api?')) {
         const path = new URL(url).pathname + new URL(url).search;
-        input = new Request(API_BASE + path, input);
+        finalInput = new Request(API_BASE + path, finalInput);
       }
     }
-    return originalFetch(input, init);
-  };
+  }
 
-  console.log('[SirajApp] Native mode — API calls redirect to', API_BASE);
+  // إضافة X-App-Version لكل طلب API
+  const urlStr = typeof finalInput === 'string'
+    ? finalInput
+    : finalInput instanceof Request ? finalInput.url : String(finalInput);
+  const isApiCall = urlStr.includes('/api/');
+
+  if (isApiCall) {
+    const headers = new Headers(finalInit?.headers || (finalInput instanceof Request ? finalInput.headers : undefined));
+    if (!headers.has('X-App-Version')) {
+      headers.set('X-App-Version', APP_VERSION);
+    }
+    if (finalInput instanceof Request) {
+      finalInput = new Request(finalInput, { headers });
+    } else {
+      finalInit = { ...(finalInit || {}), headers };
+    }
+  }
+
+  return originalFetch(finalInput, finalInit);
+};
+
+if (isNative) {
+  console.log('[SirajApp] Native mode — API calls redirect to', API_BASE, '— version', APP_VERSION);
 }
