@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Book, Search, BookOpen, ArrowRight, Plus, Pencil, Trash2,
@@ -22,7 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { BookUploadDialog } from "@/components/BookUploadDialog";
+import { UnifiedBookDialog, type BookDialogSubmitPayload } from "@/components/UnifiedBookDialog";
 import { PdfViewer } from "@/components/PdfViewer";
 import { deletePdf } from "@/lib/pdf-storage";
 
@@ -178,28 +177,17 @@ export default function LibraryPage() {
     id: number;
     name: string;
   } | null>(null);
-  const [uploadDialog, setUploadDialog] = useState(false);
 
   // Edit state
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [editingBook, setEditingBook] = useState<BookItem | null>(null);
 
-  // Form state
+  // Form state (sections + branches only — book form lives in UnifiedBookDialog)
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formIcon, setFormIcon] = useState("book");
   const [formBranchSectionId, setFormBranchSectionId] = useState<number | null>(null);
-
-  // Book form
-  const [bookTitle, setBookTitle] = useState("");
-  const [bookAuthor, setBookAuthor] = useState("");
-  const [bookDescription, setBookDescription] = useState("");
-  const [bookPages, setBookPages] = useState("");
-  const [bookUrl, setBookUrl] = useState("");
-  const [bookFeatured, setBookFeatured] = useState(false);
-  const [bookSectionId, setBookSectionId] = useState<number | null>(null);
-  const [bookBranchId, setBookBranchId] = useState<number | null>(null);
 
   // PDF viewer
   const [pdfViewer, setPdfViewer] = useState<{
@@ -556,43 +544,14 @@ export default function LibraryPage() {
     }
   };
 
-  // ─── CRUD: Books ────────────────────────────────────────────────────────
+  // ─── CRUD: Books (unified) ──────────────────────────────────────────────
 
   const openBookDialog = (book?: BookItem) => {
-    if (book) {
-      setEditingBook(book);
-      setBookTitle(book.title);
-      setBookAuthor(book.author || "");
-      setBookDescription(book.description || "");
-      setBookPages(book.pages ? String(book.pages) : "");
-      setBookUrl(book.url || "");
-      setBookFeatured(book.featured);
-      setBookSectionId(book.section_id);
-      setBookBranchId(book.branch_id);
-    } else {
-      setEditingBook(null);
-      setBookTitle("");
-      setBookAuthor("");
-      setBookDescription("");
-      setBookPages("");
-      setBookUrl("");
-      setBookFeatured(false);
-      setBookSectionId(currentSection?.id || null);
-      setBookBranchId(currentBranch?.id || null);
-    }
+    setEditingBook(book || null);
     setBookDialog(true);
   };
 
-  const saveBook = async () => {
-    if (!bookTitle.trim()) {
-      toast({ title: "خطأ", description: "عنوان الكتاب مطلوب", variant: "destructive" });
-      return;
-    }
-    const secId = bookSectionId || currentSection?.id;
-    if (!secId) {
-      toast({ title: "خطأ", description: "يجب تحديد القسم", variant: "destructive" });
-      return;
-    }
+  const saveUnifiedBook = async (payload: BookDialogSubmitPayload) => {
     if (!effectiveMosqueId) {
       toast({
         title: isSuperAdmin ? "اختر مسجداً" : "حساب غير مرتبط بمسجد",
@@ -605,32 +564,22 @@ export default function LibraryPage() {
     }
     setSaving(true);
     try {
-      const payload = {
-        sectionId: secId,
-        branchId: bookBranchId || null,
-        title: bookTitle,
-        author: bookAuthor || null,
-        description: bookDescription || null,
-        pages: bookPages ? Number(bookPages) : null,
-        url: bookUrl || null,
-        featured: bookFeatured,
-        mosqueId: effectiveMosqueId,
-      };
+      const body = { ...payload, mosqueId: effectiveMosqueId };
       if (editingBook) {
         await apiFetch(`/api/library/books/${editingBook.id}`, {
           method: "PUT",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(body),
         });
         toast({ title: "تم التحديث", description: "تم تحديث الكتاب بنجاح" });
       } else {
         await apiFetch("/api/library/books", {
           method: "POST",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(body),
         });
         toast({ title: "تمت الإضافة", description: "تم إضافة الكتاب بنجاح" });
       }
       setBookDialog(false);
-      // Refresh data
+      setEditingBook(null);
       if (currentBranch) {
         await fetchBranchBooks(currentBranch.id);
       } else if (currentSection) {
@@ -683,85 +632,11 @@ export default function LibraryPage() {
     }
   };
 
-  // ─── Book Upload (PDF) handler ──────────────────────────────────────────
-
-  const handleBookUpload = async (uploadData: {
-    title: string;
-    author: string;
-    category: string;
-    description: string;
-    content: string;
-    chapters: { title: string; content: string }[];
-    isPdf?: boolean;
-    pdfStorageKey?: string;
-    pdfPageCount?: number;
-  }) => {
-    const secId = currentSection?.id || sections[0]?.id;
-    if (!secId) {
-      toast({ title: "خطأ", description: "لا يوجد قسم لإضافة الكتاب إليه. أنشئ قسماً أولاً.", variant: "destructive" });
-      return;
-    }
-    if (!effectiveMosqueId) {
-      toast({
-        title: isSuperAdmin ? "اختر مسجداً" : "حساب غير مرتبط بمسجد",
-        description: isSuperAdmin
-          ? "يرجى اختيار مسجد أولاً من أعلى الصفحة."
-          : "لا يوجد مسجد مرتبط بحسابك.",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      await apiFetch("/api/library/books", {
-        method: "POST",
-        body: JSON.stringify({
-          sectionId: secId,
-          branchId: currentBranch?.id || null,
-          title: uploadData.title,
-          author: uploadData.author || null,
-          description: uploadData.description || null,
-          pages: uploadData.pdfPageCount || null,
-          isPdf: uploadData.isPdf || false,
-          pdfStorageKey: uploadData.pdfStorageKey || null,
-          featured: false,
-          mosqueId: effectiveMosqueId,
-        }),
-      });
-      toast({ title: "تمت الإضافة", description: "تم رفع الكتاب بنجاح" });
-      setUploadDialog(false);
-      if (currentBranch) await fetchBranchBooks(currentBranch.id);
-      else if (currentSection) await fetchBranches(currentSection.id);
-      await fetchFeaturedBooks();
-    } catch (e) {
-      const err = e as ApiError;
-      if (handleMosqueAssociationError(err)) return;
-      toast({ title: "خطأ", description: err.message, variant: "destructive" });
-    }
-  };
-
-  // ─── Delete book with PDF cleanup ───────────────────────────────────────
+  // ─── Delete book ────────────────────────────────────────────────────────
 
   const handleDeleteBook = (book: BookItem) => {
     setDeleteDialog({ type: "book", id: book.id, name: book.title });
   };
-
-  // ─── Get available branches for a section (for book form) ───────────────
-
-  const [availableBranches, setAvailableBranches] = useState<Branch[]>([]);
-
-  useEffect(() => {
-    if (bookDialog && bookSectionId) {
-      apiFetch<Branch[]>(withMosque(`/api/library/branches/${bookSectionId}`, selectedMosqueId))
-        .then(setAvailableBranches)
-        .catch(() => setAvailableBranches([]));
-    } else {
-      setAvailableBranches([]);
-    }
-  }, [bookDialog, bookSectionId, selectedMosqueId]);
-
-  // ─── Get section names for upload dialog categories ─────────────────────
-
-  const sectionNames = sections.map((s) => s.name);
 
   // ─── Render helpers ─────────────────────────────────────────────────────
 
@@ -901,27 +776,16 @@ export default function LibraryPage() {
               </Button>
             )}
             {currentSection && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => openBookDialog()}
-                  disabled={!canManage}
-                  title={!canManage ? manageDisabledReason : undefined}
-                >
-                  <Plus className="h-4 w-4 ml-1" />
-                  كتاب جديد
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setUploadDialog(true)}
-                  disabled={!canManage}
-                  title={!canManage ? manageDisabledReason : undefined}
-                >
-                  <FileText className="h-4 w-4 ml-1" />
-                  رفع PDF
-                </Button>
-              </>
+              <Button
+                size="sm"
+                onClick={() => openBookDialog()}
+                disabled={!canManage}
+                title={!canManage ? manageDisabledReason : undefined}
+                data-testid="btn-new-book"
+              >
+                <Plus className="h-4 w-4 ml-1" />
+                إضافة كتاب
+              </Button>
             )}
           </div>
         )}
@@ -1405,90 +1269,35 @@ export default function LibraryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Book Dialog ────────────────────────────────────────────────── */}
-      <Dialog open={bookDialog} onOpenChange={setBookDialog}>
-        <DialogContent dir="rtl" className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingBook ? "تعديل الكتاب" : "إضافة كتاب"}</DialogTitle>
-            <DialogDescription>
-              {editingBook ? "عدّل بيانات الكتاب" : "أضف كتاباً جديداً للمكتبة"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>عنوان الكتاب *</Label>
-              <Input value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} placeholder="عنوان الكتاب" />
-            </div>
-            <div>
-              <Label>المؤلف</Label>
-              <Input value={bookAuthor} onChange={(e) => setBookAuthor(e.target.value)} placeholder="اسم المؤلف" />
-            </div>
-            <div>
-              <Label>الوصف</Label>
-              <Textarea value={bookDescription} onChange={(e) => setBookDescription(e.target.value)} placeholder="وصف مختصر" rows={2} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>عدد الصفحات</Label>
-                <Input type="number" value={bookPages} onChange={(e) => setBookPages(e.target.value)} placeholder="0" />
-              </div>
-              <div>
-                <Label>رابط الكتاب</Label>
-                <Input value={bookUrl} onChange={(e) => setBookUrl(e.target.value)} placeholder="https://..." dir="ltr" />
-              </div>
-            </div>
-            <div>
-              <Label>القسم *</Label>
-              <Select
-                value={bookSectionId ? String(bookSectionId) : ""}
-                onValueChange={(v) => {
-                  setBookSectionId(Number(v));
-                  setBookBranchId(null);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر القسم" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sections.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {availableBranches.length > 0 && (
-              <div>
-                <Label>الفرع (اختياري)</Label>
-                <Select
-                  value={bookBranchId ? String(bookBranchId) : "none"}
-                  onValueChange={(v) => setBookBranchId(v === "none" ? null : Number(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="بدون فرع" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">بدون فرع</SelectItem>
-                    {availableBranches.map((b) => (
-                      <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Switch checked={bookFeatured} onCheckedChange={setBookFeatured} id="featured" />
-              <Label htmlFor="featured">كتاب مميز</Label>
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setBookDialog(false)}>إلغاء</Button>
-            <Button onClick={saveBook} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 ml-1 animate-spin" />}
-              {editingBook ? "تحديث" : "إضافة"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* ─── Unified Book Dialog (create + edit + file upload in one) ──── */}
+      <UnifiedBookDialog
+        open={bookDialog}
+        onOpenChange={setBookDialog}
+        sections={sections}
+        branches={branches}
+        defaultSectionId={currentSection?.id ?? null}
+        defaultBranchId={currentBranch?.id ?? null}
+        mosqueId={effectiveMosqueId || null}
+        saving={saving}
+        initialValues={editingBook ? {
+          id: editingBook.id,
+          title: editingBook.title,
+          author: editingBook.author,
+          description: editingBook.description,
+          pages: editingBook.pages,
+          url: editingBook.url,
+          sectionId: editingBook.section_id,
+          branchId: editingBook.branch_id,
+          featured: editingBook.featured,
+          isPdf: editingBook.is_pdf,
+          pdfStorageKey: editingBook.pdf_storage_key,
+          fileKey: editingBook.file_key,
+          fileSize: editingBook.file_size,
+          fileMime: editingBook.file_mime,
+          fileName: editingBook.file_name,
+        } : null}
+        onSubmit={saveUnifiedBook}
+      />
 
       {/* ─── Delete Confirmation Dialog ─────────────────────────────────── */}
       <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
@@ -1508,14 +1317,6 @@ export default function LibraryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* ─── Book Upload Dialog ─────────────────────────────────────────── */}
-      <BookUploadDialog
-        open={uploadDialog}
-        onOpenChange={setUploadDialog}
-        categories={sectionNames}
-        onSubmit={handleBookUpload}
-      />
     </div>
   );
 }
