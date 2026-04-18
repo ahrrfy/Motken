@@ -85,7 +85,7 @@ if pm2 list | grep -q "$APP_NAME"; then
     pm2 reload "$APP_NAME" --update-env
     log "   ✅ تم إعادة التحميل (بدون قطع الاتصالات)"
 else
-    pm2 start deploy/ecosystem.config.cjs --update-env
+    pm2 start ecosystem.config.cjs --update-env
     pm2 save
     log "   ✅ تم التشغيل لأول مرة"
 fi
